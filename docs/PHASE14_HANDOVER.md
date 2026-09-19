@@ -92,7 +92,7 @@ Dependencies, not just priority:
 ## 4. Conventions that apply here (from `docs/HANDOVER.md` §2-3 — still all true)
 
 - `npm run infra:up` first; other projects' Postgres containers running on this machine can read as
-  "the DB is up" when RetailBooks' own aren't.
+  "the DB is up" when ValueBooks' own aren't.
 - Migrations: never edit an applied migration folder — new folder, or use the shadow-db
   `migrate diff` dance. Full recipe in `docs/HANDOVER.md` §2.
 - Integration suite runs against `retailbooks_test`, auto-provisioned by `migrate deploy`.

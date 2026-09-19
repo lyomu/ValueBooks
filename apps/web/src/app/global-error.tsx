@@ -15,7 +15,7 @@ export default function GlobalError({
       <body>
         <div className="rb-standalone">
           <div className="rb-standalone__card rb-card">
-            <h1>RetailBooks hit an unexpected error</h1>
+            <h1>ValueBooks hit an unexpected error</h1>
             <p>Reload the page, or try again.</p>
             <div className="rb-standalone__actions">
               <button

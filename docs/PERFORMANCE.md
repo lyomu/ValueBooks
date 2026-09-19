@@ -1,4 +1,4 @@
-# RetailBooks query performance — rules, budgets, and evidence
+# ValueBooks query performance — rules, budgets, and evidence
 
 **Established:** 2026-09-02, at execution-plan Stage 4.1. **Binds:** every read path that produces a
 total, a balance, or a report row — which from Phase 9 onward is roughly thirty reports across nine

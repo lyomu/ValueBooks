@@ -25,7 +25,7 @@ import { API, createTestHarness, type TestHarness } from './support/app.js';
 
 const metadata = {
   ipHash: 'cross-module-scenarios-test',
-  userAgent: 'RetailBooks integration test',
+  userAgent: 'ValueBooks integration test',
 };
 
 describe('cross-module acceptance scenarios against a real database', () => {

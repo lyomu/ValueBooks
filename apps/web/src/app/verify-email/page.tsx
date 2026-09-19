@@ -3,7 +3,7 @@ import type { Metadata } from 'next';
 import { AuthShell } from '../../components/auth-shell';
 import { VerifyEmailClient } from '../../components/verify-email-client';
 
-export const metadata: Metadata = { title: 'Verify email | RetailBooks' };
+export const metadata: Metadata = { title: 'Verify email | ValueBooks' };
 
 export default async function VerifyEmailPage({
   searchParams,

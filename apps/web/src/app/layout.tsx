@@ -6,7 +6,7 @@ import '@retailbooks/ui/styles.css';
 import './styles.css';
 
 export const metadata: Metadata = {
-  title: 'RetailBooks',
+  title: 'ValueBooks',
   description: 'AI invoicing and accounting that keeps small businesses clear, organized, and ready for what is next.',
 };
 

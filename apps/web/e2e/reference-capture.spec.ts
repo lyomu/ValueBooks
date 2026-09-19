@@ -74,8 +74,8 @@ test('@reference capture the live RetailFlow visual source', async ({ page }) =>
             <img alt="RetailFlow reference" src="data:image/png;base64,${fs.readFileSync(referencePath).toString('base64')}" />
           </figure>
           <figure>
-            <figcaption>RetailBooks implementation</figcaption>
-            <img alt="RetailBooks implementation" src="data:image/png;base64,${fs.readFileSync(currentPath).toString('base64')}" />
+            <figcaption>ValueBooks implementation</figcaption>
+            <img alt="ValueBooks implementation" src="data:image/png;base64,${fs.readFileSync(currentPath).toString('base64')}" />
           </figure>
         </main>
       </body>

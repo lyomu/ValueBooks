@@ -630,7 +630,7 @@ function NumberExplanationPanel({
         title={`Explain ${label}`}
         description="Deterministic breakdown and, if available, an AI interpretation."
       >
-        <div className="rb-explain-panel">
+        <div className="rb-explain-panel rb-explain-panel--surface">
           {error ? (
             <ErrorState title="This number could not be explained" description={error} />
           ) : null}

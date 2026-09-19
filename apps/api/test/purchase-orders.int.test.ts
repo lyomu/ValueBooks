@@ -12,7 +12,7 @@ import { createTestHarness, type TestHarness } from './support/app.js';
 
 const metadata = {
   ipHash: 'purchase-orders-test',
-  userAgent: 'RetailBooks integration test',
+  userAgent: 'ValueBooks integration test',
 };
 
 describe('purchase order workflows against a real database', () => {

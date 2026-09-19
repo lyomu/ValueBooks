@@ -13,7 +13,7 @@ import { createTestHarness, type TestHarness } from './support/app.js';
 
 const metadata = {
   ipHash: 'payments-made-test',
-  userAgent: 'RetailBooks integration test',
+  userAgent: 'ValueBooks integration test',
 };
 
 describe('vendor payment recording and allocation against a real database', () => {

@@ -11,7 +11,7 @@ import { createTestHarness, type TestHarness } from './support/app.js';
 
 const metadata = {
   ipHash: 'scheduler-sweep-test',
-  userAgent: 'RetailBooks integration test',
+  userAgent: 'ValueBooks integration test',
 };
 
 describe('scheduler sweep and execution lifecycle against a real database', () => {

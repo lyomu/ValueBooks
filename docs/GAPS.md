@@ -1,4 +1,4 @@
-# RetailBooks — Open Gaps Tracker
+# ValueBooks — Open Gaps Tracker
 
 **How to use this file:** every item below is a checkbox. Check an item off (`- [ ]` → `- [x]`)
 only when it is actually implemented and verified (tests passing, not just code written) — same

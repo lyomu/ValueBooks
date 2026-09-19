@@ -3,7 +3,7 @@ import type { Metadata } from 'next';
 import { AppShell } from '../../components/app-shell';
 import { TimesheetPage } from '../../components/projects-workbench';
 
-export const metadata: Metadata = { title: 'Timesheet | RetailBooks' };
+export const metadata: Metadata = { title: 'Timesheet | ValueBooks' };
 
 export default function Page() {
   return (

@@ -26,7 +26,7 @@ const productPages = {
   product: {
     kicker: 'ONE CALM PLACE FOR MONEY WORK',
     title: 'A smarter way to run the business behind your business.',
-    text: 'RetailBooks brings invoices, bookkeeping, payments, and AI guidance together so the next right move is always close at hand.',
+    text: 'ValueBooks brings invoices, bookkeeping, payments, and AI guidance together so the next right move is always close at hand.',
     mockup: <DashboardMockup />,
     features: [
       'A shared home for invoices, expenses, and cash flow',
@@ -62,7 +62,7 @@ const productPages = {
   ai: {
     kicker: 'AI WITH A BUSINESS BRAIN',
     title: 'Meet the assistant that helps you stay ahead.',
-    text: 'RetailBooks AI notices patterns, flags follow-ups, and turns financial questions into plain-language next steps—without pretending to replace your judgment.',
+    text: 'ValueBooks AI notices patterns, flags follow-ups, and turns financial questions into plain-language next steps—without pretending to replace your judgment.',
     mockup: <AiMockup />,
     features: [
       'Ask practical questions and get answers in plain language',
@@ -96,8 +96,8 @@ export function ProductDetailPage({ page }: { page: ProductPageKey }) {
             <h2>{product ? 'Everything works better when it works together.' : 'Designed to feel like less work.'}</h2>
             <p className="mk-lead">
               {product
-                ? 'Each RetailBooks tool is useful on its own—and even more useful when it shares the same picture of your business.'
-                : 'The small, considered details are where RetailBooks earns its keep: fewer tabs, fewer checks, and more confidence in the work.'}
+                ? 'Each ValueBooks tool is useful on its own—and even more useful when it shares the same picture of your business.'
+                : 'The small, considered details are where ValueBooks earns its keep: fewer tabs, fewer checks, and more confidence in the work.'}
             </p>
             <FeatureList items={data.features} />
           </div>
@@ -112,7 +112,7 @@ export function ProductDetailPage({ page }: { page: ProductPageKey }) {
             <span className="mk-eyebrow">A LITTLE MORE ROOM TO BREATHE</span>
             <h2>Less time untangling the work. More time building the work you love.</h2>
             <p className="mk-lead">
-              RetailBooks is made for owners who want a reliable system, not another complicated project. Start with what you need and grow from there.
+              ValueBooks is made for owners who want a reliable system, not another complicated project. Start with what you need and grow from there.
             </p>
             <Link className="mk-text-link" href="/contact">Talk to our team <span aria-hidden="true">→</span></Link>
           </div>
@@ -153,14 +153,14 @@ export function CustomersPage() {
       <PageHero
         eyebrow="THE PEOPLE BEHIND THE NUMBERS"
         title="Built for owners who are busy building something real."
-        copy="From the first invoice to the next big decision, RetailBooks gives small businesses a clearer, calmer way forward."
+        copy="From the first invoice to the next big decision, ValueBooks gives small businesses a clearer, calmer way forward."
         action={{ label: 'Start your story', href: '/contact' }}
         visual="people"
       />
 
       <section className="mk-section mk-section--cream">
         <div className="mk-container">
-          <SectionIntro kicker="REAL WORK, REAL MOMENTUM" title="Small wins add up." text="Here are a few of the ways teams use RetailBooks to make their day-to-day feel lighter." />
+          <SectionIntro kicker="REAL WORK, REAL MOMENTUM" title="Small wins add up." text="Here are a few of the ways teams use ValueBooks to make their day-to-day feel lighter." />
           <div className="mk-story-grid">
             {customerStories.map((story) => (
               <article className="mk-story-card" key={story.name}>
@@ -198,7 +198,7 @@ export function SecurityPage() {
       <PageHero
         eyebrow="TRUST IS PART OF THE PRODUCT"
         title="A safer place to run your business."
-        copy="Your financial information deserves care. RetailBooks is built to help keep your data protected, understandable, and in your hands."
+        copy="Your financial information deserves care. ValueBooks is built to help keep your data protected, understandable, and in your hands."
         action={{ label: 'Contact our team', href: '/contact' }}
         visual="security"
       />

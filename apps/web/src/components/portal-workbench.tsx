@@ -183,7 +183,7 @@ export function PortalWorkbench() {
     <main id="main-content" className="rb-portal">
       <header className="rb-portal__header">
         <Link href="/portal" className="rb-portal__brand">
-          <ReceiptText aria-hidden="true" /> RetailBooks portal
+          <ReceiptText aria-hidden="true" /> ValueBooks portal
         </Link>
         <a className="rb-portal__signout" href="/login">
           <LogOut aria-hidden="true" /> Sign out

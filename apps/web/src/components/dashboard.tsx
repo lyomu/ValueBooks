@@ -1,6 +1,6 @@
 /*
 THESIS: A calm accounting workbench inside RetailFlow's proven operational frame.
-OWN-WORLD: Exact navy navigation, cool white workspace, cyan action signals, Urbanist type, and
+OWN-WORLD: Exact navy navigation, cool white workspace, cyan action signals, Outfit type, and
 ledger-like alignment from the supplied RetailFlow references.
 STORY: The owner scans position first, verifies controls second, and reaches journals without
 invented financial activity.

@@ -17,7 +17,7 @@ import { createTestHarness, type TestHarness } from './support/app.js';
 
 const metadata = {
   ipHash: 'reminder-timing-test',
-  userAgent: 'RetailBooks integration test',
+  userAgent: 'ValueBooks integration test',
 };
 
 describe('invoice reminder timing and execution against a real database', () => {

@@ -9,7 +9,7 @@ import { createTestHarness, type TestHarness } from './support/app.js';
 
 const metadata = {
   ipHash: 'vendors-test',
-  userAgent: 'RetailBooks integration test',
+  userAgent: 'ValueBooks integration test',
 };
 
 describe('vendors against a real database', () => {

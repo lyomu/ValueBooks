@@ -3,7 +3,7 @@ import type { Metadata } from 'next';
 import { AppShell } from '../../components/app-shell';
 import { JournalsPage } from '../../components/ledger-workbench';
 
-export const metadata: Metadata = { title: 'Journals | RetailBooks' };
+export const metadata: Metadata = { title: 'Journals | ValueBooks' };
 
 export default function JournalsRoute() {
   return (

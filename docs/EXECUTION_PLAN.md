@@ -1,4 +1,4 @@
-# RetailBooks Execution Plan — Verification Closure + Phases 7–9
+# ValueBooks Execution Plan — Verification Closure + Phases 7–9
 
 **Created:** 2026-09-02 · **Scope:** close the verification debt on Phases 1, 5, and 6; fix the
 three CI blockers; then deliver Phases 7 (Projects & Time), 8 (Globalization), and 9 (Reporting)
@@ -85,7 +85,7 @@ not. **Size:** under an hour. **Depends on:** nothing; can run alongside Stage 0
 the roadmap. **Size:** the largest single chunk of remediation — budget 2–3 focused sessions.
 **Depends on:** Stage 0. **This is the highest-risk open item in the repo.**
 
-**Prerequisite:** `npm run infra:up`. The RetailBooks Postgres/Redis containers are not currently
+**Prerequisite:** `npm run infra:up`. The ValueBooks Postgres/Redis containers are not currently
 running (other projects' containers are, which is easy to misread as "the DB is up").
 
 ### 2A — `apps/api/test/banking.int.test.ts`

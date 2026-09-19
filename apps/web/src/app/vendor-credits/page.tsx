@@ -3,7 +3,7 @@ import type { Metadata } from 'next';
 import { AppShell } from '../../components/app-shell';
 import { VendorCreditsPage } from '../../components/vendor-credits-workbench';
 
-export const metadata: Metadata = { title: 'Vendor credits | RetailBooks' };
+export const metadata: Metadata = { title: 'Vendor credits | ValueBooks' };
 
 export default function VendorCreditsRoute() {
   return (

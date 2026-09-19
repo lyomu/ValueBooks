@@ -3,7 +3,7 @@ import type { Metadata } from 'next';
 import { AppShell } from '../../components/app-shell';
 import { BankRulesPage } from '../../components/banking-workbench';
 
-export const metadata: Metadata = { title: 'Bank rules | RetailBooks' };
+export const metadata: Metadata = { title: 'Bank rules | ValueBooks' };
 
 export default function Page() {
   return (

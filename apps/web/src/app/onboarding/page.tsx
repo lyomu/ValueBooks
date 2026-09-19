@@ -4,18 +4,18 @@ import Link from 'next/link';
 
 import { OnboardingWizard } from '../../components/onboarding-wizard';
 
-export const metadata: Metadata = { title: 'Set up your organization | RetailBooks' };
+export const metadata: Metadata = { title: 'Set up your organization | ValueBooks' };
 
 export default function OnboardingPage() {
   return (
     <main className="rb-onboarding-page" id="main-content">
       <header className="rb-onboarding-page__header">
-        <Link className="rb-onboarding-page__brand" href="/dashboard" aria-label="RetailBooks home">
+        <Link className="rb-onboarding-page__brand" href="/dashboard" aria-label="ValueBooks home">
           <span className="rb-onboarding-page__mark">
             <BookOpenCheck aria-hidden="true" />
           </span>
           <span>
-            <strong>RetailBooks</strong>
+            <strong>ValueBooks</strong>
             <small>Organization setup</small>
           </span>
         </Link>

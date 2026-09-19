@@ -3,7 +3,7 @@ import type { Metadata } from 'next';
 import { AcceptInvitationClient } from '../../components/accept-invitation-client';
 import { AuthShell } from '../../components/auth-shell';
 
-export const metadata: Metadata = { title: 'Join an organization | RetailBooks' };
+export const metadata: Metadata = { title: 'Join an organization | ValueBooks' };
 
 export default async function AcceptInvitationPage({
   searchParams,

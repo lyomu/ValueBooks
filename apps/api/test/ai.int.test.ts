@@ -17,7 +17,7 @@ import { ReportingService } from '../src/reporting/reporting.service.js';
 import { API, createTestHarness, type TestHarness } from './support/app.js';
 import { testDatabaseUrl } from './support/database.js';
 
-const metadata = { ipHash: 'ai-test', userAgent: 'RetailBooks AI integration test' };
+const metadata = { ipHash: 'ai-test', userAgent: 'ValueBooks AI integration test' };
 
 describe('AI report explanation foundation against a real database', () => {
   let harness: TestHarness;

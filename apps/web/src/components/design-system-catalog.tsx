@@ -112,7 +112,7 @@ export function DesignSystemCatalog() {
     <ToastProvider swipeDirection="right">
       <PageHeader
         title="Design system"
-        description="The RetailFlow operational language translated into accessible RetailBooks foundations."
+        description="The RetailFlow operational language translated into accessible ValueBooks foundations."
         actions={
           <Button onClick={() => setToastOpen(true)}>
             <Save aria-hidden="true" /> Test notification

@@ -19,7 +19,7 @@ import { createTestHarness, type TestHarness } from './support/app.js';
 
 const metadata = {
   ipHash: 'scheduled-report-delivery-test',
-  userAgent: 'RetailBooks integration test',
+  userAgent: 'ValueBooks integration test',
 };
 
 describe('scheduled-report filter/tenant fidelity against a real database', () => {

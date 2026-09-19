@@ -1,4 +1,4 @@
-# Handover Prompt — RetailBooks Global Accounting Platform
+# Handover Prompt — ValueBooks Global Accounting Platform
 
 **Project:** `c:\Users\gmnyo\Desktop\Engineering projects\retailbooks` — a multi-tenant, global,
 double-entry accounting & invoicing web platform (monorepo: `apps/api` NestJS, `apps/web` Next.js,
@@ -310,7 +310,7 @@ All still true (see `docs/PHASE3_TODO.md` "After 3H" and `PHASE4_TODO.md` findin
 - Integration suite runs against `retailbooks_test` (auto-provisioned by `migrate deploy` from
   `test/support/database.ts`), NOT the dev `retailbooks` DB.
 - **Run `npm run infra:up` first.** Other projects' Postgres containers are often running on this
-  machine, which reads as "the DB is up" when RetailBooks' own containers are not.
+  machine, which reads as "the DB is up" when ValueBooks' own containers are not.
 - The boundary-matrix sweep legitimately needs ~60s (243 endpoints × 8 roles) and carries a 240s
   timeout — don't revert it to defaults. Raise it again when a phase adds a batch of controllers.
 - On this machine, `localhost` can resolve to IPv6 `::1` only, while the Docker services publish

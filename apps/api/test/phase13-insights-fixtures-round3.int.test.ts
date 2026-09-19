@@ -17,7 +17,7 @@ import { API, createTestHarness, type TestHarness } from './support/app.js';
 
 const metadata = {
   ipHash: 'phase13-insights-fixtures-round3-test',
-  userAgent: 'RetailBooks insights fixture test (round 3)',
+  userAgent: 'ValueBooks insights fixture test (round 3)',
 };
 
 /** The 5th of the month `monthsBack` months before now, as an ISO date string. JS's `Date`

@@ -3,7 +3,7 @@ import type { Metadata } from 'next';
 import { AppShell } from '../../components/app-shell';
 import { ApprovalsPage } from '../../components/approvals-workbench';
 
-export const metadata: Metadata = { title: 'Approvals | RetailBooks' };
+export const metadata: Metadata = { title: 'Approvals | ValueBooks' };
 
 export default function Page() {
   return (

@@ -138,7 +138,7 @@ export function DocumentExtractionPanel({
         title={`Receipt review: ${filename}`}
         description="Deterministic scan/OCR status and an editable candidate for this receipt."
       >
-        <div className="rb-explain-panel">
+        <div className="rb-explain-panel rb-explain-panel--surface">
           {error ? (
             <ErrorState title="This extraction could not be loaded" description={error} />
           ) : null}

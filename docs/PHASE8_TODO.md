@@ -1,4 +1,4 @@
-# RetailBooks Phase 8 (Globalization) implementation checklist
+# ValueBooks Phase 8 (Globalization) implementation checklist
 
 Durable progress record for Phase 8: Globalization, sequenced by `docs/EXECUTION_PLAN.md`
 Stage 6. This phase turns on decision D3 (country-pack DB model).

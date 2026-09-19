@@ -1,4 +1,4 @@
-# RetailBooks Phase 5 (Banking & Reconciliation) implementation checklist
+# ValueBooks Phase 5 (Banking & Reconciliation) implementation checklist
 
 Durable progress record for Phase 5: Banking & Reconciliation. An item is checked once the code is
 implemented; this phase is following the user-confirmed rule, **code first, tests later**. During

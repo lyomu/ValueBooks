@@ -1,4 +1,4 @@
-# RetailBooks Phase 1 verification plan
+# ValueBooks Phase 1 verification plan
 
 This plan covers the agreed verification pass that milestones 1C–1I each deferred work into.
 `docs/PHASE1_TODO.md` remains the progress source of truth; this document explains how the open

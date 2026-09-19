@@ -57,6 +57,7 @@ import { useEffect, useRef, useState, type ReactNode } from 'react';
 
 import { apiRequest } from '../lib/api';
 import { hasPermission, useWorkspace } from '../lib/workspace';
+import { AiAssistantWidget } from './ai-assistant';
 import { OrganizationSwitcher } from './organization-switcher';
 
 type NavigationItem = {
@@ -188,7 +189,7 @@ const navigationGroups: NavigationGroup[] = [
   },
 ];
 
-function RetailBooksMark({ onExpand }: { onExpand?: () => void }) {
+function ValueBooksMark({ onExpand }: { onExpand?: () => void }) {
   if (onExpand) {
     return (
       <button
@@ -226,10 +227,10 @@ function Sidebar({
   return (
     <aside className={collapsed ? 'rb-app-sidebar is-collapsed' : 'rb-app-sidebar'}>
       <div className="rb-app-sidebar__brand">
-        <RetailBooksMark onExpand={collapsed ? onToggle : undefined} />
+        <ValueBooksMark onExpand={collapsed ? onToggle : undefined} />
         {!collapsed ? (
           <div className="rb-app-sidebar__brand-copy">
-            <strong>RetailBooks</strong>
+            <strong>ValueBooks</strong>
             <span>Accounting, clearly</span>
           </div>
         ) : null}
@@ -380,7 +381,7 @@ function TopBar({
     return () => window.removeEventListener('keydown', focusSearch);
   }, []);
 
-  const displayName = workspace.user?.displayName ?? 'RetailBooks';
+  const displayName = workspace.user?.displayName ?? 'ValueBooks';
   const initials = displayName
     .split(/\s+/)
     .slice(0, 2)
@@ -409,7 +410,7 @@ function TopBar({
 
       <label className="rb-global-search">
         <Search aria-hidden="true" />
-        <span className="rb-visually-hidden">Search RetailBooks</span>
+        <span className="rb-visually-hidden">Search ValueBooks</span>
         <input ref={searchRef} placeholder="Search accounts, journals, reports..." />
         <kbd>⌘K</kbd>
       </label>
@@ -485,7 +486,7 @@ export function AppShell({
       </div>
 
       <Dialog open={mobileOpen} onOpenChange={setMobileOpen}>
-        <DrawerContent title="RetailBooks navigation" side="left">
+        <DrawerContent title="ValueBooks navigation" side="left">
           <Sidebar
             collapsed={false}
             onToggle={() => setMobileOpen(false)}
@@ -500,6 +501,8 @@ export function AppShell({
           <div className="rb-page-container">{children}</div>
         </main>
       </div>
+
+      <AiAssistantWidget organization={workspace.activeOrganization} />
     </div>
   );
 }

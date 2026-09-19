@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import { AuthForm } from '../../../components/auth-form';
 import { AuthShell } from '../../../components/auth-shell';
-export const metadata: Metadata = { title: 'Customer portal sign in | RetailBooks' };
+export const metadata: Metadata = { title: 'Customer portal sign in | ValueBooks' };
 export default function PortalLogin() {
   return (
     <AuthShell

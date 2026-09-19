@@ -4,7 +4,7 @@ import type { Metadata } from 'next';
 import { AppShell } from '../../../components/app-shell';
 import { SecuritySessions } from '../../../components/security-sessions';
 
-export const metadata: Metadata = { title: 'Account security | RetailBooks' };
+export const metadata: Metadata = { title: 'Account security | ValueBooks' };
 
 export default function SecurityPage() {
   return (

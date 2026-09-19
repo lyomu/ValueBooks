@@ -1,5 +1,5 @@
 ---
-name: RetailBooks Web Application
+name: ValueBooks Web Application
 description: The RetailFlow operational design language adapted to a global accounting workbench.
 colors:
   workspace: 'hsl(210 20% 98%)'
@@ -17,24 +17,24 @@ colors:
   info: 'hsl(217 91% 60%)'
 typography:
   headline:
-    fontFamily: 'Urbanist, ui-sans-serif, system-ui, sans-serif'
+    fontFamily: 'Outfit, ui-sans-serif, system-ui, sans-serif'
     fontSize: 'clamp(1.75rem, 2.25vw, 2rem)'
     fontWeight: 700
     lineHeight: 1.15
     letterSpacing: '-0.02em'
   title:
-    fontFamily: 'Urbanist, ui-sans-serif, system-ui, sans-serif'
+    fontFamily: 'Outfit, ui-sans-serif, system-ui, sans-serif'
     fontSize: '1rem'
     fontWeight: 700
     lineHeight: 1.3
     letterSpacing: '-0.01em'
   body:
-    fontFamily: 'Urbanist, ui-sans-serif, system-ui, sans-serif'
+    fontFamily: 'Outfit, ui-sans-serif, system-ui, sans-serif'
     fontSize: '0.9375rem'
     fontWeight: 400
     lineHeight: 1.5
   label:
-    fontFamily: 'Urbanist, ui-sans-serif, system-ui, sans-serif'
+    fontFamily: 'Outfit, ui-sans-serif, system-ui, sans-serif'
     fontSize: '0.75rem'
     fontWeight: 600
     lineHeight: 1.2
@@ -85,7 +85,7 @@ components:
     padding: '0.125rem 0.5rem'
 ---
 
-# Design System: RetailBooks Web Application
+# Design System: ValueBooks Web Application
 
 **Derived from the implemented interface.** Tokens in the front matter above mirror
 `packages/ui/src/tokens.css`, which is the single source of truth — this file describes it, it does
@@ -96,7 +96,7 @@ against the code on 2026-09-02, covering Phases 1–6 (~75 routes, 21 module wor
 
 **Creative North Star: "The Accounting Workbench"**
 
-RetailBooks feels like the RetailFlow operating desk evolved for careful financial work: fast to
+ValueBooks feels like the RetailFlow operating desk evolved for careful financial work: fast to
 scan, calm under dense information, and explicit about state. A deep navy navigation frame holds a
 bright, cool workspace where cyan action signals, precise tables, and tabular figures guide the eye.
 
@@ -146,10 +146,10 @@ provisional mark. It never becomes gradient text or ambient decoration.
 
 ## Typography
 
-**Display Font:** Urbanist with system sans-serif fallbacks
-**Body Font:** Urbanist with system sans-serif fallbacks
+**Display Font:** Outfit with system sans-serif fallbacks
+**Body Font:** Outfit with system sans-serif fallbacks
 
-**Character:** Urbanist keeps the interface contemporary and approachable while its clean numeric
+**Character:** Outfit keeps the interface contemporary and approachable while its clean numeric
 forms support accounting density. Hierarchy comes from weight, size, and spacing—not stylistic font
 switching.
 
@@ -315,7 +315,7 @@ and portal layering. Motion is brief and functional and is removed when reduced 
 ### Do:
 
 - **Do** preserve the 256/64px sidebar, 56px top bar, and 1600px content cap.
-- **Do** use Urbanist and tabular numerals for financial values.
+- **Do** use Outfit and tabular numerals for financial values.
 - **Do** align amounts consistently and expose accounting status in text as well as color.
 - **Do** provide a useful next action for empty and error states.
 - **Do** preserve visible keyboard focus and semantic table structure at every breakpoint.
@@ -325,7 +325,7 @@ and portal layering. Motion is brief and functional and is removed when reduced 
 
 ### Don't:
 
-- **Don't** reuse the RetailFlow logo; RetailBooks owns a separate book/ledger mark.
+- **Don't** reuse the RetailFlow logo; ValueBooks owns a separate book/ledger mark.
 - **Don't** use gradient text, decorative glass, ornamental glow, or marketing-page scale inside the
   application.
 - **Don't** imply Kenya defaults are universal or certified.

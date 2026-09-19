@@ -15,7 +15,7 @@ import { createTestHarness, type TestHarness } from './support/app.js';
 
 const metadata = {
   ipHash: 'phase13-insights-fixtures-test',
-  userAgent: 'RetailBooks insights fixture test',
+  userAgent: 'ValueBooks insights fixture test',
 };
 
 function daysAgo(days: number): string {

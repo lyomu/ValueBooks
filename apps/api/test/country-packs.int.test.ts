@@ -8,7 +8,7 @@ import { API, createTestHarness, type TestHarness } from './support/app.js';
 
 const metadata = {
   ipHash: 'country-packs-test',
-  userAgent: 'RetailBooks integration test',
+  userAgent: 'ValueBooks integration test',
 };
 
 const PLATFORM_ADMIN_EMAIL = 'platform-admin@example.test';

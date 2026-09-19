@@ -4,7 +4,7 @@ import { AiOrchestrator } from '../src/ai/ai.orchestrator';
 
 const organization = { id: 'organization-1' } as never;
 const actor = { id: 'user-1' } as never;
-const metadata = { ipHash: 'ai-orchestrator-test', userAgent: 'RetailBooks AI test' };
+const metadata = { ipHash: 'ai-orchestrator-test', userAgent: 'ValueBooks AI test' };
 const input = {
   reportKey: 'financial.general-ledger',
   question: 'Explain the report.',

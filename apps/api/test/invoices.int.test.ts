@@ -14,7 +14,7 @@ import { API, createTestHarness, type TestHarness } from './support/app.js';
 
 const metadata = {
   ipHash: 'invoices-test',
-  userAgent: 'RetailBooks integration test',
+  userAgent: 'ValueBooks integration test',
 };
 
 describe('invoice posting against a real database', () => {

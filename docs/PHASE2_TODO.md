@@ -1,4 +1,4 @@
-# RetailBooks Phase 2 (Sales) implementation checklist
+# ValueBooks Phase 2 (Sales) implementation checklist
 
 This is the durable progress record for Phase 2 — Sales, the project's first complete vertical slice
 (UI → API → ledger → report). An item is checked only after its implementation has been verified.

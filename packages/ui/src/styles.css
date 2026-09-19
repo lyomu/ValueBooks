@@ -983,3 +983,297 @@
     margin-left: 0;
   }
 }
+
+/* Phase 13 AI: shared "explain a number"/"deterministic candidate" callout, used by the report
+   drill-down, receipt extraction, bank-match, approvals-briefing, and expense-categorization
+   panels. */
+.rb-explain-panel {
+  display: grid;
+  gap: var(--rb-space-4);
+}
+
+/* Right-side DrawerContent has no background of its own (the left mobile-nav drawer fills it with
+   its own opaque sidebar instead) -- this modifier gives an .rb-explain-panel that is the drawer's
+   direct/only child an opaque, padded surface so it's not a transparent overlay on the page below. */
+.rb-explain-panel--surface {
+  box-sizing: border-box;
+  height: 100%;
+  padding: var(--rb-space-5);
+  overflow-y: auto;
+  color: hsl(var(--rb-foreground));
+  background: hsl(var(--rb-card));
+}
+
+.rb-explain-summary-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--rb-space-3);
+  font-size: 0.875rem;
+}
+
+.rb-explain-summary-row strong {
+  font-size: 1rem;
+}
+
+.rb-explain-ready {
+  display: grid;
+  gap: var(--rb-space-3);
+  padding: var(--rb-space-4);
+  border: 1px solid hsl(var(--rb-border));
+  border-radius: var(--rb-radius);
+  background: hsl(var(--rb-accent));
+}
+
+.rb-explain-ready p {
+  margin: 0;
+  line-height: 1.55;
+}
+
+.rb-explain-citations {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--rb-space-2);
+  padding: 0;
+  margin: 0;
+  list-style: none;
+}
+
+.rb-explain-citations li a {
+  display: inline-flex;
+  align-items: center;
+  padding: var(--rb-space-1) var(--rb-space-3);
+  border: 1px solid hsl(var(--rb-border));
+  border-radius: var(--rb-radius-full);
+  color: hsl(var(--rb-primary-mid));
+  background: hsl(var(--rb-card));
+  font-size: 0.8125rem;
+  text-decoration: none;
+}
+
+.rb-explain-citations li a:hover {
+  border-color: hsl(var(--rb-primary-mid));
+  background: hsl(var(--rb-accent));
+}
+
+.rb-explain-caption {
+  font-size: 0.75rem;
+}
+
+.rb-explain-unavailable {
+  display: grid;
+  gap: var(--rb-space-2);
+  padding: var(--rb-space-4);
+  border: 1px dashed hsl(var(--rb-border));
+  border-radius: var(--rb-radius);
+}
+
+.rb-explain-ai {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--rb-space-2);
+}
+
+/* Phase 13 AI: global floating assistant (Ask your books + suggestions review). */
+.rb-ai-fab {
+  position: fixed;
+  right: var(--rb-space-6);
+  bottom: var(--rb-space-6);
+  z-index: 55;
+  display: inline-grid;
+  place-items: center;
+  width: 3.25rem;
+  height: 3.25rem;
+  color: hsl(var(--rb-primary-foreground));
+  background: linear-gradient(135deg, hsl(var(--rb-primary)), hsl(var(--rb-primary-glow)));
+  border: 0;
+  border-radius: var(--rb-radius-full);
+  box-shadow: var(--rb-shadow-action);
+  cursor: pointer;
+}
+
+.rb-ai-fab:hover {
+  box-shadow: var(--rb-shadow-md);
+}
+
+.rb-ai-fab svg {
+  width: 1.5rem;
+  height: 1.5rem;
+}
+
+.rb-ai-fab__badge {
+  position: absolute;
+  top: -0.25rem;
+  right: -0.25rem;
+  display: inline-grid;
+  min-width: 1.25rem;
+  height: 1.25rem;
+  padding: 0 0.3rem;
+  place-items: center;
+  color: hsl(var(--rb-primary-foreground));
+  background: hsl(var(--rb-danger));
+  border-radius: var(--rb-radius-full);
+  font-size: 0.6875rem;
+  font-weight: 700;
+}
+
+.rb-ai-drawer {
+  width: min(26rem, 92vw);
+}
+
+.rb-ai-panel {
+  display: flex;
+  height: 100%;
+  flex-direction: column;
+  box-sizing: border-box;
+  padding: var(--rb-space-5);
+  overflow-y: auto;
+  color: hsl(var(--rb-foreground));
+  background: hsl(var(--rb-card));
+}
+
+.rb-ai-panel__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--rb-space-3);
+  margin-bottom: var(--rb-space-4);
+}
+
+.rb-ai-panel__heading {
+  display: flex;
+  gap: var(--rb-space-3);
+}
+
+.rb-ai-panel__heading svg {
+  width: 1.25rem;
+  height: 1.25rem;
+  color: hsl(var(--rb-primary-mid));
+}
+
+.rb-ai-panel__heading strong {
+  display: block;
+}
+
+.rb-ai-panel__heading span {
+  font-size: 0.8125rem;
+}
+
+.rb-ai-tabs {
+  display: flex;
+  flex-direction: column;
+  gap: var(--rb-space-4);
+}
+
+.rb-ai-ask {
+  display: grid;
+  gap: var(--rb-space-4);
+}
+
+.rb-ai-suggested-questions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--rb-space-2);
+}
+
+.rb-ai-chip {
+  padding: var(--rb-space-1) var(--rb-space-3);
+  border: 1px solid hsl(var(--rb-border));
+  border-radius: var(--rb-radius-full);
+  color: hsl(var(--rb-secondary-foreground));
+  background: hsl(var(--rb-secondary));
+  font-size: 0.8125rem;
+  cursor: pointer;
+}
+
+.rb-ai-chip:hover {
+  border-color: hsl(var(--rb-primary-mid));
+}
+
+.rb-ai-result {
+  margin-top: var(--rb-space-2);
+}
+
+.rb-ai-interpreted,
+.rb-ai-row-count {
+  font-size: 0.8125rem;
+}
+
+.rb-ai-error {
+  display: grid;
+  gap: var(--rb-space-3);
+}
+
+.rb-ai-advanced {
+  padding: var(--rb-space-3);
+  border: 1px solid hsl(var(--rb-border));
+  border-radius: var(--rb-radius);
+  font-size: 0.8125rem;
+}
+
+.rb-ai-advanced summary {
+  color: hsl(var(--rb-primary-mid));
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.rb-ai-advanced > *:not(summary) {
+  margin-top: var(--rb-space-3);
+}
+
+.rb-ai-open-report {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--rb-space-2);
+  color: hsl(var(--rb-primary-mid));
+  font-size: 0.8125rem;
+  text-decoration: none;
+}
+
+.rb-ai-open-report svg {
+  width: 0.875rem;
+  height: 0.875rem;
+}
+
+.rb-ai-empty {
+  padding: var(--rb-space-4) 0;
+}
+
+.rb-ai-suggestions {
+  display: grid;
+  gap: var(--rb-space-3);
+}
+
+.rb-ai-suggestions__toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.rb-ai-suggestion {
+  display: grid;
+  gap: var(--rb-space-2);
+  padding: var(--rb-space-4);
+  border: 1px solid hsl(var(--rb-border));
+  border-radius: var(--rb-radius);
+}
+
+.rb-ai-suggestion p {
+  margin: var(--rb-space-1) 0 0;
+  font-size: 0.875rem;
+}
+
+.rb-ai-suggestion__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--rb-space-2);
+}
+
+@media (max-width: 30rem) {
+  .rb-ai-fab {
+    right: var(--rb-space-4);
+    bottom: var(--rb-space-4);
+  }
+}

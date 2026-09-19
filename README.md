@@ -1,18 +1,18 @@
-# RetailBooks
+# ValueBooks
 
-RetailBooks is a multi-tenant accounting operations platform for growing businesses. Phase 1
+ValueBooks is a multi-tenant accounting operations platform for growing businesses. Phase 1
 establishes the audit-safe accounting foundation: identity, organizations, roles, localization,
 fiscal periods, numbering, double-entry journals, tax configuration, and the first operational
 web surfaces.
 
 The product uses the RetailFlow web application as its explicit visual authority while keeping a
-separate RetailBooks identity and accounting-focused information architecture.
+separate ValueBooks identity and accounting-focused information architecture.
 
 ## Workspace
 
 - `apps/web` — Next.js web application
 - `apps/api` — NestJS API
-- `packages/ui` — shared RetailBooks interface primitives
+- `packages/ui` — shared ValueBooks interface primitives
 - `packages/contracts` — shared API schemas and types
 - `packages/accounting-core` — deterministic accounting rules
 - `packages/localization` — country-pack contracts and Kenya defaults
@@ -54,6 +54,6 @@ docker compose config
 database, leaving the development database untouched. Integration specs are
 named `*.int.test.ts`.
 
-RetailBooks is currently an implementation project, not a certified accounting, tax, or statutory
+ValueBooks is currently an implementation project, not a certified accounting, tax, or statutory
 compliance service. Country packs encode configurable defaults and validation rules; professional
 review remains required before production use in any jurisdiction.

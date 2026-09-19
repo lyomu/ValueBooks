@@ -19,7 +19,7 @@ import { buildMinimalPdf } from './support/minimal-pdf.js';
 
 const metadata = {
   ipHash: 'phase13-document-extraction-pipeline-test',
-  userAgent: 'RetailBooks document-extraction pipeline test',
+  userAgent: 'ValueBooks document-extraction pipeline test',
 };
 
 // A genuinely valid, decodable 1x1 white PNG -- not a magic-byte prefix followed by prose, so

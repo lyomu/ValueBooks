@@ -3,7 +3,7 @@ import type { Metadata } from 'next';
 import { AuthForm } from '../../components/auth-form';
 import { AuthShell } from '../../components/auth-shell';
 
-export const metadata: Metadata = { title: 'Sign in | RetailBooks' };
+export const metadata: Metadata = { title: 'Sign in | ValueBooks' };
 
 export default async function LoginPage({
   searchParams,

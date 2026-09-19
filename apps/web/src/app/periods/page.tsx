@@ -4,7 +4,7 @@ import type { Metadata } from 'next';
 import { AppShell } from '../../components/app-shell';
 import { FiscalPeriodsManagement } from '../../components/fiscal-periods-management';
 
-export const metadata: Metadata = { title: 'Fiscal periods | RetailBooks' };
+export const metadata: Metadata = { title: 'Fiscal periods | ValueBooks' };
 
 export default function PeriodsPage() {
   return (

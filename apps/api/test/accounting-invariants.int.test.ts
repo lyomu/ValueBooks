@@ -13,7 +13,7 @@ import { API, createTestHarness, type TestHarness } from './support/app.js';
 
 const metadata = {
   ipHash: 'accounting-invariants-test',
-  userAgent: 'RetailBooks integration test',
+  userAgent: 'ValueBooks integration test',
 };
 
 describe('accounting, period, numbering, and tax invariants', () => {

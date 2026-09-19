@@ -3,7 +3,7 @@ import type { Metadata } from 'next';
 import { AppShell } from '../../../components/app-shell';
 import { BillEditorPage } from '../../../components/bills-workbench';
 
-export const metadata: Metadata = { title: 'New bill | RetailBooks' };
+export const metadata: Metadata = { title: 'New bill | ValueBooks' };
 
 export default function NewBillRoute() {
   return (

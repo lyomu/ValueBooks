@@ -62,7 +62,7 @@ where it goes.
 ### 4. Deferred, with reasons
 
 - **CSV export formula injection.** A cell beginning `=`, `+`, `-`, or `@` is executed by Excel and
-  Sheets on open. RetailBooks does not export CSV yet — Phase 9 §9B is the first time it will, and
+  Sheets on open. ValueBooks does not export CSV yet — Phase 9 §9B is the first time it will, and
   it will export exactly the untrusted strings imported here. The mitigation (prefix such cells with
   an apostrophe) belongs in the export writer, so it is recorded as a Phase 9 requirement rather
   than implemented against a writer that does not exist.

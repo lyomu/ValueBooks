@@ -12,7 +12,7 @@ import { CustomersService } from '../src/sales/customers.service.js';
 import { InvoicesService } from '../src/sales/invoices.service.js';
 import { API, createTestHarness, type TestHarness } from './support/app.js';
 
-const metadata = { ipHash: 'collaboration-test', userAgent: 'RetailBooks integration test' };
+const metadata = { ipHash: 'collaboration-test', userAgent: 'ValueBooks integration test' };
 
 const PDF = Buffer.concat([Buffer.from('%PDF-1.4\n', 'ascii'), Buffer.alloc(64, 0x20)]);
 

@@ -1,4 +1,4 @@
-# RetailBooks Phase 1 implementation checklist
+# ValueBooks Phase 1 implementation checklist
 
 This is the durable progress record for the accepted Phase 1 plan. An item is checked only after
 its implementation has been verified. Detailed acceptance evidence should be added to the relevant
@@ -29,7 +29,7 @@ pull request, commit, or milestone note.
 ## Milestone 1B — RetailFlow design foundation
 
 - [x] Implement exact color, spacing, radius, typography, elevation, and motion tokens
-- [x] Add the provisional RetailBooks book/ledger mark
+- [x] Add the provisional ValueBooks book/ledger mark
 - [x] Implement responsive application shell: sidebar, top bar, page container, and mobile drawer
 - [x] Implement accessible buttons, inputs, selects, cards, tabs, badges, tables, dialogs, drawers,
       toasts, loaders, error states, and empty states

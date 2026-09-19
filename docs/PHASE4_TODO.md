@@ -1,4 +1,4 @@
-# RetailBooks Phase 4 (Accounting Engine) implementation checklist
+# ValueBooks Phase 4 (Accounting Engine) implementation checklist
 
 Durable progress record for Phase 4 — the remainder of build spec §6 / blueprint §10 beyond what
 Phase 1 Milestone 1G already shipped (chart of accounts, manual journals, the posting engine

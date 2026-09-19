@@ -1,4 +1,4 @@
--- RetailBooks production runtime database role template.
+-- ValueBooks production runtime database role template.
 --
 -- Run this as a database administrator. Do not put passwords in this file: inject the runtime
 -- credential from the deployment secret manager. Run Prisma migrations as a separate migration

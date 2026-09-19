@@ -1,4 +1,4 @@
-# RetailBooks Phase 10 (Automation & Approvals) implementation plan
+# ValueBooks Phase 10 (Automation & Approvals) implementation plan
 
 Durable progress record for Phase 10, sequenced by `docs/EXECUTION_PLAN.md` Stage 8.
 `docs/BUILD_ROADMAP.md` remains the scope authority. This file turns that scope into implementation

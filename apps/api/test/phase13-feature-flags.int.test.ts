@@ -7,7 +7,7 @@ import { OrganizationService } from '../src/organizations/organization.service.j
 import { PHASE13_FEATURE_FLAGS } from '../src/platform/phase13-feature-flags.js';
 import { API, createTestHarness, type TestHarness } from './support/app.js';
 
-const metadata = { ipHash: 'phase13-flags-test', userAgent: 'RetailBooks flag integration test' };
+const metadata = { ipHash: 'phase13-flags-test', userAgent: 'ValueBooks flag integration test' };
 
 /**
  * Proves 13G's core acceptance criterion end to end over real HTTP: a Phase 13 route reachable by a

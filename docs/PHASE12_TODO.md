@@ -1,4 +1,4 @@
-# RetailBooks Phase 12 Platform Admin implementation plan
+# ValueBooks Phase 12 Platform Admin implementation plan
 
 Durable progress record for Phase 12. `docs/BUILD_ROADMAP.md` remains the scope authority.
 

@@ -1,4 +1,4 @@
-# RetailBooks Phase 9 (Reporting) implementation checklist
+# ValueBooks Phase 9 (Reporting) implementation checklist
 
 Durable progress record for Phase 9: Reporting, sequenced by `docs/EXECUTION_PLAN.md` Stage 7.
 `docs/BUILD_ROADMAP.md` remains the scope authority; this file records implementation and

@@ -3,7 +3,7 @@ import type { Metadata } from 'next';
 import { AppShell } from '../../../../../components/app-shell';
 import { CustomerStatementPage } from '../../../../../components/customer-statement';
 
-export const metadata: Metadata = { title: 'Customer statement | RetailBooks' };
+export const metadata: Metadata = { title: 'Customer statement | ValueBooks' };
 
 export default async function CustomerStatementRoute({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;

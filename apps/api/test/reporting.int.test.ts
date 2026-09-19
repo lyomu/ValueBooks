@@ -10,7 +10,7 @@ import { OrganizationService } from '../src/organizations/organization.service.j
 import { ReportingService } from '../src/reporting/reporting.service.js';
 import { createTestHarness, type TestHarness } from './support/app.js';
 
-const metadata = { ipHash: 'reporting-test', userAgent: 'RetailBooks reporting integration test' };
+const metadata = { ipHash: 'reporting-test', userAgent: 'ValueBooks reporting integration test' };
 
 describe('report engine against a real database', () => {
   let harness: TestHarness;

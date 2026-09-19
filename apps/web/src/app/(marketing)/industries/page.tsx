@@ -53,7 +53,7 @@ export default function IndustriesPage() {
       <PageHero
         eyebrow="BUILT AROUND REAL WORK"
         title="Your business has a rhythm. Your books should keep up."
-        copy="RetailBooks brings invoicing, money tracking, and helpful AI into one friendly system—tailored to the way you actually work."
+        copy="ValueBooks brings invoicing, money tracking, and helpful AI into one friendly system—tailored to the way you actually work."
         action={{ label: 'Start free', href: '/contact' }}
         visual="insights"
       />

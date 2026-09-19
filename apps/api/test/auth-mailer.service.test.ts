@@ -34,7 +34,7 @@ describe('AuthMailerService', () => {
     ]);
     expect(queued[0]?.[1]).toMatchObject({
       to: 'owner@example.test',
-      subject: 'Verify your RetailBooks email',
+      subject: 'Verify your ValueBooks email',
     });
     expect(queued[0]?.[1].text).toContain(
       'https://app.example.test/verify-email?token=verify%20token',

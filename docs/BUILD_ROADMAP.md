@@ -1,4 +1,4 @@
-# RetailBooks — Master Build Roadmap (14 Phases)
+# ValueBooks — Master Build Roadmap (14 Phases)
 
 Source of truth for scope: `starter/global_accounting_platform_build_specification_v1.docx` and
 `starter/global_accounting_platform_master_blueprint.docx`. This document translates both specs into

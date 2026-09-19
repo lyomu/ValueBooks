@@ -14,7 +14,7 @@ import { API, createTestHarness, type TestHarness } from './support/app.js';
 
 const metadata = {
   ipHash: 'attachments-test',
-  userAgent: 'RetailBooks integration test',
+  userAgent: 'ValueBooks integration test',
 };
 
 describe('attachments (Bills and Expenses nested routes) against a real database and MinIO', () => {

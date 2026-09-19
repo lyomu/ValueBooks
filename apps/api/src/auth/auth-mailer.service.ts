@@ -20,8 +20,8 @@ export class AuthMailerService {
     const url = `${this.webUrl}/verify-email?token=${encodeURIComponent(token)}`;
     await this.send(EMAIL_JOB_NAMES.verification, {
       to: email,
-      subject: 'Verify your RetailBooks email',
-      text: `Hello ${displayName},\n\nVerify your email to continue setting up RetailBooks:\n${url}\n\nThis link expires in 24 hours. If you did not create this account, you can ignore this email.`,
+      subject: 'Verify your ValueBooks email',
+      text: `Hello ${displayName},\n\nVerify your email to continue setting up ValueBooks:\n${url}\n\nThis link expires in 24 hours. If you did not create this account, you can ignore this email.`,
       html: this.template(
         'Verify your email',
         `Hello ${escapeHtml(displayName)}, confirm your email address to continue setting up your accounting workspace.`,
@@ -36,8 +36,8 @@ export class AuthMailerService {
     const url = `${this.webUrl}/reset-password?token=${encodeURIComponent(token)}`;
     await this.send(EMAIL_JOB_NAMES.passwordReset, {
       to: email,
-      subject: 'Reset your RetailBooks password',
-      text: `Hello ${displayName},\n\nUse this link to reset your RetailBooks password:\n${url}\n\nThis link expires in 30 minutes. If you did not request this, no action is needed.`,
+      subject: 'Reset your ValueBooks password',
+      text: `Hello ${displayName},\n\nUse this link to reset your ValueBooks password:\n${url}\n\nThis link expires in 30 minutes. If you did not request this, no action is needed.`,
       html: this.template(
         'Reset your password',
         `Hello ${escapeHtml(displayName)}, use the secure link below to choose a new password.`,
@@ -61,11 +61,11 @@ export class AuthMailerService {
     const expiry = invitation.expiresAt.toISOString().slice(0, 10);
     await this.send(EMAIL_JOB_NAMES.organizationInvitation, {
       to: invitation.email,
-      subject: `Join ${invitation.organizationName} on RetailBooks`,
-      text: `${invitation.inviterName} invited you to join ${invitation.organizationName} on RetailBooks as ${invitation.roleName}.\n\nAccept the invitation:\n${url}\n\nThis invitation expires on ${expiry}. If you were not expecting it, you can ignore this email.`,
+      subject: `Join ${invitation.organizationName} on ValueBooks`,
+      text: `${invitation.inviterName} invited you to join ${invitation.organizationName} on ValueBooks as ${invitation.roleName}.\n\nAccept the invitation:\n${url}\n\nThis invitation expires on ${expiry}. If you were not expecting it, you can ignore this email.`,
       html: this.template(
         `Join ${escapeHtml(invitation.organizationName)}`,
-        `${escapeHtml(invitation.inviterName)} invited you to work in ${escapeHtml(invitation.organizationName)} on RetailBooks as <strong>${escapeHtml(invitation.roleName)}</strong>.`,
+        `${escapeHtml(invitation.inviterName)} invited you to work in ${escapeHtml(invitation.organizationName)} on ValueBooks as <strong>${escapeHtml(invitation.roleName)}</strong>.`,
         'Accept invitation',
         url,
         `This invitation expires on ${expiry} and can only be used once.`,
@@ -85,7 +85,7 @@ export class AuthMailerService {
     const expiry = invitation.expiresAt.toISOString().slice(0, 10);
     await this.send(EMAIL_JOB_NAMES.portalInvitation, {
       to: invitation.email,
-      subject: `View your ${invitation.organizationName} documents on RetailBooks`,
+      subject: `View your ${invitation.organizationName} documents on ValueBooks`,
       text: `${invitation.inviterName} invited you to access ${invitation.customerName}'s customer portal for ${invitation.organizationName}.\n\nOpen your portal:\n${url}\n\nThis link expires on ${expiry} and can only be used once.`,
       html: this.template(
         `Your ${invitation.organizationName} portal`,
@@ -114,7 +114,7 @@ export class AuthMailerService {
     url: string,
     footnote: string,
   ): string {
-    return `<!doctype html><html><body style="margin:0;background:#f6f8fb;font-family:Arial,sans-serif;color:#061c3d"><table role="presentation" width="100%" cellspacing="0" cellpadding="0"><tr><td style="padding:32px 16px"><table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:560px;margin:auto;background:#fff;border:1px solid #dfe6ef;border-radius:14px"><tr><td style="padding:28px"><div style="font-weight:700;font-size:18px;margin-bottom:28px">RetailBooks</div><h1 style="font-size:26px;line-height:1.2;margin:0 0 12px">${escapeHtml(title)}</h1><p style="color:#526681;line-height:1.6;margin:0 0 24px">${copy}</p><a href="${escapeHtml(url)}" style="display:inline-block;background:#0879e8;color:#fff;text-decoration:none;font-weight:700;padding:12px 18px;border-radius:9px">${escapeHtml(button)}</a><p style="color:#718096;font-size:13px;line-height:1.5;margin:24px 0 0">${escapeHtml(footnote)}</p></td></tr></table></td></tr></table></body></html>`;
+    return `<!doctype html><html><body style="margin:0;background:#f6f8fb;font-family:Arial,sans-serif;color:#061c3d"><table role="presentation" width="100%" cellspacing="0" cellpadding="0"><tr><td style="padding:32px 16px"><table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:560px;margin:auto;background:#fff;border:1px solid #dfe6ef;border-radius:14px"><tr><td style="padding:28px"><div style="font-weight:700;font-size:18px;margin-bottom:28px">ValueBooks</div><h1 style="font-size:26px;line-height:1.2;margin:0 0 12px">${escapeHtml(title)}</h1><p style="color:#526681;line-height:1.6;margin:0 0 24px">${copy}</p><a href="${escapeHtml(url)}" style="display:inline-block;background:#0879e8;color:#fff;text-decoration:none;font-weight:700;padding:12px 18px;border-radius:9px">${escapeHtml(button)}</a><p style="color:#718096;font-size:13px;line-height:1.5;margin:24px 0 0">${escapeHtml(footnote)}</p></td></tr></table></td></tr></table></body></html>`;
   }
 }
 

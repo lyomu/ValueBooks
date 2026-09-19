@@ -6,7 +6,7 @@
 ## Context
 
 The authoritative Phase 1 implementation pack defines a target architecture and product shape, but
-several details conflict with conventions that were already implemented and proven in RetailBooks.
+several details conflict with conventions that were already implemented and proven in ValueBooks.
 Closing the foundation gaps without recording those choices would leave the repository appearing to
 violate its own specification and would invite later teams to reintroduce retired models or parallel
 routing and authorization mechanisms.
@@ -17,7 +17,7 @@ The older ADRs remain useful records of what existed when their milestones shipp
 
 ## Decision
 
-| Specification shape                                   | RetailBooks decision                                                                                                                                                                                                                                                           | Rationale                                                                                                                                                                     |
+| Specification shape                                   | ValueBooks decision                                                                                                                                                                                                                                                           | Rationale                                                                                                                                                                     |
 | ----------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Organization-scoped web routes under `/app/[org]/...` | Keep the established flat product routes, such as `/journals`, `/tax`, and `/settings/currencies`. Organization identity is resolved through the authenticated workspace context, while organization-owned API routes continue to carry and guard the organization identifier. | Avoids a second parallel route tree and keeps tenant authorization in `OrganizationGuard`, not in client-side URL structure.                                                  |
 | Decimal monetary amounts                              | Store money as integer `BigInt` minor units and exchange values as decimal strings at input/output boundaries. Exchange rates are persisted as `Decimal(20,10)` snapshots, then converted through scaled `BigInt` arithmetic.                                                  | Preserves exact double-entry, tax, rounding, and FX invariants without binary floating point. Currency metadata supplies the minor-unit precision.                            |

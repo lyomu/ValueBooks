@@ -4,7 +4,7 @@ import type { Metadata } from 'next';
 import { AppShell } from '../../components/app-shell';
 import { NumberingSettings } from '../../components/numbering-settings';
 
-export const metadata: Metadata = { title: 'Numbering | RetailBooks' };
+export const metadata: Metadata = { title: 'Numbering | ValueBooks' };
 
 export default function NumberingPage() {
   return (

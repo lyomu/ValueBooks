@@ -1,4 +1,4 @@
-# RetailBooks Phase 13 - Secure AI and RAG implementation plan
+# ValueBooks Phase 13 - Secure AI and RAG implementation plan
 
 **Status:** in progress. Phase 13B's private-gateway foundation (now including a hosted DeepSeek
 adapter, gated off by a second kill switch pending 13A), 13C's deterministic drill-down and
@@ -34,7 +34,7 @@ and staged enhancements; it does not mark roadmap or `docs/GAPS.md` items done.
 
 ## Outcome and fixed boundaries
 
-RetailBooks will use DeepSeek models to help users find, understand, and prepare accounting work.
+ValueBooks will use DeepSeek models to help users find, understand, and prepare accounting work.
 PostgreSQL and the existing domain services remain the source of financial truth. Retrieval-augmented
 generation (RAG) finds relevant documents; it does not calculate balances or authorize access.
 Every model-produced suggestion is reviewable, attributable to a model/run, and subject to the
@@ -63,7 +63,7 @@ Current external references: [DeepSeek API models](https://api-docs.deepseek.com
 [PostgreSQL row security](https://www.postgresql.org/docs/17/ddl-rowsecurity.html), and
 [Kenya ODPC guidance index](https://www.odpc.go.ke/guidelines-2/). Recheck provider terms and
 model capabilities immediately before implementation and deployment. The external privacy policy
-does not itself settle the terms for RetailBooks' downstream customer data.
+does not itself settle the terms for ValueBooks' downstream customer data.
 
 ## Existing foundations and code ownership
 
@@ -172,7 +172,7 @@ does not itself settle the terms for RetailBooks' downstream customer data.
 | Draft text                 | Editable description or reminder based on provided facts                                                                                                | Never send or commit without the existing workflow.                                      |
 
 **Added workflow features.** Ship independently after the core trust and evaluation gates;
-priority is based on existing RetailBooks modules and the ability to verify results.
+priority is based on existing ValueBooks modules and the ability to verify results.
 
 | Priority | Feature                                 | First useful slice                                                                                                              |
 | -------- | --------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- |

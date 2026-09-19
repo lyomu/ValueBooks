@@ -4,7 +4,7 @@ import type { ReportFilters } from '@retailbooks/contracts';
 import { AppShell } from '../../../components/app-shell';
 import { ReportRunnerPage } from '../../../components/reports-workbench';
 
-export const metadata: Metadata = { title: 'Report | RetailBooks' };
+export const metadata: Metadata = { title: 'Report | ValueBooks' };
 
 export default async function ReportRoute({
   params,

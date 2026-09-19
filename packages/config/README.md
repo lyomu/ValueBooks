@@ -1,6 +1,6 @@
 # @retailbooks/config
 
-Shared runtime configuration for RetailBooks services.
+Shared runtime configuration for ValueBooks services.
 
 The API imports `validateApiEnvironment` through Nest's `ConfigModule` at boot. Development and
 test runs receive the local Docker Compose defaults; production must provide explicit database,

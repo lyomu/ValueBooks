@@ -4,7 +4,7 @@ import type { Metadata } from 'next';
 import { AppShell } from '../../../components/app-shell';
 import { CurrencySettings } from '../../../components/currency-settings';
 
-export const metadata: Metadata = { title: 'Currencies | RetailBooks' };
+export const metadata: Metadata = { title: 'Currencies | ValueBooks' };
 
 export default function CurrencySettingsPage() {
   return (

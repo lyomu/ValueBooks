@@ -16,7 +16,7 @@ async function expectNoAccessibilityViolations(): Promise<void> {
   expect(results.violations).toEqual([]);
 }
 
-describe('RetailBooks UI accessibility', () => {
+describe('ValueBooks UI accessibility', () => {
   it('exposes loading button state without losing its accessible name', async () => {
     render(<Button loading>Save journal</Button>);
 

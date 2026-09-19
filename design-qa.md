@@ -1,4 +1,4 @@
-# RetailBooks design QA
+# ValueBooks design QA
 
 ## Comparison target
 
@@ -40,7 +40,7 @@ mobile drawer cannot be certified from code inspection alone.
 
 ## Required fidelity surfaces
 
-- Fonts and typography: implemented from the RetailFlow Urbanist contract; visual verification is
+- Fonts and typography: implemented from the RetailFlow Outfit contract; visual verification is
   blocked.
 - Spacing and layout rhythm: implemented from the measured 256 px sidebar, 56 px top bar, 10 px
   radii, and source spacing scale; visual verification is blocked.

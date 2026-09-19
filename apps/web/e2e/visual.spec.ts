@@ -32,7 +32,7 @@ function collectBrowserErrors(page: Page) {
   return errors;
 }
 
-test.describe('RetailBooks design foundation', () => {
+test.describe('ValueBooks design foundation', () => {
   test('@visual dashboard baseline and shell interactions', async ({ page }, testInfo) => {
     const browserErrors = collectBrowserErrors(page);
     await openStable(page, '/dashboard');
@@ -49,7 +49,7 @@ test.describe('RetailBooks design foundation', () => {
 
     if (testInfo.project.name === 'mobile') {
       await page.getByRole('button', { name: 'Open navigation' }).click();
-      await expect(page.getByRole('dialog', { name: 'RetailBooks navigation' })).toBeVisible();
+      await expect(page.getByRole('dialog', { name: 'ValueBooks navigation' })).toBeVisible();
       await page.keyboard.press('Escape');
     } else if (testInfo.project.name === 'desktop') {
       await page.getByRole('button', { name: 'Collapse sidebar' }).click();

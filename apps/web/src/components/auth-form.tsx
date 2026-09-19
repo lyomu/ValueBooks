@@ -84,7 +84,7 @@ export function AuthForm({
         setError(caught.message);
         setFieldErrors(caught.fieldErrors);
       } else {
-        setError('We could not reach RetailBooks. Check your connection and try again.');
+        setError('We could not reach ValueBooks. Check your connection and try again.');
       }
     } finally {
       setLoading(false);
@@ -198,7 +198,7 @@ export function AuthForm({
       <p className="rb-auth-form__switch">
         {mode === 'login' ? (
           <>
-            New to RetailBooks? <Link href="/signup">Create an account</Link>
+            New to ValueBooks? <Link href="/signup">Create an account</Link>
           </>
         ) : null}
         {mode === 'signup' ? (

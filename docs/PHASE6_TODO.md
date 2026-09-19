@@ -1,4 +1,4 @@
-# RetailBooks Phase 6 (Inventory) implementation checklist
+# ValueBooks Phase 6 (Inventory) implementation checklist
 
 Durable progress record for Phase 6: Inventory. This phase started under the user-confirmed rule,
 **code first, tests later**; after the code-first pass was committed, the verification pass was

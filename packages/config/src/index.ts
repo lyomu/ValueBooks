@@ -13,7 +13,7 @@ const LOCAL_DEFAULTS = {
   LOG_LEVEL: 'debug',
   SMTP_HOST: '127.0.0.1',
   SMTP_PORT: '51025',
-  EMAIL_FROM: 'RetailBooks <no-reply@retailbooks.local>',
+  EMAIL_FROM: 'ValueBooks <no-reply@retailbooks.local>',
   CLAMAV_HOST: 'localhost',
 } as const;
 
@@ -254,7 +254,7 @@ export function validateApiEnvironment(rawEnvironment: Record<string, unknown>):
   const details = parsed.error.issues
     .map((issue) => `${issue.path.join('.') || 'environment'} ${issue.message}`)
     .join('; ');
-  throw new Error(`Invalid RetailBooks API environment: ${details}`);
+  throw new Error(`Invalid ValueBooks API environment: ${details}`);
 }
 
 function connectionUrl(protocols: string[]) {

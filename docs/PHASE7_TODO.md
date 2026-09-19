@@ -1,4 +1,4 @@
-# RetailBooks Phase 7 (Projects & Time) implementation checklist
+# ValueBooks Phase 7 (Projects & Time) implementation checklist
 
 Durable progress record for Phase 7: Projects & Time, sequenced by `docs/EXECUTION_PLAN.md`
 Stage 5. This phase is being built under the user-confirmed rule **code first, tests in a following

@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 
 import { PlatformOrganizationDetail } from '../../../../components/platform-organizations';
 
-export const metadata: Metadata = { title: 'Organization | RetailBooks platform' };
+export const metadata: Metadata = { title: 'Organization | ValueBooks platform' };
 
 export default async function PlatformOrganizationRoute({
   params,

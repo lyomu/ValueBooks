@@ -1,4 +1,4 @@
-# RetailBooks Phase 3 (Purchases) implementation checklist
+# ValueBooks Phase 3 (Purchases) implementation checklist
 
 This is the durable progress record for Phase 3 — Purchases, the payable-side mirror of Phase 2
 (Sales). An item is checked only after its implementation has been verified. Detailed acceptance

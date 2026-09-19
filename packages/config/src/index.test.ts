@@ -16,7 +16,7 @@ const productionEnvironment = {
   LOG_LEVEL: 'info',
   SMTP_HOST: 'smtp.example.com',
   SMTP_PORT: '587',
-  EMAIL_FROM: 'RetailBooks <no-reply@example.com>',
+  EMAIL_FROM: 'ValueBooks <no-reply@example.com>',
   QUEUE_PREFIX: 'retailbooks-production',
   API_PORT: '3001',
   EMAIL_JOB_RETRY_DELAY_MS: '1000',

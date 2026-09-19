@@ -3,7 +3,7 @@ import { BookOpenText } from 'lucide-react';
 import type { Metadata } from 'next';
 import Link from 'next/link';
 
-export const metadata: Metadata = { title: 'Page not found | RetailBooks' };
+export const metadata: Metadata = { title: 'Page not found | ValueBooks' };
 
 export default function NotFound() {
   return (

@@ -48,7 +48,7 @@ export function PlatformShell({ children }: { children: ReactNode }) {
     return (
       <PlatformNotice
         title="Sign in to continue"
-        copy="The platform console needs a signed-in RetailBooks account."
+        copy="The platform console needs a signed-in ValueBooks account."
         action={{ href: '/login', label: 'Sign in' }}
       />
     );
@@ -58,7 +58,7 @@ export function PlatformShell({ children }: { children: ReactNode }) {
       <PlatformNotice
         title="You do not have platform access"
         copy="Platform administration is granted per person by an existing superadmin. If you expected access here, ask them to grant it."
-        action={{ href: '/dashboard', label: 'Back to RetailBooks' }}
+        action={{ href: '/dashboard', label: 'Back to ValueBooks' }}
       />
     );
   }
@@ -78,7 +78,7 @@ export function PlatformShell({ children }: { children: ReactNode }) {
         <Link href="/platform" className="rb-platform__brand">
           <ShieldAlert aria-hidden="true" />
           <span>
-            RetailBooks <strong>Platform</strong>
+            ValueBooks <strong>Platform</strong>
           </span>
         </Link>
         <div className="rb-platform__identity">

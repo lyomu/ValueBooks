@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import { PortalInvitation } from '../../../components/portal-invitation';
-export const metadata: Metadata = { title: 'Accept customer portal invitation | RetailBooks' };
+export const metadata: Metadata = { title: 'Accept customer portal invitation | ValueBooks' };
 export default async function AcceptPortalInvitation({
   searchParams,
 }: {

@@ -87,7 +87,7 @@ export class DemoSeedService {
 
     const metadata: RequestMetadata = {
       ipHash: hashIdentifier('demo-seed', this.auth.pepper),
-      userAgent: 'RetailBooks demo seed',
+      userAgent: 'ValueBooks demo seed',
     };
     const users = new Map<string, PublicUser>();
     for (const definition of DEMO_USERS) {

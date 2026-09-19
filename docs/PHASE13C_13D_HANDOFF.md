@@ -1,4 +1,4 @@
-# RetailBooks Phase 13C and 13D implementation handoff
+# ValueBooks Phase 13C and 13D implementation handoff
 
 **Prepared:** 2026-09-13  
 **Scope authority:** `docs/BUILD_ROADMAP.md` Phase 13 and `docs/PHASE13_TODO.md`.  
@@ -7,7 +7,7 @@ milestone. Phase 13D follows only after 13C has a working, tested vertical slice
 
 ## Guiding text
 
-Build RetailBooks AI as an evidence-first assistant, never as an autonomous accountant. The
+Build ValueBooks AI as an evidence-first assistant, never as an autonomous accountant. The
 application remains the authority for identity, permissions, tenant isolation, financial
 calculations, and every state change. AI may interpret server-authorized evidence and prepare an
 editable suggestion, but it must never invent an amount, bypass a workflow, access data outside the
@@ -59,7 +59,7 @@ These are deliberately not implementation claims and do not block the determinis
 ## Prompt: Phase 13C - Deterministic financial answers
 
 ```text
-Continue Phase 13 of RetailBooks in:
+Continue Phase 13 of ValueBooks in:
 C:\Users\gmnyo\Desktop\Engineering projects\retailbooks
 
 Read docs/PHASE13C_13D_HANDOFF.md, docs/PHASE13_TODO.md, docs/BUILD_ROADMAP.md Phase 13, and
@@ -128,7 +128,7 @@ risks. Stop and report a blocker rather than weakening a security or accounting 
 ## Prompt: Phase 13D - Private document pipeline and receipt extraction
 
 ```text
-Continue Phase 13 of RetailBooks in:
+Continue Phase 13 of ValueBooks in:
 C:\Users\gmnyo\Desktop\Engineering projects\retailbooks
 
 Read docs/PHASE13C_13D_HANDOFF.md, docs/PHASE13_TODO.md, docs/BUILD_ROADMAP.md Phase 13, and

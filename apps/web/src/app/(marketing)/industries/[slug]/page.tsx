@@ -59,7 +59,7 @@ export default async function IndustryDetail({ params }: { params: Promise<{ slu
     <>
       <section className="mk-industry-hero">
         <div>
-          <p className="mk-kicker">RetailBooks for {label}</p>
+          <p className="mk-kicker">ValueBooks for {label}</p>
           <h1>{data.title}</h1>
           <p>{data.copy}</p>
           <div className="mk-hero-actions">
@@ -81,7 +81,7 @@ export default async function IndustryDetail({ params }: { params: Promise<{ slu
         <div>
           <p className="mk-kicker">A better back office</p>
           <h2>Make the financial details feel like part of the work—not a separate job.</h2>
-          <p>RetailBooks gives you a dependable foundation, then keeps the next action within reach.</p>
+          <p>ValueBooks gives you a dependable foundation, then keeps the next action within reach.</p>
           <FeatureList items={data.features} />
         </div>
         <div className="mk-industry-detail__card">

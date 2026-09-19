@@ -1,4 +1,4 @@
-# RetailBooks UI
+# ValueBooks UI
 
 `@retailbooks/ui` is the shared implementation of the RetailFlow-derived design language. It owns
 the visual tokens, accessible primitives, and composed components used by the web application.

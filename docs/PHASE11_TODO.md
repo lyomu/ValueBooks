@@ -1,4 +1,4 @@
-# RetailBooks Phase 11 Portals and Collaboration implementation plan
+# ValueBooks Phase 11 Portals and Collaboration implementation plan
 
 Durable progress record for Phase 11. `docs/BUILD_ROADMAP.md` remains the scope authority.
 This file records the code-first implementation order, locked security decisions, and the later
@@ -12,7 +12,7 @@ evidence ledger names a captured result.
 
 ## Locked decisions
 
-- Portal users reuse the verified RetailBooks `User` and session infrastructure, but access books
+- Portal users reuse the verified ValueBooks `User` and session infrastructure, but access books
   only through a separate revocable `PortalUser` grant; they are never implicit organization members.
 - A customer can have multiple portal users. Invitations are bound to the invited email and can be
   accepted only by that verified user.

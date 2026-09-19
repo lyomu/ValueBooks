@@ -15,7 +15,7 @@ import { createTestHarness, type TestHarness } from './support/app.js';
 
 const metadata = {
   ipHash: 'optimistic-concurrency-test',
-  userAgent: 'RetailBooks integration test',
+  userAgent: 'ValueBooks integration test',
 };
 
 describe('optimistic concurrency on financial documents (GAPS #35)', () => {

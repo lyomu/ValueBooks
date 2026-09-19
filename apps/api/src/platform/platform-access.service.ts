@@ -117,7 +117,7 @@ export class PlatformAccessService {
       where: { email: email.trim().toLowerCase() },
       select: { id: true },
     });
-    // Non-disclosure: whether an address has a RetailBooks account is not something this endpoint
+    // Non-disclosure: whether an address has a ValueBooks account is not something this endpoint
     // confirms, so an unknown address and a known one fail the same way.
     if (!user) return null;
     return this.prisma.platformAdmin.upsert({

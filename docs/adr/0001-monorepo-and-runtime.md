@@ -5,7 +5,7 @@
 
 ## Context
 
-RetailBooks needs a web application, an API, reusable accounting rules, country packs, UI
+ValueBooks needs a web application, an API, reusable accounting rules, country packs, UI
 components, and shared contracts. The implementation should be easy to run locally and avoid an
 early dependency on one cloud provider.
 

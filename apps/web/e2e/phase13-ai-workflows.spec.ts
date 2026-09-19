@@ -142,7 +142,7 @@ test.describe('Phase 13 document search', () => {
     await signIn(page);
     await page.goto('/documents/search');
 
-    // The app shell's own header search ("Search RetailBooks ⌘K") also partially matches "Search";
+    // The app shell's own header search ("Search ValueBooks ⌘K") also partially matches "Search";
     // this page's field is exactly-labeled "Search".
     await page.getByLabel('Search', { exact: true }).fill('receipt');
     await page.getByRole('button', { name: 'Search', exact: true }).click();

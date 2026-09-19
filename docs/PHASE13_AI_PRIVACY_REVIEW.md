@@ -12,13 +12,13 @@ system from a security rather than a privacy/data-residency angle.
 
 | | `AI_MODE=private` | `AI_MODE=hosted_limited` |
 |---|---|---|
-| Where inference runs | An operator-provisioned, self-hosted DeepSeek-compatible endpoint — RetailBooks does not run or manage this itself | DeepSeek's own hosted API (`api.deepseek.com`) |
+| Where inference runs | An operator-provisioned, self-hosted DeepSeek-compatible endpoint — ValueBooks does not run or manage this itself | DeepSeek's own hosted API (`api.deepseek.com`) |
 | Who controls the data once sent | The tenant/operator, via whatever infrastructure they provisioned for `AI_PRIVATE_ENDPOINT` | DeepSeek, under DeepSeek's own hosted-service terms |
 | Default state | Off (`AI_MODE=off` is the schema default) | Off, and additionally gated by `phase13.hosted_ai_egress` seeded `default_enabled: false` everywhere |
 | Production config requirements | HTTPS endpoint, host must appear in `AI_PRIVATE_ALLOWED_HOSTS`, API key required | `AI_HOSTED_MODEL` always required, `AI_HOSTED_API_KEY` required in production |
-| Cross-border implication | Depends entirely on where the operator hosts the endpoint — this document cannot answer that for you; it is a deployment decision made per-installation | Data leaves to whatever infrastructure DeepSeek's hosted API runs on — jurisdiction, subprocessors, and retention are governed by DeepSeek's terms, not RetailBooks' code |
+| Cross-border implication | Depends entirely on where the operator hosts the endpoint — this document cannot answer that for you; it is a deployment decision made per-installation | Data leaves to whatever infrastructure DeepSeek's hosted API runs on — jurisdiction, subprocessors, and retention are governed by DeepSeek's terms, not ValueBooks' code |
 
-**The load-bearing point:** "private mode" is private in the sense that RetailBooks' code never
+**The load-bearing point:** "private mode" is private in the sense that ValueBooks' code never
 talks to a public endpoint under that mode (the public DeepSeek host is explicitly rejected as a
 private endpoint in config validation) — it is not private in the sense of "data never leaves the
 tenant's own infrastructure" unless the operator specifically provisions it that way. That's a
@@ -71,7 +71,7 @@ off until someone says otherwise for a specific tenant.
    prompt/response content by design (see threat model §3) — that part is mode-independent and
    already true today. What this review still needs to confirm is DeepSeek's own retention of the
    request on their side (covered by #1), and whether the existing `AI_RUN_RETENTION_DAYS` policy
-   for RetailBooks' own metadata rows needs to differ for hosted-mode runs specifically.
+   for ValueBooks' own metadata rows needs to differ for hosted-mode runs specifically.
 6. **Egress accountability.** If hosted mode is ever enabled for a tenant, who is the accountable
    owner for that decision, and what's the process for a tenant to later revoke it (technically:
    remove or disable the `ORGANIZATION`-scope rule — but who initiates that, and on what trigger)?

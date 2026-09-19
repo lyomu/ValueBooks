@@ -127,7 +127,7 @@ export class PlatformOperationsService {
         status: 'ACTIVE',
       },
       executionId,
-      { ipHash: ipHash ?? '', userAgent: 'RetailBooks platform console' },
+      { ipHash: ipHash ?? '', userAgent: 'ValueBooks platform console' },
     );
     await this.prisma.$transaction((tx) =>
       writePlatformAudit(tx, actor, {

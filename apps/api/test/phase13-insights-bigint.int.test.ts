@@ -12,7 +12,7 @@ import { createTestHarness, type TestHarness } from './support/app.js';
 
 const metadata = {
   ipHash: 'phase13-insights-bigint-test',
-  userAgent: 'RetailBooks bigint regression test',
+  userAgent: 'ValueBooks bigint regression test',
 };
 
 function daysAgo(days: number): string {

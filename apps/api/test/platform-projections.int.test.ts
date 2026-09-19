@@ -111,7 +111,7 @@ describe('platform response projections', () => {
     }
 
     // Plans intentionally carry the global catalogue price, currency, and billing interval. Those
-    // fields describe what RetailBooks sells, not a tenant's invoices, journals, or balances.
+    // fields describe what ValueBooks sells, not a tenant's invoices, journals, or balances.
     // Truncation between tests also clears the migration-seeded default plan, so seed one here
     // through the platform API before reading the catalogue.
     await harness

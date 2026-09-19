@@ -4,7 +4,7 @@ import type { Metadata } from 'next';
 import { AppShell } from '../../../components/app-shell';
 import { OrganizationSettings } from '../../../components/organization-settings';
 
-export const metadata: Metadata = { title: 'Organization profile | RetailBooks' };
+export const metadata: Metadata = { title: 'Organization profile | ValueBooks' };
 
 export default function OrganizationSettingsPage() {
   return (

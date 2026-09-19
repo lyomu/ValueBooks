@@ -280,7 +280,7 @@ export function OpeningBalancesPage() {
     <div className="space-y-6">
       <PageHeader
         title="Opening balances"
-        description="Bring existing books into RetailBooks: account balances plus customer and vendor-level AR/AP detail."
+        description="Bring existing books into ValueBooks: account balances plus customer and vendor-level AR/AP detail."
       />
 
       {error ? (

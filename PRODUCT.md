@@ -4,14 +4,14 @@
 
 ## Identity
 
-- **Working name:** RetailBooks
+- **Working name:** ValueBooks
 - **Category:** Multi-tenant accounting operations platform
 - **Primary surface:** Responsive web application, with an API-first backend
 - **Phase:** Phase 1 foundation
 
 ## Purpose
 
-RetailBooks gives growing businesses a trustworthy accounting workspace that can serve multiple
+ValueBooks gives growing businesses a trustworthy accounting workspace that can serve multiple
 countries without mixing jurisdiction-specific rules into the accounting core. The product should
 make daily financial work understandable while preserving the controls, traceability, and
 double-entry invariants expected from an accounting system.
@@ -66,10 +66,10 @@ country pack, but the architecture must remain portable.
 
 ## Brand commitments
 
-- RetailBooks follows the exact RetailFlow application design language supplied by the user:
-  Urbanist typography, navy navigation, cyan-to-blue action emphasis, bright neutral workspace,
+- ValueBooks follows the exact RetailFlow application design language supplied by the user:
+  Outfit typography, navy navigation, cyan-to-blue action emphasis, bright neutral workspace,
   compact operational density, and restrained bordered surfaces.
-- RetailBooks uses its own provisional book/ledger mark and never reuses the RetailFlow logo.
+- ValueBooks uses its own provisional book/ledger mark and never reuses the RetailFlow logo.
 - Product copy is calm, direct, and specific. It must not make unsupported compliance claims.
 
 ## Authority and evidence

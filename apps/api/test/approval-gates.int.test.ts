@@ -23,7 +23,7 @@ import { createTestHarness, type TestHarness } from './support/app.js';
 
 const metadata = {
   ipHash: 'approval-gates-test',
-  userAgent: 'RetailBooks integration test',
+  userAgent: 'ValueBooks integration test',
 };
 
 const AWAITING_APPROVAL_ERROR = 'This document is awaiting approval and cannot be finalized.';

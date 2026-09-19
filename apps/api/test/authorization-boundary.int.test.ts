@@ -26,7 +26,7 @@ const ID = '00000000-0000-4000-8000-000000000001';
 const UNKNOWN_ORGANIZATION = '00000000-0000-4000-8000-000000000000';
 const metadata = {
   ipHash: 'authorization-boundary-test',
-  userAgent: 'RetailBooks integration test',
+  userAgent: 'ValueBooks integration test',
 };
 
 const ENDPOINTS: readonly EndpointCase[] = [

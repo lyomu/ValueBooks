@@ -134,7 +134,7 @@ export function OnboardingWizard() {
       setError(caught.message);
       setFieldErrors(caught.fieldErrors);
     } else {
-      setError('We could not reach RetailBooks. Check your connection and try again.');
+      setError('We could not reach ValueBooks. Check your connection and try again.');
     }
   }
 
@@ -518,7 +518,7 @@ function JurisdictionStep({
     >
       <StepFrame
         title="Where do you keep the books?"
-        description="RetailBooks keeps the accounting core global. Country choices supply configurable defaults, not a statutory certification."
+        description="ValueBooks keeps the accounting core global. Country choices supply configurable defaults, not a statutory certification."
         footer={
           <>
             <Button type="button" variant="outline" onClick={onBack} disabled={saving}>

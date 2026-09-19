@@ -4,7 +4,7 @@ import type { Metadata } from 'next';
 import { AppShell } from '../../../components/app-shell';
 import { AuditLog } from '../../../components/audit-log';
 
-export const metadata: Metadata = { title: 'Audit log | RetailBooks' };
+export const metadata: Metadata = { title: 'Audit log | ValueBooks' };
 
 export default function AuditLogPage() {
   return (

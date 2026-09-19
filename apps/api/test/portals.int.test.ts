@@ -15,12 +15,12 @@ import { QuotesService } from '../src/sales/quotes.service.js';
 import { SalesOrdersService } from '../src/sales/sales-orders.service.js';
 import { API, createTestHarness, type TestHarness } from './support/app.js';
 
-const metadata = { ipHash: 'portals-test', userAgent: 'RetailBooks integration test' };
+const metadata = { ipHash: 'portals-test', userAgent: 'ValueBooks integration test' };
 
 /**
  * Phase 11 portal acceptance. Every assertion here is about a boundary rather than a feature: what
  * an invitation binds to, what a grant can reach, and what a customer must never see. The portal is
- * the only surface in RetailBooks where an unprivileged outside party reads tenant data, so the
+ * the only surface in ValueBooks where an unprivileged outside party reads tenant data, so the
  * failure mode being tested for throughout is disclosure, not error handling.
  */
 describe('customer portal against a real database', () => {

@@ -103,7 +103,7 @@ export class PlatformController {
   @RequirePlatformRole('SUPERADMIN')
   async grantAdmin(@Body() input: GrantPlatformAdminDto, @Req() request: PlatformRequest) {
     const granted = await this.access.grant(request.platform, input.email, input.role, input.note);
-    // Non-disclosure: an address without a RetailBooks account fails the same way as one the
+    // Non-disclosure: an address without a ValueBooks account fails the same way as one the
     // caller simply mistyped. This endpoint does not confirm who has an account.
     if (!granted) throw new BadRequestException('That address cannot be granted platform access.');
     await this.prisma.$transaction((tx) =>

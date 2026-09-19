@@ -119,7 +119,7 @@ export function AcceptInvitationClient({ token }: { token: string }) {
       {preview && !preview.accountExists ? (
         <>
           <p className="rb-invitation-card__note">
-            Create your RetailBooks account with this email address, verify it, then return to this
+            Create your ValueBooks account with this email address, verify it, then return to this
             link to join.
           </p>
           <Button asChild size="lg">
