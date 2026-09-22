@@ -4,7 +4,7 @@ import type {
   PlatformCountryPack,
   PlatformCountryPackTier,
   PlatformTaxPack,
-} from '@retailbooks/contracts';
+} from '@valuebooks/contracts';
 import {
   Archive,
   CirclePlus,

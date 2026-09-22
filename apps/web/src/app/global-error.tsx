@@ -1,7 +1,7 @@
 'use client';
 
-import '@retailbooks/ui/tokens.css';
-import '@retailbooks/ui/styles.css';
+import '@valuebooks/ui/tokens.css';
+import '@valuebooks/ui/styles.css';
 import './styles.css';
 
 export default function GlobalError({

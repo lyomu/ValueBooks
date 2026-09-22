@@ -509,7 +509,7 @@ describe('AI report explanation foundation against a real database', () => {
   }
 });
 
-const RLS_TEST_ROLE = 'retailbooks_ai_rls_test';
+const RLS_TEST_ROLE = 'valuebooks_ai_rls_test';
 
 async function verifyRlsIsolation(organizationId: string): Promise<void> {
   const client = new Client({ connectionString: testDatabaseUrl() });

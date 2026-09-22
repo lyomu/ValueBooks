@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import type { HealthResponse, QueueStatus, ServiceStatus } from '@retailbooks/contracts';
+import type { HealthResponse, QueueStatus, ServiceStatus } from '@valuebooks/contracts';
 import { DomainEventState } from '@prisma/client';
 import { Client as PostgresClient } from 'pg';
 import { createClient as createRedisClient } from 'redis';
@@ -28,7 +28,7 @@ export class HealthService {
   liveness(): HealthResponse {
     return {
       status: 'ok',
-      service: 'retailbooks-api',
+      service: 'valuebooks-api',
       version,
       timestamp: new Date().toISOString(),
     };

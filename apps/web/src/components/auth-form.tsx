@@ -1,6 +1,6 @@
 'use client';
 
-import { Button, FieldMessage, Input, Label } from '@retailbooks/ui';
+import { Button, FieldMessage, Input, Label } from '@valuebooks/ui';
 import { Eye, EyeOff, MailCheck } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';

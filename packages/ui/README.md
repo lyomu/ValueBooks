@@ -1,6 +1,6 @@
 # ValueBooks UI
 
-`@retailbooks/ui` is the shared implementation of the RetailFlow-derived design language. It owns
+`@valuebooks/ui` is the shared implementation of the RetailFlow-derived design language. It owns
 the visual tokens, accessible primitives, and composed components used by the web application.
 
 ## Use
@@ -8,14 +8,14 @@ the visual tokens, accessible primitives, and composed components used by the we
 Load the global layers once in the application layout:
 
 ```tsx
-import '@retailbooks/ui/tokens.css';
-import '@retailbooks/ui/styles.css';
+import '@valuebooks/ui/tokens.css';
+import '@valuebooks/ui/styles.css';
 ```
 
 Then import components from the package root:
 
 ```tsx
-import { Button, Card, DataTable, PageHeader, StatCard } from '@retailbooks/ui';
+import { Button, Card, DataTable, PageHeader, StatCard } from '@valuebooks/ui';
 ```
 
 The live component-development surface is available at `/design-system`. It demonstrates component
@@ -31,4 +31,4 @@ behavior.
 - Empty, loading, error, disabled, and validation states are part of each feature's definition of
   done.
 
-Run `npm test --workspace @retailbooks/ui` for component accessibility coverage.
+Run `npm test --workspace @valuebooks/ui` for component accessibility coverage.

@@ -1,6 +1,6 @@
 'use client';
 
-import type { FiscalPeriod, FiscalYear } from '@retailbooks/contracts';
+import type { FiscalPeriod, FiscalYear } from '@valuebooks/contracts';
 import {
   Button,
   Card,
@@ -12,7 +12,7 @@ import {
   Skeleton,
   StatusBadge,
   Textarea,
-} from '@retailbooks/ui';
+} from '@valuebooks/ui';
 import { CalendarClock, CalendarPlus } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 

@@ -1,6 +1,6 @@
 # Handover Prompt — ValueBooks Global Accounting Platform
 
-**Project:** `c:\Users\gmnyo\Desktop\Engineering projects\retailbooks` — a multi-tenant, global,
+**Project:** `c:\Users\gmnyo\Desktop\Engineering projects\valuebooks` — a multi-tenant, global,
 double-entry accounting & invoicing web platform (monorepo: `apps/api` NestJS, `apps/web` Next.js,
 `packages/*` shared libs).
 
@@ -296,7 +296,7 @@ API and web production builds, and `git diff --check`.
 All still true (see `docs/PHASE3_TODO.md` "After 3H" and `PHASE4_TODO.md` findings for details):
 
 - `npx prisma migrate dev` hard-fails non-interactively; use the shadow-db `migrate diff` dance
-  (create `retailbooks_shadow`, diff with `--shadow-database-url`, hand-create the timestamped
+  (create `valuebooks_shadow`, diff with `--shadow-database-url`, hand-create the timestamped
   folder, `migrate deploy`, drop the shadow). **Never edit a migration folder after any database
   has applied it — add a new folder instead** (Phase 4 hit this twice; recovery required
   `_prisma_migrations` marker surgery, restored via `prisma migrate resolve --applied`). The one
@@ -307,8 +307,8 @@ All still true (see `docs/PHASE3_TODO.md` "After 3H" and `PHASE4_TODO.md` findin
   add a new folder instead; the risk this rule guards against is real.
   PowerShell's `Out-File -Encoding utf8` writes a BOM Postgres rejects — strip it with
   `[System.IO.File]::WriteAllText(..., UTF8Encoding($false))`.
-- Integration suite runs against `retailbooks_test` (auto-provisioned by `migrate deploy` from
-  `test/support/database.ts`), NOT the dev `retailbooks` DB.
+- Integration suite runs against `valuebooks_test` (auto-provisioned by `migrate deploy` from
+  `test/support/database.ts`), NOT the dev `valuebooks` DB.
 - **Run `npm run infra:up` first.** Other projects' Postgres containers are often running on this
   machine, which reads as "the DB is up" when ValueBooks' own containers are not.
 - The boundary-matrix sweep legitimately needs ~60s (243 endpoints × 8 roles) and carries a 240s
@@ -318,7 +318,7 @@ All still true (see `docs/PHASE3_TODO.md` "After 3H" and `PHASE4_TODO.md` findin
   `127.0.0.1` works (Docker Desktop restarts can flip which resolution wins). The untracked
   `.env` files pin `127.0.0.1` for `DATABASE_URL`, `REDIS_URL`, `S3_ENDPOINT`, and `SMTP_HOST` —
   keep it that way, and check this first when a fresh clone cannot reach the stack.
-- `retailbooks_perf` is a **disposable** scratch database for query-plan work, not part of any
+- `valuebooks_perf` is a **disposable** scratch database for query-plan work, not part of any
   suite — see `docs/PERFORMANCE.md` "Re-checking" for how to rebuild and drop it. Two tenants
   matter when you do: with one, a missing tenant predicate produces the same plan either way.
 - Golden-path scripts: boot isolated API+worker via `node dist/src/main.js` / `dist/src/worker.js`

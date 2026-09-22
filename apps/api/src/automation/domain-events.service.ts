@@ -1,6 +1,6 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { DomainEventState, type Prisma } from '@prisma/client';
-import { DOMAIN_EVENT_NAMES, type DomainEventName } from '@retailbooks/contracts';
+import { DOMAIN_EVENT_NAMES, type DomainEventName } from '@valuebooks/contracts';
 import { randomUUID } from 'node:crypto';
 
 import { PrismaService } from '../database/prisma.service.js';

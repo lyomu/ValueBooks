@@ -10,7 +10,7 @@ Docker Compose provides portable development dependencies:
 Run `docker compose up -d`, then verify container health with `docker compose ps`. The API exposes
 dependency readiness at `GET /health/ready`.
 
-PostgreSQL creates a restricted local `retailbooks_app` runtime role. The API uses that role through
+PostgreSQL creates a restricted local `valuebooks_app` runtime role. The API uses that role through
 `DATABASE_URL`; Prisma migrations use the separate owner connection in
 `DATABASE_MIGRATION_URL`. Existing local volumes need the role provisioning statements in
 `postgres-init.sql` applied once before switching the API connection.

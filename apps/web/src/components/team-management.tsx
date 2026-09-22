@@ -1,6 +1,6 @@
 'use client';
 
-import type { OrganizationInvitation, OrganizationMember } from '@retailbooks/contracts';
+import type { OrganizationInvitation, OrganizationMember } from '@valuebooks/contracts';
 import {
   Badge,
   Button,
@@ -12,7 +12,7 @@ import {
   Label,
   Select,
   Skeleton,
-} from '@retailbooks/ui';
+} from '@valuebooks/ui';
 import { MailPlus, Trash2, UserPlus, Users } from 'lucide-react';
 import { useCallback, useEffect, useState, type FormEvent } from 'react';
 

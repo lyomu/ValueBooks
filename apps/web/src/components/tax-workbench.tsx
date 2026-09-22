@@ -6,7 +6,7 @@ import type {
   TaxCode,
   TaxRate,
   TaxTreatment,
-} from '@retailbooks/contracts';
+} from '@valuebooks/contracts';
 import {
   Badge,
   Button,
@@ -19,7 +19,7 @@ import {
   Skeleton,
   StatusBadge,
   type DataTableColumn,
-} from '@retailbooks/ui';
+} from '@valuebooks/ui';
 import { Calculator, Plus, Save, Search, Trash2 } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState, type FormEvent } from 'react';
 

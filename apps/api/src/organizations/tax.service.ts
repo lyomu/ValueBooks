@@ -15,7 +15,7 @@ import {
   parseRatePercentToScaled,
   splitInclusiveAmount,
   taxAmountExclusive,
-} from '@retailbooks/accounting-core';
+} from '@valuebooks/accounting-core';
 
 import type { PublicUser } from '../auth/auth.service.js';
 import type { RequestMetadata } from '../auth/request-context.js';

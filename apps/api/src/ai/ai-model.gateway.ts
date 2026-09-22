@@ -1,6 +1,6 @@
 import { ServiceUnavailableException, Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { aiModelExplanationSchema } from '@retailbooks/contracts';
+import { aiModelExplanationSchema } from '@valuebooks/contracts';
 
 import { EntitlementsService } from '../platform/entitlements.service.js';
 import { PHASE13_FEATURE_FLAGS } from '../platform/phase13-feature-flags.js';

@@ -24,7 +24,7 @@ export class AutomationQueueService implements OnModuleDestroy {
   constructor(config: ConfigService) {
     this.queue = new Queue<AutomationJob, void, AutomationJobName>(AUTOMATION_QUEUE_NAME, {
       connection: producerConnection(config.getOrThrow<string>('REDIS_URL')),
-      prefix: config.get<string>('QUEUE_PREFIX') ?? 'retailbooks',
+      prefix: config.get<string>('QUEUE_PREFIX') ?? 'valuebooks',
       skipWaitingForReady: true,
       defaultJobOptions: {
         attempts: 5,

@@ -1,6 +1,6 @@
 'use client';
 
-import type { StatementResponse } from '@retailbooks/contracts';
+import type { StatementResponse } from '@valuebooks/contracts';
 import {
   Badge,
   Button,
@@ -11,7 +11,7 @@ import {
   Label,
   PageHeader,
   Skeleton,
-} from '@retailbooks/ui';
+} from '@valuebooks/ui';
 import { ListChecks } from 'lucide-react';
 import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';

@@ -5,7 +5,7 @@ import type {
   PlatformFailedJob,
   PlatformQueueHealth,
   PlatformSecurityEvent,
-} from '@retailbooks/contracts';
+} from '@valuebooks/contracts';
 import Link from 'next/link';
 import { useCallback, useEffect, useState, type FormEvent } from 'react';
 

@@ -1,6 +1,6 @@
 'use client';
 
-import type { CollaborationTargetType } from '@retailbooks/contracts';
+import type { CollaborationTargetType } from '@valuebooks/contracts';
 import { Activity, FileUp, Loader2, MessageSquare } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 

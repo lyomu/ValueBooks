@@ -274,7 +274,7 @@ block and the shadow-database drift check are wired into `.github/workflows/ci.y
 **Stage 1 — integration harness (2026-08-24).** The API can now be exercised over HTTP against a
 real database. `npm test` remains the fast DB-free suite (74 tests, no infrastructure needed) and
 `npm run test:integration` is new, running `*.int.test.ts` specs against a dedicated
-`retailbooks_test` database that is created, migrated, and truncated automatically. The harness
+`valuebooks_test` database that is created, migrated, and truncated automatically. The harness
 lives in `apps/api/test/support/` rather than `packages/test-utils`, because it depends on the API's
 Nest modules and generated Prisma client.
 
@@ -311,7 +311,7 @@ document number. Time-zone fiscal-boundary behavior remains proven by
 `fiscal-periods-calendar.test.ts`.
 
 **Stage 5 — end-to-end journeys (2026-08-24).** Six serial Playwright journeys run against a
-production-mode build and a dedicated `retailbooks_e2e` database (provisioned, migrated, truncated, and
+production-mode build and a dedicated `valuebooks_e2e` database (provisioned, migrated, truncated, and
 reseeded via `apps/web/e2e/prepare.mjs` on every run) cover identity (anti-enumerating password reset,
 login, logout), onboarding (the full wizard through to a switchable new organization), teams (invite
 send and withdraw), periods (close and reopen), journals (draft, post, reverse, with the immutability
@@ -378,7 +378,7 @@ working, not the plan slipping.
       (`validateAttachment()` checks extension + mimetype against `SUPPORTED_TYPES`). Forced
       download disposition handled by the storage service's Content-Disposition header on signed
       URL generation. Captured 2026-09-11 in `docs/HANDOVER.md` and `docs/PHASE14_HANDOVER.md`.
-- [x] **Follow-up from ADR 0011:** validate the environment once at startup. `@retailbooks/config`
+- [x] **Follow-up from ADR 0011:** validate the environment once at startup. `@valuebooks/config`
       now validates the API and worker environment through Nest's `ConfigModule`, keeps explicit
       local/test defaults, and rejects missing or localhost `DATABASE_URL`, `REDIS_URL`, and `S3_*`
       values in production.

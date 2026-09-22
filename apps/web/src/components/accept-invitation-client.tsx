@@ -1,7 +1,7 @@
 'use client';
 
-import type { InvitationPreview } from '@retailbooks/contracts';
-import { Button } from '@retailbooks/ui';
+import type { InvitationPreview } from '@valuebooks/contracts';
+import { Button } from '@valuebooks/ui';
 import { Building2, CircleAlert, CircleCheck, LoaderCircle } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';

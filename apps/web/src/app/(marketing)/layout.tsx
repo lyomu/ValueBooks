@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 
-import '@retailbooks/ui/tokens.css';
+import '@valuebooks/ui/tokens.css';
 import './marketing.css';
 import './marketing-additions.css';
 

@@ -1,6 +1,6 @@
 # Handover Prompt — Phase 14 (Hardening & Release)
 
-**Project:** `c:\Users\gmnyo\Desktop\Engineering projects\retailbooks` — a multi-tenant, global,
+**Project:** `c:\Users\gmnyo\Desktop\Engineering projects\valuebooks` — a multi-tenant, global,
 double-entry accounting & invoicing web platform (monorepo: `apps/api` NestJS, `apps/web` Next.js,
 `packages/*` shared libs).
 
@@ -95,7 +95,7 @@ Dependencies, not just priority:
   "the DB is up" when ValueBooks' own aren't.
 - Migrations: never edit an applied migration folder — new folder, or use the shadow-db
   `migrate diff` dance. Full recipe in `docs/HANDOVER.md` §2.
-- Integration suite runs against `retailbooks_test`, auto-provisioned by `migrate deploy`.
+- Integration suite runs against `valuebooks_test`, auto-provisioned by `migrate deploy`.
 - Tenant scoping via `organizationId` everywhere, including both sides of relation filters (see
   `docs/PERFORMANCE.md` for why the second one matters for query plans).
 - Permission keys land in **four** places: catalog keys array + entries, `roles-catalog.ts`,

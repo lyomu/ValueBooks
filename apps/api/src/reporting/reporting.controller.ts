@@ -13,7 +13,7 @@ import {
   Res,
   UseGuards,
 } from '@nestjs/common';
-import type { ReportKey } from '@retailbooks/contracts';
+import type { ReportKey } from '@valuebooks/contracts';
 import type { Response } from 'express';
 
 import { AuthService } from '../auth/auth.service.js';

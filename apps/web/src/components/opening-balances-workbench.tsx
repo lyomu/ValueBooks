@@ -1,6 +1,6 @@
 ﻿'use client';
 
-import type { OpeningBalanceBatch } from '@retailbooks/contracts';
+import type { OpeningBalanceBatch } from '@valuebooks/contracts';
 import {
   Badge,
   Button,
@@ -13,7 +13,7 @@ import {
   Select,
   Skeleton,
   StatusBadge,
-} from '@retailbooks/ui';
+} from '@valuebooks/ui';
 import { Plus, Save, ShieldCheck, Trash2 } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 

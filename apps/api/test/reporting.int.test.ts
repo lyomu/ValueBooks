@@ -1,4 +1,4 @@
-import { REPORT_KEYS } from '@retailbooks/contracts';
+import { REPORT_KEYS } from '@valuebooks/contracts';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 
 import type { PublicUser } from '../src/auth/auth.service.js';

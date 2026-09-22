@@ -21,7 +21,7 @@ export const queueStatusSchema = z.object({
 
 export const healthResponseSchema = z.object({
   status: z.enum(['ok', 'degraded']),
-  service: z.literal('retailbooks-api'),
+  service: z.literal('valuebooks-api'),
   version: z.string(),
   timestamp: z.iso.datetime(),
   dependencies: z.array(serviceStatusSchema).optional(),

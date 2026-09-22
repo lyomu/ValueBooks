@@ -1,6 +1,6 @@
 'use client';
 
-import type { OrganizationMember } from '@retailbooks/contracts';
+import type { OrganizationMember } from '@valuebooks/contracts';
 import {
   Badge,
   Button,
@@ -22,7 +22,7 @@ import {
   TabsTrigger,
   Textarea,
   type DataTableColumn,
-} from '@retailbooks/ui';
+} from '@valuebooks/ui';
 import { Ban, CheckCircle2, History, Inbox, Send, ShieldCheck, XCircle } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 

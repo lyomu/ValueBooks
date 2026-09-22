@@ -11,8 +11,8 @@ import {
 } from './lib/api-fixtures';
 import { renderReceiptPng } from './lib/receipt-image';
 
-const DEMO_PASSWORD = 'DemoRetailBooks1!';
-const DEMO_OWNER = 'demo.owner@retailbooks.local';
+const DEMO_PASSWORD = 'DemoValueBooks1!';
+const DEMO_OWNER = 'demo.owner@valuebooks.local';
 
 async function signIn(page: Page, email = DEMO_OWNER): Promise<void> {
   await page.goto('/login');

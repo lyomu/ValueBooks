@@ -7,7 +7,7 @@ import type {
   RecurringCadence,
   TaxCode,
   Vendor,
-} from '@retailbooks/contracts';
+} from '@valuebooks/contracts';
 import {
   Badge,
   Button,
@@ -22,7 +22,7 @@ import {
   Skeleton,
   StatusBadge,
   type DataTableColumn,
-} from '@retailbooks/ui';
+} from '@valuebooks/ui';
 import { Play, Plus, Save, Search, XCircle } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 

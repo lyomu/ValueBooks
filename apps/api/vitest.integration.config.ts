@@ -3,7 +3,7 @@ import { defineConfig } from 'vitest/config';
 
 /**
  * The DB-backed suite. Requires the Compose PostgreSQL container to be running; the global setup
- * creates and migrates a dedicated `retailbooks_test` database.
+ * creates and migrates a dedicated `valuebooks_test` database.
  *
  * The SWC plugin is required rather than optional: Nest resolves constructor dependencies from
  * `emitDecoratorMetadata`, which vitest's default esbuild transform does not emit. Without it every

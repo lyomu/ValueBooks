@@ -14,7 +14,7 @@ import {
   type LedgerAccount,
   type Prisma,
 } from '@prisma/client';
-import { parseExchangeRateToScaled } from '@retailbooks/accounting-core';
+import { parseExchangeRateToScaled } from '@valuebooks/accounting-core';
 
 import type { PublicUser } from '../auth/auth.service.js';
 import { assertNoPendingApproval } from '../automation/approval-targets.js';

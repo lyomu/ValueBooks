@@ -1,4 +1,4 @@
-import { PageHeader } from '@retailbooks/ui';
+import { PageHeader } from '@valuebooks/ui';
 import type { Metadata } from 'next';
 
 import { AppShell } from '../../../components/app-shell';

@@ -24,7 +24,7 @@ export class EmailWorker implements OnModuleInit, OnModuleDestroy {
       },
       {
         connection: workerConnection(this.config.getOrThrow<string>('REDIS_URL')),
-        prefix: this.config.get<string>('QUEUE_PREFIX') ?? 'retailbooks',
+        prefix: this.config.get<string>('QUEUE_PREFIX') ?? 'valuebooks',
         concurrency: Number(this.config.get('EMAIL_WORKER_CONCURRENCY') ?? 4),
         metrics: { maxDataPoints: 14 * 24 * 60 },
       },

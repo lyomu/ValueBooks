@@ -58,7 +58,7 @@ typecheck, API and web production builds, `git diff --check`) all passing.
 - [x] Replace the environment-only `PlatformAdminGuard` with the grant-backed boundary, keeping the
       allowlist as a bootstrap-only fallback.
 - [x] Add `PlatformContext`, the role hierarchy, and a `RequirePlatformRole` decorator.
-- [x] Add Phase 12 contracts to `@retailbooks/contracts`.
+- [x] Add Phase 12 contracts to `@valuebooks/contracts`.
 
 ## Milestone 12B - Plans, entitlements, feature flags
 

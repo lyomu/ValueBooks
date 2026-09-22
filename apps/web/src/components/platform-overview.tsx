@@ -1,6 +1,6 @@
 'use client';
 
-import type { PlatformAnalytics } from '@retailbooks/contracts';
+import type { PlatformAnalytics } from '@valuebooks/contracts';
 import { useEffect, useState } from 'react';
 
 import { apiRequest } from '../lib/api';

@@ -12,7 +12,7 @@ import type {
   ProjectProfitability,
   ProjectTask,
   TimeEntry,
-} from '@retailbooks/contracts';
+} from '@valuebooks/contracts';
 import {
   Badge,
   Button,
@@ -28,7 +28,7 @@ import {
   StatusBadge,
   Textarea,
   type DataTableColumn,
-} from '@retailbooks/ui';
+} from '@valuebooks/ui';
 import {
   Briefcase,
   CircleDollarSign,
@@ -1622,7 +1622,7 @@ function BillingSection({
 
 // --- Timesheet ----------------------------------------------------------------------------------
 
-const TIMER_STORAGE_KEY = 'retailbooks.timer';
+const TIMER_STORAGE_KEY = 'valuebooks.timer';
 
 export function TimesheetPage() {
   const workspace = useWorkspace({ requireOrganization: true });

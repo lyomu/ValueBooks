@@ -9,7 +9,7 @@ import {
   DropdownLabel,
   DropdownSeparator,
   DropdownTrigger,
-} from '@retailbooks/ui';
+} from '@valuebooks/ui';
 import {
   AlarmClock,
   AlertOctagon,

@@ -15,7 +15,7 @@ const PASSWORD = 'IntegrationPass1!';
 const NEW_PASSWORD = 'IntegrationPass2!';
 const metadata = { ipHash: 'identity-tenancy-test', userAgent: 'ValueBooks integration test' };
 const redisUrl = process.env.REDIS_URL ?? 'redis://localhost:56780';
-const queuePrefix = process.env.QUEUE_PREFIX ?? 'retailbooks-integration';
+const queuePrefix = process.env.QUEUE_PREFIX ?? 'valuebooks-integration';
 
 describe('identity and tenancy over HTTP', () => {
   let harness: TestHarness;

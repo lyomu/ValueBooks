@@ -1,5 +1,5 @@
-import type { ComplianceStatus } from '@retailbooks/contracts';
-import { resolveStrings, type StringKey } from '@retailbooks/localization';
+import type { ComplianceStatus } from '@valuebooks/contracts';
+import { resolveStrings, type StringKey } from '@valuebooks/localization';
 
 /**
  * Catalog-backed UI strings for the web app. The organization's `locale` drives the resolution;

@@ -1,7 +1,7 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { APP_FILTER } from '@nestjs/core';
-import { validateApiEnvironment } from '@retailbooks/config';
+import { validateApiEnvironment } from '@valuebooks/config';
 
 import { AuthModule } from './auth/auth.module.js';
 import { AutomationModule } from './automation/automation.module.js';

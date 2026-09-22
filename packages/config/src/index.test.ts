@@ -4,20 +4,20 @@ import { validateApiEnvironment } from './index';
 
 const productionEnvironment = {
   NODE_ENV: 'production',
-  DATABASE_URL: 'postgresql://app:secret@postgres.internal:5432/retailbooks',
+  DATABASE_URL: 'postgresql://app:secret@postgres.internal:5432/valuebooks',
   REDIS_URL: 'rediss://redis.internal:6379',
   S3_ENDPOINT: 'https://s3.example.com',
   S3_REGION: 'us-east-1',
   S3_ACCESS_KEY: 'production-access-key',
   S3_SECRET_KEY: 'production-secret-key',
-  S3_BUCKET: 'retailbooks-production',
+  S3_BUCKET: 'valuebooks-production',
   SECURITY_PEPPER: 'a-secure-random-pepper-value-with-32-characters',
   WEB_APP_URL: 'https://app.example.com',
   LOG_LEVEL: 'info',
   SMTP_HOST: 'smtp.example.com',
   SMTP_PORT: '587',
   EMAIL_FROM: 'ValueBooks <no-reply@example.com>',
-  QUEUE_PREFIX: 'retailbooks-production',
+  QUEUE_PREFIX: 'valuebooks-production',
   API_PORT: '3001',
   EMAIL_JOB_RETRY_DELAY_MS: '1000',
   EMAIL_WORKER_CONCURRENCY: '4',
@@ -33,10 +33,10 @@ describe('validateApiEnvironment', () => {
     const env = validateApiEnvironment({ NODE_ENV: 'test' });
 
     expect(env.DATABASE_URL).toBe(
-      'postgresql://retailbooks_app:retailbooks-app-local@localhost:55432/retailbooks',
+      'postgresql://valuebooks_app:valuebooks-app-local@localhost:55432/valuebooks',
     );
     expect(env.REDIS_URL).toBe('redis://localhost:56780');
-    expect(env.S3_BUCKET).toBe('retailbooks-local');
+    expect(env.S3_BUCKET).toBe('valuebooks-local');
     expect(env.API_PORT).toBe(3001);
   });
 
@@ -50,7 +50,7 @@ describe('validateApiEnvironment', () => {
     expect(() =>
       validateApiEnvironment({
         ...productionEnvironment,
-        DATABASE_URL: 'postgresql://retailbooks:retailbooks@localhost:55432/retailbooks',
+        DATABASE_URL: 'postgresql://valuebooks:valuebooks@localhost:55432/valuebooks',
       }),
     ).toThrow(/DATABASE_URL must not point at localhost in production/);
   });

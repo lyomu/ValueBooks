@@ -1,6 +1,6 @@
 'use client';
 
-import type { PlatformUser } from '@retailbooks/contracts';
+import type { PlatformUser } from '@valuebooks/contracts';
 import Link from 'next/link';
 import { useCallback, useEffect, useState, type FormEvent } from 'react';
 

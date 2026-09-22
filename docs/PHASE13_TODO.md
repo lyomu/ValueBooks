@@ -266,8 +266,8 @@ The initial `POST /organizations/:organizationId/ai/ask` slice runs an exact exi
 a capped row envelope to the private gateway with no tools, validates structured citations, stores
 hashes and source references only, and fails closed. `AiRun` and `AiEvidence` are tenant RLS tables
 used through a transaction-local organization context; AI permissions, system-role backfill, and
-audit events are included. Verified locally: `npm run test --workspace @retailbooks/config` (9
-tests), `npm run test --workspace @retailbooks/api` (161 tests), API build, Prisma schema
+audit events are included. Verified locally: `npm run test --workspace @valuebooks/config` (9
+tests), `npm run test --workspace @valuebooks/api` (161 tests), API build, Prisma schema
 validation, and targeted lint/format checks. The focused integration test has now passed with a
 restricted non-login role: it verifies that RLS denies no-context and cross-tenant reads, permits
 the matching tenant within a transaction-local context, and clears that context on connection
@@ -295,13 +295,13 @@ and a positive case asserting the request goes to `https://api.deepseek.com/chat
 once the flag is enabled for the org), full API unit suite (198/198), typecheck, and lint all
 green.
 
-**Local runtime-role proof (2026-09-13):** Docker PostgreSQL now provisions `retailbooks_app` as
+**Local runtime-role proof (2026-09-13):** Docker PostgreSQL now provisions `valuebooks_app` as
 a non-superuser, non-`BYPASSRLS` role. Local `DATABASE_URL` uses that restricted role while
 `DATABASE_MIGRATION_URL` remains the migration-owner connection. The integration harness creates
 and migrates its database with the owner connection, grants runtime access only in the disposable
 test database, and verifies the booted API is neither a superuser, an RLS-bypass role, nor owner of
 the AI tables. The local owner-only `db:deploy` path has applied the Phase 13 migration, and a
-direct no-context `ai_runs` query as `retailbooks_app` returns zero rows. Production credentials
+direct no-context `ai_runs` query as `valuebooks_app` returns zero rows. Production credentials
 and role creation remain a deployment responsibility.
 
 **Gateway resilience proof (2026-09-13):** private calls retry only bounded transient network,
@@ -381,14 +381,14 @@ membership states without reaching a model.
       currently, since the panel is opened from external component state rather than a Radix
       `DialogTrigger`, which Radix needs to know where to return focus to.
 
-Verification evidence (2026-09-13): `npm run test --workspace=@retailbooks/api` (166 tests, up from
+Verification evidence (2026-09-13): `npm run test --workspace=@valuebooks/api` (166 tests, up from
 161 — 5 new `ai-explain-number.test.ts` unit tests plus additions to `ai.orchestrator.test.ts`
-patterns), `npm run test:integration --workspace=@retailbooks/api -- --run test/reporting.int.test.ts
+patterns), `npm run test:integration --workspace=@valuebooks/api -- --run test/reporting.int.test.ts
 test/ai.int.test.ts` (13 tests: real-DB drill-down reconciliation across a debit-normal and a
 credit-normal account, unsupported-report/no-activity rejection, tenant isolation on a foreign
 account id, a report-only role reaching the deterministic drill-down while `POST ai/explain-number`
 stays 403 for it, and a disabled-AI request returning 200 with zero `AiRun` rows created), API
-typecheck and `nest build`, `npm run test --workspace=@retailbooks/config` (9 tests, unaffected),
+typecheck and `nest build`, `npm run test --workspace=@valuebooks/config` (9 tests, unaffected),
 `npx prisma validate` (no migration — no schema changes), targeted `eslint --max-warnings=0` and
 `prettier --check` on every changed file, and `git diff --check`.
 
@@ -587,10 +587,10 @@ correctness tests — this time actually true, not just claimed.
       repository format, lint, typecheck, unit, integration, migration, build, and relevant E2E gates.
       **Substantially done, not complete (2026-09-14):** `npm run lint` (whole repo),
       `prisma validate`, `prisma migrate status`, both workspaces' `typecheck`, and both workspaces'
-      `build` all pass clean. `npm run test --workspace=@retailbooks/api` passes 199/199 (33 new
+      `build` all pass clean. `npm run test --workspace=@valuebooks/api` passes 199/199 (33 new
       this pass: receipt-extractor, attachment zip-bomb/encrypted-PDF/type-spoofing adversarial
       cases, `FeatureFlagGuard`, and a prompt-injection adversarial test). `npm run test:integration
-      --workspace=@retailbooks/api` passes 457/457 across 66 files (up from 436/62 on 2026-09-14,
+      --workspace=@valuebooks/api` passes 457/457 across 66 files (up from 436/62 on 2026-09-14,
       see below), including a full 8-role permission-matrix/tenant-isolation/404-envelope sweep
       over all 353 organization-scoped routes (26 of them new this pass), a dedicated
       flag-kill-switch/pilot-rollout suite, and a bigint regression suite (below).
@@ -607,7 +607,7 @@ correctness tests — this time actually true, not just claimed.
       - The e2e harness itself was broken in four independent ways that had nothing to do with
         Phase 13 code and had evidently gone unexercised for a while: `prepare.mjs`'s
         `migrate deploy` never set `DATABASE_MIGRATION_URL` (this schema's `directUrl`), so it
-        silently migrated the *dev* database instead of `retailbooks_e2e`, leaving that database
+        silently migrated the *dev* database instead of `valuebooks_e2e`, leaving that database
         frozen at Phase 12; `apps/web/package.json`'s `start` script pointed at
         `.next/standalone/server.js` when this monorepo's standalone build actually nests it at
         `.next/standalone/apps/web/server.js`; the standalone server never had `.next/static`

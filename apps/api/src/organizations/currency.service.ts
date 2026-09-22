@@ -7,7 +7,7 @@ import {
 import {
   convertForeignMinorToBaseMinor,
   parseExchangeRateToScaled,
-} from '@retailbooks/accounting-core';
+} from '@valuebooks/accounting-core';
 import { AuditAction, CurrencyStatus, JournalStatus, Prisma, type Currency } from '@prisma/client';
 
 import type { PublicUser } from '../auth/auth.service.js';

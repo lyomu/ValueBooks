@@ -1,7 +1,7 @@
 'use client';
 
-import type { PermissionKey, RoleListResponse, RoleSummary } from '@retailbooks/contracts';
-import { Button, EmptyState, Skeleton } from '@retailbooks/ui';
+import type { PermissionKey, RoleListResponse, RoleSummary } from '@valuebooks/contracts';
+import { Button, EmptyState, Skeleton } from '@valuebooks/ui';
 import { Lock, ShieldCheck } from 'lucide-react';
 import { Fragment, useEffect, useState } from 'react';
 

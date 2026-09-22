@@ -1,8 +1,8 @@
 import { expect, test, type Page } from '@playwright/test';
 
-const DEMO_PASSWORD = 'DemoRetailBooks1!';
+const DEMO_PASSWORD = 'DemoValueBooks1!';
 
-async function login(page: Page, email = 'demo.owner@retailbooks.local'): Promise<void> {
+async function login(page: Page, email = 'demo.owner@valuebooks.local'): Promise<void> {
   await page.goto('/login');
   await page.getByLabel('Email address').fill(email);
   await page.getByLabel('Password', { exact: true }).fill(DEMO_PASSWORD);
@@ -18,7 +18,7 @@ test.describe('Phase 1 end-to-end journeys', () => {
 
   test('identity: anti-enumerating recovery, login, and logout', async ({ page }) => {
     await page.goto('/forgot-password');
-    await page.getByLabel('Email address').fill('does-not-exist@retailbooks.local');
+    await page.getByLabel('Email address').fill('does-not-exist@valuebooks.local');
     await page.getByRole('button', { name: 'Send reset link' }).click();
     await expect(page.getByRole('heading', { name: 'Reset link requested' })).toBeVisible();
 
@@ -30,7 +30,7 @@ test.describe('Phase 1 end-to-end journeys', () => {
   });
 
   test('onboarding: creates and finalizes a complete organization', async ({ page }) => {
-    await login(page, 'demo.admin@retailbooks.local');
+    await login(page, 'demo.admin@valuebooks.local');
     await page.goto('/onboarding');
 
     await expect(page.getByRole('heading', { name: 'Tell us about the business' })).toBeVisible();

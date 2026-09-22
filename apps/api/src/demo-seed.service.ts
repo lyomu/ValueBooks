@@ -27,22 +27,22 @@ import { CustomersService } from './sales/customers.service.js';
 import { InvoicesService } from './sales/invoices.service.js';
 import { QuotesService } from './sales/quotes.service.js';
 
-const DEMO_ORGANIZATION = 'RetailBooks Demo Company Ltd';
-const DEMO_PASSWORD = 'DemoRetailBooks1!';
+const DEMO_ORGANIZATION = 'ValueBooks Demo Company Ltd';
+const DEMO_PASSWORD = 'DemoValueBooks1!';
 const FISCAL_YEAR_START = '2026-01-01';
 const RATE_DATE = '2026-08-01';
 const SOURCE_TYPE = 'DEMO_SEED';
 
 const DEMO_USERS = [
-  { key: 'OWNER', displayName: 'Amina Kamau', email: 'demo.owner@retailbooks.local' },
-  { key: 'ADMIN', displayName: 'Daniel Otieno', email: 'demo.admin@retailbooks.local' },
+  { key: 'OWNER', displayName: 'Amina Kamau', email: 'demo.owner@valuebooks.local' },
+  { key: 'ADMIN', displayName: 'Daniel Otieno', email: 'demo.admin@valuebooks.local' },
   {
     key: 'ACCOUNTANT',
     displayName: 'Grace Wanjiku',
-    email: 'demo.accountant@retailbooks.local',
+    email: 'demo.accountant@valuebooks.local',
   },
-  { key: 'SALES', displayName: 'Musa Kiptoo', email: 'demo.sales@retailbooks.local' },
-  { key: 'VIEWER', displayName: 'Njeri Auditor', email: 'demo.viewer@retailbooks.local' },
+  { key: 'SALES', displayName: 'Musa Kiptoo', email: 'demo.sales@valuebooks.local' },
+  { key: 'VIEWER', displayName: 'Njeri Auditor', email: 'demo.viewer@valuebooks.local' },
 ] as const;
 
 /**
@@ -53,7 +53,7 @@ const DEMO_USERS = [
  */
 const DEMO_PORTAL_USER = {
   displayName: 'Zawadi Mwangi',
-  email: 'demo.customer@retailbooks.local',
+  email: 'demo.customer@valuebooks.local',
 } as const;
 const DEMO_PORTAL_CUSTOMER = 'Karibu Wholesale Ltd';
 

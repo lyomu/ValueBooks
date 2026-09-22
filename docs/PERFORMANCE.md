@@ -53,7 +53,7 @@ cursor (`audit-log-cursor.ts`) is the pattern for unbounded append-only tables.
 
 ## Measured evidence
 
-Method: a scratch `retailbooks_perf` database migrated from `prisma/migrations`, seeded with two
+Method: a scratch `valuebooks_perf` database migrated from `prisma/migrations`, seeded with two
 tenants × 60 accounts × 150,000 journals × 2 lines = **600,000 journal lines**, then `ANALYZE`d.
 SQL captured from Prisma's query event log so the plans are of what the ORM actually emits, not of
 a hand-written approximation. Re-creating this is described under "Re-checking" below.
@@ -105,9 +105,9 @@ The scratch database is disposable and is not part of the test suite — a 600k-
 for CI, and the plans only need re-checking when a read path or an index changes. To redo it:
 
 ```sh
-docker compose exec -T postgres psql -U retailbooks -d postgres \
-  -c 'CREATE DATABASE retailbooks_perf'
-cd apps/api && DATABASE_URL=postgresql://retailbooks:retailbooks@localhost:55432/retailbooks_perf \
+docker compose exec -T postgres psql -U valuebooks -d postgres \
+  -c 'CREATE DATABASE valuebooks_perf'
+cd apps/api && DATABASE_URL=postgresql://valuebooks:valuebooks@localhost:55432/valuebooks_perf \
   npx prisma migrate deploy
 ```
 
@@ -116,5 +116,5 @@ invisible), `ANALYZE`, and run `EXPLAIN (ANALYZE, BUFFERS)` on the SQL captured 
 `PrismaClient({ log: [{ emit: 'event', level: 'query' }] })`. Explain the emitted SQL, never a
 paraphrase of it: the `LEFT JOIN` that caused Rule 2 does not appear in the Prisma call.
 
-Drop `retailbooks_perf` afterwards. It is never the target of `npm run test:integration`, which
-uses `retailbooks_test`.
+Drop `valuebooks_perf` afterwards. It is never the target of `npm run test:integration`, which
+uses `valuebooks_test`.

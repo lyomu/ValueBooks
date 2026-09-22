@@ -13,7 +13,7 @@ import {
   StatusBadge,
   Textarea,
   type DataTableColumn,
-} from '@retailbooks/ui';
+} from '@valuebooks/ui';
 import { AlarmClock, Pencil } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 

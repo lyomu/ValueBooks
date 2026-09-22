@@ -1,4 +1,4 @@
-import { DOMAIN_EVENT_NAMES, domainEventNameSchema } from '@retailbooks/contracts';
+import { DOMAIN_EVENT_NAMES, domainEventNameSchema } from '@valuebooks/contracts';
 import { describe, expect, it } from 'vitest';
 
 /**

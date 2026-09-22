@@ -4,7 +4,7 @@ import type {
   CurrencyDefinition,
   CurrencySettings as CurrencySettingsData,
   OrganizationCurrency,
-} from '@retailbooks/contracts';
+} from '@valuebooks/contracts';
 import {
   Badge,
   Button,
@@ -15,7 +15,7 @@ import {
   Label,
   Skeleton,
   type DataTableColumn,
-} from '@retailbooks/ui';
+} from '@valuebooks/ui';
 import { ArrowRightLeft, Check, CircleDollarSign, Plus } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState, type FormEvent } from 'react';
 

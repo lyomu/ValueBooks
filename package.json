@@ -1,5 +1,5 @@
 {
-  "name": "retailbooks",
+  "name": "valuebooks",
   "version": "0.1.0",
   "private": true,
   "description": "Global, audit-first accounting operations for growing businesses.",
@@ -14,8 +14,8 @@
   },
   "scripts": {
     "dev": "concurrently -n web,api -c cyan,blue \"npm:dev:web\" \"npm:dev:api\"",
-    "dev:web": "npm --workspace @retailbooks/web run dev",
-    "dev:api": "npm --workspace @retailbooks/api run dev",
+    "dev:web": "npm --workspace @valuebooks/web run dev",
+    "dev:api": "npm --workspace @valuebooks/api run dev",
     "build": "npm run build --workspaces --if-present",
     "lint": "eslint . --max-warnings=0",
     "typecheck": "npm run typecheck --workspaces --if-present",

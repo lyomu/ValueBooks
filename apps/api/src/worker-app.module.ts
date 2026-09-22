@@ -1,6 +1,6 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
-import { validateApiEnvironment } from '@retailbooks/config';
+import { validateApiEnvironment } from '@valuebooks/config';
 
 import { ObservabilityModule } from './common/logging/observability.module.js';
 import { AutomationWorkerModule } from './automation/automation-worker.module.js';

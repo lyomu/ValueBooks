@@ -1,6 +1,6 @@
 'use client';
 
-import { Button, Card, EmptyState, Input, Label, PageHeader, Skeleton } from '@retailbooks/ui';
+import { Button, Card, EmptyState, Input, Label, PageHeader, Skeleton } from '@valuebooks/ui';
 import { Search } from 'lucide-react';
 import Link from 'next/link';
 import { useState } from 'react';

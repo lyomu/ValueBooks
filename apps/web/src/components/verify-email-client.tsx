@@ -1,6 +1,6 @@
 'use client';
 
-import { Button } from '@retailbooks/ui';
+import { Button } from '@valuebooks/ui';
 import { CircleAlert, CircleCheck, LoaderCircle } from 'lucide-react';
 import Link from 'next/link';
 import { useEffect, useRef, useState } from 'react';

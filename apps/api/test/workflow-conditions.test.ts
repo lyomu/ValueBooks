@@ -1,5 +1,5 @@
 import type { Prisma } from '@prisma/client';
-import type { WorkflowCondition } from '@retailbooks/contracts';
+import type { WorkflowCondition } from '@valuebooks/contracts';
 import { describe, expect, it } from 'vitest';
 
 import { conditionMatches } from '../src/automation/workflows.service.js';

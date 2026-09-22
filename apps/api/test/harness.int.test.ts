@@ -8,7 +8,7 @@ import { API, createTestHarness, type TestHarness } from './support/app.js';
 import { migrationCount } from './support/database.js';
 
 const redisUrl = process.env.REDIS_URL ?? 'redis://127.0.0.1:56780';
-const prefix = process.env.QUEUE_PREFIX ?? 'retailbooks-integration';
+const prefix = process.env.QUEUE_PREFIX ?? 'valuebooks-integration';
 
 describe('integration harness', () => {
   let harness: TestHarness;
@@ -41,7 +41,7 @@ describe('integration harness', () => {
   it('serves the real application under the production api/v1 prefix', async () => {
     const response = await harness.http().get(`${API}/health`).expect(200);
 
-    expect(response.body).toMatchObject({ status: 'ok', service: 'retailbooks-api' });
+    expect(response.body).toMatchObject({ status: 'ok', service: 'valuebooks-api' });
   });
 
   it('reports the test database as reachable', async () => {
@@ -74,7 +74,7 @@ describe('integration harness', () => {
       SELECT current_database()
     `;
 
-    expect(row?.current_database).toBe('retailbooks_test');
+    expect(row?.current_database).toBe('valuebooks_test');
   });
 
   it('applies the full migration history to the test database', async () => {

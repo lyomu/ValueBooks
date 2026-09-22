@@ -4,7 +4,7 @@ import {
   DOMAIN_EVENT_NAMES,
   type DomainEventName,
   type OrganizationMember,
-} from '@retailbooks/contracts';
+} from '@valuebooks/contracts';
 import {
   Badge,
   Button,
@@ -22,7 +22,7 @@ import {
   StatusBadge,
   Textarea,
   type DataTableColumn,
-} from '@retailbooks/ui';
+} from '@valuebooks/ui';
 import { FlaskConical, History, Pencil, Workflow } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 

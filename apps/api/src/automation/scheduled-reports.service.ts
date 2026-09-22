@@ -1,6 +1,6 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { AuditAction, ScheduledJobMisfirePolicy, ScheduledJobStatus } from '@prisma/client';
-import { createScheduledReportSchema } from '@retailbooks/contracts';
+import { createScheduledReportSchema } from '@valuebooks/contracts';
 import { randomUUID } from 'node:crypto';
 
 import type { PublicUser } from '../auth/auth.service.js';

@@ -8,7 +8,7 @@ import {
   PageHeader,
   Skeleton,
   type DataTableColumn,
-} from '@retailbooks/ui';
+} from '@valuebooks/ui';
 import { AlertOctagon, RotateCcw } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 

@@ -1,6 +1,6 @@
 'use client';
 
-import type { PlatformRole, PlatformSession } from '@retailbooks/contracts';
+import type { PlatformRole, PlatformSession } from '@valuebooks/contracts';
 import { useCallback, useEffect, useState } from 'react';
 
 import { ApiError, apiRequest } from './api';

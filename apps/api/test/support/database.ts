@@ -28,10 +28,10 @@ function findApiRoot(): string {
 export const apiRoot = findApiRoot();
 const repoRoot = resolve(apiRoot, '../..');
 
-const DEFAULT_MIGRATION_URL = 'postgresql://retailbooks:retailbooks@localhost:55432/retailbooks';
+const DEFAULT_MIGRATION_URL = 'postgresql://valuebooks:valuebooks@localhost:55432/valuebooks';
 const DEFAULT_RUNTIME_URL =
-  'postgresql://retailbooks_app:retailbooks-app-local@localhost:55432/retailbooks';
-const TEST_DATABASE_NAME = 'retailbooks_test';
+  'postgresql://valuebooks_app:valuebooks-app-local@localhost:55432/valuebooks';
+const TEST_DATABASE_NAME = 'valuebooks_test';
 
 /**
  * Loads the same `.env` the API would load, without overriding anything already in the environment.

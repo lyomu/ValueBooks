@@ -193,7 +193,7 @@ cash-rounding into future document flows is where Banking/Inventory consume it.
 ### Findings during the pass (process lessons, not product bugs)
 
 - Rewriting an already-applied migration folder under the same name silently diverges every database
-  that applied the old content (hit twice: dev DB and the harness's `retailbooks_test`). Recovery
+  that applied the old content (hit twice: dev DB and the harness's `valuebooks_test`). Recovery
   required marker surgery. Rule going forward: **schema changes after a folder has been applied get
   a NEW timestamped folder**, never an edit — followed for all later Phase 4 migrations.
 - The bare-`DELETE FROM _prisma_migrations` recovery step wiped history markers and had to be

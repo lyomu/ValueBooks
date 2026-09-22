@@ -91,7 +91,7 @@ running (other projects' containers are, which is easy to misread as "the DB is 
 ### 2A — `apps/api/test/banking.int.test.ts`
 
 Model it on `apps/api/test/inventory.int.test.ts`: boot `createTestHarness()`, pull services off
-`harness.app.get(...)`, drive real service calls against `retailbooks_test`. Six groups:
+`harness.app.get(...)`, drive real service calls against `valuebooks_test`. Six groups:
 
 - [x] **2A.1 Duplicate-fingerprint detection.** Import a CSV, re-import the same file, assert the
       second import records duplicates rather than creating second `BankTransaction` rows. Cover

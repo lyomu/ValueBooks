@@ -12,7 +12,7 @@ import {
   workflowConditionSchema,
   type WorkflowAction,
   type WorkflowCondition,
-} from '@retailbooks/contracts';
+} from '@valuebooks/contracts';
 
 import type { PublicUser } from '../auth/auth.service.js';
 import type { RequestMetadata } from '../auth/request-context.js';

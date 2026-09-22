@@ -5,7 +5,7 @@ import type {
   ReportDefinition,
   ReportKey,
   ReportResult,
-} from '@retailbooks/contracts';
+} from '@valuebooks/contracts';
 import {
   Badge,
   Button,
@@ -20,7 +20,7 @@ import {
   TabsList,
   TabsTrigger,
   Textarea,
-} from '@retailbooks/ui';
+} from '@valuebooks/ui';
 import { Bot, Check, ExternalLink, RefreshCw, Send, Sparkles, X } from 'lucide-react';
 import Link from 'next/link';
 import { useCallback, useEffect, useMemo, useState } from 'react';

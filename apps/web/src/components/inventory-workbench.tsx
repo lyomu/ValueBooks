@@ -8,7 +8,7 @@ import type {
   ReorderAdvice,
   StockMovement,
   Warehouse,
-} from '@retailbooks/contracts';
+} from '@valuebooks/contracts';
 import {
   Badge,
   Button,
@@ -24,7 +24,7 @@ import {
   StatusBadge,
   Textarea,
   type DataTableColumn,
-} from '@retailbooks/ui';
+} from '@valuebooks/ui';
 import { ArrowRightLeft, Plus, Save, Search } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState, type FormEvent } from 'react';
 

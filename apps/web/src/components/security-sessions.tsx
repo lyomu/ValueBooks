@@ -1,6 +1,6 @@
 'use client';
 
-import { Badge, Button, EmptyState, Skeleton } from '@retailbooks/ui';
+import { Badge, Button, EmptyState, Skeleton } from '@valuebooks/ui';
 import { Laptop, LogOut, ShieldCheck, Smartphone } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';

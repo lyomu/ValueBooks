@@ -1,5 +1,5 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
-import type { ReportColumn, ReportKey, ReportRow } from '@retailbooks/contracts';
+import type { ReportColumn, ReportKey, ReportRow } from '@valuebooks/contracts';
 import ExcelJS from 'exceljs';
 import type { Response } from 'express';
 

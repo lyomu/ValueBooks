@@ -1,4 +1,4 @@
-# @retailbooks/config
+# @valuebooks/config
 
 Shared runtime configuration for ValueBooks services.
 

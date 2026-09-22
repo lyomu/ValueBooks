@@ -13,7 +13,7 @@ describe('HealthService', () => {
 
     expect(health).toMatchObject({
       status: 'ok',
-      service: 'retailbooks-api',
+      service: 'valuebooks-api',
       version: '0.1.0',
     });
     expect(Number.isNaN(Date.parse(health.timestamp))).toBe(false);

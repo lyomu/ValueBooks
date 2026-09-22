@@ -1,6 +1,6 @@
 import { Transform } from 'class-transformer';
 import { IsArray, IsIn, IsObject, IsOptional, IsString, MaxLength } from 'class-validator';
-import { DOMAIN_EVENT_NAMES } from '@retailbooks/contracts';
+import { DOMAIN_EVENT_NAMES } from '@valuebooks/contracts';
 
 const trim = ({ value }: { value: unknown }): unknown =>
   typeof value === 'string' ? value.trim() : value;

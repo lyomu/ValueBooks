@@ -75,7 +75,7 @@ of Next.js route-level `loading.tsx`/`error.tsx`/`not-found.tsx` files anywhere 
   `not-found.tsx` and the fallback content in `error.tsx` stay standalone (no `AppShell`), since a 404
   can be hit by a signed-out visitor and `AppShell` itself depends on workspace data that could itself
   be the thing failing. `global-error.tsx` covers the one case `error.tsx` cannot (a throw in the root
-  layout itself) and deliberately avoids `@retailbooks/ui` component imports, using raw markup against
+  layout itself) and deliberately avoids `@valuebooks/ui` component imports, using raw markup against
   the same CSS classes, since it is the last-resort fallback if something in that import chain is
   implicated in the failure.
 

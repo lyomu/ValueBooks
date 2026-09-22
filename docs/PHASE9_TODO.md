@@ -84,6 +84,6 @@ The report registry and export service are the stable seam the future scheduler 
 - `npm run build`: API and web production builds green.
 
 The first full integration attempt found residual jobs in the isolated
-`retailbooks-integration:email-delivery` Redis namespace. Those verified test-only keys were
+`valuebooks-integration:email-delivery` Redis namespace. Those verified test-only keys were
 cleared, and the full suite was then rerun successfully; no production or development queue keys
 were touched.

@@ -1,6 +1,6 @@
 'use client';
 
-import type { SecurityEvent } from '@retailbooks/contracts';
+import type { SecurityEvent } from '@valuebooks/contracts';
 import {
   Badge,
   Card,
@@ -12,7 +12,7 @@ import {
   Select,
   Skeleton,
   type DataTableColumn,
-} from '@retailbooks/ui';
+} from '@valuebooks/ui';
 import { ShieldCheck } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 

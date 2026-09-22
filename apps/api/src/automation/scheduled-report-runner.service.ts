@@ -1,5 +1,5 @@
 import { Injectable, Logger, NotFoundException } from '@nestjs/common';
-import { REPORT_KEYS, type ReportKey } from '@retailbooks/contracts';
+import { REPORT_KEYS, type ReportKey } from '@valuebooks/contracts';
 import { UserStatus } from '@prisma/client';
 
 import { EmailQueueService } from '../jobs/email-queue.service.js';

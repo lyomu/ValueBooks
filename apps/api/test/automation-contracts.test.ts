@@ -11,7 +11,7 @@ import {
   updateReminderPolicySchema,
   workflowActionSchema,
   workflowConditionSchema,
-} from '@retailbooks/contracts';
+} from '@valuebooks/contracts';
 
 /**
  * DB-free contract tests for the Phase 10 automation envelopes that were tracked debt (GAP #18):

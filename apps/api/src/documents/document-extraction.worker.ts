@@ -27,7 +27,7 @@ export class DocumentExtractionWorker implements OnModuleInit, OnModuleDestroy {
       async (job) => this.process(job),
       {
         connection: workerConnection(this.config.getOrThrow<string>('REDIS_URL')),
-        prefix: this.config.get<string>('QUEUE_PREFIX') ?? 'retailbooks',
+        prefix: this.config.get<string>('QUEUE_PREFIX') ?? 'valuebooks',
         concurrency: Number(this.config.get('DOCUMENT_EXTRACTION_WORKER_CONCURRENCY') ?? 2),
         metrics: { maxDataPoints: 14 * 24 * 60 },
       },

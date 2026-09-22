@@ -15,4 +15,4 @@ export * from './tabs';
 export * from './toast';
 export * from './utils';
 
-export const retailBooksUiVersion = '0.2.0';
+export const valueBooksUiVersion = '0.2.0';

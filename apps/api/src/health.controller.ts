@@ -1,5 +1,5 @@
 import { Controller, Get, ServiceUnavailableException } from '@nestjs/common';
-import type { HealthResponse } from '@retailbooks/contracts';
+import type { HealthResponse } from '@valuebooks/contracts';
 
 import { HealthService } from './health.service.js';
 

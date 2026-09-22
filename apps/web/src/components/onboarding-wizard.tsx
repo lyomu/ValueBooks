@@ -5,8 +5,8 @@ import type {
   OrganizationInvitation,
   OrganizationReferenceData,
   OrganizationSummary,
-} from '@retailbooks/contracts';
-import { Badge, Button, FieldMessage, Input, Label, Select, Skeleton } from '@retailbooks/ui';
+} from '@valuebooks/contracts';
+import { Badge, Button, FieldMessage, Input, Label, Select, Skeleton } from '@valuebooks/ui';
 import {
   BookOpenCheck,
   Building2,

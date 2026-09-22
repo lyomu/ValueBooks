@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import type { ReportFilters } from '@retailbooks/contracts';
+import type { ReportFilters } from '@valuebooks/contracts';
 
 import { AppShell } from '../../../components/app-shell';
 import { ReportRunnerPage } from '../../../components/reports-workbench';

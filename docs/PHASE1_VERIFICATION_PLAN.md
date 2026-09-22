@@ -12,7 +12,7 @@ performance and operational verification, and the final threat-model/readiness r
 
 ## Agreed working decisions
 
-- The DB-backed suite uses a dedicated `retailbooks_test` database on the existing Compose
+- The DB-backed suite uses a dedicated `valuebooks_test` database on the existing Compose
   PostgreSQL container, rather than Testcontainers — it matches the project's established
   local-infrastructure contract and adds no dependency.
 - Correctness defects are fixed inline as found, each in its own commit, separate from the test that
@@ -78,7 +78,7 @@ sketched. The harness depends on the API's Nest modules and its generated Prisma
 it in a shared package would have inverted the dependency direction. `packages/test-utils` stays for
 genuinely shared, dependency-free helpers such as `fixedClock`.
 
-- `database.ts` creates `retailbooks_test` on the existing Compose PostgreSQL if absent, applies
+- `database.ts` creates `valuebooks_test` on the existing Compose PostgreSQL if absent, applies
   every migration, and truncates all application tables between tests while preserving
   `_prisma_migrations`. The development database is never touched.
 - `app.ts` boots the real `AppModule` through `Test.createTestingModule` and returns a `supertest`
@@ -100,7 +100,7 @@ genuinely shared, dependency-free helpers such as `fixedClock`.
 
 Verified by `test/harness.int.test.ts` (6 tests): the app serves under the production `api/v1`
 prefix, the production validation pipe rejects unknown fields, the connection really is
-`retailbooks_test`, all six migrations are applied, and truncation clears data while preserving the
+`valuebooks_test`, all six migrations are applied, and truncation clears data while preserving the
 schema. CI runs the integration suite against its own PostgreSQL service.
 
 ## Stage 2 — Identity and tenancy — COMPLETE

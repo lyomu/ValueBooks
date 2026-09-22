@@ -9,7 +9,7 @@ import type {
   Project,
   TaxCode,
   Vendor,
-} from '@retailbooks/contracts';
+} from '@valuebooks/contracts';
 import {
   Badge,
   Button,
@@ -25,7 +25,7 @@ import {
   Skeleton,
   StatusBadge,
   type DataTableColumn,
-} from '@retailbooks/ui';
+} from '@valuebooks/ui';
 import { CheckCircle2, FilePlus2, Paperclip, Save, Search, Upload, XCircle } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';

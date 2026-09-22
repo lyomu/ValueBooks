@@ -6,7 +6,7 @@ import type { RequestMetadata } from '../auth/request-context.js';
 import type { OrganizationContext } from '../organizations/organization-context.js';
 import { OrganizationAccessService } from '../organizations/organization-access.service.js';
 import { ReportingService } from '../reporting/reporting.service.js';
-import type { ReportRow } from '@retailbooks/contracts';
+import type { ReportRow } from '@valuebooks/contracts';
 
 import { AskReportDto, ExplainNumberDto } from './ai.dto.js';
 import { AiGatewayException, AiModelGateway, type AiEvidenceEnvelope } from './ai-model.gateway.js';

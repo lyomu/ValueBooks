@@ -1,4 +1,4 @@
-import { Button, Card } from '@retailbooks/ui';
+import { Button, Card } from '@valuebooks/ui';
 import { BookOpenText } from 'lucide-react';
 import type { Metadata } from 'next';
 import Link from 'next/link';

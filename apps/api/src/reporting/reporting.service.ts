@@ -11,7 +11,7 @@ import {
   type ReportFilters,
   type ReportKey,
   type ReportRow,
-} from '@retailbooks/contracts';
+} from '@valuebooks/contracts';
 
 import type { RequestMetadata } from '../auth/request-context.js';
 import { PrismaService } from '../database/prisma.service.js';

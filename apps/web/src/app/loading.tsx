@@ -1,4 +1,4 @@
-import { Spinner } from '@retailbooks/ui';
+import { Spinner } from '@valuebooks/ui';
 
 export default function Loading() {
   return (

@@ -1,5 +1,5 @@
 {
-  "name": "@retailbooks/web",
+  "name": "@valuebooks/web",
   "version": "0.1.0",
   "private": true,
   "scripts": {
@@ -15,9 +15,9 @@
     "test:visual:update": "playwright test --grep @visual --update-snapshots"
   },
   "dependencies": {
-    "@retailbooks/contracts": "*",
-    "@retailbooks/localization": "*",
-    "@retailbooks/ui": "*",
+    "@valuebooks/contracts": "*",
+    "@valuebooks/localization": "*",
+    "@valuebooks/ui": "*",
     "lucide-react": "^0.542.0",
     "next": "^15.5.2",
     "react": "^19.1.1",

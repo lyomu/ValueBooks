@@ -24,7 +24,7 @@ describe('email queue against Redis', () => {
   });
 
   it('retries a failed delivery five times and retains the exhausted job', async () => {
-    const prefix = `retailbooks-test-${randomUUID()}`;
+    const prefix = `valuebooks-test-${randomUUID()}`;
     const config = new ConfigService({
       REDIS_URL: redisUrl,
       QUEUE_PREFIX: prefix,

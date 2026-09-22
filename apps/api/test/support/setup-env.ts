@@ -7,6 +7,6 @@ import { testRuntimeDatabaseUrl } from './database.js';
 process.env.DATABASE_URL = testRuntimeDatabaseUrl();
 process.env.NODE_ENV = 'test';
 process.env.SECURITY_PEPPER ??= 'integration-test-pepper';
-process.env.QUEUE_PREFIX ??= 'retailbooks-integration';
+process.env.QUEUE_PREFIX ??= 'valuebooks-integration';
 // Keep request logging out of the test reporter's output.
 process.env.LOG_LEVEL ??= 'silent';

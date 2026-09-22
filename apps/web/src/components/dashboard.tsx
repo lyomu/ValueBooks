@@ -16,7 +16,7 @@ import type {
   LedgerAccount,
   TaxCode,
   TrialBalanceResponse,
-} from '@retailbooks/contracts';
+} from '@valuebooks/contracts';
 import {
   Button,
   Card,
@@ -27,7 +27,7 @@ import {
   StatCard,
   StatusBadge,
   type DataTableColumn,
-} from '@retailbooks/ui';
+} from '@valuebooks/ui';
 import {
   ArrowUpRight,
   BarChart3,

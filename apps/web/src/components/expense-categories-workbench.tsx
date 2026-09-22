@@ -1,6 +1,6 @@
 'use client';
 
-import type { ExpenseCategory, LedgerAccount } from '@retailbooks/contracts';
+import type { ExpenseCategory, LedgerAccount } from '@valuebooks/contracts';
 import {
   Badge,
   Button,
@@ -15,7 +15,7 @@ import {
   Skeleton,
   StatusBadge,
   type DataTableColumn,
-} from '@retailbooks/ui';
+} from '@valuebooks/ui';
 import { Plus, Save } from 'lucide-react';
 import { useCallback, useEffect, useState, type FormEvent } from 'react';
 

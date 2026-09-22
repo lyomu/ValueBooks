@@ -1,6 +1,6 @@
 'use client';
 
-import type { Item } from '@retailbooks/contracts';
+import type { Item } from '@valuebooks/contracts';
 import {
   Badge,
   Button,
@@ -15,7 +15,7 @@ import {
   Skeleton,
   StatusBadge,
   type DataTableColumn,
-} from '@retailbooks/ui';
+} from '@valuebooks/ui';
 import { Plus, Save, Search } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState, type FormEvent } from 'react';
 

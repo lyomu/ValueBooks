@@ -1,19 +1,19 @@
-name: retailbooks
+name: valuebooks
 
 services:
   postgres:
     image: postgres:17-alpine
     environment:
-      POSTGRES_DB: retailbooks
-      POSTGRES_USER: retailbooks
-      POSTGRES_PASSWORD: retailbooks
+      POSTGRES_DB: valuebooks
+      POSTGRES_USER: valuebooks
+      POSTGRES_PASSWORD: valuebooks
     ports:
       - '${POSTGRES_PORT:-55432}:5432'
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./infrastructure/postgres-init.sql:/docker-entrypoint-initdb.d/001-init.sql:ro
     healthcheck:
-      test: ['CMD-SHELL', 'pg_isready -U retailbooks -d retailbooks']
+      test: ['CMD-SHELL', 'pg_isready -U valuebooks -d valuebooks']
       interval: 5s
       timeout: 5s
       retries: 10
@@ -37,8 +37,8 @@ services:
     image: quay.io/minio/minio:RELEASE.2025-07-23T15-54-02Z
     command: server /data --console-address ':9001'
     environment:
-      MINIO_ROOT_USER: retailbooks
-      MINIO_ROOT_PASSWORD: retailbooks-local
+      MINIO_ROOT_USER: valuebooks
+      MINIO_ROOT_PASSWORD: valuebooks-local
     ports:
       - '${MINIO_API_PORT:-59000}:9000'
       - '${MINIO_CONSOLE_PORT:-59001}:9001'

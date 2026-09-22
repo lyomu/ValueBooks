@@ -1,4 +1,4 @@
-import { REPORT_KEYS, type ReportDefinition, type ReportKey } from '@retailbooks/contracts';
+import { REPORT_KEYS, type ReportDefinition, type ReportKey } from '@valuebooks/contracts';
 
 const text = (key: string, label: string) => ({ key, label, type: 'text' as const });
 const date = (key: string, label: string) => ({ key, label, type: 'date' as const });

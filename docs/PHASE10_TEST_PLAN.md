@@ -18,7 +18,7 @@ setup shape (harness, `beforeEach` org/user bootstrap, direct service injection 
 npm run infra:up
 
 # Apply any pending migrations to your dev DB (integration tests use a separate
-# retailbooks_test DB, auto-provisioned by the global setup — this step is only for
+# valuebooks_test DB, auto-provisioned by the global setup — this step is only for
 # the dev DB used by `prisma migrate status`/`diff`).
 cd apps/api && npx prisma migrate deploy
 

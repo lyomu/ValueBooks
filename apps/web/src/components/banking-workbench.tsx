@@ -16,7 +16,7 @@ import type {
   StatementImport,
   StatementImportRowOutcome,
   Transfer,
-} from '@retailbooks/contracts';
+} from '@valuebooks/contracts';
 import {
   Badge,
   Button,
@@ -33,7 +33,7 @@ import {
   StatusBadge,
   Textarea,
   type DataTableColumn,
-} from '@retailbooks/ui';
+} from '@valuebooks/ui';
 import {
   ArrowRightLeft,
   Ban,

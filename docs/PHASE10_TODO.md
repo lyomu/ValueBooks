@@ -145,7 +145,7 @@ No second report query or rendering implementation is allowed.
       (run at close-out, 2026-09-05: `prisma migrate diff` between the live dev database and the
       datamodel prints "This is an empty migration." in both directions, and
       `prisma migrate diff --from-migrations prisma/migrations --to-schema-datamodel` replaying the
-      migration files from scratch into a freshly created `retailbooks_shadow` database exits 0
+      migration files from scratch into a freshly created `valuebooks_shadow` database exits 0
       ("No difference detected.") -- the same check `.github/workflows/ci.yml` runs)
 
 ## Milestone 10B — Durable event and worker foundation
@@ -217,7 +217,7 @@ No second report query or rendering implementation is allowed.
 
 - [x] Implement registries for supported triggers, typed conditions, and safe actions, including a
       human-readable preview of what a rule can do (`trigger` is now validated against the shared
-      `DOMAIN_EVENT_NAMES` registry in `@retailbooks/contracts` at both the DTO and zod-schema layer,
+      `DOMAIN_EVENT_NAMES` registry in `@valuebooks/contracts` at both the DTO and zod-schema layer,
       instead of an unvalidated free string a rule could silently never match against; "preview" is
       the new dry-run evaluator below, which is a stronger guarantee than a static sentence since it
       shows a real match against a real sample payload)

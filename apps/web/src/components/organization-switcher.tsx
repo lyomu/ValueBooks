@@ -1,6 +1,6 @@
 'use client';
 
-import type { OrganizationSummary } from '@retailbooks/contracts';
+import type { OrganizationSummary } from '@valuebooks/contracts';
 import {
   Dropdown,
   DropdownContent,
@@ -8,7 +8,7 @@ import {
   DropdownLabel,
   DropdownSeparator,
   DropdownTrigger,
-} from '@retailbooks/ui';
+} from '@valuebooks/ui';
 import { Building2, Check, ChevronDown, Plus } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useMemo, useState } from 'react';

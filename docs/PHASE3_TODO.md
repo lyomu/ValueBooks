@@ -312,7 +312,7 @@ the stale-pin finding in "After 3H".
       new path-param substitutions); its metadata-sync self-check passes, proving the declared
       matrix matches what the controllers actually declare.
 - [x] Migration drift check both directions, zero difference: migrations→schema (via recreated
-      `retailbooks_shadow`, dropped immediately after) and live-db→schema, both `--exit-code` 0.
+      `valuebooks_shadow`, dropped immediately after) and live-db→schema, both `--exit-code` 0.
 - [x] `npm run build` at root (`build --workspaces --if-present`): API nest build + web Next.js
       production build (51 routes incl. all nine new Phase 3 page groups) succeed.
 - [x] Real HTTP-level golden-path verification pass against a running instance: isolated API +

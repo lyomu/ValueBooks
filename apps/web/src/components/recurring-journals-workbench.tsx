@@ -1,6 +1,6 @@
 'use client';
 
-import type { LedgerAccount, RecurringCadence } from '@retailbooks/contracts';
+import type { LedgerAccount, RecurringCadence } from '@valuebooks/contracts';
 import {
   Button,
   Card,
@@ -12,7 +12,7 @@ import {
   Select,
   Skeleton,
   StatusBadge,
-} from '@retailbooks/ui';
+} from '@valuebooks/ui';
 import { Play, Plus, Save, Trash2 } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 

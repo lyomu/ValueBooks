@@ -1,4 +1,4 @@
-import { REPORT_KEYS } from '@retailbooks/contracts';
+import { REPORT_KEYS } from '@valuebooks/contracts';
 import { Transform, Type } from 'class-transformer';
 import {
   IsIn,

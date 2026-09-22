@@ -22,7 +22,7 @@ export class EmailDeliveryService {
       greetingTimeout: 1_500,
       socketTimeout: 3_000,
     });
-    this.from = config.get('EMAIL_FROM') ?? 'ValueBooks <no-reply@retailbooks.local>';
+    this.from = config.get('EMAIL_FROM') ?? 'ValueBooks <no-reply@valuebooks.local>';
   }
 
   async deliver(message: EmailDeliveryJob): Promise<void> {

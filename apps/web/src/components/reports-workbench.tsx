@@ -15,7 +15,7 @@ import type {
   SavedReport,
   SavedReportResponse,
   SavedReportsResponse,
-} from '@retailbooks/contracts';
+} from '@valuebooks/contracts';
 import {
   Badge,
   Button,
@@ -29,7 +29,7 @@ import {
   PageHeader,
   Select,
   Skeleton,
-} from '@retailbooks/ui';
+} from '@valuebooks/ui';
 import { Download, FileBarChart, Save, Trash2 } from 'lucide-react';
 import Link from 'next/link';
 import { useCallback, useEffect, useMemo, useState } from 'react';

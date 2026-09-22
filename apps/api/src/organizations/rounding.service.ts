@@ -1,6 +1,6 @@
 ﻿import { BadRequestException, Injectable } from '@nestjs/common';
 import type { Prisma, RoundingMode } from '@prisma/client';
-import { computeCashRoundingDelta } from '@retailbooks/accounting-core';
+import { computeCashRoundingDelta } from '@valuebooks/accounting-core';
 
 import type { PublicUser } from '../auth/auth.service.js';
 import type { RequestMetadata } from '../auth/request-context.js';

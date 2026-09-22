@@ -1,25 +1,25 @@
 import { z } from 'zod';
 
 const LOCAL_DEFAULTS = {
-  DATABASE_URL: 'postgresql://retailbooks_app:retailbooks-app-local@localhost:55432/retailbooks',
+  DATABASE_URL: 'postgresql://valuebooks_app:valuebooks-app-local@localhost:55432/valuebooks',
   REDIS_URL: 'redis://localhost:56780',
   S3_ENDPOINT: 'http://localhost:59000',
   S3_REGION: 'us-east-1',
-  S3_ACCESS_KEY: 'retailbooks',
-  S3_SECRET_KEY: 'retailbooks-local',
-  S3_BUCKET: 'retailbooks-local',
+  S3_ACCESS_KEY: 'valuebooks',
+  S3_SECRET_KEY: 'valuebooks-local',
+  S3_BUCKET: 'valuebooks-local',
   SECURITY_PEPPER: 'local-development-pepper-change-me',
   WEB_APP_URL: 'http://localhost:3000',
   LOG_LEVEL: 'debug',
   SMTP_HOST: '127.0.0.1',
   SMTP_PORT: '51025',
-  EMAIL_FROM: 'ValueBooks <no-reply@retailbooks.local>',
+  EMAIL_FROM: 'ValueBooks <no-reply@valuebooks.local>',
   CLAMAV_HOST: 'localhost',
 } as const;
 
 const COMMON_DEFAULTS = {
   API_PORT: '3001',
-  QUEUE_PREFIX: 'retailbooks',
+  QUEUE_PREFIX: 'valuebooks',
   LOG_LEVEL: 'info',
   SMTP_PORT: '587',
   EMAIL_JOB_RETRY_DELAY_MS: '1000',
@@ -50,7 +50,7 @@ const PRODUCTION_LOCAL_HOSTS = new Set(['localhost', '127.0.0.1', '::1']);
 const HOSTED_DEEPSEEK_HOSTS = new Set(['api.deepseek.com']);
 const DEFAULT_SECURITY_PEPPERS = new Set([
   LOCAL_DEFAULTS.SECURITY_PEPPER,
-  'retailbooks-local-development-pepper-please-change',
+  'valuebooks-local-development-pepper-please-change',
   'replace-with-at-least-32-random-characters',
 ]);
 

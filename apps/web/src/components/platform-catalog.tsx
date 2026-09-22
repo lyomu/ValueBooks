@@ -1,6 +1,6 @@
 'use client';
 
-import type { FeatureFlag, PlatformPlan } from '@retailbooks/contracts';
+import type { FeatureFlag, PlatformPlan } from '@valuebooks/contracts';
 import { useCallback, useEffect, useState, type FormEvent } from 'react';
 
 import { ApiError, apiRequest } from '../lib/api';

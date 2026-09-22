@@ -14,7 +14,7 @@ import {
   TabsContent,
   TabsList,
   TabsTrigger,
-} from '@retailbooks/ui';
+} from '@valuebooks/ui';
 import { Search } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 

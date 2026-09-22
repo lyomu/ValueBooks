@@ -39,9 +39,9 @@ The following is already in the repository and must be preserved:
 
 Current verification evidence:
 
-- `npm run test --workspace=@retailbooks/api`: 161 passing tests.
-- `npm run test --workspace=@retailbooks/config`: 9 passing tests.
-- `npm run test:integration --workspace=@retailbooks/api -- --run test/ai.int.test.ts`: passed.
+- `npm run test --workspace=@valuebooks/api`: 161 passing tests.
+- `npm run test --workspace=@valuebooks/config`: 9 passing tests.
+- `npm run test:integration --workspace=@valuebooks/api -- --run test/ai.int.test.ts`: passed.
 - API typecheck and build, Prisma schema validation, targeted lint, Prettier, and `git diff --check`:
   passed.
 
@@ -60,7 +60,7 @@ These are deliberately not implementation claims and do not block the determinis
 
 ```text
 Continue Phase 13 of ValueBooks in:
-C:\Users\gmnyo\Desktop\Engineering projects\retailbooks
+C:\Users\gmnyo\Desktop\Engineering projects\valuebooks
 
 Read docs/PHASE13C_13D_HANDOFF.md, docs/PHASE13_TODO.md, docs/BUILD_ROADMAP.md Phase 13, and
 docs/GAPS.md before editing. Treat the two user-provided DeepSeek PDFs as design references only;
@@ -129,7 +129,7 @@ risks. Stop and report a blocker rather than weakening a security or accounting 
 
 ```text
 Continue Phase 13 of ValueBooks in:
-C:\Users\gmnyo\Desktop\Engineering projects\retailbooks
+C:\Users\gmnyo\Desktop\Engineering projects\valuebooks
 
 Read docs/PHASE13C_13D_HANDOFF.md, docs/PHASE13_TODO.md, docs/BUILD_ROADMAP.md Phase 13, and
 docs/GAPS.md. Confirm Phase 13C's acceptance evidence before starting 13D. Inspect current code

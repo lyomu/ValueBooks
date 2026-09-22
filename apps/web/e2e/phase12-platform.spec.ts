@@ -1,8 +1,8 @@
 import { expect, test, type Page } from '@playwright/test';
 
-const DEMO_PASSWORD = 'DemoRetailBooks1!';
-const PLATFORM_ADMIN = 'demo.admin@retailbooks.local';
-const TENANT_OWNER = 'demo.owner@retailbooks.local';
+const DEMO_PASSWORD = 'DemoValueBooks1!';
+const PLATFORM_ADMIN = 'demo.admin@valuebooks.local';
+const TENANT_OWNER = 'demo.owner@valuebooks.local';
 
 async function signIn(page: Page, email: string): Promise<void> {
   await page.goto('/login');

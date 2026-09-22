@@ -5,7 +5,7 @@ import type {
   PermissionKey,
   PublicUser,
   RoleSummary,
-} from '@retailbooks/contracts';
+} from '@valuebooks/contracts';
 import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useState } from 'react';
 

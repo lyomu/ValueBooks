@@ -148,14 +148,14 @@ Each was found by a test written in this pass, and each was a live failure, not 
 - Web TypeScript check — clean, 2026-09-11.
 - `prettier --check .` across the repository — passing (`fmtfinal.log`, 2026-09-11).
 - `git diff --check` — clean (no whitespace errors on the closing branch).
-- API production build (`npm run build --workspace @retailbooks/api`) — succeeds, 2026-09-11.
-- Web production build (`npm run build --workspace @retailbooks/web`) — succeeds, 2026-09-11.
+- API production build (`npm run build --workspace @valuebooks/api`) — succeeds, 2026-09-11.
+- Web production build (`npm run build --workspace @valuebooks/web`) — succeeds, 2026-09-11.
 - `apps/api/test/portals.int.test.ts` — **29 of 29 tests passing**.
 - `apps/api/test/collaboration.int.test.ts` — **21 of 21 tests passing**.
 - `apps/api/test/authorization-boundary.int.test.ts` — **6 of 6 tests passing**, including the
   matrix-synchronization check against every registered organization-scoped route.
 - Prisma migration deploy including `20260908160000_grant_collaboration_role_defaults` — applied
-  from scratch in the dedicated `retailbooks_e2e` database via `prepare.mjs`.
+  from scratch in the dedicated `valuebooks_e2e` database via `prepare.mjs`.
 - Forward/reverse migration drift verification — shadow DB and replay DB reconciled against the
   current migration chain (backfill `20260908160000` included, 2026-09-11).
 - Frontend design detector (`visual.spec.ts`) — green on desktop, 2026-09-11.
@@ -183,7 +183,7 @@ Phase 11 is closed and verified. To re-validate any time:
 
 1. `npm run lint` — should remain clean (eslint `. --max-warnings=0`).
 2. `npm run typecheck` — both workspaces should remain clean.
-3. `npm --workspace @retailbooks/web run test:e2e -- --project=desktop phase11-portal.spec.ts` —
+3. `npm --workspace @valuebooks/web run test:e2e -- --project=desktop phase11-portal.spec.ts` —
    the portal journey suite (10 passed / 1 skip on the desktop project). A second run with
    `--project=mobile --grep 'Phase.11'` covers the responsive overflow assertion.
 

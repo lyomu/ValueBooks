@@ -10,7 +10,7 @@ import type {
   TaxCalculationResult,
   TaxCode,
   TrialBalanceResponse,
-} from '@retailbooks/contracts';
+} from '@valuebooks/contracts';
 import {
   Badge,
   Button,
@@ -26,7 +26,7 @@ import {
   StatusBadge,
   Textarea,
   type DataTableColumn,
-} from '@retailbooks/ui';
+} from '@valuebooks/ui';
 import {
   Archive,
   CheckCircle2,

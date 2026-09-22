@@ -1,7 +1,7 @@
 'use client';
 
-import type { NumberingResponse } from '@retailbooks/contracts';
-import { Badge, Button, FieldMessage, Input, Label, Select, Skeleton } from '@retailbooks/ui';
+import type { NumberingResponse } from '@valuebooks/contracts';
+import { Badge, Button, FieldMessage, Input, Label, Select, Skeleton } from '@valuebooks/ui';
 import { Save } from 'lucide-react';
 import { useCallback, useEffect, useState, type FormEvent } from 'react';
 

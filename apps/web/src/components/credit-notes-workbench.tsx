@@ -7,7 +7,7 @@ import type {
   Item,
   OpenInvoiceForAllocation,
   TaxCode,
-} from '@retailbooks/contracts';
+} from '@valuebooks/contracts';
 import {
   Badge,
   Button,
@@ -23,7 +23,7 @@ import {
   Skeleton,
   StatusBadge,
   type DataTableColumn,
-} from '@retailbooks/ui';
+} from '@valuebooks/ui';
 import { CheckCircle2, FilePlus2, Mail, Save, Search, XCircle } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';

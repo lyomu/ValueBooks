@@ -1,6 +1,6 @@
 'use client';
 
-import type { OrganizationMember, SavedReport } from '@retailbooks/contracts';
+import type { OrganizationMember, SavedReport } from '@valuebooks/contracts';
 import {
   Button,
   Card,
@@ -14,7 +14,7 @@ import {
   Skeleton,
   StatusBadge,
   type DataTableColumn,
-} from '@retailbooks/ui';
+} from '@valuebooks/ui';
 import { CalendarClock, Pencil } from 'lucide-react';
 import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';

@@ -12,7 +12,7 @@ import {
   Prisma,
   type StockMovementSourceType,
 } from '@prisma/client';
-import { roundHalfUpDivide } from '@retailbooks/accounting-core';
+import { roundHalfUpDivide } from '@valuebooks/accounting-core';
 
 import type { PublicUser } from '../auth/auth.service.js';
 import { assertNoPendingApproval } from '../automation/approval-targets.js';

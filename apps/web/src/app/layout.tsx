@@ -1,8 +1,8 @@
 import type { Metadata } from 'next';
 import type { ReactNode } from 'react';
 
-import '@retailbooks/ui/tokens.css';
-import '@retailbooks/ui/styles.css';
+import '@valuebooks/ui/tokens.css';
+import '@valuebooks/ui/styles.css';
 import './styles.css';
 
 export const metadata: Metadata = {

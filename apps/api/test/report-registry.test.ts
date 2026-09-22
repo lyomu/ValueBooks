@@ -1,4 +1,4 @@
-import { REPORT_KEYS } from '@retailbooks/contracts';
+import { REPORT_KEYS } from '@valuebooks/contracts';
 import { describe, expect, it } from 'vitest';
 
 import { REPORT_DEFINITIONS, reportDefinitionFor } from '../src/reporting/report-registry.js';

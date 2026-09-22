@@ -134,7 +134,7 @@ All in `docs/PHASE10_TODO.md`, each honestly annotated "partial" or "not done":
 
 ## D. Phase 1 / foundation debt
 
-- [x] 29. **Startup environment validation** — ADR 0011 follow-up. `@retailbooks/config` now
+- [x] 29. **Startup environment validation** — ADR 0011 follow-up. `@valuebooks/config` now
       validates the API/worker environment at Nest startup, supplies local/test defaults, and
       rejects missing or localhost `DATABASE_URL`, `REDIS_URL`, and `S3_*` values in production.
       Verified with the config unit tests, API unit tests, and API typecheck. (`docs/PHASE1_TODO.md:380`)

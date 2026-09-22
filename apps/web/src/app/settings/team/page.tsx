@@ -1,4 +1,4 @@
-import { PageHeader, Tabs, TabsContent, TabsList, TabsTrigger } from '@retailbooks/ui';
+import { PageHeader, Tabs, TabsContent, TabsList, TabsTrigger } from '@valuebooks/ui';
 import type { Metadata } from 'next';
 
 import { AppShell } from '../../../components/app-shell';

@@ -28,7 +28,7 @@ import {
   ToastProvider,
   ToastViewport,
   type DataTableColumn,
-} from '@retailbooks/ui';
+} from '@valuebooks/ui';
 import { BookOpenText, Plus, RotateCcw, Save, SearchX } from 'lucide-react';
 import { useState } from 'react';
 

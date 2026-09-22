@@ -1,6 +1,6 @@
 'use client';
 
-import type { Notification } from '@retailbooks/contracts';
+import type { Notification } from '@valuebooks/contracts';
 import {
   Badge,
   Button,
@@ -13,7 +13,7 @@ import {
   PageHeader,
   Skeleton,
   type DataTableColumn,
-} from '@retailbooks/ui';
+} from '@valuebooks/ui';
 import { Bell, BellOff, CheckCheck, Plus } from 'lucide-react';
 import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';

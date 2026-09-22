@@ -5,7 +5,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { AuditAction, type Prisma } from '@prisma/client';
-import { roundHalfUpDivide } from '@retailbooks/accounting-core';
+import { roundHalfUpDivide } from '@valuebooks/accounting-core';
 
 import type { PublicUser } from '../auth/auth.service.js';
 import { DomainEventsService } from '../automation/domain-events.service.js';

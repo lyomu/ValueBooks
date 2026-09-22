@@ -9,7 +9,7 @@ import {
   Input,
   Label,
   Skeleton,
-} from '@retailbooks/ui';
+} from '@valuebooks/ui';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { ApiError, apiRequest } from '../lib/api';

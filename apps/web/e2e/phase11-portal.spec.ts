@@ -1,8 +1,8 @@
 import { expect, test, type Page } from '@playwright/test';
 import { createClient } from 'redis';
 
-const DEMO_PASSWORD = 'DemoRetailBooks1!';
-const PORTAL_CUSTOMER = 'demo.customer@retailbooks.local';
+const DEMO_PASSWORD = 'DemoValueBooks1!';
+const PORTAL_CUSTOMER = 'demo.customer@valuebooks.local';
 
 async function signIn(page: Page, email: string, destination: RegExp): Promise<void> {
   await page.goto(email === PORTAL_CUSTOMER ? '/portal/login' : '/login');
@@ -210,7 +210,7 @@ test.describe('Phase 11 internal collaboration', () => {
 
   test('offers comments, files, and activity on a transaction detail surface', async ({ page }) => {
     const browserErrors = collectBrowserErrors(page);
-    await signIn(page, 'demo.owner@retailbooks.local', /\/$/);
+    await signIn(page, 'demo.owner@valuebooks.local', /\/$/);
 
     await page.goto('/invoices');
     // 'Open' must match exactly: the sidebar also has an 'Opening balances' link, and
@@ -239,7 +239,7 @@ test.describe('Phase 11 internal collaboration', () => {
   });
 
   test('shares a comment with the customer and shows it in their portal', async ({ page }) => {
-    await signIn(page, 'demo.owner@retailbooks.local', /\/$/);
+    await signIn(page, 'demo.owner@valuebooks.local', /\/$/);
     await page.goto('/invoices');
     // 'Open' must match exactly: the sidebar also has an 'Opening balances' link, and
     // Playwright's name match is a case-insensitive substring by default.
@@ -255,7 +255,7 @@ test.describe('Phase 11 internal collaboration', () => {
 
     // Drop the internal session rather than hunting for a sign-out control: the point of this
     // test is what the customer sees, not how the staff member left. Clear cookies and web
-    // storage on the retailbooks origin so the portal customer sign-in starts from a clean
+    // storage on the valuebooks origin so the portal customer sign-in starts from a clean
     // slate. (Earlier failures here were the API login rate limiter: the portal describe signs
     // this customer in eight times, so beforeEach resets the counters before this ninth
     // sign-in.)

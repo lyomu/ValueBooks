@@ -26,7 +26,7 @@ separate ValueBooks identity and accounting-focused information architecture.
 1. Copy `.env.example` to `.env`.
 2. Run `npm.cmd install` on Windows (`npm install` elsewhere).
 3. Run `docker compose up -d`.
-4. Run `npm.cmd run db:deploy --workspace @retailbooks/api`.
+4. Run `npm.cmd run db:deploy --workspace @valuebooks/api`.
 5. Run `npm.cmd run dev`.
 6. Open `http://localhost:3000`; API health is at `http://localhost:3001/api/v1/health`.
 
@@ -50,7 +50,7 @@ docker compose config
 
 `npm test` is the fast, DB-free suite and needs no running infrastructure.
 `npm run test:integration` boots the real API against PostgreSQL and requires
-`docker compose up -d`; it creates and migrates a dedicated `retailbooks_test`
+`docker compose up -d`; it creates and migrates a dedicated `valuebooks_test`
 database, leaving the development database untouched. Integration specs are
 named `*.int.test.ts`.
 

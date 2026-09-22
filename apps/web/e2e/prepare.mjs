@@ -7,11 +7,11 @@ import pg from 'pg';
 import { createClient } from 'redis';
 
 const { Client } = pg;
-const DATABASE_NAME = 'retailbooks_e2e';
-const DATABASE_URL = `postgresql://retailbooks:retailbooks@127.0.0.1:55432/${DATABASE_NAME}`;
-const MAINTENANCE_URL = 'postgresql://retailbooks:retailbooks@127.0.0.1:55432/postgres';
-const QUEUE_PREFIX = 'retailbooks-e2e';
-const PLATFORM_ADMIN_EMAIL = 'demo.admin@retailbooks.local';
+const DATABASE_NAME = 'valuebooks_e2e';
+const DATABASE_URL = `postgresql://valuebooks:valuebooks@127.0.0.1:55432/${DATABASE_NAME}`;
+const MAINTENANCE_URL = 'postgresql://valuebooks:valuebooks@127.0.0.1:55432/postgres';
+const QUEUE_PREFIX = 'valuebooks-e2e';
+const PLATFORM_ADMIN_EMAIL = 'demo.admin@valuebooks.local';
 const repoRoot = resolve(process.cwd(), '../..');
 
 // Mirrors apps/api/src/platform/phase13-feature-flags.ts. Migrations seed these flags as data (see
@@ -34,7 +34,7 @@ const PHASE13_FEATURE_FLAG_KEYS = [
 ];
 
 await createDatabase();
-runNpm(['exec', '--workspace', '@retailbooks/api', '--', 'prisma', 'migrate', 'deploy']);
+runNpm(['exec', '--workspace', '@valuebooks/api', '--', 'prisma', 'migrate', 'deploy']);
 await resetDatabase();
 await seedPhase13FeatureFlags();
 await clearEmailQueue();
@@ -148,7 +148,7 @@ function runNpm(args) {
       // commands (migrate deploy/dev/resolve). Without this, `prisma migrate deploy` below ignores
       // DATABASE_URL entirely and applies against whatever DATABASE_MIGRATION_URL the parent
       // environment (e.g. apps/api/.env) happens to have -- silently migrating the wrong database
-      // instead of retailbooks_e2e. This script uses one shared owner-level role for everything, so
+      // instead of valuebooks_e2e. This script uses one shared owner-level role for everything, so
       // the migration URL and the runtime URL are the same connection string here.
       DATABASE_MIGRATION_URL: DATABASE_URL,
       REDIS_URL: 'redis://127.0.0.1:56780',
