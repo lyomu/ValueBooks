@@ -25,7 +25,13 @@ import { TaxService } from '../organizations/tax.service.js';
 import { PostingRulesService } from '../posting-rules/posting-rules.service.js';
 import { DocumentRenderingService } from './document-rendering.service.js';
 import { INVOICE_ISSUE_RULE } from './invoice-posting-rule.js';
-import type { CreateInvoiceDto, InvoiceLineDto, UpdateInvoiceDto } from './invoices.dto.js';
+import type {
+  CreateInvoiceDto,
+  InvoiceLineDto,
+  SetExpectedPaymentDateDto,
+  UpdateInvoiceDto,
+  WriteOffInvoiceDto,
+} from './invoices.dto.js';
 import { buildPdfRenderSnapshot, parsePdfRenderSnapshot } from './pdf-render-snapshot.js';
 import { renderInvoiceHtml } from './pdf-templates.js';
 
@@ -225,6 +231,37 @@ export class InvoicesService {
     return summarizeInvoice(updated);
   }
 
+  /** Deletes a draft invoice. Issued documents are immutable and must be voided instead. */
+  async deleteDraft(
+    context: OrganizationContext,
+    user: PublicUser,
+    invoiceId: string,
+    metadata: RequestMetadata,
+  ) {
+    const existing = await this.findOrThrow(context.id, invoiceId);
+    if (existing.status !== 'DRAFT') {
+      throw new ConflictException('Only draft invoices can be deleted; void issued invoices instead.');
+    }
+
+    await this.prisma.$transaction(async (tx) => {
+      await tx.invoiceLine.deleteMany({ where: { invoiceId } });
+      await tx.invoice.delete({ where: { id: invoiceId } });
+      await writeAuditEvent(tx, {
+        organizationId: context.id,
+        actorUserId: user.id,
+        eventKey: 'sales.invoice_deleted',
+        entityType: 'invoice',
+        entityId: invoiceId,
+        action: AuditAction.DELETE,
+        before: { totalMinor: existing.totalMinor.toString() },
+        after: null,
+        ipHash: metadata.ipHash,
+      });
+    });
+
+    return { id: invoiceId };
+  }
+
   /**
    * Issues a draft invoice: freezes each line's tax snapshot, consolidates the lines by account
    * (one AR debit, one revenue credit per distinct revenue account, one tax credit per distinct tax
@@ -243,6 +280,8 @@ export class InvoicesService {
     invoiceId: string,
     metadata: RequestMetadata,
     idempotencyKey?: string,
+    // Internal seed/backfill override for the document and posting date. Defaults to today.
+    businessDate?: string,
   ) {
     const issued = await this.prisma.$transaction(async (tx) => {
       await this.lockInvoiceIdempotency(tx, context.id, idempotencyKey);
@@ -270,7 +309,7 @@ export class InvoicesService {
         );
       }
 
-      const issueDate = dateOnly(new Date());
+      const issueDate = businessDate ? dateOnly(isoDate(businessDate)) : dateOnly(new Date());
 
       const arAccount = invoice.contact.receivableAccountId
         ? await tx.ledgerAccount.findUniqueOrThrow({
@@ -463,6 +502,231 @@ export class InvoicesService {
     return summarizeInvoice(issued);
   }
 
+  /** Records (or clears) the date the customer has promised to pay. Never touches the ledger. */
+  async setExpectedPaymentDate(
+    context: OrganizationContext,
+    user: PublicUser,
+    invoiceId: string,
+    input: SetExpectedPaymentDateDto,
+    metadata: RequestMetadata,
+  ) {
+    const existing = await this.findOrThrow(context.id, invoiceId);
+    if (!['ISSUED', 'PARTIALLY_PAID', 'OVERDUE'].includes(existing.status)) {
+      throw new ConflictException('An expected payment date applies only to open invoices.');
+    }
+    const next = input.expectedPaymentDate ? isoDate(input.expectedPaymentDate) : null;
+
+    const updated = await this.prisma.$transaction(async (tx) => {
+      const invoice = await tx.invoice.update({
+        where: { id: invoiceId },
+        data: { expectedPaymentDate: next },
+        include: invoiceDetailInclude,
+      });
+      await writeAuditEvent(tx, {
+        organizationId: context.id,
+        actorUserId: user.id,
+        eventKey: 'sales.invoice_expected_payment_date_set',
+        entityType: 'invoice',
+        entityId: invoiceId,
+        action: AuditAction.UPDATE,
+        before: {
+          expectedPaymentDate: existing.expectedPaymentDate
+            ? dateOnly(existing.expectedPaymentDate)
+            : null,
+        },
+        after: { expectedPaymentDate: next ? dateOnly(next) : null },
+        ipHash: metadata.ipHash,
+      });
+      return invoice;
+    });
+    return summarizeInvoice(updated);
+  }
+
+  /**
+   * Switches automated reminders off (or back on) for one invoice. Stopping pauses the invoice's
+   * scheduled reminder jobs; resuming reactivates only those still in the future, so a resume can
+   * never fire a burst of overdue reminders at once.
+   */
+  async setRemindersStopped(
+    context: OrganizationContext,
+    user: PublicUser,
+    invoiceId: string,
+    stopped: boolean,
+    metadata: RequestMetadata,
+  ) {
+    const existing = await this.findOrThrow(context.id, invoiceId);
+    if (!['ISSUED', 'PARTIALLY_PAID', 'OVERDUE'].includes(existing.status)) {
+      throw new ConflictException('Reminders apply only to open invoices.');
+    }
+    const sourceType = `INVOICE_REMINDER:${invoiceId}`;
+
+    const updated = await this.prisma.$transaction(async (tx) => {
+      if (stopped) {
+        await tx.scheduledJob.updateMany({
+          where: { organizationId: context.id, sourceType, status: 'ACTIVE' },
+          data: { status: 'PAUSED' },
+        });
+      } else {
+        const now = new Date();
+        await tx.scheduledJob.updateMany({
+          where: {
+            organizationId: context.id,
+            sourceType,
+            status: 'PAUSED',
+            nextRunAt: { gt: now },
+          },
+          data: { status: 'ACTIVE' },
+        });
+        await tx.scheduledJob.updateMany({
+          where: {
+            organizationId: context.id,
+            sourceType,
+            status: 'PAUSED',
+            nextRunAt: { lte: now },
+          },
+          data: { status: 'COMPLETED', completedAt: now },
+        });
+      }
+      const invoice = await tx.invoice.update({
+        where: { id: invoiceId },
+        data: { remindersStoppedAt: stopped ? new Date() : null },
+        include: invoiceDetailInclude,
+      });
+      await writeAuditEvent(tx, {
+        organizationId: context.id,
+        actorUserId: user.id,
+        eventKey: stopped ? 'sales.invoice_reminders_stopped' : 'sales.invoice_reminders_resumed',
+        entityType: 'invoice',
+        entityId: invoiceId,
+        action: AuditAction.UPDATE,
+        after: { remindersStopped: stopped },
+        ipHash: metadata.ipHash,
+      });
+      return invoice;
+    });
+    return summarizeInvoice(updated);
+  }
+
+  /**
+   * Writes off (part of) an open invoice's receivable as bad debt: debits Bad debt expense (5180),
+   * credits the customer's receivable account, and reduces the invoice balance. Restricted to the
+   * organization's base currency so no unrealised FX difference is left behind on the receivable.
+   */
+  async writeOff(
+    context: OrganizationContext,
+    user: PublicUser,
+    invoiceId: string,
+    input: WriteOffInvoiceDto,
+    metadata: RequestMetadata,
+    // Internal seed/backfill override for the posting date. Defaults to today.
+    businessDate?: string,
+  ) {
+    const updated = await this.prisma.$transaction(async (tx) => {
+      await this.lockInvoiceRow(tx, context.id, invoiceId);
+      const invoice = await tx.invoice.findFirst({
+        where: { id: invoiceId, organizationId: context.id },
+        include: invoiceDetailInclude,
+      });
+      if (!invoice) throw new NotFoundException('Invoice not found.');
+      if (invoice.status !== 'ISSUED' && invoice.status !== 'PARTIALLY_PAID') {
+        throw new ConflictException('Only issued invoices with an open balance can be written off.');
+      }
+
+      const organization = await tx.organization.findUniqueOrThrow({
+        where: { id: context.id },
+        select: { baseCurrency: true },
+      });
+      if (invoice.currency !== organization.baseCurrency) {
+        throw new ConflictException(
+          `Write-off is only supported for invoices in the base currency (${organization.baseCurrency}).`,
+        );
+      }
+
+      const amount = input.amountMinor ? BigInt(input.amountMinor) : invoice.balanceMinor;
+      if (amount <= 0n) throw new BadRequestException('The write-off amount must be positive.');
+      if (amount > invoice.balanceMinor) {
+        throw new ConflictException('The write-off amount exceeds the invoice balance.');
+      }
+
+      const badDebtAccount = await tx.ledgerAccount.findFirst({
+        where: { organizationId: context.id, code: '5180', type: 'EXPENSE' },
+      });
+      if (!badDebtAccount) {
+        throw new ConflictException(
+          'Create an expense account with code 5180 (Bad debt expense) before writing off invoices.',
+        );
+      }
+      const arAccount = invoice.contact.receivableAccountId
+        ? await tx.ledgerAccount.findUniqueOrThrow({
+            where: { id: invoice.contact.receivableAccountId },
+          })
+        : await this.ledger.accountBySystemKey(context.id, 'accounts_receivable', tx);
+
+      const label = invoice.invoiceNumber ?? invoice.id;
+      const journal = await this.ledger.postJournalFromLines(
+        context,
+        user,
+        'INVOICE_WRITE_OFF',
+        {
+          journalDate: isoDate(businessDate ?? dateOnly(new Date())),
+          currency: invoice.currency,
+          description: `Write-off of invoice ${label}${input.reason ? `: ${input.reason}` : ''}`,
+          sourceType: 'INVOICE_WRITE_OFF',
+          sourceId: invoice.id,
+          lines: [
+            {
+              accountId: badDebtAccount.id,
+              debitMinor: amount,
+              creditMinor: 0n,
+              description: `Bad debt: ${invoice.contact.displayName}`,
+            },
+            {
+              accountId: arAccount.id,
+              debitMinor: 0n,
+              creditMinor: amount,
+              description: `Write-off of invoice ${label}`,
+            },
+          ],
+        },
+        metadata,
+        undefined,
+        tx,
+      );
+
+      const newBalance = invoice.balanceMinor - amount;
+      const result = await tx.invoice.update({
+        where: { id: invoiceId },
+        data: {
+          balanceMinor: newBalance,
+          writtenOffMinor: { increment: amount },
+          writtenOffAt: new Date(),
+          writeOffJournalId: invoice.writeOffJournalId ?? journal.id,
+          status: newBalance === 0n ? 'PAID' : invoice.status,
+          version: { increment: 1 },
+        },
+        include: invoiceDetailInclude,
+      });
+
+      await writeAuditEvent(tx, {
+        organizationId: context.id,
+        actorUserId: user.id,
+        eventKey: 'sales.invoice_written_off',
+        entityType: 'invoice',
+        entityId: invoiceId,
+        action: AuditAction.UPDATE,
+        before: { balanceMinor: invoice.balanceMinor.toString() },
+        after: {
+          balanceMinor: newBalance.toString(),
+          writtenOffMinor: amount.toString(),
+          journalId: journal.id,
+        },
+        ipHash: metadata.ipHash,
+      });
+      return result;
+    });
+    return summarizeInvoice(updated);
+  }
+
   /**
    * Voids an issued (or partially paid) invoice with no payments applied yet, reversing its posting
    * journal exactly the way a manual journal reversal does. An invoice with any `paidMinor` must be
@@ -482,6 +746,9 @@ export class InvoicesService {
       throw new ConflictException(
         'An invoice with payments applied cannot be voided; issue a credit note instead.',
       );
+    }
+    if (existing.writtenOffMinor > 0n) {
+      throw new ConflictException('An invoice with a write-off cannot be voided.');
     }
     if (!existing.journalId) {
       throw new ConflictException('This invoice has no posted journal to reverse.');
@@ -585,9 +852,11 @@ export class InvoicesService {
     );
     const signedUrl = await this.documentRendering.getSignedUrl(storageKey);
 
+    // Named once, so the subject written to the send log is provably the subject that was sent.
+    const subject = `Invoice ${existing.invoiceNumber ?? ''} from ${context.legalName}`;
     await this.emailQueue.enqueue(EMAIL_JOB_NAMES.invoiceSend, {
       to: existing.contact.email,
-      subject: `Invoice ${existing.invoiceNumber ?? ''} from ${context.legalName}`,
+      subject,
       text: `Please find attached invoice ${existing.invoiceNumber ?? ''} from ${context.legalName}.`,
       html: `<p>Please find attached invoice ${existing.invoiceNumber ?? ''} from ${context.legalName}.</p>`,
       attachments: [{ filename: `${existing.invoiceNumber ?? invoiceId}.pdf`, path: signedUrl }],
@@ -598,6 +867,21 @@ export class InvoicesService {
         where: { id: invoiceId },
         data: { sentAt: new Date() },
         include: invoiceDetailInclude,
+      });
+      // The audit event records that a send happened; this records who it reached and under what
+      // subject, which is what the customer's mail history has to show.
+      await tx.documentSendLog.create({
+        data: {
+          organizationId: context.id,
+          contactId: existing.contactId,
+          targetType: 'INVOICE',
+          targetId: invoiceId,
+          documentNumber: existing.invoiceNumber,
+          recipientEmail: existing.contact.email!,
+          subject,
+          sentByUserId: user.id,
+          sentAt: invoice.sentAt!,
+        },
       });
       await writeAuditEvent(tx, {
         organizationId: context.id,
@@ -903,6 +1187,9 @@ function summarizeInvoice(invoice: InvoiceWithLines) {
     journalId: invoice.journalId,
     voidedAt: invoice.voidedAt?.toISOString() ?? null,
     sentAt: invoice.sentAt?.toISOString() ?? null,
+    expectedPaymentDate: invoice.expectedPaymentDate ? dateOnly(invoice.expectedPaymentDate) : null,
+    remindersStoppedAt: invoice.remindersStoppedAt?.toISOString() ?? null,
+    writtenOffMinor: invoice.writtenOffMinor.toString(),
     lines: invoice.lines.map((line) => ({
       id: line.id,
       lineNumber: line.lineNumber,

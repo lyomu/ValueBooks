@@ -26,6 +26,7 @@ import { TaxService } from './organizations/tax.service.js';
 import { CustomersService } from './sales/customers.service.js';
 import { InvoicesService } from './sales/invoices.service.js';
 import { QuotesService } from './sales/quotes.service.js';
+import { DemoWeekSeedService } from './demo-week-seed.service.js';
 
 const DEMO_ORGANIZATION = 'ValueBooks Demo Company Ltd';
 const DEMO_PASSWORD = 'DemoValueBooks1!';
@@ -75,6 +76,7 @@ export class DemoSeedService {
     private readonly customers: CustomersService,
     private readonly invoices: InvoicesService,
     private readonly quotes: QuotesService,
+    private readonly week: DemoWeekSeedService,
   ) {}
 
   async run() {
@@ -137,8 +139,10 @@ export class DemoSeedService {
     const taxCodeId = await this.ensureTaxes(context, owner, metadata);
     await this.ensureJournals(context, owner, taxCodeId, metadata);
     await this.ensurePortalDemo(context, owner, metadata);
+    const week = await this.week.run(context, owner, metadata, users);
 
-    return this.verify(context.id);
+    const summary = await this.verify(context.id);
+    return { ...summary, week };
   }
 
   private async configureAndFinalize(

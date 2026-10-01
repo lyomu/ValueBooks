@@ -91,6 +91,10 @@ import { TaxService } from './tax.service.js';
     CurrencyService,
     CountryPackStore,
     CountryPackAdminService,
+    // Exported for the demo week seed (docs/MOCK_DATA_PLAN.md), which builds an opening-balance
+    // batch and a recurring journal through the same services the accounting screens use.
+    OpeningBalancesService,
+    RecurringJournalsService,
   ],
 })
 export class OrganizationsModule {}

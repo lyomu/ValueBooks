@@ -338,6 +338,7 @@ model User {
   portalInvitationsAccepted        PortalInvitation[]         @relation("PortalInvitationAcceptedBy")
   commentsAuthored                 Comment[]                  @relation("CommentAuthor")
   activitiesAuthored               Activity[]                 @relation("ActivityActor")
+  documentSendLogsSent             DocumentSendLog[]          @relation("DocumentSendLogSentBy")
   aiRuns                           AiRun[]                    @relation("AiRunActor")
   aiFeedback                       AiFeedback[]               @relation("AiFeedbackActor")
 
@@ -569,6 +570,7 @@ model Organization {
   portalInvitations             PortalInvitation[]
   comments                      Comment[]
   activities                    Activity[]
+  documentSendLogs              DocumentSendLog[]
   aiRuns                        AiRun[]
   aiSuggestions                 AiSuggestion[]
   aiFeedback                    AiFeedback[]
@@ -1086,6 +1088,7 @@ model Contact {
   projects                  Project[]
   portalUsers               PortalUser[]
   portalInvitations         PortalInvitation[]
+  documentSendLogs          DocumentSendLog[]
 
   @@unique([organizationId, displayName])
   @@index([organizationId, status])
@@ -1202,6 +1205,7 @@ enum CollaborationVisibility {
 }
 
 enum CollaborationTargetType {
+  CONTACT
   QUOTE
   SALES_ORDER
   INVOICE
@@ -1249,6 +1253,30 @@ model Comment {
 
   @@index([organizationId, targetType, targetId, createdAt], map: "comments_org_target_created_idx")
   @@map("comments")
+}
+
+/// One outbound document email. `sendInvoice` and its credit-note counterpart write a row here as
+/// well as their audit event: an audit event records that a send happened, but not who it reached
+/// or under what subject, which is exactly what a customer's mail history has to show.
+model DocumentSendLog {
+  id             String                  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organizationId String                  @map("organization_id") @db.Uuid
+  /// The customer the document belongs to. Null for documents with no contact (a vendor bill).
+  contactId      String?                 @map("contact_id") @db.Uuid
+  targetType     CollaborationTargetType @map("target_type")
+  targetId       String                  @map("target_id") @db.Uuid
+  documentNumber String?                 @map("document_number") @db.VarChar(64)
+  recipientEmail String                  @map("recipient_email") @db.VarChar(320)
+  subject        String                  @db.VarChar(320)
+  sentByUserId   String?                 @map("sent_by_user_id") @db.Uuid
+  sentAt         DateTime                @default(now()) @map("sent_at") @db.Timestamptz(6)
+  organization   Organization            @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  contact        Contact?                @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  sentBy         User?                   @relation("DocumentSendLogSentBy", fields: [sentByUserId], references: [id], onDelete: SetNull)
+
+  @@index([organizationId, contactId, sentAt], map: "document_send_logs_org_contact_sent_idx")
+  @@index([organizationId, targetType, targetId], map: "document_send_logs_org_target_idx")
+  @@map("document_send_logs")
 }
 
 model Activity {
@@ -1378,6 +1406,11 @@ model Item {
   sku                           String?                        @db.VarChar(60)
   name                          String                         @db.VarChar(160)
   itemType                      ItemType                       @map("item_type")
+  imageDataUrl                  String?                        @map("image_data_url") @db.Text
+  salesEnabled                  Boolean                        @default(true) @map("sales_enabled")
+  salesDescription              String?                        @map("sales_description") @db.Text
+  purchaseEnabled               Boolean                        @default(false) @map("purchase_enabled")
+  purchaseDescription           String?                        @map("purchase_description") @db.Text
   categoryId                    String?                        @map("category_id") @db.Uuid
   defaultUnitId                 String?                        @map("default_unit_id") @db.Uuid
   revenueAccountId              String?                        @map("revenue_account_id") @db.Uuid
@@ -1579,6 +1612,14 @@ model Invoice {
   /// restyle cannot restate what an issued document declared (GAPS #38). `schemaVersion` lets a
   /// future shape change read old payloads without guessing, mirroring `StructuredInvoice`.
   pdfSnapshot                Json?                  @map("pdf_snapshot") @db.JsonB
+  /// Date the customer has promised to pay. Collections metadata only; never affects the ledger.
+  expectedPaymentDate        DateTime?              @map("expected_payment_date") @db.Date
+  /// Set while automated payment reminders are switched off for this invoice.
+  remindersStoppedAt         DateTime?              @map("reminders_stopped_at") @db.Timestamptz(6)
+  /// Amount of the receivable written off to bad debt. `balanceMinor` already excludes it.
+  writtenOffMinor            BigInt                 @default(0) @map("written_off_minor") @db.BigInt
+  writtenOffAt               DateTime?              @map("written_off_at") @db.Timestamptz(6)
+  writeOffJournalId          String?                @unique @map("write_off_journal_id") @db.Uuid
   createdByUserId            String                 @map("created_by_user_id") @db.Uuid
   createdAt                  DateTime               @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt                  DateTime               @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
@@ -1651,6 +1692,17 @@ enum PaymentStatus {
   FULLY_ALLOCATED
 }
 
+/// How the money physically reached (or left) the business. Reporting and bank reconciliation read
+/// this; it never changes which accounts a payment posts to -- that is the deposit account's job.
+enum PaymentMode {
+  CASH
+  BANK_TRANSFER
+  CHEQUE
+  MOBILE_MONEY
+  CARD
+  OTHER
+}
+
 /// A customer payment recorded and posted (deposit-account debit vs AR credit) in one step at
 /// recording time -- there is no draft state, unlike Invoice. `allocatedMinor`/`unappliedMinor` and
 /// `status` are derived and updated atomically alongside PaymentAllocation rows and the target
@@ -1666,6 +1718,15 @@ model PaymentReceived {
   amountMinor      BigInt              @map("amount_minor") @db.BigInt
   allocatedMinor   BigInt              @default(0) @map("allocated_minor") @db.BigInt
   unappliedMinor   BigInt              @map("unapplied_minor") @db.BigInt
+  /// Bank fee the depositing bank deducted from this receipt. Posted to the bank_charges expense
+  /// account, so the deposit debit is amountMinor - bankChargesMinor - withholdingTaxMinor.
+  bankChargesMinor BigInt              @default(0) @map("bank_charges_minor") @db.BigInt
+  /// Tax the customer withheld at source and remits to the revenue authority on our behalf. Posted
+  /// to withholding_tax_receivable; it settles the invoice but never reaches our bank.
+  withholdingTaxMinor BigInt           @default(0) @map("withholding_tax_minor") @db.BigInt
+  paymentMode      PaymentMode         @default(BANK_TRANSFER) @map("payment_mode")
+  reference        String?             @db.VarChar(140)
+  notes            String?             @db.VarChar(2000)
   depositAccountId String?             @map("deposit_account_id") @db.Uuid
   journalId        String?             @unique @map("journal_id") @db.Uuid
   createdByUserId  String              @map("created_by_user_id") @db.Uuid

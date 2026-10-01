@@ -222,6 +222,8 @@ export class BillsService {
     billId: string,
     metadata: RequestMetadata,
     idempotencyKey?: string,
+    // Internal seed/backfill override for the document and posting date. Defaults to today.
+    businessDate?: string,
   ) {
     const issued = await this.prisma.$transaction(async (tx) => {
       await this.lockBillIdempotency(tx, context.id, idempotencyKey);
@@ -247,7 +249,7 @@ export class BillsService {
         throw new BadRequestException('A bill needs at least one line before it can be issued.');
       }
 
-      const issueDate = dateOnly(new Date());
+      const issueDate = businessDate ? dateOnly(isoDate(businessDate)) : dateOnly(new Date());
 
       const apAccount = bill.vendor.payableAccountId
         ? await tx.ledgerAccount.findUniqueOrThrow({ where: { id: bill.vendor.payableAccountId } })

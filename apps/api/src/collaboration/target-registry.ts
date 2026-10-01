@@ -13,6 +13,14 @@ type TargetDefinition = {
 
 /** One registry is the only way comments/files/activity learn what a target is. */
 const TARGETS: Record<CollaborationTargetType, TargetDefinition> = {
+  // A contact is the one target that is a party rather than a document. It is deliberately not
+  // `customerEligible`: a customer may read comments on their own invoice, but the internal notes
+  // kept against the customer record itself are never theirs to see.
+  CONTACT: {
+    delegate: 'contact',
+    viewPermission: 'customers.view',
+    managePermission: 'customers.manage',
+  },
   QUOTE: {
     delegate: 'quote',
     viewPermission: 'sales.quotes.view',

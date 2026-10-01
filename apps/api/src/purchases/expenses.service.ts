@@ -254,6 +254,8 @@ export class ExpensesService {
     expenseId: string,
     metadata: RequestMetadata,
     idempotencyKey?: string,
+    // Internal seed/backfill override for the posting date. Defaults to today.
+    businessDate?: string,
   ) {
     const posted = await this.prisma.$transaction(async (tx) => {
       await this.lockExpenseIdempotency(tx, context.id, idempotencyKey);
@@ -275,7 +277,7 @@ export class ExpensesService {
         throw new ConflictException('Only draft or approved expenses can be posted.');
       }
 
-      const postDate = dateOnly(new Date());
+      const postDate = businessDate ? dateOnly(isoDate(businessDate)) : dateOnly(new Date());
       const payeeLabel = expense.payeeVendor?.displayName ?? expense.payeeName ?? 'payee';
 
       const expenseAccountId =

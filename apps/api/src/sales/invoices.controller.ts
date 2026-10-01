@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   Headers,
   HttpCode,
@@ -21,7 +22,13 @@ import {
   type OrganizationRequest,
 } from '../organizations/organization-context.js';
 import { OrganizationGuard } from '../organizations/organization.guard.js';
-import { CreateInvoiceDto, ListInvoicesQueryDto, UpdateInvoiceDto } from './invoices.dto.js';
+import {
+  CreateInvoiceDto,
+  ListInvoicesQueryDto,
+  SetExpectedPaymentDateDto,
+  UpdateInvoiceDto,
+  WriteOffInvoiceDto,
+} from './invoices.dto.js';
 import { InvoicesService } from './invoices.service.js';
 
 @Controller('organizations/:organizationId/invoices')
@@ -72,6 +79,100 @@ export class InvoicesController {
     const metadata = requestMetadata(request, this.auth.pepper);
     return {
       data: await this.invoices.updateDraft(
+        request.organization,
+        request.auth.user,
+        invoiceId,
+        input,
+        metadata,
+      ),
+    };
+  }
+
+  @Delete(':invoiceId')
+  @RequirePermission('sales.invoices.manage')
+  async remove(
+    @Param('invoiceId', new ParseUUIDPipe()) invoiceId: string,
+    @Req() request: OrganizationRequest,
+  ) {
+    const metadata = requestMetadata(request, this.auth.pepper);
+    return {
+      data: await this.invoices.deleteDraft(
+        request.organization,
+        request.auth.user,
+        invoiceId,
+        metadata,
+      ),
+    };
+  }
+
+  @Patch(':invoiceId/expected-payment-date')
+  @RequirePermission('sales.invoices.manage')
+  async setExpectedPaymentDate(
+    @Param('invoiceId', new ParseUUIDPipe()) invoiceId: string,
+    @Body() input: SetExpectedPaymentDateDto,
+    @Req() request: OrganizationRequest,
+  ) {
+    const metadata = requestMetadata(request, this.auth.pepper);
+    return {
+      data: await this.invoices.setExpectedPaymentDate(
+        request.organization,
+        request.auth.user,
+        invoiceId,
+        input,
+        metadata,
+      ),
+    };
+  }
+
+  @Post(':invoiceId/reminders/stop')
+  @HttpCode(200)
+  @RequirePermission('sales.documents.send')
+  async stopReminders(
+    @Param('invoiceId', new ParseUUIDPipe()) invoiceId: string,
+    @Req() request: OrganizationRequest,
+  ) {
+    const metadata = requestMetadata(request, this.auth.pepper);
+    return {
+      data: await this.invoices.setRemindersStopped(
+        request.organization,
+        request.auth.user,
+        invoiceId,
+        true,
+        metadata,
+      ),
+    };
+  }
+
+  @Post(':invoiceId/reminders/resume')
+  @HttpCode(200)
+  @RequirePermission('sales.documents.send')
+  async resumeReminders(
+    @Param('invoiceId', new ParseUUIDPipe()) invoiceId: string,
+    @Req() request: OrganizationRequest,
+  ) {
+    const metadata = requestMetadata(request, this.auth.pepper);
+    return {
+      data: await this.invoices.setRemindersStopped(
+        request.organization,
+        request.auth.user,
+        invoiceId,
+        false,
+        metadata,
+      ),
+    };
+  }
+
+  @Post(':invoiceId/write-off')
+  @HttpCode(200)
+  @RequirePermission('sales.invoices.void')
+  async writeOff(
+    @Param('invoiceId', new ParseUUIDPipe()) invoiceId: string,
+    @Body() input: WriteOffInvoiceDto,
+    @Req() request: OrganizationRequest,
+  ) {
+    const metadata = requestMetadata(request, this.auth.pepper);
+    return {
+      data: await this.invoices.writeOff(
         request.organization,
         request.auth.user,
         invoiceId,

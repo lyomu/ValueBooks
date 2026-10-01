@@ -567,6 +567,8 @@ export class InventoryService {
     input: RecordPurchaseOrderReceiptDto,
     metadata: RequestMetadata,
     tx: Tx,
+    // Internal seed/backfill override for the stock movement date. Defaults to today.
+    businessDate?: string,
   ) {
     const order = await tx.purchaseOrder.findFirst({
       where: { id: orderId, organizationId: context.id },
@@ -597,7 +599,7 @@ export class InventoryService {
       await this.createInboundLayer(tx, context, user, {
         itemId: line.item.id,
         warehouseId,
-        movementDate: isoDate(dateOnly(new Date())),
+        movementDate: isoDate(businessDate ?? dateOnly(new Date())),
         quantityScaled,
         totalCostMinor,
         sourceType: 'PURCHASE_RECEIPT',

@@ -24,10 +24,11 @@ import {
   type DataTableColumn,
 } from '@valuebooks/ui';
 import { Play, Plus, Save, Search, XCircle } from 'lucide-react';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 
 import { ApiError, apiRequest } from '../lib/api';
 import { hasPermission, useWorkspace } from '../lib/workspace';
+import { OperationalListing } from './operational-listing';
 
 type TemplateListResponse = { data: RecurringBillTemplate[] };
 type VendorListResponse = { data: Vendor[] };
@@ -71,7 +72,6 @@ export function RecurringBillsPage() {
   const [taxCodes, setTaxCodes] = useState<TaxCode[]>([]);
   const [accounts, setAccounts] = useState<LedgerAccount[]>([]);
   const [templates, setTemplates] = useState<RecurringBillTemplate[] | null>(null);
-  const [query, setQuery] = useState('');
   const [editing, setEditing] = useState<RecurringBillTemplate | null>(null);
   const [showCreate, setShowCreate] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -112,14 +112,6 @@ export function RecurringBillsPage() {
   useEffect(() => {
     void load();
   }, [load]);
-
-  const filtered = useMemo(() => {
-    const needle = query.trim().toLowerCase();
-    if (!needle) return templates ?? [];
-    return (templates ?? []).filter((template) =>
-      template.vendorName.toLowerCase().includes(needle),
-    );
-  }, [templates, query]);
 
   const currency = vendors.find((vendor) => vendor.id === vendorId)?.currency ?? 'KES';
 
@@ -277,12 +269,28 @@ export function RecurringBillsPage() {
   }
 
   const columns: readonly DataTableColumn<RecurringBillTemplate>[] = [
-    { key: 'vendor', header: 'Vendor', cell: (template) => template.vendorName },
-    { key: 'cadence', header: 'Cadence', cell: (template) => template.cadence },
-    { key: 'nextRun', header: 'Next run', cell: (template) => template.nextRunDate },
+    {
+      key: 'vendor',
+      header: 'Vendor',
+      value: (template) => template.vendorName,
+      cell: (template) => template.vendorName,
+    },
+    {
+      key: 'cadence',
+      header: 'Cadence',
+      value: (template) => template.cadence,
+      cell: (template) => template.cadence,
+    },
+    {
+      key: 'nextRun',
+      header: 'Next run',
+      value: (template) => template.nextRunDate,
+      cell: (template) => template.nextRunDate,
+    },
     {
       key: 'status',
       header: 'Status',
+      value: (template) => (template.active ? 'ACTIVE' : 'INACTIVE'),
       cell: (template) => <StatusBadge status={template.active ? 'ACTIVE' : 'INACTIVE'} />,
     },
     {
@@ -320,26 +328,6 @@ export function RecurringBillsPage() {
 
   return (
     <>
-      <PageHeader
-        title="Recurring bills"
-        description="Templates that generate bills on a schedule."
-        actions={
-          canManage ? (
-            <div className="rb-inline-actions">
-              <Button
-                variant="outline"
-                onClick={() => void runDueTemplates()}
-                loading={busy === 'run-due'}
-              >
-                <Play aria-hidden="true" /> Run due templates now
-              </Button>
-              <Button onClick={openCreate}>
-                <Plus aria-hidden="true" /> New template
-              </Button>
-            </div>
-          ) : null
-        }
-      />
       <div className="rb-ledger-stack">
         {error ? (
           <div className="rb-auth-error" role="alert">
@@ -535,30 +523,50 @@ export function RecurringBillsPage() {
           </Card>
         ) : null}
 
-        <Card className="rb-ledger-toolbar">
-          <div className="rb-field">
-            <Label htmlFor="rb-template-search">
-              <Search aria-hidden="true" /> Search templates
-            </Label>
-            <Input
-              id="rb-template-search"
-              value={query}
-              onChange={(event) => setQuery(event.target.value)}
-              placeholder="Search by vendor..."
-            />
-          </div>
-          <Badge>{templates?.length ?? 0} templates</Badge>
-        </Card>
-
         {!templates && !error ? (
           <Skeleton />
-        ) : filtered.length === 0 ? (
-          <EmptyState
-            title="No recurring templates yet"
-            description="Create a template to generate bills on a schedule."
-          />
         ) : (
-          <DataTable caption="Recurring bills" columns={columns} rows={filtered} />
+          <OperationalListing
+            title="All recurring bills"
+            rows={templates ?? []}
+            columns={columns}
+            searchText={(template) =>
+              `${template.vendorName} ${template.cadence} ${template.nextRunDate} ${template.active ? 'active' : 'inactive'}`
+            }
+            primaryAction={
+              canManage ? (
+                <div className="rb-inline-actions">
+                  <Button
+                    variant="outline"
+                    onClick={() => void runDueTemplates()}
+                    loading={busy === 'run-due'}
+                  >
+                    <Play aria-hidden="true" /> Run due
+                  </Button>
+                  <Button onClick={openCreate}>
+                    <Plus aria-hidden="true" /> New
+                  </Button>
+                </div>
+              ) : null
+            }
+            onRefresh={() => void load()}
+            importEnabled={false}
+            emptyState={{
+              title: 'Create. Set. Repeat.',
+              description: 'Set up recurring bills so supplier charges are created on the cadence you choose.',
+              illustration: 'purchases',
+              variant: 'onboarding',
+              benefits: [
+                'Choose a vendor, cadence, and review rules.',
+                'Generate bills automatically when the next run date arrives.',
+              ],
+            }}
+            noResultsState={{
+              title: 'No recurring bills match this view',
+              description: 'Try a different search term or clear the active filters.',
+              variant: 'no-results',
+            }}
+          />
         )}
       </div>
     </>

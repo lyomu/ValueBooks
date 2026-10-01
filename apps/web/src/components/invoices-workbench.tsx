@@ -2,7 +2,6 @@
 
 import type { Contact, Invoice, InvoiceStatus, Item, TaxCode } from '@valuebooks/contracts';
 import {
-  Badge,
   Button,
   Card,
   DataTable,
@@ -17,13 +16,31 @@ import {
   StatusBadge,
   type DataTableColumn,
 } from '@valuebooks/ui';
-import { CheckCircle2, FilePlus2, Mail, Save, Search, XCircle } from 'lucide-react';
+import {
+  ArrowUpRight,
+  CheckCircle2,
+  ChevronDown,
+  CircleDollarSign,
+  FilePlus2,
+  Filter,
+  Mail,
+  Plus,
+  ReceiptText,
+  Save,
+  Search,
+  XCircle,
+} from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import { ApiError, apiRequest } from '../lib/api';
 import { hasPermission, useWorkspace } from '../lib/workspace';
+import { CustomerDialog } from './customer-dialog';
+import { ItemDialog } from './item-dialog';
+import { InvoiceDetailPane } from './invoice-detail-pane';
+import { daysOverdue, formatInvoiceDate, formatMinor } from './invoice-format';
+import { RecordDetailWorkspace } from './record-detail-workspace';
 import { TransactionCollaboration } from './transaction-collaboration';
 
 type InvoiceListResponse = { data: Invoice[] };
@@ -72,6 +89,7 @@ export function InvoicesPage() {
   const [invoices, setInvoices] = useState<Invoice[] | null>(null);
   const [statusFilter, setStatusFilter] = useState<'' | InvoiceStatus>('');
   const [query, setQuery] = useState('');
+  const [selectedInvoiceId, setSelectedInvoiceId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
@@ -100,21 +118,70 @@ export function InvoicesPage() {
     );
   }, [invoices, query]);
 
+  const summaryCurrency = organization?.baseCurrency ?? invoices?.[0]?.currency ?? 'KES';
+  const receivables = useMemo(() => {
+    const today = new Date().toISOString().slice(0, 10);
+    const thirtyDays = new Date();
+    thirtyDays.setDate(thirtyDays.getDate() + 30);
+    const windowEnd = thirtyDays.toISOString().slice(0, 10);
+
+    return (invoices ?? []).reduce(
+      (summary, invoice) => {
+        if (invoice.currency !== summaryCurrency || invoice.status === 'VOID') return summary;
+        const balance = BigInt(invoice.balanceMinor);
+        if (balance <= 0n) return summary;
+
+        summary.outstanding += balance;
+        if (invoice.dueDate === today) summary.dueToday += balance;
+        if (invoice.dueDate && invoice.dueDate > today && invoice.dueDate <= windowEnd) {
+          summary.dueSoon += balance;
+        }
+        if (invoice.status === 'OVERDUE' || (invoice.dueDate && invoice.dueDate < today)) {
+          summary.overdue += balance;
+          summary.overdueCount += 1;
+        }
+        return summary;
+      },
+      { outstanding: 0n, dueToday: 0n, dueSoon: 0n, overdue: 0n, overdueCount: 0 },
+    );
+  }, [invoices, summaryCurrency]);
+
   const columns: readonly DataTableColumn<Invoice>[] = [
     {
-      key: 'invoice',
-      header: 'Invoice',
+      key: 'date',
+      header: 'Date',
       cell: (invoice) => (
-        <div>
-          <strong>{invoice.invoiceNumber ?? 'Draft'}</strong>
-          <span className="rb-table-secondary">{invoice.contactName}</span>
-        </div>
+        <span className="rb-invoice-date">{formatInvoiceDate(invoice.issueDate)}</span>
+      ),
+      hideBelow: 'desktop',
+    },
+    {
+      key: 'invoice',
+      header: 'Invoice #',
+      cell: (invoice) => (
+        <Link
+          className="rb-invoice-number"
+          href={`/invoices/${invoice.id}`}
+          onClick={(event) => {
+            event.preventDefault();
+            setSelectedInvoiceId(invoice.id);
+          }}
+        >
+          {invoice.invoiceNumber ?? 'Draft'}
+        </Link>
       ),
     },
+    { key: 'customer', header: 'Customer', cell: (invoice) => invoice.contactName },
     { key: 'status', header: 'Status', cell: (invoice) => <StatusBadge status={invoice.status} /> },
     {
+      key: 'due-date',
+      header: 'Due date',
+      cell: (invoice) => formatInvoiceDate(invoice.dueDate),
+      hideBelow: 'desktop',
+    },
+    {
       key: 'total',
-      header: 'Total',
+      header: 'Amount',
       align: 'right',
       cell: (invoice) => formatMinor(invoice.totalMinor, invoice.currency),
     },
@@ -127,11 +194,13 @@ export function InvoicesPage() {
     },
     {
       key: 'open',
-      header: '',
+      header: <span className="rb-visually-hidden">Open</span>,
       align: 'right',
       cell: (invoice) => (
         <Button asChild variant="ghost" size="sm">
-          <Link href={`/invoices/${invoice.id}`}>Open</Link>
+          <Link href={`/invoices/${invoice.id}`}>
+            Open <ArrowUpRight aria-hidden="true" />
+          </Link>
         </Button>
       ),
     },
@@ -143,11 +212,99 @@ export function InvoicesPage() {
     );
   }
 
+  const selectedInvoice = invoices?.find((invoice) => invoice.id === selectedInvoiceId);
+  if (selectedInvoice) {
+    return (
+      <RecordDetailWorkspace
+        variant="compact"
+        title="Invoices"
+        records={invoices ?? []}
+        selectedId={selectedInvoice.id}
+        onSelect={(invoice) => setSelectedInvoiceId(invoice.id)}
+        onClose={() => setSelectedInvoiceId(null)}
+        searchText={(invoice) =>
+          `${invoice.invoiceNumber ?? ''} ${invoice.contactName} ${invoice.status}`
+        }
+        railHeader={
+          <>
+            <button
+              type="button"
+              className="rb-record-workspace__title-button"
+              onClick={() => setSelectedInvoiceId(null)}
+              aria-label="Return to all invoices"
+            >
+              All Invoices
+              <ChevronDown aria-hidden="true" />
+            </button>
+            {canManage ? (
+              <Link
+                className="rb-record-workspace__new"
+                href="/invoices/new"
+                aria-label="New invoice"
+              >
+                <Plus aria-hidden="true" />
+              </Link>
+            ) : null}
+          </>
+        }
+        renderRailRecord={(invoice) => {
+          const overdueDays = daysOverdue(invoice.dueDate, invoice.balanceMinor, invoice.status);
+          return (
+            <>
+              <span className="rb-invoice-rail__top">
+                <strong>{invoice.contactName}</strong>
+                <span className="rb-invoice-rail__amount">
+                  {formatMinor(invoice.totalMinor, invoice.currency)}
+                </span>
+              </span>
+              <span className="rb-invoice-rail__meta">
+                {invoice.invoiceNumber ?? 'Draft'} · {formatInvoiceDate(invoice.issueDate)}
+              </span>
+              {overdueDays > 0 ? (
+                <span className="rb-invoice-rail__status is-overdue">
+                  OVERDUE BY {overdueDays} {overdueDays === 1 ? 'DAY' : 'DAYS'}
+                </span>
+              ) : (
+                <span className="rb-invoice-rail__status">
+                  {invoice.status.replaceAll('_', ' ')}
+                </span>
+              )}
+            </>
+          );
+        }}
+        detailTitle={(invoice) => <h1>{invoice.invoiceNumber ?? 'Draft invoice'}</h1>}
+        renderDetail={(invoice) => (
+          <InvoiceDetailPane
+            invoice={invoice}
+            organizationId={organizationId ?? ''}
+            organizationName={organization?.tradingName ?? organization?.legalName ?? 'ValueBooks'}
+            permissions={{
+              canManage,
+              canIssue: hasPermission(organization, 'sales.invoices.issue'),
+              canVoid: hasPermission(organization, 'sales.invoices.void'),
+              canSend: hasPermission(organization, 'sales.documents.send'),
+              canRecordPayment: hasPermission(organization, 'sales.payments.record'),
+              canAllocatePayment: hasPermission(organization, 'sales.payments.allocate'),
+              canCreateCreditNote: hasPermission(organization, 'sales.credit_notes.manage'),
+              canManageRecurring: hasPermission(organization, 'sales.recurring_invoices.manage'),
+              canViewNumbering: hasPermission(organization, 'numbering.view'),
+            }}
+            onChanged={load}
+            onDeleted={async () => {
+              setSelectedInvoiceId(null);
+              await load();
+            }}
+          />
+        )}
+      />
+    );
+  }
+
   return (
     <>
       <PageHeader
-        title="Invoices"
-        description="Draft, issue, and void customer invoices."
+        title="All invoices"
+        className="rb-invoice-list__header"
         actions={
           canManage ? (
             <Button asChild>
@@ -158,59 +315,98 @@ export function InvoicesPage() {
           ) : null
         }
       />
-      <div className="rb-ledger-stack">
+      <div className="rb-invoice-list">
         {error ? (
           <div className="rb-auth-error" role="alert">
             {error}
           </div>
         ) : null}
 
-        <Card className="rb-ledger-toolbar">
-          <div className="rb-field">
-            <Label htmlFor="invoice-search">
-              <Search aria-hidden="true" /> Search invoices
-            </Label>
-            <Input
-              id="invoice-search"
-              value={query}
-              onChange={(event) => setQuery(event.target.value)}
-              placeholder="Search by invoice number or customer..."
-            />
+        <section className="rb-invoice-receivables" aria-labelledby="invoice-receivables-heading">
+          <div className="rb-invoice-receivables__heading">
+            <span className="rb-invoice-receivables__icon">
+              <CircleDollarSign aria-hidden="true" />
+            </span>
+            <div>
+              <p id="invoice-receivables-heading">Receivables overview</p>
+              <span>Open customer balances in {summaryCurrency}</span>
+            </div>
           </div>
-          <div className="rb-field">
-            <Label htmlFor="invoice-status">Status</Label>
-            <Select
-              id="invoice-status"
-              value={statusFilter}
-              onChange={(event) => setStatusFilter(event.target.value as typeof statusFilter)}
-            >
-              <option value="">All invoices</option>
-              {statusOptions.map((status) => (
-                <option key={status} value={status}>
-                  {status}
-                </option>
-              ))}
-            </Select>
+          <div className="rb-invoice-receivables__metrics">
+            <div>
+              <span>Outstanding</span>
+              <strong>{formatMinor(receivables.outstanding.toString(), summaryCurrency)}</strong>
+            </div>
+            <div>
+              <span>Due today</span>
+              <strong className="is-attention">
+                {formatMinor(receivables.dueToday.toString(), summaryCurrency)}
+              </strong>
+            </div>
+            <div>
+              <span>Due within 30 days</span>
+              <strong>{formatMinor(receivables.dueSoon.toString(), summaryCurrency)}</strong>
+            </div>
+            <div>
+              <span>Overdue</span>
+              <strong className={receivables.overdueCount > 0 ? 'is-risk' : ''}>
+                {formatMinor(receivables.overdue.toString(), summaryCurrency)}
+              </strong>
+              <small>{receivables.overdueCount} open</small>
+            </div>
           </div>
-          <Badge>{invoices?.length ?? 0} invoices</Badge>
-        </Card>
+        </section>
 
-        {!invoices && !error ? (
-          <Skeleton />
-        ) : filtered.length === 0 ? (
-          <EmptyState
-            title="No invoices yet"
-            description="Create your first invoice to start billing customers."
-          />
-        ) : (
-          <DataTable caption="Invoices" columns={columns} rows={filtered} />
-        )}
+        <section className="rb-invoice-list__table" aria-label="Invoice records">
+          <div className="rb-invoice-list__controls">
+            <div className="rb-invoice-list__search">
+              <Search aria-hidden="true" />
+              <Input
+                id="invoice-search"
+                value={query}
+                onChange={(event) => setQuery(event.target.value)}
+                placeholder="Search invoice number or customer"
+                aria-label="Search invoices"
+              />
+            </div>
+            <div className="rb-invoice-list__filter">
+              <Filter aria-hidden="true" />
+              <Label htmlFor="invoice-status">Status</Label>
+              <Select
+                id="invoice-status"
+                value={statusFilter}
+                onChange={(event) => setStatusFilter(event.target.value as typeof statusFilter)}
+              >
+                <option value="">All statuses</option>
+                {statusOptions.map((status) => (
+                  <option key={status} value={status}>
+                    {status.replaceAll('_', ' ')}
+                  </option>
+                ))}
+              </Select>
+            </div>
+            <span className="rb-invoice-list__count">{filtered.length} shown</span>
+          </div>
+
+          {!invoices && !error ? (
+            <Skeleton />
+          ) : filtered.length === 0 ? (
+            <EmptyState
+              title="No invoices yet"
+              description="Create your first invoice to start billing customers."
+            />
+          ) : (
+            <DataTable caption="Invoices" columns={columns} rows={filtered} />
+          )}
+        </section>
       </div>
     </>
   );
 }
 
 const INVOICE_FLASH_NOTICE_KEY = 'rb-invoice-notice';
+const NEW_CATALOG_ITEM_VALUE = '__new_catalog_item__';
+const NEW_CUSTOMER_VALUE = '__new_customer__';
 
 export function InvoiceEditorPage({ invoiceId }: { invoiceId?: string }) {
   const router = useRouter();
@@ -227,6 +423,8 @@ export function InvoiceEditorPage({ invoiceId }: { invoiceId?: string }) {
   const [taxCodes, setTaxCodes] = useState<TaxCode[]>([]);
   const [invoice, setInvoice] = useState<Invoice | null>(null);
   const [contactId, setContactId] = useState('');
+  const [customerDialogOpen, setCustomerDialogOpen] = useState(false);
+  const [itemDialogOpen, setItemDialogOpen] = useState(false);
   const [dueDate, setDueDate] = useState('');
   const [lines, setLines] = useState<DraftLine[]>(() => [blankLine()]);
   const [busy, setBusy] = useState<string | null>(null);
@@ -314,6 +512,10 @@ export function InvoiceEditorPage({ invoiceId }: { invoiceId?: string }) {
   }
 
   function selectItem(key: string, itemId: string) {
+    if (itemId === NEW_CATALOG_ITEM_VALUE) {
+      setItemDialogOpen(true);
+      return;
+    }
     if (!itemId) {
       updateLine(key, { itemId: '' });
       return;
@@ -324,10 +526,18 @@ export function InvoiceEditorPage({ invoiceId }: { invoiceId?: string }) {
     );
     updateLine(key, {
       itemId,
-      description: item?.name ?? '',
+      description: item?.salesDescription || item?.name || '',
       unitPrice: price ? minorToDecimal(price.unitPriceMinor) : '',
       taxCodeId: item?.defaultTaxCodeId ?? '',
     });
+  }
+
+  function selectCustomer(nextContactId: string) {
+    if (nextContactId === NEW_CUSTOMER_VALUE) {
+      setCustomerDialogOpen(true);
+      return;
+    }
+    setContactId(nextContactId);
   }
 
   async function saveDraft() {
@@ -465,154 +675,33 @@ export function InvoiceEditorPage({ invoiceId }: { invoiceId?: string }) {
         ) : null}
         {invoiceId && !invoice && !error ? <Skeleton /> : null}
 
-        <Card className="rb-journal-editor">
-          <div className="rb-journal-editor__meta">
-            <div className="rb-field">
-              <Label htmlFor="invoice-customer">Customer</Label>
-              <Select
-                id="invoice-customer"
-                value={contactId}
-                disabled={!editable}
-                onChange={(event) => setContactId(event.target.value)}
-              >
-                <option value="">Choose customer</option>
-                {customers.map((customer) => (
-                  <option key={customer.id} value={customer.id}>
-                    {customer.displayName}
-                  </option>
-                ))}
-              </Select>
-            </div>
-            <div className="rb-field">
-              <Label htmlFor="invoice-due-date">Due date</Label>
-              <Input
-                id="invoice-due-date"
-                type="date"
-                value={dueDate}
-                disabled={!editable}
-                onChange={(event) => setDueDate(event.target.value)}
-              />
-            </div>
-            <div className="rb-field">
-              <Label htmlFor="invoice-currency">Currency</Label>
-              <Input id="invoice-currency" value={currency} disabled />
-            </div>
-            {invoice ? <StatusBadge status={invoice.status} /> : null}
-          </div>
-
-          <div className="rb-journal-lines" role="table" aria-label="Invoice lines">
-            <div className="rb-journal-lines__head" role="row">
-              <span>Item</span>
-              <span>Description</span>
-              <span>Qty</span>
-              <span>Unit price</span>
-              <span>Discount</span>
-              <span>Tax</span>
-              <span>Line total</span>
-              <span />
-            </div>
-            {lines.map((line, index) => {
-              const item = items.find((candidate) => candidate.id === line.itemId);
-              const lineTotalMinor = previewLineTotalMinor(
-                line.quantity,
-                line.unitPrice,
-                line.discount,
-              );
-              return (
-                <div className="rb-journal-lines__row" role="row" key={line.key}>
-                  <Select
-                    aria-label={`Item for line ${index + 1}`}
-                    value={line.itemId}
-                    disabled={!editable}
-                    onChange={(event) => selectItem(line.key, event.target.value)}
-                  >
-                    <option value="">Free-text line</option>
-                    {items.map((candidate) => (
-                      <option key={candidate.id} value={candidate.id}>
-                        {candidate.sku ? `${candidate.sku} ${candidate.name}` : candidate.name}
-                      </option>
-                    ))}
-                  </Select>
-                  <Input
-                    aria-label={`Description for line ${index + 1}`}
-                    value={line.description}
-                    disabled={!editable || Boolean(item && !item.freeDescriptionAllowed)}
-                    onChange={(event) => updateLine(line.key, { description: event.target.value })}
-                  />
-                  <Input
-                    aria-label={`Quantity for line ${index + 1}`}
-                    inputMode="decimal"
-                    value={line.quantity}
-                    disabled={!editable}
-                    onChange={(event) => updateLine(line.key, { quantity: event.target.value })}
-                  />
-                  <Input
-                    aria-label={`Unit price for line ${index + 1}`}
-                    inputMode="decimal"
-                    value={line.unitPrice}
-                    disabled={!editable}
-                    onChange={(event) => updateLine(line.key, { unitPrice: event.target.value })}
-                  />
-                  <Input
-                    aria-label={`Discount for line ${index + 1}`}
-                    inputMode="decimal"
-                    value={line.discount}
-                    disabled={!editable}
-                    onChange={(event) => updateLine(line.key, { discount: event.target.value })}
-                  />
-                  <Select
-                    aria-label={`Tax code for line ${index + 1}`}
-                    value={line.taxCodeId}
-                    disabled={!editable}
-                    onChange={(event) => updateLine(line.key, { taxCodeId: event.target.value })}
-                  >
-                    <option value="">No tax</option>
-                    {taxCodes.map((code) => (
-                      <option key={code.id} value={code.id}>
-                        {code.code}
-                      </option>
-                    ))}
-                  </Select>
-                  <span className="rb-table-secondary rb-num">
-                    {formatMinor(lineTotalMinor.toString(), currency)}
+        <section className="rb-invoice-detail" aria-label="Invoice">
+          <Card className="rb-invoice-detail__hero">
+            <header className="rb-invoice-detail__hero-head">
+              <div className="rb-invoice-detail__hero-id">
+                <span className="rb-invoice-editor__heading-icon">
+                  <ReceiptText aria-hidden="true" />
+                </span>
+                <div>
+                  <p>
+                    {invoice?.invoiceNumber
+                      ? `Invoice ${invoice.invoiceNumber}`
+                      : invoiceId
+                        ? 'Invoice draft'
+                        : 'New invoice'}
+                  </p>
+                  <span>
+                    {contact ? `Billed to ${contact.displayName}` : 'Choose a customer to begin.'}
                   </span>
-                  {editable ? (
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      type="button"
-                      onClick={() => removeLine(line.key)}
-                      aria-label={`Remove line ${index + 1}`}
-                    >
-                      <XCircle aria-hidden="true" />
-                    </Button>
-                  ) : (
-                    <span />
-                  )}
                 </div>
-              );
-            })}
-          </div>
-
-          <div className="rb-journal-editor__footer">
-            <div>
-              <span>Subtotal {formatMinor(subtotalPreviewMinor.toString(), currency)}</span>
-              {invoice && invoice.status !== 'DRAFT' ? (
-                <>
-                  <span>Tax {formatMinor(invoice.taxTotalMinor, currency)}</span>
-                  <span>Total {formatMinor(invoice.totalMinor, currency)}</span>
-                  <span>Balance {formatMinor(invoice.balanceMinor, currency)}</span>
-                </>
-              ) : (
-                <Badge tone="info">Tax is calculated when the invoice is issued</Badge>
-              )}
-            </div>
-            <div className="rb-dialog-footer">
-              {editable ? (
-                <>
-                  <Button type="button" variant="outline" onClick={addLine}>
-                    Add line
-                  </Button>
+              </div>
+              <div className="rb-invoice-detail__hero-actions">
+                {invoice ? (
+                  <StatusBadge status={invoice.status} />
+                ) : (
+                  <span className="rb-invoice-editor__draft">Draft</span>
+                )}
+                {editable ? (
                   <Button
                     type="button"
                     onClick={() => void saveDraft()}
@@ -621,43 +710,315 @@ export function InvoiceEditorPage({ invoiceId }: { invoiceId?: string }) {
                   >
                     <Save aria-hidden="true" /> Save draft
                   </Button>
-                </>
-              ) : null}
-              {invoice?.status === 'DRAFT' && canIssue ? (
-                <Button
-                  type="button"
-                  onClick={() => void issueInvoice()}
-                  loading={busy === 'issue'}
-                >
-                  <CheckCircle2 aria-hidden="true" /> Issue
-                </Button>
-              ) : null}
-              {canVoidNow ? (
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => void voidInvoice()}
-                  loading={busy === 'void'}
-                >
-                  <XCircle aria-hidden="true" /> Void
-                </Button>
-              ) : null}
-              {canSendNow ? (
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => void sendInvoice()}
-                  loading={busy === 'send'}
-                >
-                  <Mail aria-hidden="true" /> Send
-                </Button>
-              ) : null}
-            </div>
+                ) : null}
+                {invoice?.status === 'DRAFT' && canIssue ? (
+                  <Button
+                    type="button"
+                    onClick={() => void issueInvoice()}
+                    loading={busy === 'issue'}
+                  >
+                    <CheckCircle2 aria-hidden="true" /> Issue
+                  </Button>
+                ) : null}
+                {canSendNow ? (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => void sendInvoice()}
+                    loading={busy === 'send'}
+                  >
+                    <Mail aria-hidden="true" /> Send
+                  </Button>
+                ) : null}
+                {canVoidNow ? (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => void voidInvoice()}
+                    loading={busy === 'void'}
+                  >
+                    <XCircle aria-hidden="true" /> Void
+                  </Button>
+                ) : null}
+              </div>
+            </header>
+
+            <dl className="rb-invoice-detail__metrics">
+              <div>
+                <dt>Amount</dt>
+                <dd className="rb-num">
+                  {invoice && invoice.status !== 'DRAFT'
+                    ? formatMinor(invoice.totalMinor, currency)
+                    : formatMinor(subtotalPreviewMinor.toString(), currency)}
+                </dd>
+              </div>
+              <div>
+                <dt>Balance due</dt>
+                <dd className={`rb-num${invoice?.status === 'OVERDUE' ? ' is-risk' : ''}`}>
+                  {invoice && invoice.status !== 'DRAFT'
+                    ? formatMinor(invoice.balanceMinor, currency)
+                    : '—'}
+                </dd>
+              </div>
+              <div>
+                <dt>Due date</dt>
+                <dd>{formatInvoiceDate(invoice?.dueDate ?? dueDate)}</dd>
+              </div>
+            </dl>
+          </Card>
+
+          <div className="rb-invoice-detail__panels">
+            <Card className="rb-invoice-detail__panel rb-invoice-detail__panel-bill">
+              <h2>Bill to</h2>
+              {editable ? (
+                <div className="rb-field">
+                  <Label htmlFor="invoice-customer">Customer</Label>
+                  <Select
+                    id="invoice-customer"
+                    value={contactId}
+                    onChange={(event) => selectCustomer(event.target.value)}
+                  >
+                    <option value="">Choose customer</option>
+                    {customers.map((customer) => (
+                      <option key={customer.id} value={customer.id}>
+                        {customer.displayName}
+                      </option>
+                    ))}
+                    <option value={NEW_CUSTOMER_VALUE}>＋ Add new customer</option>
+                  </Select>
+                </div>
+              ) : (
+                <p className="rb-invoice-detail__contact">{invoice?.contactName}</p>
+              )}
+            </Card>
+
+            <Card className="rb-invoice-detail__panel rb-invoice-detail__panel-dates">
+              <h2>Invoice details</h2>
+              <dl className="rb-invoice-detail__meta">
+                <div>
+                  <dt>Issue date</dt>
+                  <dd>{invoice?.issueDate ? formatInvoiceDate(invoice.issueDate) : '—'}</dd>
+                </div>
+                <div>
+                  <dt>Due date</dt>
+                  <dd>
+                    {editable ? (
+                      <Input
+                        aria-label="Due date"
+                        type="date"
+                        value={dueDate}
+                        onChange={(event) => setDueDate(event.target.value)}
+                      />
+                    ) : (
+                      formatInvoiceDate(invoice?.dueDate ?? dueDate)
+                    )}
+                  </dd>
+                </div>
+                <div>
+                  <dt>Currency</dt>
+                  <dd>{currency}</dd>
+                </div>
+              </dl>
+            </Card>
+
+            <Card className="rb-invoice-detail__panel rb-invoice-detail__panel-summary">
+              <h2>Summary</h2>
+              <dl className="rb-invoice-detail__summary">
+                <div>
+                  <dt>Subtotal</dt>
+                  <dd className="rb-num">
+                    {invoice && invoice.status !== 'DRAFT'
+                      ? formatMinor(invoice.subtotalMinor, currency)
+                      : formatMinor(subtotalPreviewMinor.toString(), currency)}
+                  </dd>
+                </div>
+                <div>
+                  <dt>Tax</dt>
+                  <dd className="rb-num">
+                    {invoice && invoice.status !== 'DRAFT'
+                      ? formatMinor(invoice.taxTotalMinor, currency)
+                      : 'Calculated on issue'}
+                  </dd>
+                </div>
+                <div className="rb-invoice-detail__total-row">
+                  <dt>Total</dt>
+                  <dd className="rb-num">
+                    {invoice && invoice.status !== 'DRAFT'
+                      ? formatMinor(invoice.totalMinor, currency)
+                      : formatMinor(subtotalPreviewMinor.toString(), currency)}
+                  </dd>
+                </div>
+                {invoice && invoice.status !== 'DRAFT' ? (
+                  <div>
+                    <dt>Paid</dt>
+                    <dd className="rb-num">{formatMinor(invoice.paidMinor, currency)}</dd>
+                  </div>
+                ) : null}
+                {invoice && invoice.status !== 'DRAFT' ? (
+                  <div className="rb-invoice-detail__total-row">
+                    <dt>Balance due</dt>
+                    <dd className={`rb-num${invoice.status === 'OVERDUE' ? ' is-risk' : ''}`}>
+                      {formatMinor(invoice.balanceMinor, currency)}
+                    </dd>
+                  </div>
+                ) : null}
+              </dl>
+            </Card>
           </div>
+
+          <Card className="rb-invoice-detail__items">
+            <section className="rb-invoice-editor__items" aria-labelledby="invoice-items-heading">
+              <header className="rb-invoice-editor__section-heading">
+                <div>
+                  <p id="invoice-items-heading">Line items</p>
+                  <span>Select a product or service from your active catalog.</span>
+                </div>
+                {editable ? (
+                  <Button type="button" variant="outline" size="sm" onClick={addLine}>
+                    <FilePlus2 aria-hidden="true" /> Add row
+                  </Button>
+                ) : null}
+              </header>
+
+              <div className="rb-invoice-lines" role="table" aria-label="Invoice lines">
+                <div className="rb-invoice-lines__head" role="row">
+                  <span>Item details</span>
+                  <span>Qty</span>
+                  <span>Rate</span>
+                  <span>Discount</span>
+                  <span>Tax</span>
+                  <span>Amount</span>
+                  <span />
+                </div>
+                {lines.map((line, index) => {
+                  const item = items.find((candidate) => candidate.id === line.itemId);
+                  const lineTotalMinor = previewLineTotalMinor(
+                    line.quantity,
+                    line.unitPrice,
+                    line.discount,
+                  );
+                  return (
+                    <div className="rb-invoice-lines__row" role="row" key={line.key}>
+                      <div className="rb-invoice-lines__item-detail">
+                        <Select
+                          aria-label={`Product or service for line ${index + 1}`}
+                          value={line.itemId}
+                          disabled={!editable}
+                          onChange={(event) => selectItem(line.key, event.target.value)}
+                        >
+                          <option value="">Select product or service</option>
+                          {items.map((candidate) => (
+                            <option key={candidate.id} value={candidate.id}>
+                              {candidate.sku
+                                ? `${candidate.sku} ${candidate.name}`
+                                : candidate.name}
+                            </option>
+                          ))}
+                          <option value={NEW_CATALOG_ITEM_VALUE}>
+                            ＋ Add new product or service
+                          </option>
+                        </Select>
+                        <Input
+                          aria-label={`Description for line ${index + 1}`}
+                          value={line.description}
+                          disabled={!editable || Boolean(item && !item.freeDescriptionAllowed)}
+                          onChange={(event) =>
+                            updateLine(line.key, { description: event.target.value })
+                          }
+                          placeholder="Add a description"
+                        />
+                      </div>
+                      <Input
+                        aria-label={`Quantity for line ${index + 1}`}
+                        inputMode="decimal"
+                        value={line.quantity}
+                        disabled={!editable}
+                        onChange={(event) => updateLine(line.key, { quantity: event.target.value })}
+                      />
+                      <Input
+                        aria-label={`Unit price for line ${index + 1}`}
+                        inputMode="decimal"
+                        value={line.unitPrice}
+                        disabled={!editable}
+                        onChange={(event) =>
+                          updateLine(line.key, { unitPrice: event.target.value })
+                        }
+                      />
+                      <Input
+                        aria-label={`Discount for line ${index + 1}`}
+                        inputMode="decimal"
+                        value={line.discount}
+                        disabled={!editable}
+                        onChange={(event) => updateLine(line.key, { discount: event.target.value })}
+                      />
+                      <Select
+                        aria-label={`Tax code for line ${index + 1}`}
+                        value={line.taxCodeId}
+                        disabled={!editable}
+                        onChange={(event) =>
+                          updateLine(line.key, { taxCodeId: event.target.value })
+                        }
+                      >
+                        <option value="">No tax</option>
+                        {taxCodes.map((code) => (
+                          <option key={code.id} value={code.id}>
+                            {code.code}
+                          </option>
+                        ))}
+                      </Select>
+                      <span className="rb-invoice-lines__amount rb-num">
+                        {formatMinor(lineTotalMinor.toString(), currency)}
+                      </span>
+                      {editable ? (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          type="button"
+                          onClick={() => removeLine(line.key)}
+                          aria-label={`Remove line ${index + 1}`}
+                        >
+                          <XCircle aria-hidden="true" />
+                        </Button>
+                      ) : (
+                        <span />
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </section>
+          </Card>
+
+          {editable ? (
+            <footer className="rb-invoice-editor__actionbar">
+              <span>
+                {contact
+                  ? `Billing ${contact.displayName}`
+                  : 'Choose a customer to save this draft.'}
+              </span>
+              <div className="rb-dialog-footer">
+                <Button
+                  type="button"
+                  onClick={() => void saveDraft()}
+                  loading={busy === 'save'}
+                  disabled={!contactId}
+                >
+                  <Save aria-hidden="true" /> Save draft
+                </Button>
+              </div>
+            </footer>
+          ) : (
+            <footer className="rb-invoice-detail__status-line">
+              <span>Issued to {invoice?.contactName}.</span>
+              <span>
+                Posted transactions are immutable — corrections use a credit note or reversal.
+              </span>
+            </footer>
+          )}
           {!contactId && editable ? (
             <FieldMessage error>Choose a customer before saving this invoice.</FieldMessage>
           ) : null}
-        </Card>
+        </section>
         {organizationId && invoiceId ? (
           <TransactionCollaboration
             organizationId={organizationId}
@@ -676,6 +1037,36 @@ export function InvoiceEditorPage({ invoiceId }: { invoiceId?: string }) {
           />
         ) : null}
       </div>
+      <CustomerDialog
+        open={customerDialogOpen}
+        onOpenChange={setCustomerDialogOpen}
+        organizationId={organizationId}
+        baseCurrency={organization?.baseCurrency ?? 'KES'}
+        canOverrideCurrency={hasPermission(organization, 'customers.currency_override')}
+        onSaved={(customer) => {
+          setCustomers((current) =>
+            [...current, customer].sort((left, right) =>
+              left.displayName.localeCompare(right.displayName),
+            ),
+          );
+          setContactId(customer.id);
+          setNotice(`${customer.displayName} was added and selected for this invoice.`);
+        }}
+      />
+      <ItemDialog
+        open={itemDialogOpen}
+        onOpenChange={setItemDialogOpen}
+        organizationId={organizationId}
+        currency={currency}
+        onSaved={(item) => {
+          setItems((current) =>
+            [...current, item].sort((left, right) => left.name.localeCompare(right.name)),
+          );
+          const availableLine = lines.find((line) => !line.itemId);
+          if (availableLine) selectItem(availableLine.key, item.id);
+          setNotice(`${item.name} was added to your catalog and selected for this invoice.`);
+        }}
+      />
     </>
   );
 }
@@ -703,12 +1094,3 @@ function minorToDecimal(value: string): string {
   return `${whole}.${cents.toString().padStart(2, '0')}`;
 }
 
-function formatMinor(value: string, currency: string): string {
-  const amount = BigInt(value);
-  const negative = amount < 0n;
-  const absolute = negative ? -amount : amount;
-  const whole = absolute / 100n;
-  const cents = absolute % 100n;
-  const formattedWhole = new Intl.NumberFormat('en-KE').format(Number(whole));
-  return `${negative ? '-' : ''}${currency} ${formattedWhole}.${cents.toString().padStart(2, '0')}`;
-}

@@ -321,6 +321,34 @@
   text-align: center;
 }
 
+.rb-empty-state--onboarding {
+  min-height: 25rem;
+  padding: var(--rb-space-10) var(--rb-space-5);
+}
+
+.rb-empty-state--no-results {
+  min-height: 11rem;
+  padding: var(--rb-space-6) var(--rb-space-5);
+}
+
+.rb-empty-state__illustration {
+  display: block;
+  width: 9.5rem;
+  height: 7rem;
+  margin-bottom: var(--rb-space-2);
+  background-image: url('/illustrations/valuebooks-empty-domains.png');
+  background-repeat: no-repeat;
+  background-size: 300% 200%;
+  filter: saturate(0.82) brightness(1.08);
+}
+
+.rb-empty-state__illustration--sales { background-position: 0 0; }
+.rb-empty-state__illustration--purchases { background-position: 50% 0; }
+.rb-empty-state__illustration--inventory { background-position: 100% 0; }
+.rb-empty-state__illustration--accounting { background-position: 0 100%; }
+.rb-empty-state__illustration--banking { background-position: 50% 100%; }
+.rb-empty-state__illustration--administration { background-position: 100% 100%; }
+
 .rb-empty-state__icon {
   display: grid;
   width: 3.5rem;
@@ -350,7 +378,38 @@
 }
 
 .rb-empty-state__action {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: var(--rb-space-2);
   margin-top: var(--rb-space-4);
+}
+
+.rb-empty-state__benefits {
+  display: grid;
+  gap: var(--rb-space-2);
+  max-width: 42rem;
+  margin: var(--rb-space-6) 0 0;
+  padding: var(--rb-space-4) var(--rb-space-5);
+  color: hsl(var(--rb-muted-foreground));
+  background: hsl(var(--rb-muted));
+  border: 1px solid hsl(var(--rb-border));
+  border-radius: var(--rb-radius-md);
+  font-size: 0.8125rem;
+  list-style: none;
+  text-align: left;
+}
+
+.rb-empty-state__benefits li::before {
+  margin-right: var(--rb-space-2);
+  color: hsl(var(--rb-success));
+  content: '✓';
+}
+
+@media (max-width: 42rem) {
+  .rb-empty-state--onboarding { min-height: 20rem; }
+  .rb-empty-state__illustration { width: 7.5rem; height: 5.5rem; }
 }
 
 .rb-spinner {

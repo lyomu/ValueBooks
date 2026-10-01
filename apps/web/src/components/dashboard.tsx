@@ -31,7 +31,6 @@ import {
 import {
   ArrowUpRight,
   BarChart3,
-  Book,
   BookOpenCheck,
   CalendarClock,
   FilePlus2,
@@ -204,18 +203,11 @@ export function Dashboard() {
         title="Dashboard"
         description="Your accounting position and controls at a glance."
         actions={
-          <>
-            <Button asChild variant="outline">
-              <Link href="/design-system">
-                <Book aria-hidden="true" /> Design system
-              </Link>
-            </Button>
-            <Button asChild>
-              <Link href="/journals/new">
-                <FilePlus2 aria-hidden="true" /> New journal
-              </Link>
-            </Button>
-          </>
+          <Button asChild>
+            <Link href="/journals/new">
+              <FilePlus2 aria-hidden="true" /> New journal
+            </Link>
+          </Button>
         }
       />
 

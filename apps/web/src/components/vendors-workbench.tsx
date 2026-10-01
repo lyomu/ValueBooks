@@ -18,11 +18,12 @@ import {
   type DataTableColumn,
 } from '@valuebooks/ui';
 import { Plus, Save, Search } from 'lucide-react';
-import { useCallback, useEffect, useMemo, useState, type FormEvent } from 'react';
+import { useCallback, useEffect, useState, type FormEvent } from 'react';
 
 import { ApiError, apiRequest } from '../lib/api';
 import { formValue } from '../lib/forms';
 import { hasPermission, useWorkspace } from '../lib/workspace';
+import { OperationalListing } from './operational-listing';
 
 type VendorResponse = { data: Vendor };
 type VendorListResponse = { data: Vendor[] };
@@ -38,7 +39,6 @@ export function VendorsPage() {
 
   const [vendors, setVendors] = useState<Vendor[] | null>(null);
   const [statusFilter, setStatusFilter] = useState<'' | 'ACTIVE' | 'INACTIVE'>('');
-  const [query, setQuery] = useState('');
   const [editing, setEditing] = useState<Vendor | null>(null);
   const [showCreate, setShowCreate] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -64,14 +64,6 @@ export function VendorsPage() {
   useEffect(() => {
     void load();
   }, [load]);
-
-  const filtered = useMemo(() => {
-    const needle = query.trim().toLowerCase();
-    if (!needle) return vendors ?? [];
-    return (vendors ?? []).filter((vendor) =>
-      `${vendor.displayName} ${vendor.email ?? ''}`.toLowerCase().includes(needle),
-    );
-  }, [vendors, query]);
 
   async function saveVendor(body: Record<string, unknown>) {
     if (!organizationId) return;
@@ -178,17 +170,27 @@ export function VendorsPage() {
     {
       key: 'name',
       header: 'Vendor',
-      cell: (vendor) => (
-        <>
-          <strong>{vendor.displayName}</strong>
-          {vendor.email ? <span> {vendor.email}</span> : null}
-        </>
-      ),
+      value: (vendor) => vendor.displayName,
+      cell: (vendor) => vendor.displayName,
     },
-    { key: 'currency', header: 'Currency', cell: (vendor) => vendor.currency },
+    {
+      key: 'email',
+      header: 'Email',
+      value: (vendor) => vendor.email ?? '',
+      cell: (vendor) =>
+        vendor.email ?? <span className="rb-table-empty">—</span>,
+      hideBelow: 'tablet',
+    },
+    {
+      key: 'currency',
+      header: 'Currency',
+      value: (vendor) => vendor.currency,
+      cell: (vendor) => vendor.currency,
+    },
     {
       key: 'status',
       header: 'Status',
+      value: (vendor) => vendor.status,
       cell: (vendor) => <StatusBadge status={vendor.status} />,
     },
     {
@@ -234,24 +236,6 @@ export function VendorsPage() {
 
   return (
     <>
-      <PageHeader
-        title="Vendors"
-        description="Everyone your organization pays."
-        actions={
-          canManage ? (
-            <Button
-              onClick={() => {
-                setEditing(null);
-                setShowCreate(true);
-                setDuplicateMatches(null);
-                setPendingBody(null);
-              }}
-            >
-              <Plus aria-hidden="true" /> Add vendor
-            </Button>
-          ) : null
-        }
-      />
       <div className="rb-ledger-stack">
         {error ? (
           <div className="rb-auth-error" role="alert">
@@ -385,42 +369,55 @@ export function VendorsPage() {
           </Card>
         ) : null}
 
-        <Card className="rb-ledger-toolbar">
-          <div className="rb-field">
-            <Label htmlFor="vendor-search">
-              <Search aria-hidden="true" /> Search vendors
-            </Label>
-            <Input
-              id="vendor-search"
-              value={query}
-              onChange={(event) => setQuery(event.target.value)}
-              placeholder="Search by name or email..."
-            />
-          </div>
-          <div className="rb-field">
-            <Label htmlFor="vendor-status">Status</Label>
-            <Select
-              id="vendor-status"
-              value={statusFilter}
-              onChange={(event) => setStatusFilter(event.target.value as typeof statusFilter)}
-            >
-              <option value="">All vendors</option>
-              <option value="ACTIVE">Active</option>
-              <option value="INACTIVE">Inactive</option>
-            </Select>
-          </div>
-          <Badge>{vendors?.length ?? 0} vendors</Badge>
-        </Card>
-
         {!vendors && !error ? (
           <Skeleton />
-        ) : filtered.length === 0 ? (
-          <EmptyState
-            title="No vendors yet"
-            description="Add your first vendor to start purchasing."
-          />
         ) : (
-          <DataTable caption="Vendors" columns={columns} rows={filtered} />
+          <OperationalListing
+            title={statusFilter === 'ACTIVE' ? 'Active vendors' : statusFilter === 'INACTIVE' ? 'Inactive vendors' : 'All vendors'}
+            rows={vendors ?? []}
+            columns={columns}
+            searchText={(vendor) => `${vendor.displayName} ${vendor.legalName ?? ''} ${vendor.email ?? ''} ${vendor.phone ?? ''}`}
+            filter={
+              <Select
+                aria-label="Vendor status"
+                value={statusFilter}
+                onChange={(event) => setStatusFilter(event.target.value as typeof statusFilter)}
+              >
+                <option value="">All statuses</option>
+                <option value="ACTIVE">Active</option>
+                <option value="INACTIVE">Inactive</option>
+              </Select>
+            }
+            primaryAction={
+              canManage ? (
+                <Button
+                  onClick={() => {
+                    setEditing(null);
+                    setShowCreate(true);
+                    setDuplicateMatches(null);
+                    setPendingBody(null);
+                  }}
+                >
+                  <Plus aria-hidden="true" /> New
+                </Button>
+              ) : null
+            }
+            onRefresh={() => void load()}
+            importEnabled={false}
+            onResetFilters={() => setStatusFilter('')}
+            emptyState={{
+              title: 'Every purchase starts with a vendor',
+              description: 'Create and manage your vendors and their contact details in one place.',
+              illustration: 'purchases',
+              variant: 'onboarding',
+              benefits: ['Keep vendor contact and payment details together.', 'Use vendors across bills, orders, and payments.'],
+            }}
+            noResultsState={{
+              title: 'No vendors match this view',
+              description: 'Try a different search term or clear the active status filter.',
+              variant: 'no-results',
+            }}
+          />
         )}
       </div>
     </>

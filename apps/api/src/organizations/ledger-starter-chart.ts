@@ -29,6 +29,8 @@ export const SYSTEM_ACCOUNT_KEYS = [
   'rounding',
   'customer_credit',
   'vendor_credit',
+  'bank_charges',
+  'withholding_tax_receivable',
 ] as const;
 
 export type SystemAccountKey = (typeof SYSTEM_ACCOUNT_KEYS)[number];
@@ -83,6 +85,14 @@ const generalBusinessAccounts: readonly StarterAccount[] = Object.freeze([
     normalBalance: d,
     systemKey: 'tax_receivable',
     isControl: true,
+  },
+  {
+    code: '1410',
+    name: 'Withholding tax receivable',
+    type: 'ASSET',
+    normalBalance: d,
+    description: 'Tax customers withhold at source and remit to the revenue authority on our behalf.',
+    systemKey: 'withholding_tax_receivable',
   },
   { code: '1500', name: 'Furniture and fittings', type: 'ASSET', normalBalance: d },
   { code: '1510', name: 'Computer equipment', type: 'ASSET', normalBalance: d },
@@ -155,7 +165,13 @@ const generalBusinessAccounts: readonly StarterAccount[] = Object.freeze([
   { code: '5100', name: 'Meals and entertainment', type: 'EXPENSE', normalBalance: d },
   { code: '5110', name: 'Marketing and advertising', type: 'EXPENSE', normalBalance: d },
   { code: '5120', name: 'Professional fees', type: 'EXPENSE', normalBalance: d },
-  { code: '5130', name: 'Bank charges', type: 'EXPENSE', normalBalance: d },
+  {
+    code: '5130',
+    name: 'Bank charges',
+    type: 'EXPENSE',
+    normalBalance: d,
+    systemKey: 'bank_charges',
+  },
   { code: '5140', name: 'Insurance expense', type: 'EXPENSE', normalBalance: d },
   { code: '5150', name: 'Subscriptions and software', type: 'EXPENSE', normalBalance: d },
   { code: '5160', name: 'Licenses and permits', type: 'EXPENSE', normalBalance: d },

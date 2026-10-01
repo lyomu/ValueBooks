@@ -70,6 +70,12 @@ import { StatementsService } from './statements.service.js';
     // quote workflows rather than hand-written rows.
     CustomersService,
     QuotesService,
+    // Exported for the demo week seed (docs/MOCK_DATA_PLAN.md), which drives the same services a UI
+    // would: catalog, receipts, credit notes and order conversion.
+    CatalogService,
+    PaymentsService,
+    CreditNotesService,
+    SalesOrdersService,
   ],
 })
 export class SalesModule {}

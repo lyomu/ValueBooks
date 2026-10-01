@@ -227,6 +227,8 @@ export class VendorCreditsService {
     vendorCreditId: string,
     metadata: RequestMetadata,
     idempotencyKey?: string,
+    // Internal seed/backfill override for the document and posting date. Defaults to today.
+    businessDate?: string,
   ) {
     const issued = await this.prisma.$transaction(async (tx) => {
       await this.lockVendorCreditIdempotency(tx, context.id, 'VENDOR_CREDIT_ISSUE', idempotencyKey);
@@ -258,7 +260,7 @@ export class VendorCreditsService {
         );
       }
 
-      const issueDate = dateOnly(new Date());
+      const issueDate = businessDate ? dateOnly(isoDate(businessDate)) : dateOnly(new Date());
 
       const vendorCreditAccount = await this.ledger.accountBySystemKey(
         context.id,
@@ -512,6 +514,8 @@ export class VendorCreditsService {
     input: AllocateVendorCreditDto,
     metadata: RequestMetadata,
     idempotencyKey?: string,
+    // Internal seed/backfill override for the posting date. Defaults to today.
+    businessDate?: string,
   ) {
     const requestedByBill = new Map<string, bigint>();
     for (const line of input.allocations) {
@@ -604,7 +608,7 @@ export class VendorCreditsService {
             where: { id: vendorCredit.vendor.payableAccountId },
           })
         : await this.ledger.accountBySystemKey(context.id, 'accounts_payable', tx);
-      const today = new Date(`${dateOnly(new Date())}T00:00:00.000Z`);
+      const today = isoDate(businessDate ?? dateOnly(new Date()));
 
       for (const [billId, amount] of requestedByBill) {
         const bill = billsById.get(billId)!;

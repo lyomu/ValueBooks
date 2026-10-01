@@ -24,6 +24,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import { ApiError, apiRequest } from '../lib/api';
 import { hasPermission, useWorkspace } from '../lib/workspace';
+import { OperationalListing } from './operational-listing';
 import { TransactionCollaboration } from './transaction-collaboration';
 
 type SalesOrderListResponse = { data: SalesOrder[] };
@@ -70,7 +71,6 @@ export function SalesOrdersPage() {
 
   const [orders, setOrders] = useState<SalesOrder[] | null>(null);
   const [statusFilter, setStatusFilter] = useState<'' | SalesOrderStatus>('');
-  const [query, setQuery] = useState('');
   const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
@@ -91,30 +91,24 @@ export function SalesOrdersPage() {
     void load();
   }, [load]);
 
-  const filtered = useMemo(() => {
-    const needle = query.trim().toLowerCase();
-    if (!needle) return orders ?? [];
-    return (orders ?? []).filter((order) =>
-      `${order.orderNumber ?? ''} ${order.contactName}`.toLowerCase().includes(needle),
-    );
-  }, [orders, query]);
-
   const columns: readonly DataTableColumn<SalesOrder>[] = [
     {
       key: 'order',
       header: 'Order',
+      value: (order) => order.orderNumber ?? '',
       cell: (order) => (
         <div>
-          <strong>{order.orderNumber ?? 'Draft'}</strong>
+          <span>{order.orderNumber ?? 'Draft'}</span>
           <span className="rb-table-secondary">{order.contactName}</span>
         </div>
       ),
     },
-    { key: 'status', header: 'Status', cell: (order) => <StatusBadge status={order.status} /> },
+    { key: 'status', header: 'Status', value: (order) => order.status, cell: (order) => <StatusBadge status={order.status} /> },
     {
       key: 'total',
       header: 'Total',
       align: 'right',
+      value: (order) => order.totalMinor,
       cell: (order) => formatMinor(order.totalMinor, order.currency),
     },
     {
@@ -137,19 +131,6 @@ export function SalesOrdersPage() {
 
   return (
     <>
-      <PageHeader
-        title="Sales orders"
-        description="Confirm, fulfill, and convert customer orders."
-        actions={
-          canManage ? (
-            <Button asChild>
-              <Link href="/sales-orders/new">
-                <FilePlus2 aria-hidden="true" /> New order
-              </Link>
-            </Button>
-          ) : null
-        }
-      />
       <div className="rb-ledger-stack">
         {error ? (
           <div className="rb-auth-error" role="alert">
@@ -157,45 +138,23 @@ export function SalesOrdersPage() {
           </div>
         ) : null}
 
-        <Card className="rb-ledger-toolbar">
-          <div className="rb-field">
-            <Label htmlFor="order-search">
-              <Search aria-hidden="true" /> Search orders
-            </Label>
-            <Input
-              id="order-search"
-              value={query}
-              onChange={(event) => setQuery(event.target.value)}
-              placeholder="Search by order number or customer..."
-            />
-          </div>
-          <div className="rb-field">
-            <Label htmlFor="order-status">Status</Label>
-            <Select
-              id="order-status"
-              value={statusFilter}
-              onChange={(event) => setStatusFilter(event.target.value as typeof statusFilter)}
-            >
-              <option value="">All orders</option>
-              {statusOptions.map((status) => (
-                <option key={status} value={status}>
-                  {status}
-                </option>
-              ))}
-            </Select>
-          </div>
-          <Badge>{orders?.length ?? 0} orders</Badge>
-        </Card>
-
         {!orders && !error ? (
           <Skeleton />
-        ) : filtered.length === 0 ? (
-          <EmptyState
-            title="No sales orders yet"
-            description="Create your first order for a customer."
-          />
         ) : (
-          <DataTable caption="Sales orders" columns={columns} rows={filtered} />
+          <OperationalListing
+            title={statusFilter ? `${statusFilter.replaceAll('_', ' ').toLowerCase()} sales orders` : 'All sales orders'}
+            rows={orders ?? []}
+            columns={columns}
+            searchText={(order) => `${order.orderNumber ?? ''} ${order.contactName} ${order.status}`}
+            filter={<Select aria-label="Sales order status" value={statusFilter} onChange={(event) => setStatusFilter(event.target.value as typeof statusFilter)}><option value="">All statuses</option>{statusOptions.map((status) => <option key={status} value={status}>{status.replaceAll('_', ' ')}</option>)}</Select>}
+            primaryAction={canManage ? <Button asChild><Link href="/sales-orders/new"><FilePlus2 aria-hidden="true" /> New</Link></Button> : null}
+            onRefresh={() => void load()}
+            onImport={async () => undefined}
+            emptyState={{ title: 'Confirm your first sales order', description: 'Create a sales order to reserve what your customer has agreed to buy.', illustration: 'sales', variant: 'onboarding', benefits: ['Track order status from draft to fulfillment', 'Convert confirmed orders into invoices'] }}
+            noResultsState={{ title: 'No sales orders match this view', description: 'Clear the search or status filter to see sales orders.', illustration: 'sales', variant: 'no-results', action: <Button variant="outline" onClick={() => setStatusFilter('')}>Clear filters</Button> }}
+            onResetFilters={() => setStatusFilter('')}
+            empty="No sales orders match this view."
+          />
         )}
       </div>
     </>

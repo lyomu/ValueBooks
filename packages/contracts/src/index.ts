@@ -1351,6 +1351,11 @@ export const itemSchema = z.object({
   sku: z.string().nullable(),
   name: z.string().min(1),
   itemType: itemTypeSchema,
+  imageDataUrl: z.string().nullable(),
+  salesEnabled: z.boolean(),
+  salesDescription: z.string().nullable(),
+  purchaseEnabled: z.boolean(),
+  purchaseDescription: z.string().nullable(),
   categoryId: z.uuid().nullable(),
   defaultUnitId: z.uuid().nullable(),
   revenueAccountId: z.uuid().nullable(),
@@ -1397,6 +1402,11 @@ export const createItemDto = z.object({
   sku: z.string().max(60).optional(),
   name: z.string().min(1).max(160),
   itemType: itemTypeSchema,
+  imageDataUrl: z.string().max(2_000_000).optional(),
+  salesEnabled: z.boolean().optional(),
+  salesDescription: z.string().max(2_000).optional(),
+  purchaseEnabled: z.boolean().optional(),
+  purchaseDescription: z.string().max(2_000).optional(),
   categoryId: z.uuid().optional(),
   defaultUnitId: z.uuid().optional(),
   revenueAccountId: z.uuid().optional(),
@@ -1471,6 +1481,9 @@ export const invoiceSchema = z.object({
   journalId: z.uuid().nullable(),
   voidedAt: z.iso.datetime().nullable(),
   sentAt: z.iso.datetime().nullable(),
+  expectedPaymentDate: z.iso.date().nullable(),
+  remindersStoppedAt: z.iso.datetime().nullable(),
+  writtenOffMinor: z.string().regex(/^\d+$/),
   lines: z.array(invoiceLineSchema),
   createdAt: z.iso.datetime(),
   updatedAt: z.iso.datetime(),
@@ -1665,6 +1678,7 @@ export const attachmentSchema = z.object({
 
 export const collaborationVisibilitySchema = z.enum(['INTERNAL', 'CUSTOMER']);
 export const collaborationTargetTypeSchema = z.enum([
+  'CONTACT',
   'QUOTE',
   'SALES_ORDER',
   'INVOICE',
@@ -1819,6 +1833,16 @@ export const updateExpenseDto = createExpenseDto.partial().extend({
 
 export const paymentStatusSchema = z.enum(['UNAPPLIED', 'PARTIALLY_ALLOCATED', 'FULLY_ALLOCATED']);
 
+/** How the money physically changed hands. Never affects which accounts a payment posts to. */
+export const paymentModeSchema = z.enum([
+  'CASH',
+  'BANK_TRANSFER',
+  'CHEQUE',
+  'MOBILE_MONEY',
+  'CARD',
+  'OTHER',
+]);
+
 export const paymentAllocationSchema = z.object({
   id: z.uuid(),
   paymentId: z.uuid(),
@@ -1839,7 +1863,15 @@ export const paymentReceivedSchema = z.object({
   amountMinor: z.string().regex(/^\d+$/),
   allocatedMinor: z.string().regex(/^\d+$/),
   unappliedMinor: z.string().regex(/^\d+$/),
+  bankChargesMinor: z.string().regex(/^\d+$/),
+  withholdingTaxMinor: z.string().regex(/^\d+$/),
+  /** amountMinor less bank charges and withholding tax: what actually reached the bank. */
+  depositedMinor: z.string().regex(/^\d+$/),
+  paymentMode: paymentModeSchema,
+  reference: z.string().nullable(),
+  notes: z.string().nullable(),
   depositAccountId: z.uuid().nullable(),
+  depositAccountName: z.string().nullable(),
   journalId: z.uuid().nullable(),
   allocations: z.array(paymentAllocationSchema),
   createdAt: z.iso.datetime(),
@@ -1864,21 +1896,117 @@ export const openInvoiceListResponseSchema = z.object({
   data: z.array(openInvoiceForAllocationSchema),
 });
 
-export const createPaymentDto = z.object({
-  contactId: z.uuid(),
-  receivedDate: z.iso.date(),
-  currency: z.string().length(3).optional(),
-  amountMinor: z.string().regex(/^\d+$/),
-});
-
 export const paymentAllocationLineDto = z.object({
   invoiceId: z.uuid(),
   amountMinor: z.string().regex(/^\d+$/),
 });
 
+export const createPaymentDto = z.object({
+  contactId: z.uuid(),
+  receivedDate: z.iso.date(),
+  currency: z.string().length(3).optional(),
+  /** The total relieved from the customer's balance, before bank charges and withholding tax. */
+  amountMinor: z.string().regex(/^\d+$/),
+  bankChargesMinor: z.string().regex(/^\d+$/).optional(),
+  withholdingTaxMinor: z.string().regex(/^\d+$/).optional(),
+  paymentMode: paymentModeSchema.optional(),
+  depositAccountId: z.uuid().optional(),
+  reference: z.string().max(140).optional(),
+  notes: z.string().max(2000).optional(),
+  /** Apply the receipt to these invoices in the same request, atomically with recording it. */
+  allocations: z.array(paymentAllocationLineDto).max(200).optional(),
+});
+
 export const allocatePaymentDto = z.object({
   allocations: z.array(paymentAllocationLineDto).min(1).max(200),
 });
+
+// --- Sales: Customer workspace read models ---
+
+const minorString = z.string().regex(/^\d+$/);
+
+/** One row in any of the customer's transaction tables. */
+export const customerTransactionRowSchema = z.object({
+  id: z.uuid(),
+  number: z.string().nullable(),
+  status: z.string(),
+  date: z.iso.date().nullable(),
+  currency: z.string().length(3),
+});
+
+export const customerInvoiceRowSchema = customerTransactionRowSchema.extend({
+  dueDate: z.iso.date().nullable(),
+  totalMinor: minorString,
+  balanceMinor: minorString,
+});
+
+export const customerDocumentRowSchema = customerTransactionRowSchema.extend({
+  totalMinor: minorString,
+});
+
+export const customerCreditNoteRowSchema = customerTransactionRowSchema.extend({
+  totalMinor: minorString,
+  remainingMinor: minorString,
+});
+
+export const customerPaymentRowSchema = customerTransactionRowSchema.extend({
+  amountMinor: minorString,
+  unappliedMinor: minorString,
+  paymentMode: paymentModeSchema,
+  reference: z.string().nullable(),
+});
+
+export const customerTransactionsSchema = z.object({
+  invoices: z.array(customerInvoiceRowSchema),
+  quotes: z.array(customerDocumentRowSchema),
+  salesOrders: z.array(customerDocumentRowSchema),
+  creditNotes: z.array(customerCreditNoteRowSchema),
+  payments: z.array(customerPaymentRowSchema),
+});
+
+/** Receivables position. Aging buckets always sum back to `outstandingMinor`. */
+export const customerSummarySchema = z.object({
+  currency: z.string().length(3),
+  outstandingMinor: minorString,
+  openInvoiceCount: z.number().int().nonnegative(),
+  unusedCreditsMinor: minorString,
+  unappliedPaymentsMinor: minorString,
+  aging: z.object({
+    current: minorString,
+    days1To30: minorString,
+    days31To60: minorString,
+    days61To90: minorString,
+    days90Plus: minorString,
+  }),
+});
+
+export const customerActivityEntrySchema = z.object({
+  id: z.uuid(),
+  targetType: z.string(),
+  targetId: z.uuid(),
+  kind: z.string(),
+  eventKey: z.string(),
+  actorName: z.string().nullable(),
+  occurredAt: z.iso.datetime(),
+});
+
+export const customerMailEntrySchema = z.object({
+  id: z.uuid(),
+  targetType: z.string(),
+  targetId: z.uuid(),
+  documentNumber: z.string().nullable(),
+  recipientEmail: z.string(),
+  subject: z.string(),
+  sentByName: z.string().nullable(),
+  sentAt: z.iso.datetime(),
+});
+
+export const customerTransactionsResponseSchema = z.object({ data: customerTransactionsSchema });
+export const customerSummaryResponseSchema = z.object({ data: customerSummarySchema });
+export const customerActivityResponseSchema = z.object({
+  data: z.array(customerActivityEntrySchema),
+});
+export const customerMailsResponseSchema = z.object({ data: z.array(customerMailEntrySchema) });
 
 // --- Purchases: Payments Made ---
 
@@ -2861,7 +2989,16 @@ export type ExpenseResponse = z.infer<typeof expenseResponseSchema>;
 export type CreateExpenseDto = z.infer<typeof createExpenseDto>;
 export type UpdateExpenseDto = z.infer<typeof updateExpenseDto>;
 
+export type CustomerInvoiceRow = z.infer<typeof customerInvoiceRowSchema>;
+export type CustomerDocumentRow = z.infer<typeof customerDocumentRowSchema>;
+export type CustomerCreditNoteRow = z.infer<typeof customerCreditNoteRowSchema>;
+export type CustomerPaymentRow = z.infer<typeof customerPaymentRowSchema>;
+export type CustomerTransactions = z.infer<typeof customerTransactionsSchema>;
+export type CustomerSummary = z.infer<typeof customerSummarySchema>;
+export type CustomerActivityEntry = z.infer<typeof customerActivityEntrySchema>;
+export type CustomerMailEntry = z.infer<typeof customerMailEntrySchema>;
 export type PaymentStatus = z.infer<typeof paymentStatusSchema>;
+export type PaymentMode = z.infer<typeof paymentModeSchema>;
 export type PaymentAllocation = z.infer<typeof paymentAllocationSchema>;
 export type PaymentReceived = z.infer<typeof paymentReceivedSchema>;
 export type PaymentListResponse = z.infer<typeof paymentListResponseSchema>;

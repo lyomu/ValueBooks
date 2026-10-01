@@ -238,6 +238,8 @@ export class CreditNotesService {
     creditNoteId: string,
     metadata: RequestMetadata,
     idempotencyKey?: string,
+    // Internal seed/backfill override for the document and posting date. Defaults to today.
+    businessDate?: string,
   ) {
     const issued = await this.prisma.$transaction(async (tx) => {
       await this.lockCreditNoteIdempotency(tx, context.id, 'CREDIT_NOTE_ISSUE', idempotencyKey);
@@ -270,7 +272,7 @@ export class CreditNotesService {
         );
       }
 
-      const issueDate = dateOnly(new Date());
+      const issueDate = businessDate ? dateOnly(isoDate(businessDate)) : dateOnly(new Date());
 
       const customerCreditAccount = await this.ledger.accountBySystemKey(
         context.id,
@@ -551,6 +553,8 @@ export class CreditNotesService {
     input: AllocateCreditNoteDto,
     metadata: RequestMetadata,
     idempotencyKey?: string,
+    // Internal seed/backfill override for the posting date. Defaults to today.
+    businessDate?: string,
   ) {
     const requestedByInvoice = new Map<string, bigint>();
     for (const line of input.allocations) {
@@ -638,7 +642,7 @@ export class CreditNotesService {
             where: { id: creditNote.contact.receivableAccountId },
           })
         : await this.ledger.accountBySystemKey(context.id, 'accounts_receivable', tx);
-      const today = new Date(`${dateOnly(new Date())}T00:00:00.000Z`);
+      const today = isoDate(businessDate ?? dateOnly(new Date()));
 
       for (const [invoiceId, amount] of requestedByInvoice) {
         const invoice = invoicesById.get(invoiceId)!;
@@ -730,6 +734,8 @@ export class CreditNotesService {
     input: RefundCreditNoteDto,
     metadata: RequestMetadata,
     idempotencyKey?: string,
+    // Internal seed/backfill override for the posting date. Defaults to today.
+    businessDate?: string,
   ) {
     const amount = BigInt(input.amountMinor);
     if (amount <= 0n) {
@@ -769,7 +775,7 @@ export class CreditNotesService {
         tx,
       );
       const bankAccount = await this.ledger.accountBySystemKey(context.id, 'bank_default', tx);
-      const today = new Date(`${dateOnly(new Date())}T00:00:00.000Z`);
+      const today = isoDate(businessDate ?? dateOnly(new Date()));
 
       const postedJournal = await this.ledger.postJournalFromLines(
         context,

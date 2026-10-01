@@ -24,6 +24,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import { ApiError, apiRequest } from '../lib/api';
 import { hasPermission, useWorkspace } from '../lib/workspace';
+import { OperationalListing } from './operational-listing';
 import { TransactionCollaboration } from './transaction-collaboration';
 
 type QuoteListResponse = { data: Quote[] };
@@ -72,7 +73,6 @@ export function QuotesPage() {
 
   const [quotes, setQuotes] = useState<Quote[] | null>(null);
   const [statusFilter, setStatusFilter] = useState<'' | QuoteStatus>('');
-  const [query, setQuery] = useState('');
   const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
@@ -93,30 +93,24 @@ export function QuotesPage() {
     void load();
   }, [load]);
 
-  const filtered = useMemo(() => {
-    const needle = query.trim().toLowerCase();
-    if (!needle) return quotes ?? [];
-    return (quotes ?? []).filter((quote) =>
-      `${quote.quoteNumber ?? ''} ${quote.contactName}`.toLowerCase().includes(needle),
-    );
-  }, [quotes, query]);
-
   const columns: readonly DataTableColumn<Quote>[] = [
     {
       key: 'quote',
       header: 'Quote',
+      value: (quote) => quote.quoteNumber ?? '',
       cell: (quote) => (
         <div>
-          <strong>{quote.quoteNumber ?? 'Draft'}</strong>
+          <span>{quote.quoteNumber ?? 'Draft'}</span>
           <span className="rb-table-secondary">{quote.contactName}</span>
         </div>
       ),
     },
-    { key: 'status', header: 'Status', cell: (quote) => <StatusBadge status={quote.status} /> },
+    { key: 'status', header: 'Status', value: (quote) => quote.status, cell: (quote) => <StatusBadge status={quote.status} /> },
     {
       key: 'total',
       header: 'Total',
       align: 'right',
+      value: (quote) => quote.totalMinor,
       cell: (quote) => formatMinor(quote.totalMinor, quote.currency),
     },
     {
@@ -139,19 +133,6 @@ export function QuotesPage() {
 
   return (
     <>
-      <PageHeader
-        title="Quotes"
-        description="Draft, send, and convert customer quotes."
-        actions={
-          canManage ? (
-            <Button asChild>
-              <Link href="/quotes/new">
-                <FilePlus2 aria-hidden="true" /> New quote
-              </Link>
-            </Button>
-          ) : null
-        }
-      />
       <div className="rb-ledger-stack">
         {error ? (
           <div className="rb-auth-error" role="alert">
@@ -159,42 +140,23 @@ export function QuotesPage() {
           </div>
         ) : null}
 
-        <Card className="rb-ledger-toolbar">
-          <div className="rb-field">
-            <Label htmlFor="quote-search">
-              <Search aria-hidden="true" /> Search quotes
-            </Label>
-            <Input
-              id="quote-search"
-              value={query}
-              onChange={(event) => setQuery(event.target.value)}
-              placeholder="Search by quote number or customer..."
-            />
-          </div>
-          <div className="rb-field">
-            <Label htmlFor="quote-status">Status</Label>
-            <Select
-              id="quote-status"
-              value={statusFilter}
-              onChange={(event) => setStatusFilter(event.target.value as typeof statusFilter)}
-            >
-              <option value="">All quotes</option>
-              {statusOptions.map((status) => (
-                <option key={status} value={status}>
-                  {status}
-                </option>
-              ))}
-            </Select>
-          </div>
-          <Badge>{quotes?.length ?? 0} quotes</Badge>
-        </Card>
-
         {!quotes && !error ? (
           <Skeleton />
-        ) : filtered.length === 0 ? (
-          <EmptyState title="No quotes yet" description="Create your first quote for a customer." />
         ) : (
-          <DataTable caption="Quotes" columns={columns} rows={filtered} />
+          <OperationalListing
+            title={statusFilter ? `${statusFilter.replaceAll('_', ' ').toLowerCase()} quotes` : 'All estimates'}
+            rows={quotes ?? []}
+            columns={columns}
+            searchText={(quote) => `${quote.quoteNumber ?? ''} ${quote.contactName} ${quote.status}`}
+            filter={<Select aria-label="Estimate status" value={statusFilter} onChange={(event) => setStatusFilter(event.target.value as typeof statusFilter)}><option value="">All statuses</option>{statusOptions.map((status) => <option key={status} value={status}>{status.replaceAll('_', ' ')}</option>)}</Select>}
+            primaryAction={canManage ? <Button asChild><Link href="/quotes/new"><FilePlus2 aria-hidden="true" /> New</Link></Button> : null}
+            onRefresh={() => void load()}
+            onImport={async () => undefined}
+            emptyState={{ title: 'Turn opportunities into clear estimates', description: 'Create an estimate with your catalog items, prices, and terms before sending it to a customer.', illustration: 'sales', variant: 'onboarding', benefits: ['Reuse products and services from your catalog', 'Convert accepted estimates into invoices'] }}
+            noResultsState={{ title: 'No estimates match this view', description: 'Clear the search or status filter to see your estimates.', illustration: 'sales', variant: 'no-results', action: <Button variant="outline" onClick={() => setStatusFilter('')}>Clear filters</Button> }}
+            onResetFilters={() => setStatusFilter('')}
+            empty="No estimates match this view."
+          />
         )}
       </div>
     </>

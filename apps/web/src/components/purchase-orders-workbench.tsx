@@ -30,6 +30,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import { ApiError, apiRequest } from '../lib/api';
 import { hasPermission, useWorkspace } from '../lib/workspace';
+import { OperationalListing } from './operational-listing';
 import { TransactionCollaboration } from './transaction-collaboration';
 
 type PurchaseOrderListResponse = { data: PurchaseOrder[] };
@@ -75,7 +76,6 @@ export function PurchaseOrdersPage() {
 
   const [orders, setOrders] = useState<PurchaseOrder[] | null>(null);
   const [statusFilter, setStatusFilter] = useState<'' | PurchaseOrderStatus>('');
-  const [query, setQuery] = useState('');
   const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
@@ -96,35 +96,30 @@ export function PurchaseOrdersPage() {
     void load();
   }, [load]);
 
-  const filtered = useMemo(() => {
-    const needle = query.trim().toLowerCase();
-    if (!needle) return orders ?? [];
-    return (orders ?? []).filter((order) =>
-      `${order.orderNumber ?? ''} ${order.vendorName}`.toLowerCase().includes(needle),
-    );
-  }, [orders, query]);
-
   const columns: readonly DataTableColumn<PurchaseOrder>[] = [
     {
       key: 'order',
       header: 'Order',
+      value: (order) => `${order.orderNumber ?? ''} ${order.vendorName}`,
       cell: (order) => (
         <div>
-          <strong>{order.orderNumber ?? 'Draft'}</strong>
+          <span>{order.orderNumber ?? 'Draft'}</span>
           <span className="rb-table-secondary">{order.vendorName}</span>
         </div>
       ),
     },
-    { key: 'status', header: 'Status', cell: (order) => <StatusBadge status={order.status} /> },
+    { key: 'status', header: 'Status', value: (order) => order.status, cell: (order) => <StatusBadge status={order.status} /> },
     {
       key: 'receipt',
       header: 'Receipt',
+      value: (order) => order.receiptStatus,
       cell: (order) => <StatusBadge status={order.receiptStatus} />,
     },
     {
       key: 'total',
       header: 'Total',
       align: 'right',
+      value: (order) => order.totalMinor,
       cell: (order) => formatMinor(order.totalMinor, order.currency),
     },
     {
@@ -147,19 +142,6 @@ export function PurchaseOrdersPage() {
 
   return (
     <>
-      <PageHeader
-        title="Purchase orders"
-        description="Approve, issue, and receive orders placed with vendors."
-        actions={
-          canManage ? (
-            <Button asChild>
-              <Link href="/purchase-orders/new">
-                <FilePlus2 aria-hidden="true" /> New order
-              </Link>
-            </Button>
-          ) : null
-        }
-      />
       <div className="rb-ledger-stack">
         {error ? (
           <div className="rb-auth-error" role="alert">
@@ -167,45 +149,22 @@ export function PurchaseOrdersPage() {
           </div>
         ) : null}
 
-        <Card className="rb-ledger-toolbar">
-          <div className="rb-field">
-            <Label htmlFor="po-search">
-              <Search aria-hidden="true" /> Search orders
-            </Label>
-            <Input
-              id="po-search"
-              value={query}
-              onChange={(event) => setQuery(event.target.value)}
-              placeholder="Search by order number or vendor..."
-            />
-          </div>
-          <div className="rb-field">
-            <Label htmlFor="po-status">Status</Label>
-            <Select
-              id="po-status"
-              value={statusFilter}
-              onChange={(event) => setStatusFilter(event.target.value as typeof statusFilter)}
-            >
-              <option value="">All orders</option>
-              {statusOptions.map((status) => (
-                <option key={status} value={status}>
-                  {status}
-                </option>
-              ))}
-            </Select>
-          </div>
-          <Badge>{orders?.length ?? 0} orders</Badge>
-        </Card>
-
         {!orders && !error ? (
           <Skeleton />
-        ) : filtered.length === 0 ? (
-          <EmptyState
-            title="No purchase orders yet"
-            description="Create your first order for a vendor."
-          />
         ) : (
-          <DataTable caption="Purchase orders" columns={columns} rows={filtered} />
+          <OperationalListing
+            title="All purchase orders"
+            rows={orders ?? []}
+            columns={columns}
+            searchText={(order) => `${order.orderNumber ?? ''} ${order.vendorName} ${order.status} ${order.receiptStatus}`}
+            filter={<Select aria-label="Purchase order status" value={statusFilter} onChange={(event) => setStatusFilter(event.target.value as typeof statusFilter)}><option value="">All statuses</option>{statusOptions.map((status) => <option key={status} value={status}>{status}</option>)}</Select>}
+            primaryAction={canManage ? <Button asChild><Link href="/purchase-orders/new"><FilePlus2 aria-hidden="true" /> New</Link></Button> : null}
+            onRefresh={() => void load()}
+            importEnabled={false}
+            onResetFilters={() => setStatusFilter('')}
+            emptyState={{ title: 'Plan every vendor purchase', description: 'Create, approve, and receive purchase orders in one place.', illustration: 'purchases', variant: 'onboarding' }}
+            noResultsState={{ title: 'No purchase orders match this view', description: 'Try a different search term or clear the active status filter.', variant: 'no-results' }}
+          />
         )}
       </div>
     </>

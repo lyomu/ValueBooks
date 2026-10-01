@@ -1,7 +1,6 @@
 'use client';
 
 import type {
-  Contact,
   OpenInvoiceForAllocation,
   PaymentReceived,
   PaymentStatus,
@@ -10,9 +9,7 @@ import {
   Badge,
   Button,
   Card,
-  DataTable,
   EmptyState,
-  FieldMessage,
   ForbiddenState,
   Input,
   Label,
@@ -22,18 +19,21 @@ import {
   StatusBadge,
   type DataTableColumn,
 } from '@valuebooks/ui';
-import { CheckCircle2, PlusCircle, Save, Search } from 'lucide-react';
+import { CheckCircle2, PlusCircle } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import { ApiError, apiRequest } from '../lib/api';
+import { decimalToMinor, formatMinor, minorToDecimal } from '../lib/money';
+import { PAYMENT_ALLOCATE_INVOICE_KEY, takeInvoiceSeed } from './invoice-seed';
+import { RecordPaymentDialog, type RecordPaymentSeed } from './record-payment-dialog';
 import { hasPermission, useWorkspace } from '../lib/workspace';
+import { OperationalListing } from './operational-listing';
 import { TransactionCollaboration } from './transaction-collaboration';
 
 type PaymentListResponse = { data: PaymentReceived[] };
 type PaymentResponse = { data: PaymentReceived };
-type ContactListResponse = { data: Contact[] };
 type OpenInvoiceListResponse = { data: OpenInvoiceForAllocation[] };
 
 const statusOptions: readonly PaymentStatus[] = [
@@ -49,10 +49,12 @@ export function PaymentsPage() {
   const canView = hasPermission(organization, 'sales.payments.view');
   const canRecord = hasPermission(organization, 'sales.payments.record');
 
+  const canAllocate = hasPermission(organization, 'sales.payments.allocate');
+
   const [payments, setPayments] = useState<PaymentReceived[] | null>(null);
   const [statusFilter, setStatusFilter] = useState<'' | PaymentStatus>('');
-  const [query, setQuery] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const [recording, setRecording] = useState(false);
 
   const load = useCallback(async () => {
     if (!organizationId) return;
@@ -72,21 +74,14 @@ export function PaymentsPage() {
     void load();
   }, [load]);
 
-  const filtered = useMemo(() => {
-    const needle = query.trim().toLowerCase();
-    if (!needle) return payments ?? [];
-    return (payments ?? []).filter((payment) =>
-      `${payment.paymentNumber ?? ''} ${payment.contactName}`.toLowerCase().includes(needle),
-    );
-  }, [payments, query]);
-
   const columns: readonly DataTableColumn<PaymentReceived>[] = [
     {
       key: 'payment',
       header: 'Payment',
+      value: (payment) => payment.paymentNumber ?? '',
       cell: (payment) => (
         <div>
-          <strong>{payment.paymentNumber ?? 'Payment'}</strong>
+          <span>{payment.paymentNumber ?? 'Payment'}</span>
           <span className="rb-table-secondary">{payment.contactName}</span>
         </div>
       ),
@@ -94,18 +89,21 @@ export function PaymentsPage() {
     {
       key: 'status',
       header: 'Status',
+      value: (payment) => payment.status,
       cell: (payment) => <StatusBadge status={payment.status} />,
     },
     {
       key: 'amount',
       header: 'Amount',
       align: 'right',
+      value: (payment) => payment.amountMinor,
       cell: (payment) => formatMinor(payment.amountMinor, payment.currency),
     },
     {
       key: 'unapplied',
       header: 'Unapplied',
       align: 'right',
+      value: (payment) => payment.unappliedMinor,
       cell: (payment) => formatMinor(payment.unappliedMinor, payment.currency),
       hideBelow: 'tablet',
     },
@@ -129,19 +127,6 @@ export function PaymentsPage() {
 
   return (
     <>
-      <PageHeader
-        title="Payments"
-        description="Record customer payments and apply them against open invoices."
-        actions={
-          canRecord ? (
-            <Button asChild>
-              <Link href="/payments/new">
-                <PlusCircle aria-hidden="true" /> Record payment
-              </Link>
-            </Button>
-          ) : null
-        }
-      />
       <div className="rb-ledger-stack">
         {error ? (
           <div className="rb-auth-error" role="alert">
@@ -149,67 +134,104 @@ export function PaymentsPage() {
           </div>
         ) : null}
 
-        <Card className="rb-ledger-toolbar">
-          <div className="rb-field">
-            <Label htmlFor="payment-search">
-              <Search aria-hidden="true" /> Search payments
-            </Label>
-            <Input
-              id="payment-search"
-              value={query}
-              onChange={(event) => setQuery(event.target.value)}
-              placeholder="Search by payment number or customer..."
-            />
-          </div>
-          <div className="rb-field">
-            <Label htmlFor="payment-status">Status</Label>
-            <Select
-              id="payment-status"
-              value={statusFilter}
-              onChange={(event) => setStatusFilter(event.target.value as typeof statusFilter)}
-            >
-              <option value="">All payments</option>
-              {statusOptions.map((status) => (
-                <option key={status} value={status}>
-                  {status}
-                </option>
-              ))}
-            </Select>
-          </div>
-          <Badge>{payments?.length ?? 0} payments</Badge>
-        </Card>
-
         {!payments && !error ? (
           <Skeleton />
-        ) : filtered.length === 0 ? (
-          <EmptyState
-            title="No payments yet"
-            description="Record your first customer payment to start applying it against invoices."
-          />
         ) : (
-          <DataTable caption="Payments" columns={columns} rows={filtered} />
+          <OperationalListing
+            title={statusFilter ? `${statusFilter.replaceAll('_', ' ').toLowerCase()} payments` : 'All received payments'}
+            rows={payments ?? []}
+            columns={columns}
+            searchText={(payment) => `${payment.paymentNumber ?? ''} ${payment.contactName} ${payment.status}`}
+            filter={<Select aria-label="Payment status" value={statusFilter} onChange={(event) => setStatusFilter(event.target.value as typeof statusFilter)}><option value="">All statuses</option>{statusOptions.map((status) => <option key={status} value={status}>{status.replaceAll('_', ' ')}</option>)}</Select>}
+            primaryAction={canRecord ? <Button onClick={() => setRecording(true)}><PlusCircle aria-hidden="true" /> New</Button> : null}
+            onRefresh={() => void load()}
+            onImport={async () => undefined}
+            emptyState={{ title: 'Record the payments you receive', description: 'Capture a customer payment, then apply it against their open invoices.', illustration: 'sales', variant: 'onboarding', benefits: ['Keep invoice balances current', 'See unapplied funds before allocating them'] }}
+            noResultsState={{ title: 'No payments match this view', description: 'Clear the search or status filter to see received payments.', illustration: 'sales', variant: 'no-results', action: <Button variant="outline" onClick={() => setStatusFilter('')}>Clear filters</Button> }}
+            onResetFilters={() => setStatusFilter('')}
+            empty="No payments match this view."
+          />
         )}
       </div>
+
+      <RecordPaymentDialog
+        open={recording}
+        onOpenChange={setRecording}
+        organizationId={organizationId}
+        baseCurrency={organization?.baseCurrency ?? 'KES'}
+        canAllocate={canAllocate}
+        onRecorded={() => void load()}
+      />
     </>
   );
 }
 
 const PAYMENT_FLASH_NOTICE_KEY = 'rb-payment-notice';
 
-export function PaymentEditorPage({ paymentId }: { paymentId?: string }) {
+/**
+ * The /payments/new route, kept so existing links and the invoice hand-off still resolve. Recording
+ * itself lives in the dialog, so the route simply opens it over the payments list and leaves when
+ * it closes -- there is no second, divergent full-page form to keep in step.
+ */
+export function NewPaymentPage() {
   const router = useRouter();
   const workspace = useWorkspace({ requireOrganization: true });
   const organization = workspace.activeOrganization;
   const organizationId = organization?.id ?? null;
   const canRecord = hasPermission(organization, 'sales.payments.record');
   const canAllocate = hasPermission(organization, 'sales.payments.allocate');
+  const [seed, setSeed] = useState<RecordPaymentSeed | null>(null);
 
-  const [customers, setCustomers] = useState<Contact[]>([]);
+  // "Record payment" on an invoice pre-fills the customer, amount and target invoice.
+  useEffect(() => {
+    const invoiceSeed = takeInvoiceSeed('payment');
+    if (!invoiceSeed) return;
+    setSeed({
+      contactId: invoiceSeed.contactId,
+      amount: invoiceSeed.amount,
+      invoiceId: invoiceSeed.invoiceId,
+      lockCustomer: true,
+    });
+  }, []);
+
+  if (!workspace.loading && organization && !canRecord) {
+    return <ForbiddenState description="Ask an organization owner, administrator, or accountant to grant payment access." />;
+  }
+
+  return (
+    <>
+      <PageHeader
+        title="New payment"
+        description="Record a customer payment. It posts to the ledger immediately."
+        actions={
+          <Button asChild variant="outline">
+            <Link href="/payments">Back to payments</Link>
+          </Button>
+        }
+      />
+      <RecordPaymentDialog
+        open
+        onOpenChange={(open) => {
+          if (!open) router.push('/payments');
+        }}
+        organizationId={organizationId}
+        baseCurrency={organization?.baseCurrency ?? 'KES'}
+        canAllocate={canAllocate}
+        seed={seed}
+        onRecorded={(payment) => router.replace(`/payments/${payment.id}`)}
+      />
+    </>
+  );
+}
+
+export function PaymentEditorPage({ paymentId }: { paymentId: string }) {
+  const workspace = useWorkspace({ requireOrganization: true });
+  const organization = workspace.activeOrganization;
+  const organizationId = organization?.id ?? null;
+  const canAllocate = hasPermission(organization, 'sales.payments.allocate');
+
   const [payment, setPayment] = useState<PaymentReceived | null>(null);
   const [openInvoices, setOpenInvoices] = useState<OpenInvoiceForAllocation[]>([]);
-  const [contactId, setContactId] = useState('');
-  const [receivedDate, setReceivedDate] = useState(() => new Date().toISOString().slice(0, 10));
-  const [amount, setAmount] = useState('');
   const [allocationAmounts, setAllocationAmounts] = useState<Record<string, string>>({});
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -218,24 +240,27 @@ export function PaymentEditorPage({ paymentId }: { paymentId?: string }) {
   const load = useCallback(async () => {
     if (!organizationId) return;
     try {
-      const [customerResponse, paymentResponse, openInvoicesResponse] = await Promise.all([
-        apiRequest<ContactListResponse>(`/organizations/${organizationId}/customers?status=ACTIVE`),
-        paymentId
-          ? apiRequest<PaymentResponse>(`/organizations/${organizationId}/payments/${paymentId}`)
-          : Promise.resolve(null),
-        paymentId
-          ? apiRequest<OpenInvoiceListResponse>(
-              `/organizations/${organizationId}/payments/${paymentId}/open-invoices`,
-            )
-          : Promise.resolve(null),
+      const [paymentResponse, openInvoicesResponse] = await Promise.all([
+        apiRequest<PaymentResponse>(`/organizations/${organizationId}/payments/${paymentId}`),
+        apiRequest<OpenInvoiceListResponse>(
+          `/organizations/${organizationId}/payments/${paymentId}/open-invoices`,
+        ),
       ]);
-      setCustomers(customerResponse.data);
-      if (paymentResponse) {
-        setPayment(paymentResponse.data);
-        setContactId(paymentResponse.data.contactId);
-      }
-      setOpenInvoices(openInvoicesResponse?.data ?? []);
-      setAllocationAmounts({});
+      setPayment(paymentResponse.data);
+      setOpenInvoices(openInvoicesResponse.data);
+      // A payment recorded from an invoice pre-fills that invoice's allocation once. The dialog
+      // allocates up front, so this only still fires for the older seed-then-allocate path.
+      const targetId = window.sessionStorage.getItem(PAYMENT_ALLOCATE_INVOICE_KEY);
+      const target = targetId
+        ? openInvoicesResponse.data.find((invoice) => invoice.id === targetId)
+        : undefined;
+      if (targetId) window.sessionStorage.removeItem(PAYMENT_ALLOCATE_INVOICE_KEY);
+      const balance = target ? BigInt(target.balanceMinor) : 0n;
+      const unapplied = BigInt(paymentResponse.data.unappliedMinor);
+      const apply = balance < unapplied ? balance : unapplied;
+      setAllocationAmounts(
+        target && apply > 0n ? { [target.id]: minorToDecimal(apply.toString()) } : {},
+      );
       setError(null);
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : 'The payment could not be loaded.');
@@ -253,8 +278,7 @@ export function PaymentEditorPage({ paymentId }: { paymentId?: string }) {
     setNotice(flash);
   }, [paymentId]);
 
-  const contact = customers.find((candidate) => candidate.id === contactId) ?? null;
-  const currency = contact?.currency ?? payment?.currency ?? organization?.baseCurrency ?? 'KES';
+  const currency = payment?.currency ?? organization?.baseCurrency ?? 'KES';
 
   const totalToApplyMinor = useMemo(
     () =>
@@ -267,33 +291,6 @@ export function PaymentEditorPage({ paymentId }: { paymentId?: string }) {
   const unappliedMinor = payment ? BigInt(payment.unappliedMinor) : 0n;
   const exceedsUnapplied = totalToApplyMinor > unappliedMinor;
   const canSubmitAllocation = canAllocate && totalToApplyMinor > 0n && !exceedsUnapplied;
-
-  async function recordPayment() {
-    if (!organizationId || !contactId || !amount) return;
-    setBusy('record');
-    setError(null);
-    try {
-      const payload = {
-        contactId,
-        receivedDate,
-        amountMinor: decimalToMinor(amount),
-      };
-      const response = await apiRequest<PaymentResponse>(
-        `/organizations/${organizationId}/payments`,
-        {
-          method: 'POST',
-          body: JSON.stringify(payload),
-          headers: { 'Idempotency-Key': crypto.randomUUID() },
-        },
-      );
-      window.sessionStorage.setItem(PAYMENT_FLASH_NOTICE_KEY, 'Payment recorded.');
-      router.replace(`/payments/${response.data.id}`);
-    } catch (caught) {
-      setError(caught instanceof ApiError ? caught.message : 'The payment could not be recorded.');
-    } finally {
-      setBusy(null);
-    }
-  }
 
   async function allocate() {
     if (!organizationId || !payment) return;
@@ -322,92 +319,6 @@ export function PaymentEditorPage({ paymentId }: { paymentId?: string }) {
     } finally {
       setBusy(null);
     }
-  }
-
-  if (!paymentId) {
-    return (
-      <>
-        <PageHeader
-          title="New payment"
-          description="Record a customer payment. It posts to the ledger immediately."
-          actions={
-            <Button asChild variant="outline">
-              <Link href="/payments">Back to payments</Link>
-            </Button>
-          }
-        />
-        <div className="rb-ledger-stack">
-          {error ? (
-            <div className="rb-auth-error" role="alert">
-              {error}
-            </div>
-          ) : null}
-
-          <Card className="rb-journal-editor">
-            <div className="rb-journal-editor__meta">
-              <div className="rb-field">
-                <Label htmlFor="payment-customer">Customer</Label>
-                <Select
-                  id="payment-customer"
-                  value={contactId}
-                  disabled={!canRecord}
-                  onChange={(event) => setContactId(event.target.value)}
-                >
-                  <option value="">Choose customer</option>
-                  {customers.map((customer) => (
-                    <option key={customer.id} value={customer.id}>
-                      {customer.displayName}
-                    </option>
-                  ))}
-                </Select>
-              </div>
-              <div className="rb-field">
-                <Label htmlFor="payment-received-date">Received date</Label>
-                <Input
-                  id="payment-received-date"
-                  type="date"
-                  value={receivedDate}
-                  disabled={!canRecord}
-                  onChange={(event) => setReceivedDate(event.target.value)}
-                />
-              </div>
-              <div className="rb-field">
-                <Label htmlFor="payment-amount">Amount</Label>
-                <Input
-                  id="payment-amount"
-                  inputMode="decimal"
-                  value={amount}
-                  disabled={!canRecord}
-                  onChange={(event) => setAmount(event.target.value)}
-                  placeholder="0.00"
-                />
-              </div>
-              <div className="rb-field">
-                <Label htmlFor="payment-currency">Currency</Label>
-                <Input id="payment-currency" value={currency} disabled />
-              </div>
-            </div>
-            {!contactId || !amount ? (
-              <FieldMessage error>
-                Choose a customer and enter an amount to record this payment.
-              </FieldMessage>
-            ) : null}
-            {canRecord ? (
-              <div className="rb-dialog-footer">
-                <Button
-                  type="button"
-                  onClick={() => void recordPayment()}
-                  loading={busy === 'record'}
-                  disabled={!contactId || !amount}
-                >
-                  <Save aria-hidden="true" /> Record payment
-                </Button>
-              </div>
-            ) : null}
-          </Card>
-        </div>
-      </>
-    );
   }
 
   return (
@@ -541,21 +452,4 @@ export function PaymentEditorPage({ paymentId }: { paymentId?: string }) {
       </div>
     </>
   );
-}
-
-function decimalToMinor(value: string, scale = 2): string {
-  const normalized = value.replace(/,/g, '').trim();
-  if (!normalized) return '0';
-  const [whole = '0', fraction = ''] = normalized.split('.');
-  return `${whole}${fraction.padEnd(scale, '0').slice(0, scale)}`.replace(/^0+(?=\d)/, '');
-}
-
-function formatMinor(value: string, currency: string): string {
-  const amount = BigInt(value);
-  const negative = amount < 0n;
-  const absolute = negative ? -amount : amount;
-  const whole = absolute / 100n;
-  const cents = absolute % 100n;
-  const formattedWhole = new Intl.NumberFormat('en-KE').format(Number(whole));
-  return `${negative ? '-' : ''}${currency} ${formattedWhole}.${cents.toString().padStart(2, '0')}`;
 }

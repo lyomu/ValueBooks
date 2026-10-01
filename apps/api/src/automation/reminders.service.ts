@@ -195,6 +195,7 @@ export class RemindersService {
       ]);
       if (
         !invoice ||
+        invoice.remindersStoppedAt ||
         !policy ||
         !invoice.contact.email ||
         !['ISSUED', 'PARTIALLY_PAID', 'OVERDUE'].includes(invoice.status)

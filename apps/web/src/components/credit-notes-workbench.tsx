@@ -30,7 +30,9 @@ import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import { ApiError, apiRequest } from '../lib/api';
+import { takeInvoiceSeed } from './invoice-seed';
 import { hasPermission, useWorkspace } from '../lib/workspace';
+import { OperationalListing } from './operational-listing';
 import { TransactionCollaboration } from './transaction-collaboration';
 
 type CreditNoteListResponse = { data: CreditNote[] };
@@ -77,7 +79,6 @@ export function CreditNotesPage() {
 
   const [creditNotes, setCreditNotes] = useState<CreditNote[] | null>(null);
   const [statusFilter, setStatusFilter] = useState<'' | CreditNoteStatus>('');
-  const [query, setQuery] = useState('');
   const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
@@ -98,23 +99,14 @@ export function CreditNotesPage() {
     void load();
   }, [load]);
 
-  const filtered = useMemo(() => {
-    const needle = query.trim().toLowerCase();
-    if (!needle) return creditNotes ?? [];
-    return (creditNotes ?? []).filter((creditNote) =>
-      `${creditNote.creditNoteNumber ?? ''} ${creditNote.contactName}`
-        .toLowerCase()
-        .includes(needle),
-    );
-  }, [creditNotes, query]);
-
   const columns: readonly DataTableColumn<CreditNote>[] = [
     {
       key: 'creditNote',
       header: 'Credit note',
+      value: (creditNote) => creditNote.creditNoteNumber ?? '',
       cell: (creditNote) => (
         <div>
-          <strong>{creditNote.creditNoteNumber ?? 'Draft'}</strong>
+          <span>{creditNote.creditNoteNumber ?? 'Draft'}</span>
           <span className="rb-table-secondary">{creditNote.contactName}</span>
         </div>
       ),
@@ -122,18 +114,21 @@ export function CreditNotesPage() {
     {
       key: 'status',
       header: 'Status',
+      value: (creditNote) => creditNote.status,
       cell: (creditNote) => <StatusBadge status={creditNote.status} />,
     },
     {
       key: 'total',
       header: 'Total',
       align: 'right',
+      value: (creditNote) => creditNote.totalMinor,
       cell: (creditNote) => formatMinor(creditNote.totalMinor, creditNote.currency),
     },
     {
       key: 'remaining',
       header: 'Remaining',
       align: 'right',
+      value: (creditNote) => creditNote.remainingMinor,
       cell: (creditNote) => formatMinor(creditNote.remainingMinor, creditNote.currency),
       hideBelow: 'tablet',
     },
@@ -157,19 +152,6 @@ export function CreditNotesPage() {
 
   return (
     <>
-      <PageHeader
-        title="Credit notes"
-        description="Issue credit notes and apply or refund their balance."
-        actions={
-          canManage ? (
-            <Button asChild>
-              <Link href="/credit-notes/new">
-                <FilePlus2 aria-hidden="true" /> New credit note
-              </Link>
-            </Button>
-          ) : null
-        }
-      />
       <div className="rb-ledger-stack">
         {error ? (
           <div className="rb-auth-error" role="alert">
@@ -177,45 +159,22 @@ export function CreditNotesPage() {
           </div>
         ) : null}
 
-        <Card className="rb-ledger-toolbar">
-          <div className="rb-field">
-            <Label htmlFor="credit-note-search">
-              <Search aria-hidden="true" /> Search credit notes
-            </Label>
-            <Input
-              id="credit-note-search"
-              value={query}
-              onChange={(event) => setQuery(event.target.value)}
-              placeholder="Search by credit note number or customer..."
-            />
-          </div>
-          <div className="rb-field">
-            <Label htmlFor="credit-note-status">Status</Label>
-            <Select
-              id="credit-note-status"
-              value={statusFilter}
-              onChange={(event) => setStatusFilter(event.target.value as typeof statusFilter)}
-            >
-              <option value="">All credit notes</option>
-              {statusOptions.map((status) => (
-                <option key={status} value={status}>
-                  {status}
-                </option>
-              ))}
-            </Select>
-          </div>
-          <Badge>{creditNotes?.length ?? 0} credit notes</Badge>
-        </Card>
-
         {!creditNotes && !error ? (
           <Skeleton />
-        ) : filtered.length === 0 ? (
-          <EmptyState
-            title="No credit notes yet"
-            description="Create your first credit note to start crediting customers."
-          />
         ) : (
-          <DataTable caption="Credit notes" columns={columns} rows={filtered} />
+          <OperationalListing
+            title={statusFilter ? `${statusFilter.toLowerCase()} credit notes` : 'All credit notes'}
+            rows={creditNotes ?? []}
+            columns={columns}
+            searchText={(creditNote) => `${creditNote.creditNoteNumber ?? ''} ${creditNote.contactName} ${creditNote.status}`}
+            filter={<Select aria-label="Credit note status" value={statusFilter} onChange={(event) => setStatusFilter(event.target.value as typeof statusFilter)}><option value="">All statuses</option>{statusOptions.map((status) => <option key={status} value={status}>{status}</option>)}</Select>}
+            primaryAction={canManage ? <Button asChild><Link href="/credit-notes/new"><FilePlus2 aria-hidden="true" /> New</Link></Button> : null}
+            onRefresh={() => void load()}
+            onImport={async () => undefined}
+            onResetFilters={() => setStatusFilter('')}
+            emptyState={{ title: 'Keep customer credits organized', description: 'Create a credit note when you need to reduce what a customer owes.', illustration: 'sales', variant: 'onboarding', benefits: ['Apply credits to open invoices', 'Refund remaining credit when appropriate'] }}
+            noResultsState={{ title: 'No credit notes match this view', description: 'Clear the search or status filter to see credit notes.', illustration: 'sales', variant: 'no-results', action: <Button variant="outline" onClick={() => setStatusFilter('')}>Clear filters</Button> }}
+          />
         )}
       </div>
     </>
@@ -306,6 +265,27 @@ export function CreditNoteEditorPage({ creditNoteId }: { creditNoteId?: string }
   useEffect(() => {
     void load();
   }, [load]);
+
+  // "Create Credit Note" on an invoice hands its customer and lines over as a starting point.
+  useEffect(() => {
+    if (creditNoteId) return;
+    const seed = takeInvoiceSeed('credit-note');
+    if (!seed) return;
+    setContactId(seed.contactId);
+    setLines(
+      seed.lines.length > 0
+        ? seed.lines.map((line) => ({
+            key: crypto.randomUUID(),
+            itemId: line.itemId ?? '',
+            description: line.description,
+            quantity: line.quantity,
+            unitPrice: minorToDecimal(line.unitPriceMinor),
+            discount: line.discountMinor === '0' ? '' : minorToDecimal(line.discountMinor),
+            taxCodeId: line.taxCodeId ?? '',
+          }))
+        : [blankLine()],
+    );
+  }, [creditNoteId]);
 
   useEffect(() => {
     const flash = window.sessionStorage.getItem(CREDIT_NOTE_FLASH_NOTICE_KEY);

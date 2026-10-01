@@ -2,7 +2,7 @@ import { SearchX } from 'lucide-react';
 import type { ReactNode } from 'react';
 
 import { Card } from './card';
-import { EmptyState } from './empty-state';
+import { EmptyState, type EmptyStateConfig } from './empty-state';
 import { Spinner } from './loading';
 import { cn } from './utils';
 
@@ -10,6 +10,8 @@ export type DataTableColumn<T> = {
   key: string;
   header: ReactNode;
   cell: (row: T) => ReactNode;
+  /** Plain comparable value used by interactive listing variants. */
+  value?: (row: T) => string | number | null | undefined;
   align?: 'left' | 'center' | 'right';
   hideBelow?: 'tablet' | 'desktop';
   width?: string;
@@ -23,6 +25,7 @@ export function DataTable<T extends { id: string }>({
   loading = false,
   emptyTitle = 'No records yet',
   emptyDescription,
+  emptyState,
 }: {
   caption: string;
   columns: readonly DataTableColumn<T>[];
@@ -31,7 +34,16 @@ export function DataTable<T extends { id: string }>({
   loading?: boolean;
   emptyTitle?: string;
   emptyDescription?: string;
+  emptyState?: Omit<EmptyStateConfig, 'title' | 'description'> & Partial<Pick<EmptyStateConfig, 'title' | 'description'>>;
 }) {
+  const inferredNoResults = /\b(match|filter|search|nothing)\b/i.test(`${emptyTitle} ${emptyDescription ?? ''}`);
+  const resolvedEmptyState: EmptyStateConfig = {
+    ...emptyState,
+    title: emptyState?.title ?? emptyTitle,
+    description: emptyState?.description ?? emptyDescription,
+    variant: emptyState?.variant ?? (inferredNoResults ? 'no-results' : 'onboarding'),
+  };
+
   return (
     <Card className="rb-table-card">
       <div className="rb-table-scroll">
@@ -67,7 +79,7 @@ export function DataTable<T extends { id: string }>({
             {!loading && rows.length === 0 ? (
               <tr>
                 <td colSpan={columns.length} className="rb-table__state">
-                  <EmptyState icon={SearchX} title={emptyTitle} description={emptyDescription} />
+                  <EmptyState icon={SearchX} {...resolvedEmptyState} />
                 </td>
               </tr>
             ) : null}

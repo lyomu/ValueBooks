@@ -24,10 +24,11 @@ import {
   type DataTableColumn,
 } from '@valuebooks/ui';
 import { Play, Plus, Save, Search } from 'lucide-react';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 
 import { ApiError, apiRequest } from '../lib/api';
 import { hasPermission, useWorkspace } from '../lib/workspace';
+import { OperationalListing } from './operational-listing';
 
 type TemplateListResponse = { data: RecurringExpenseTemplate[] };
 type VendorListResponse = { data: Vendor[] };
@@ -49,7 +50,6 @@ export function RecurringExpensesPage() {
   const [taxCodes, setTaxCodes] = useState<TaxCode[]>([]);
   const [categories, setCategories] = useState<ExpenseCategory[]>([]);
   const [templates, setTemplates] = useState<RecurringExpenseTemplate[] | null>(null);
-  const [query, setQuery] = useState('');
   const [editing, setEditing] = useState<RecurringExpenseTemplate | null>(null);
   const [showCreate, setShowCreate] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -94,16 +94,6 @@ export function RecurringExpensesPage() {
   useEffect(() => {
     void load();
   }, [load]);
-
-  const filtered = useMemo(() => {
-    const needle = query.trim().toLowerCase();
-    if (!needle) return templates ?? [];
-    return (templates ?? []).filter((template) =>
-      `${template.payeeVendorName ?? ''} ${template.payeeName ?? ''}`
-        .toLowerCase()
-        .includes(needle),
-    );
-  }, [templates, query]);
 
   const currency = organization?.baseCurrency ?? 'KES';
 
@@ -227,19 +217,32 @@ export function RecurringExpensesPage() {
     {
       key: 'payee',
       header: 'Payee',
+      value: (template) => template.payeeVendorName ?? template.payeeName ?? '',
       cell: (template) => template.payeeVendorName ?? template.payeeName ?? '—',
     },
     {
       key: 'amount',
       header: 'Amount',
       align: 'right',
+      value: (template) => template.amountMinor,
       cell: (template) => formatMinor(template.amountMinor, currency),
     },
-    { key: 'cadence', header: 'Cadence', cell: (template) => template.cadence },
-    { key: 'nextRun', header: 'Next run', cell: (template) => template.nextRunDate },
+    {
+      key: 'cadence',
+      header: 'Cadence',
+      value: (template) => template.cadence,
+      cell: (template) => template.cadence,
+    },
+    {
+      key: 'nextRun',
+      header: 'Next run',
+      value: (template) => template.nextRunDate,
+      cell: (template) => template.nextRunDate,
+    },
     {
       key: 'status',
       header: 'Status',
+      value: (template) => (template.active ? 'ACTIVE' : 'INACTIVE'),
       cell: (template) => <StatusBadge status={template.active ? 'ACTIVE' : 'INACTIVE'} />,
     },
     {
@@ -277,26 +280,6 @@ export function RecurringExpensesPage() {
 
   return (
     <>
-      <PageHeader
-        title="Recurring expenses"
-        description="Templates that generate expenses on a schedule."
-        actions={
-          canManage ? (
-            <div className="rb-inline-actions">
-              <Button
-                variant="outline"
-                onClick={() => void runDueTemplates()}
-                loading={busy === 'run-due'}
-              >
-                <Play aria-hidden="true" /> Run due templates now
-              </Button>
-              <Button onClick={openCreate}>
-                <Plus aria-hidden="true" /> New template
-              </Button>
-            </div>
-          ) : null
-        }
-      />
       <div className="rb-ledger-stack">
         {error ? (
           <div className="rb-auth-error" role="alert">
@@ -454,30 +437,50 @@ export function RecurringExpensesPage() {
           </Card>
         ) : null}
 
-        <Card className="rb-ledger-toolbar">
-          <div className="rb-field">
-            <Label htmlFor="re-template-search">
-              <Search aria-hidden="true" /> Search templates
-            </Label>
-            <Input
-              id="re-template-search"
-              value={query}
-              onChange={(event) => setQuery(event.target.value)}
-              placeholder="Search by payee..."
-            />
-          </div>
-          <Badge>{templates?.length ?? 0} templates</Badge>
-        </Card>
-
         {!templates && !error ? (
           <Skeleton />
-        ) : filtered.length === 0 ? (
-          <EmptyState
-            title="No recurring templates yet"
-            description="Create a template to generate expenses on a schedule."
-          />
         ) : (
-          <DataTable caption="Recurring expenses" columns={columns} rows={filtered} />
+          <OperationalListing
+            title="All recurring expenses"
+            rows={templates ?? []}
+            columns={columns}
+            searchText={(template) =>
+              `${template.payeeVendorName ?? ''} ${template.payeeName ?? ''} ${template.cadence} ${template.nextRunDate} ${template.active ? 'active' : 'inactive'}`
+            }
+            primaryAction={
+              canManage ? (
+                <div className="rb-inline-actions">
+                  <Button
+                    variant="outline"
+                    onClick={() => void runDueTemplates()}
+                    loading={busy === 'run-due'}
+                  >
+                    <Play aria-hidden="true" /> Run due
+                  </Button>
+                  <Button onClick={openCreate}>
+                    <Plus aria-hidden="true" /> New
+                  </Button>
+                </div>
+              ) : null
+            }
+            onRefresh={() => void load()}
+            importEnabled={false}
+            emptyState={{
+              title: 'Create. Set. Repeat.',
+              description: 'Schedule expenses once, then let ValueBooks create them when they are due.',
+              illustration: 'purchases',
+              variant: 'onboarding',
+              benefits: [
+                'Set the payee, category, cadence, and payment account.',
+                'Review draft expenses or post them automatically when due.',
+              ],
+            }}
+            noResultsState={{
+              title: 'No recurring expenses match this view',
+              description: 'Try a different search term or clear the active filters.',
+              variant: 'no-results',
+            }}
+          />
         )}
       </div>
     </>

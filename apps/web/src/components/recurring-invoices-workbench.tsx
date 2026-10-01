@@ -23,10 +23,12 @@ import {
   type DataTableColumn,
 } from '@valuebooks/ui';
 import { Play, Plus, Save, Search, XCircle } from 'lucide-react';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 
 import { ApiError, apiRequest } from '../lib/api';
+import { takeInvoiceSeed } from './invoice-seed';
 import { hasPermission, useWorkspace } from '../lib/workspace';
+import { OperationalListing } from './operational-listing';
 
 type TemplateListResponse = { data: RecurringInvoiceTemplate[] };
 type ContactListResponse = { data: Contact[] };
@@ -66,7 +68,6 @@ export function RecurringInvoicesPage() {
   const [items, setItems] = useState<Item[]>([]);
   const [taxCodes, setTaxCodes] = useState<TaxCode[]>([]);
   const [templates, setTemplates] = useState<RecurringInvoiceTemplate[] | null>(null);
-  const [query, setQuery] = useState('');
   const [editing, setEditing] = useState<RecurringInvoiceTemplate | null>(null);
   const [showCreate, setShowCreate] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -112,13 +113,29 @@ export function RecurringInvoicesPage() {
     void load();
   }, [load]);
 
-  const filtered = useMemo(() => {
-    const needle = query.trim().toLowerCase();
-    if (!needle) return templates ?? [];
-    return (templates ?? []).filter((template) =>
-      template.contactName.toLowerCase().includes(needle),
+  // "Make Recurring" on an invoice opens the create form pre-filled from that invoice.
+  useEffect(() => {
+    const seed = takeInvoiceSeed('recurring-invoice');
+    if (!seed) return;
+    resetForm();
+    setEditing(null);
+    setContactId(seed.contactId);
+    setLines(
+      seed.lines.length > 0
+        ? seed.lines.map((line) => ({
+            key: crypto.randomUUID(),
+            itemId: line.itemId ?? '',
+            description: line.description,
+            quantity: line.quantity,
+            unitPrice: minorToDecimal(line.unitPriceMinor),
+            discount: line.discountMinor === '0' ? '' : minorToDecimal(line.discountMinor),
+            taxCodeId: line.taxCodeId ?? '',
+          }))
+        : [blankLine()],
     );
-  }, [templates, query]);
+    setShowCreate(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const currency = customers.find((customer) => customer.id === contactId)?.currency ?? 'KES';
 
@@ -283,13 +300,15 @@ export function RecurringInvoicesPage() {
     {
       key: 'customer',
       header: 'Customer',
+      value: (template) => template.contactName,
       cell: (template) => template.contactName,
     },
-    { key: 'cadence', header: 'Cadence', cell: (template) => template.cadence },
-    { key: 'nextRun', header: 'Next run', cell: (template) => template.nextRunDate },
+    { key: 'cadence', header: 'Cadence', value: (template) => template.cadence, cell: (template) => template.cadence },
+    { key: 'nextRun', header: 'Next run', value: (template) => template.nextRunDate, cell: (template) => template.nextRunDate },
     {
       key: 'status',
       header: 'Status',
+      value: (template) => template.active ? 'ACTIVE' : 'INACTIVE',
       cell: (template) => <StatusBadge status={template.active ? 'ACTIVE' : 'INACTIVE'} />,
     },
     {
@@ -327,26 +346,6 @@ export function RecurringInvoicesPage() {
 
   return (
     <>
-      <PageHeader
-        title="Recurring invoices"
-        description="Templates that generate invoices on a schedule."
-        actions={
-          canManage ? (
-            <div className="rb-inline-actions">
-              <Button
-                variant="outline"
-                onClick={() => void runDueTemplates()}
-                loading={busy === 'run-due'}
-              >
-                <Play aria-hidden="true" /> Run due templates now
-              </Button>
-              <Button onClick={openCreate}>
-                <Plus aria-hidden="true" /> New template
-              </Button>
-            </div>
-          ) : null
-        }
-      />
       <div className="rb-ledger-stack">
         {error ? (
           <div className="rb-auth-error" role="alert">
@@ -541,30 +540,20 @@ export function RecurringInvoicesPage() {
           </Card>
         ) : null}
 
-        <Card className="rb-ledger-toolbar">
-          <div className="rb-field">
-            <Label htmlFor="template-search">
-              <Search aria-hidden="true" /> Search templates
-            </Label>
-            <Input
-              id="template-search"
-              value={query}
-              onChange={(event) => setQuery(event.target.value)}
-              placeholder="Search by customer..."
-            />
-          </div>
-          <Badge>{templates?.length ?? 0} templates</Badge>
-        </Card>
-
         {!templates && !error ? (
           <Skeleton />
-        ) : filtered.length === 0 ? (
-          <EmptyState
-            title="No recurring templates yet"
-            description="Create a template to generate invoices on a schedule."
-          />
         ) : (
-          <DataTable caption="Recurring invoices" columns={columns} rows={filtered} />
+          <OperationalListing
+            title="All recurring invoices"
+            rows={templates ?? []}
+            columns={columns}
+            searchText={(template) => `${template.contactName} ${template.cadence} ${template.nextRunDate} ${template.active ? 'active' : 'inactive'}`}
+            primaryAction={canManage ? <div className="rb-inline-actions"><Button variant="outline" onClick={() => void runDueTemplates()} loading={busy === 'run-due'}><Play aria-hidden="true" /> Run due</Button><Button onClick={openCreate}><Plus aria-hidden="true" /> New</Button></div> : null}
+            onRefresh={() => void load()}
+            onImport={async () => undefined}
+            emptyState={{ title: 'Create. Set. Repeat.', description: 'Set up recurring invoices to automatically draft or issue the work you bill on a schedule.', illustration: 'sales', variant: 'onboarding', benefits: ['Choose the cadence and start date', 'Review generated invoices or send them automatically'] }}
+            noResultsState={{ title: 'No recurring invoices match this view', description: 'Clear the search to see recurring invoice templates.', illustration: 'sales', variant: 'no-results' }}
+          />
         )}
       </div>
     </>

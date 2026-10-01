@@ -1,6 +1,7 @@
 import {
   BadRequestException,
   ConflictException,
+  ForbiddenException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
@@ -27,6 +28,7 @@ const paymentDetailInclude = {
     include: { invoice: { select: { id: true, invoiceNumber: true } } },
   },
   contact: { select: { id: true, displayName: true, currency: true, receivableAccountId: true } },
+  depositAccount: { select: { id: true, code: true, name: true } },
 } satisfies Prisma.PaymentReceivedInclude;
 
 const OPEN_INVOICE_STATUSES = ['ISSUED', 'PARTIALLY_PAID'] as const;
@@ -57,10 +59,24 @@ export class PaymentsService {
 
   async openInvoicesFor(organizationId: string, paymentId: string) {
     const payment = await this.findOrThrow(organizationId, paymentId);
+    return this.openInvoicesForCustomer(organizationId, payment.contactId);
+  }
+
+  /**
+   * The customer's open invoices, without needing a payment to exist first. The record-payment
+   * dialog calls this as soon as a customer is chosen so it can offer the allocation table in the
+   * same step as recording.
+   */
+  async openInvoicesForCustomer(organizationId: string, contactId: string) {
+    const contact = await this.prisma.contact.findFirst({
+      where: { id: contactId, organizationId, type: 'CUSTOMER' },
+      select: { id: true },
+    });
+    if (!contact) throw new NotFoundException('Customer not found.');
     const invoices = await this.prisma.invoice.findMany({
       where: {
         organizationId,
-        contactId: payment.contactId,
+        contactId,
         status: { in: [...OPEN_INVOICE_STATUSES] },
         balanceMinor: { gt: 0n },
       },
@@ -117,7 +133,21 @@ export class PaymentsService {
     if (amountMinor <= 0n) {
       throw new BadRequestException('A payment amount must be greater than zero.');
     }
+    const bankChargesMinor = BigInt(input.bankChargesMinor ?? '0');
+    const withholdingTaxMinor = BigInt(input.withholdingTaxMinor ?? '0');
+    const depositedMinor = amountMinor - bankChargesMinor - withholdingTaxMinor;
+    if (depositedMinor < 0n) {
+      throw new BadRequestException(
+        'Bank charges and withholding tax together cannot exceed the amount received.',
+      );
+    }
     const receivedDate = isoDate(input.receivedDate);
+    // `record` is guarded by `sales.payments.record`; applying the receipt to invoices in the same
+    // request is the allocate capability, so it is checked separately rather than ridden in on the
+    // weaker permission.
+    if (input.allocations?.length && !context.permissions.has('sales.payments.allocate')) {
+      throw new ForbiddenException('You cannot apply payments to invoices.');
+    }
 
     const recorded = await this.prisma.$transaction(async (tx) => {
       await this.lockPaymentIdempotency(tx, context.id, 'PAYMENT_RECEIVED_RECORD', idempotencyKey);
@@ -134,7 +164,7 @@ export class PaymentsService {
         });
       }
 
-      const depositAccount = await this.ledger.accountBySystemKey(context.id, 'bank_default', tx);
+      const depositAccount = await this.resolveDepositAccount(tx, context.id, input.depositAccountId);
       const arAccount = contact.receivableAccountId
         ? await tx.ledgerAccount.findUniqueOrThrow({ where: { id: contact.receivableAccountId } })
         : await this.ledger.accountBySystemKey(context.id, 'accounts_receivable', tx);
@@ -154,10 +184,55 @@ export class PaymentsService {
           amountMinor,
           allocatedMinor: 0n,
           unappliedMinor: amountMinor,
+          bankChargesMinor,
+          withholdingTaxMinor,
+          paymentMode: input.paymentMode ?? 'BANK_TRANSFER',
+          reference: input.reference ?? null,
+          notes: input.notes ?? null,
           depositAccountId: depositAccount.id,
           createdByUserId: user.id,
         },
       });
+
+      const description = `Payment from ${contact.displayName}`;
+      const line = (accountId: string, debitMinor: bigint, creditMinor: bigint) => ({
+        accountId,
+        debitMinor,
+        creditMinor,
+        foreignAmountMinor: isForeignCurrency ? debitMinor + creditMinor : undefined,
+        description,
+      });
+
+      // The customer is relieved of `amountMinor`, but only `depositedMinor` reaches the bank: a
+      // bank fee and tax the customer withheld at source are both settled out of the same receipt.
+      const lines = [
+        ...(depositedMinor > 0n ? [line(depositAccount.id, depositedMinor, 0n)] : []),
+        ...(bankChargesMinor > 0n
+          ? [
+              line(
+                (await this.ledger.accountBySystemKey(context.id, 'bank_charges', tx)).id,
+                bankChargesMinor,
+                0n,
+              ),
+            ]
+          : []),
+        ...(withholdingTaxMinor > 0n
+          ? [
+              line(
+                (
+                  await this.ledger.accountBySystemKey(
+                    context.id,
+                    'withholding_tax_receivable',
+                    tx,
+                  )
+                ).id,
+                withholdingTaxMinor,
+                0n,
+              ),
+            ]
+          : []),
+        line(arAccount.id, 0n, amountMinor),
+      ];
 
       const postedJournal = await this.ledger.postJournalFromLines(
         context,
@@ -166,25 +241,10 @@ export class PaymentsService {
         {
           journalDate: receivedDate,
           currency,
-          description: `Payment from ${contact.displayName}`,
+          description,
           sourceType: 'PAYMENT_RECEIVED',
           sourceId: payment.id,
-          lines: [
-            {
-              accountId: depositAccount.id,
-              debitMinor: amountMinor,
-              creditMinor: 0n,
-              foreignAmountMinor: isForeignCurrency ? amountMinor : undefined,
-              description: `Payment from ${contact.displayName}`,
-            },
-            {
-              accountId: arAccount.id,
-              debitMinor: 0n,
-              creditMinor: amountMinor,
-              foreignAmountMinor: isForeignCurrency ? amountMinor : undefined,
-              description: `Payment from ${contact.displayName}`,
-            },
-          ],
+          lines,
         },
         metadata,
         undefined,
@@ -203,6 +263,16 @@ export class PaymentsService {
         data: { paymentNumber: allocation.value, journalId: postedJournal.id },
         include: paymentDetailInclude,
       });
+
+      // Recording and allocating in one request is what the record-payment dialog submits. Running
+      // it inside this same transaction keeps the two atomic -- a rejected allocation (an invoice
+      // that closed since the dialog loaded) rolls the payment back too, rather than stranding an
+      // unapplied payment the person did not intend to create. Lock order is unchanged: this
+      // payment's row is ours already, invoices are then locked ascending by id.
+      const allocated =
+        input.allocations && input.allocations.length > 0
+          ? await this.applyAllocations(tx, context, user, updated.id, input.allocations, metadata)
+          : updated;
 
       await this.recordPaymentIdempotency(
         tx,
@@ -234,10 +304,33 @@ export class PaymentsService {
         },
       });
 
-      return updated;
+      return allocated;
     });
 
     return summarizePayment(recorded);
+  }
+
+  /**
+   * Resolves the bank account a receipt lands in. An explicit choice must be an active asset
+   * account in this organization -- otherwise a payment could be deposited into a revenue or
+   * receivable account and silently distort the balance sheet.
+   */
+  private async resolveDepositAccount(
+    tx: Prisma.TransactionClient,
+    organizationId: string,
+    depositAccountId: string | undefined,
+  ) {
+    if (!depositAccountId) {
+      return this.ledger.accountBySystemKey(organizationId, 'bank_default', tx);
+    }
+    const account = await tx.ledgerAccount.findFirst({
+      where: { id: depositAccountId, organizationId, status: 'ACTIVE' },
+    });
+    if (!account) throw new NotFoundException('Deposit account not found.');
+    if (account.type !== 'ASSET') {
+      throw new BadRequestException('A payment can only be deposited into an asset account.');
+    }
+    return account;
   }
 
   /**
@@ -257,20 +350,6 @@ export class PaymentsService {
     metadata: RequestMetadata,
     idempotencyKey?: string,
   ) {
-    const requestedByInvoice = new Map<string, bigint>();
-    for (const line of input.allocations) {
-      if (requestedByInvoice.has(line.invoiceId)) {
-        throw new BadRequestException(
-          `Invoice ${line.invoiceId} appears more than once in this allocation request.`,
-        );
-      }
-      const amount = BigInt(line.amountMinor);
-      if (amount <= 0n) {
-        throw new BadRequestException('Each allocation amount must be greater than zero.');
-      }
-      requestedByInvoice.set(line.invoiceId, amount);
-    }
-
     const updated = await this.prisma.$transaction(async (tx) => {
       await this.lockPaymentIdempotency(tx, context.id, 'PAYMENT_ALLOCATE', idempotencyKey);
       const existingResult = await this.findPaymentIdempotentResult(
@@ -286,6 +365,56 @@ export class PaymentsService {
         });
       }
 
+      const allocated = await this.applyAllocations(
+        tx,
+        context,
+        user,
+        paymentId,
+        input.allocations,
+        metadata,
+      );
+
+      await this.recordPaymentIdempotency(
+        tx,
+        context.id,
+        'PAYMENT_ALLOCATE',
+        idempotencyKey,
+        paymentId,
+      );
+      return allocated;
+    });
+
+    return summarizePayment(updated);
+  }
+
+  /**
+   * The allocation core, shared by `allocate` and by `record`'s one-step record-and-apply path. It
+   * takes the caller's transaction so the caller decides the atomicity boundary and owns the
+   * idempotency bookkeeping; the lock order inside is fixed either way.
+   */
+  private async applyAllocations(
+    tx: Prisma.TransactionClient,
+    context: OrganizationContext,
+    user: PublicUser,
+    paymentId: string,
+    allocations: readonly { invoiceId: string; amountMinor: string }[],
+    metadata: RequestMetadata,
+  ): Promise<PaymentWithAllocations> {
+    const requestedByInvoice = new Map<string, bigint>();
+    for (const line of allocations) {
+      if (requestedByInvoice.has(line.invoiceId)) {
+        throw new BadRequestException(
+          `Invoice ${line.invoiceId} appears more than once in this allocation request.`,
+        );
+      }
+      const amount = BigInt(line.amountMinor);
+      if (amount <= 0n) {
+        throw new BadRequestException('Each allocation amount must be greater than zero.');
+      }
+      requestedByInvoice.set(line.invoiceId, amount);
+    }
+
+    {
       // Lock order, fixed for all time: payment row first, then invoice rows ascending by id.
       await this.lockPaymentRow(tx, context.id, paymentId);
       const payment = await tx.paymentReceived.findFirst({
@@ -387,13 +516,6 @@ export class PaymentsService {
         include: paymentDetailInclude,
       });
 
-      await this.recordPaymentIdempotency(
-        tx,
-        context.id,
-        'PAYMENT_ALLOCATE',
-        idempotencyKey,
-        paymentId,
-      );
       await writeAuditEvent(tx, {
         organizationId: context.id,
         actorUserId: user.id,
@@ -409,9 +531,7 @@ export class PaymentsService {
       });
 
       return updatedPayment;
-    });
-
-    return summarizePayment(updated);
+    }
   }
 
   private async findOrThrow(organizationId: string, paymentId: string) {
@@ -652,7 +772,20 @@ function summarizePayment(payment: PaymentWithAllocations) {
     amountMinor: payment.amountMinor.toString(),
     allocatedMinor: payment.allocatedMinor.toString(),
     unappliedMinor: payment.unappliedMinor.toString(),
+    bankChargesMinor: payment.bankChargesMinor.toString(),
+    withholdingTaxMinor: payment.withholdingTaxMinor.toString(),
+    depositedMinor: (
+      payment.amountMinor -
+      payment.bankChargesMinor -
+      payment.withholdingTaxMinor
+    ).toString(),
+    paymentMode: payment.paymentMode,
+    reference: payment.reference,
+    notes: payment.notes,
     depositAccountId: payment.depositAccountId,
+    depositAccountName: payment.depositAccount
+      ? `${payment.depositAccount.code} ${payment.depositAccount.name}`
+      : null,
     journalId: payment.journalId,
     allocations: payment.allocations.map((allocation) => ({
       id: allocation.id,

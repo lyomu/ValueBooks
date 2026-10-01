@@ -70,6 +70,18 @@ import { VendorsService } from './vendors.service.js';
     CategorizationSuggestionService,
     DraftNoteService,
   ],
-  exports: [RecurringBillsService, RecurringExpensesService],
+  exports: [
+    RecurringBillsService,
+    RecurringExpensesService,
+    // Exported for the demo week seed (docs/MOCK_DATA_PLAN.md), which drives the same services the
+    // purchases screens do: vendors, orders and receipts, bills, payments, credits and expenses.
+    VendorsService,
+    ExpenseCategoriesService,
+    PurchaseOrdersService,
+    BillsService,
+    PaymentsMadeService,
+    VendorCreditsService,
+    ExpensesService,
+  ],
 })
 export class PurchasesModule {}

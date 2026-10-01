@@ -37,5 +37,15 @@ import { TransfersService } from './transfers.service.js';
     ReconciliationsService,
     BankMatchProposalService,
   ],
+  exports: [
+    // Exported for the demo week seed (docs/MOCK_DATA_PLAN.md), which drives the same services the
+    // banking screens do.
+    FinancialAccountsService,
+    BankRulesService,
+    StatementImportsService,
+    BankTransactionsService,
+    TransfersService,
+    ReconciliationsService,
+  ],
 })
 export class BankingModule {}

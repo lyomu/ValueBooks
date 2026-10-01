@@ -20,7 +20,12 @@ import {
   type OrganizationRequest,
 } from '../organizations/organization-context.js';
 import { OrganizationGuard } from '../organizations/organization.guard.js';
-import { AllocatePaymentDto, CreatePaymentDto, ListPaymentsQueryDto } from './payments.dto.js';
+import {
+  AllocatePaymentDto,
+  CreatePaymentDto,
+  ListPaymentsQueryDto,
+  OpenInvoicesQueryDto,
+} from './payments.dto.js';
 import { PaymentsService } from './payments.service.js';
 
 @Controller('organizations/:organizationId/payments')
@@ -35,6 +40,18 @@ export class PaymentsController {
   @RequirePermission('sales.payments.view')
   async list(@Query() query: ListPaymentsQueryDto, @Req() request: OrganizationRequest) {
     return { data: await this.payments.list(request.organization.id, query.status) };
+  }
+
+  /** Open invoices for a customer, before any payment exists -- what the record dialog allocates against. */
+  @Get('open-invoices')
+  @RequirePermission('sales.payments.view')
+  async openInvoicesForCustomer(
+    @Query() query: OpenInvoicesQueryDto,
+    @Req() request: OrganizationRequest,
+  ) {
+    return {
+      data: await this.payments.openInvoicesForCustomer(request.organization.id, query.contactId),
+    };
   }
 
   @Get(':paymentId')

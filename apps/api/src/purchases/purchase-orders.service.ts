@@ -260,6 +260,8 @@ export class PurchaseOrdersService {
     input: RecordPurchaseOrderReceiptDto | 'PARTIALLY_RECEIVED' | 'RECEIVED',
     metadata: RequestMetadata,
     idempotencyKey?: string,
+    // Internal seed/backfill override for the receipt's stock movement date. Defaults to today.
+    businessDate?: string,
   ) {
     if (typeof input === 'string') {
       throw new BadRequestException('Receipt status is derived from stock receipt movements.');
@@ -282,6 +284,7 @@ export class PurchaseOrdersService {
         input,
         metadata,
         tx,
+        businessDate,
       );
       if (idempotencyKey) {
         await this.recordReceiptIdempotency(tx, context.id, idempotencyKey, orderId);

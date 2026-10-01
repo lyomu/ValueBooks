@@ -4,7 +4,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { AuditAction, type Prisma } from '@prisma/client';
+import { AuditAction, type CollaborationTargetType, type Prisma } from '@prisma/client';
 
 import type { PublicUser } from '../auth/auth.service.js';
 import type { RequestMetadata } from '../auth/request-context.js';
@@ -206,6 +206,265 @@ export class CustomersService {
     return summarize(updated);
   }
 
+  /**
+   * Everything the customer workspace shows across its tabs, one round trip per tab.
+   *
+   * These are read models for one screen, not general list endpoints: each returns only the columns
+   * the tab renders, ordered newest first, and capped, so opening a customer with years of history
+   * cannot pull their whole ledger into the browser.
+   */
+  async transactions(organizationId: string, contactId: string) {
+    await this.findOrThrow(organizationId, contactId);
+    const scope = { organizationId, contactId } as const;
+    const [invoices, quotes, salesOrders, creditNotes, payments] = await Promise.all([
+      this.prisma.invoice.findMany({
+        where: scope,
+        orderBy: [{ issueDate: 'desc' }, { createdAt: 'desc' }],
+        take: 100,
+        select: {
+          id: true,
+          invoiceNumber: true,
+          status: true,
+          issueDate: true,
+          dueDate: true,
+          currency: true,
+          totalMinor: true,
+          balanceMinor: true,
+        },
+      }),
+      this.prisma.quote.findMany({
+        where: scope,
+        orderBy: [{ createdAt: 'desc' }],
+        take: 50,
+        select: {
+          id: true,
+          quoteNumber: true,
+          status: true,
+          issueDate: true,
+          currency: true,
+          totalMinor: true,
+        },
+      }),
+      this.prisma.salesOrder.findMany({
+        where: scope,
+        orderBy: [{ createdAt: 'desc' }],
+        take: 50,
+        select: {
+          id: true,
+          orderNumber: true,
+          status: true,
+          issueDate: true,
+          currency: true,
+          totalMinor: true,
+        },
+      }),
+      this.prisma.creditNote.findMany({
+        where: scope,
+        orderBy: [{ createdAt: 'desc' }],
+        take: 50,
+        select: {
+          id: true,
+          creditNoteNumber: true,
+          status: true,
+          issueDate: true,
+          currency: true,
+          totalMinor: true,
+          remainingMinor: true,
+        },
+      }),
+      this.prisma.paymentReceived.findMany({
+        where: scope,
+        orderBy: [{ receivedDate: 'desc' }, { createdAt: 'desc' }],
+        take: 50,
+        select: {
+          id: true,
+          paymentNumber: true,
+          status: true,
+          receivedDate: true,
+          currency: true,
+          amountMinor: true,
+          unappliedMinor: true,
+          paymentMode: true,
+          reference: true,
+        },
+      }),
+    ]);
+
+    return {
+      invoices: invoices.map((row) => ({
+        id: row.id,
+        number: row.invoiceNumber,
+        status: row.status,
+        date: row.issueDate ? dateOnly(row.issueDate) : null,
+        dueDate: row.dueDate ? dateOnly(row.dueDate) : null,
+        currency: row.currency,
+        totalMinor: row.totalMinor.toString(),
+        balanceMinor: row.balanceMinor.toString(),
+      })),
+      quotes: quotes.map((row) => ({
+        id: row.id,
+        number: row.quoteNumber,
+        status: row.status,
+        date: row.issueDate ? dateOnly(row.issueDate) : null,
+        currency: row.currency,
+        totalMinor: row.totalMinor.toString(),
+      })),
+      salesOrders: salesOrders.map((row) => ({
+        id: row.id,
+        number: row.orderNumber,
+        status: row.status,
+        date: row.issueDate ? dateOnly(row.issueDate) : null,
+        currency: row.currency,
+        totalMinor: row.totalMinor.toString(),
+      })),
+      creditNotes: creditNotes.map((row) => ({
+        id: row.id,
+        number: row.creditNoteNumber,
+        status: row.status,
+        date: row.issueDate ? dateOnly(row.issueDate) : null,
+        currency: row.currency,
+        totalMinor: row.totalMinor.toString(),
+        remainingMinor: row.remainingMinor.toString(),
+      })),
+      payments: payments.map((row) => ({
+        id: row.id,
+        number: row.paymentNumber,
+        status: row.status,
+        date: dateOnly(row.receivedDate),
+        currency: row.currency,
+        amountMinor: row.amountMinor.toString(),
+        unappliedMinor: row.unappliedMinor.toString(),
+        paymentMode: row.paymentMode,
+        reference: row.reference,
+      })),
+    };
+  }
+
+  /**
+   * Receivables position, aged. Buckets come from `dueDate` against today and count only open
+   * invoices; an invoice with no due date is treated as current rather than dropped, so the buckets
+   * always sum back to the outstanding total.
+   */
+  async summary(organizationId: string, contactId: string) {
+    const contact = await this.findOrThrow(organizationId, contactId);
+    const [openInvoices, credits, unappliedPayments] = await Promise.all([
+      this.prisma.invoice.findMany({
+        where: {
+          organizationId,
+          contactId,
+          status: { in: ['ISSUED', 'PARTIALLY_PAID'] },
+          balanceMinor: { gt: 0n },
+        },
+        select: { dueDate: true, balanceMinor: true },
+      }),
+      this.prisma.creditNote.aggregate({
+        where: { organizationId, contactId, remainingMinor: { gt: 0n } },
+        _sum: { remainingMinor: true },
+      }),
+      this.prisma.paymentReceived.aggregate({
+        where: { organizationId, contactId, unappliedMinor: { gt: 0n } },
+        _sum: { unappliedMinor: true },
+      }),
+    ]);
+
+    const today = startOfUtcDay(new Date());
+    const buckets = { current: 0n, days1To30: 0n, days31To60: 0n, days61To90: 0n, days90Plus: 0n };
+    let outstandingMinor = 0n;
+    for (const invoice of openInvoices) {
+      outstandingMinor += invoice.balanceMinor;
+      const overdueDays = invoice.dueDate
+        ? Math.floor((today.getTime() - startOfUtcDay(invoice.dueDate).getTime()) / 86_400_000)
+        : 0;
+      if (overdueDays <= 0) buckets.current += invoice.balanceMinor;
+      else if (overdueDays <= 30) buckets.days1To30 += invoice.balanceMinor;
+      else if (overdueDays <= 60) buckets.days31To60 += invoice.balanceMinor;
+      else if (overdueDays <= 90) buckets.days61To90 += invoice.balanceMinor;
+      else buckets.days90Plus += invoice.balanceMinor;
+    }
+
+    return {
+      currency: contact.currency,
+      outstandingMinor: outstandingMinor.toString(),
+      openInvoiceCount: openInvoices.length,
+      unusedCreditsMinor: (credits._sum.remainingMinor ?? 0n).toString(),
+      unappliedPaymentsMinor: (unappliedPayments._sum.unappliedMinor ?? 0n).toString(),
+      aging: {
+        current: buckets.current.toString(),
+        days1To30: buckets.days1To30.toString(),
+        days31To60: buckets.days31To60.toString(),
+        days61To90: buckets.days61To90.toString(),
+        days90Plus: buckets.days90Plus.toString(),
+      },
+    };
+  }
+
+  /**
+   * The customer's activity timeline. Activity rows are written per target, so a customer's story
+   * is spread across their documents; this gathers the contact's own rows together with those of
+   * every document belonging to them, then merges by time.
+   */
+  async activity(organizationId: string, contactId: string, limit = 60) {
+    await this.findOrThrow(organizationId, contactId);
+    const scope = { organizationId, contactId } as const;
+    const idOnly = { select: { id: true } } as const;
+    const [invoices, quotes, salesOrders, creditNotes, payments] = await Promise.all([
+      this.prisma.invoice.findMany({ where: scope, ...idOnly }),
+      this.prisma.quote.findMany({ where: scope, ...idOnly }),
+      this.prisma.salesOrder.findMany({ where: scope, ...idOnly }),
+      this.prisma.creditNote.findMany({ where: scope, ...idOnly }),
+      this.prisma.paymentReceived.findMany({ where: scope, ...idOnly }),
+    ]);
+
+    const targets: { targetType: CollaborationTargetType; targetId: { in: string[] } }[] = (
+      [
+        { targetType: 'CONTACT', targetId: { in: [contactId] } },
+        { targetType: 'INVOICE', targetId: { in: invoices.map((row) => row.id) } },
+        { targetType: 'QUOTE', targetId: { in: quotes.map((row) => row.id) } },
+        { targetType: 'SALES_ORDER', targetId: { in: salesOrders.map((row) => row.id) } },
+        { targetType: 'CREDIT_NOTE', targetId: { in: creditNotes.map((row) => row.id) } },
+        { targetType: 'PAYMENT_RECEIVED', targetId: { in: payments.map((row) => row.id) } },
+      ] satisfies { targetType: CollaborationTargetType; targetId: { in: string[] } }[]
+    ).filter((target) => target.targetId.in.length > 0);
+
+    const rows = await this.prisma.activity.findMany({
+      where: { organizationId, visibility: 'INTERNAL', OR: targets },
+      orderBy: [{ occurredAt: 'desc' }],
+      take: limit,
+      include: { actor: { select: { displayName: true } } },
+    });
+
+    return rows.map((row) => ({
+      id: row.id,
+      targetType: row.targetType,
+      targetId: row.targetId,
+      kind: row.kind,
+      eventKey: row.eventKey,
+      actorName: row.actor?.displayName ?? null,
+      occurredAt: row.occurredAt.toISOString(),
+    }));
+  }
+
+  /** Outbound document emails sent to this customer, newest first. */
+  async mails(organizationId: string, contactId: string, limit = 60) {
+    await this.findOrThrow(organizationId, contactId);
+    const rows = await this.prisma.documentSendLog.findMany({
+      where: { organizationId, contactId },
+      orderBy: [{ sentAt: 'desc' }],
+      take: limit,
+      include: { sentBy: { select: { displayName: true } } },
+    });
+    return rows.map((row) => ({
+      id: row.id,
+      targetType: row.targetType,
+      targetId: row.targetId,
+      documentNumber: row.documentNumber,
+      recipientEmail: row.recipientEmail,
+      subject: row.subject,
+      sentByName: row.sentBy?.displayName ?? null,
+      sentAt: row.sentAt.toISOString(),
+    }));
+  }
+
   private async findOrThrow(organizationId: string, contactId: string) {
     const contact = await this.prisma.contact.findFirst({
       where: { id: contactId, organizationId, type: 'CUSTOMER' },
@@ -274,4 +533,14 @@ function summarize(contact: ContactWithDetails) {
     createdAt: contact.createdAt.toISOString(),
     updatedAt: contact.updatedAt.toISOString(),
   };
+}
+
+/** Date-only ISO string, matching how every other sales read model renders a date column. */
+function dateOnly(date: Date): string {
+  return date.toISOString().slice(0, 10);
+}
+
+/** Midnight UTC, so aging compares whole days rather than partial ones. */
+function startOfUtcDay(date: Date): Date {
+  return new Date(`${date.toISOString().slice(0, 10)}T00:00:00.000Z`);
 }

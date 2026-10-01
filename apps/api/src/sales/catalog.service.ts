@@ -223,6 +223,11 @@ export class CatalogService {
           sku: input.sku ?? null,
           name: input.name,
           itemType: input.itemType,
+          imageDataUrl: input.imageDataUrl ?? null,
+          salesEnabled: input.salesEnabled ?? true,
+          salesDescription: input.salesDescription ?? null,
+          purchaseEnabled: input.purchaseEnabled ?? false,
+          purchaseDescription: input.purchaseDescription ?? null,
           categoryId: input.categoryId ?? null,
           defaultUnitId: input.defaultUnitId ?? null,
           revenueAccountId: input.revenueAccountId ?? null,
@@ -287,6 +292,15 @@ export class CatalogService {
           sku: input.sku ?? existing.sku,
           name: input.name ?? existing.name,
           itemType: input.itemType ?? existing.itemType,
+          imageDataUrl: input.imageDataUrl !== undefined ? input.imageDataUrl : existing.imageDataUrl,
+          salesEnabled: input.salesEnabled ?? existing.salesEnabled,
+          salesDescription:
+            input.salesDescription !== undefined ? input.salesDescription : existing.salesDescription,
+          purchaseEnabled: input.purchaseEnabled ?? existing.purchaseEnabled,
+          purchaseDescription:
+            input.purchaseDescription !== undefined
+              ? input.purchaseDescription
+              : existing.purchaseDescription,
           categoryId: input.categoryId !== undefined ? input.categoryId : existing.categoryId,
           defaultUnitId:
             input.defaultUnitId !== undefined ? input.defaultUnitId : existing.defaultUnitId,
@@ -412,6 +426,11 @@ function summarizeItem(item: ItemWithPrices) {
     sku: item.sku,
     name: item.name,
     itemType: item.itemType,
+    imageDataUrl: item.imageDataUrl,
+    salesEnabled: item.salesEnabled,
+    salesDescription: item.salesDescription,
+    purchaseEnabled: item.purchaseEnabled,
+    purchaseDescription: item.purchaseDescription,
     categoryId: item.categoryId,
     defaultUnitId: item.defaultUnitId,
     revenueAccountId: item.revenueAccountId,

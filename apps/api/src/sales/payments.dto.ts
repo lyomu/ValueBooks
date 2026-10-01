@@ -6,10 +6,21 @@ import {
   IsISO8601,
   IsOptional,
   IsString,
+  IsUUID,
   Length,
+  MaxLength,
   Matches,
   ValidateNested,
 } from 'class-validator';
+
+export const PAYMENT_MODES = [
+  'CASH',
+  'BANK_TRANSFER',
+  'CHEQUE',
+  'MOBILE_MONEY',
+  'CARD',
+  'OTHER',
+] as const;
 
 const trimOrUndefined = ({ value }: { value: unknown }): unknown => {
   if (typeof value !== 'string') return value;
@@ -24,6 +35,17 @@ const moneyString = ({ value }: { value: unknown }): unknown => {
   if (typeof value === 'number' && Number.isInteger(value)) return String(value);
   return typeof value === 'string' ? value.trim() : value;
 };
+
+export class PaymentAllocationLineDto {
+  @IsString()
+  @Length(36, 36)
+  invoiceId!: string;
+
+  @IsString()
+  @Matches(/^\d+$/, { message: 'amountMinor must be a non-negative integer string' })
+  @Transform(moneyString)
+  amountMinor!: string;
+}
 
 export class CreatePaymentDto {
   @IsString()
@@ -45,17 +67,53 @@ export class CreatePaymentDto {
   @Matches(/^\d+$/, { message: 'amountMinor must be a non-negative integer string' })
   @Transform(moneyString)
   amountMinor!: string;
-}
 
-export class PaymentAllocationLineDto {
+  /** Bank fee deducted from the receipt. Reduces the deposit, never the amount owed. */
+  @IsOptional()
   @IsString()
-  @Length(36, 36)
-  invoiceId!: string;
-
-  @IsString()
-  @Matches(/^\d+$/, { message: 'amountMinor must be a non-negative integer string' })
+  @Matches(/^\d+$/, { message: 'bankChargesMinor must be a non-negative integer string' })
   @Transform(moneyString)
-  amountMinor!: string;
+  bankChargesMinor?: string;
+
+  /** Tax the customer withheld at source. Settles the invoice but never reaches our bank. */
+  @IsOptional()
+  @IsString()
+  @Matches(/^\d+$/, { message: 'withholdingTaxMinor must be a non-negative integer string' })
+  @Transform(moneyString)
+  withholdingTaxMinor?: string;
+
+  @IsOptional()
+  @IsIn(PAYMENT_MODES)
+  @Transform(trimUpper)
+  paymentMode?: (typeof PAYMENT_MODES)[number];
+
+  /** Bank account the money landed in. Defaults to the organization's `bank_default` account. */
+  @IsOptional()
+  @IsUUID()
+  depositAccountId?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(140)
+  @Transform(trimOrUndefined)
+  reference?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(2000)
+  @Transform(trimOrUndefined)
+  notes?: string;
+
+  /**
+   * Invoices to apply this payment to in the same request. Recording and allocating in one step is
+   * what the record-payment dialog submits; the allocation runs under the same idempotency key, so
+   * a retried submit cannot double-apply.
+   */
+  @IsOptional()
+  @ArrayMaxSize(200)
+  @ValidateNested({ each: true })
+  @Type(() => PaymentAllocationLineDto)
+  allocations?: PaymentAllocationLineDto[];
 }
 
 export class AllocatePaymentDto {
@@ -70,4 +128,10 @@ export class ListPaymentsQueryDto {
   @IsOptional()
   @IsIn(['UNAPPLIED', 'PARTIALLY_ALLOCATED', 'FULLY_ALLOCATED'])
   status?: string;
+}
+
+export class OpenInvoicesQueryDto {
+  @IsString()
+  @IsUUID()
+  contactId!: string;
 }

@@ -46,6 +46,42 @@ export class CustomersController {
     return { data: await this.customers.detail(request.organization.id, contactId) };
   }
 
+  @Get(':contactId/transactions')
+  @RequirePermission('customers.view')
+  async transactions(
+    @Param('contactId', new ParseUUIDPipe()) contactId: string,
+    @Req() request: OrganizationRequest,
+  ) {
+    return { data: await this.customers.transactions(request.organization.id, contactId) };
+  }
+
+  @Get(':contactId/summary')
+  @RequirePermission('customers.view')
+  async summary(
+    @Param('contactId', new ParseUUIDPipe()) contactId: string,
+    @Req() request: OrganizationRequest,
+  ) {
+    return { data: await this.customers.summary(request.organization.id, contactId) };
+  }
+
+  @Get(':contactId/activity')
+  @RequirePermission('customers.view')
+  async activity(
+    @Param('contactId', new ParseUUIDPipe()) contactId: string,
+    @Req() request: OrganizationRequest,
+  ) {
+    return { data: await this.customers.activity(request.organization.id, contactId) };
+  }
+
+  @Get(':contactId/mails')
+  @RequirePermission('customers.view')
+  async mails(
+    @Param('contactId', new ParseUUIDPipe()) contactId: string,
+    @Req() request: OrganizationRequest,
+  ) {
+    return { data: await this.customers.mails(request.organization.id, contactId) };
+  }
+
   @Post()
   @HttpCode(201)
   @RequirePermission('customers.manage')

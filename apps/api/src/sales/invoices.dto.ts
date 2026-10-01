@@ -150,3 +150,27 @@ export class ListInvoicesQueryDto {
   @IsIn(['DRAFT', 'PENDING_APPROVAL', 'ISSUED', 'PARTIALLY_PAID', 'PAID', 'OVERDUE', 'VOID'])
   status?: string;
 }
+
+export class SetExpectedPaymentDateDto {
+  /** ISO date, or null to clear the expected date. */
+  @IsOptional()
+  @IsString()
+  @IsISO8601({ strict: true })
+  @Transform(trimOrUndefined)
+  expectedPaymentDate?: string | null;
+}
+
+export class WriteOffInvoiceDto {
+  /** Defaults to the full remaining balance. */
+  @IsOptional()
+  @IsString()
+  @Matches(/^\d+$/, { message: 'amountMinor must be a positive integer string' })
+  @Transform(moneyString)
+  amountMinor?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(240)
+  @Transform(trimOrUndefined)
+  reason?: string;
+}

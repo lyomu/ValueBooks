@@ -29,6 +29,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import { ApiError, apiRequest } from '../lib/api';
 import { hasPermission, useWorkspace } from '../lib/workspace';
+import { OperationalListing } from './operational-listing';
 import { TransactionCollaboration } from './transaction-collaboration';
 
 type PaymentListResponse = { data: PaymentMade[] };
@@ -51,7 +52,6 @@ export function PaymentsMadePage() {
 
   const [payments, setPayments] = useState<PaymentMade[] | null>(null);
   const [statusFilter, setStatusFilter] = useState<'' | PaymentStatus>('');
-  const [query, setQuery] = useState('');
   const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
@@ -72,36 +72,36 @@ export function PaymentsMadePage() {
     void load();
   }, [load]);
 
-  const filtered = useMemo(() => {
-    const needle = query.trim().toLowerCase();
-    if (!needle) return payments ?? [];
-    return (payments ?? []).filter((payment) =>
-      `${payment.paymentNumber ?? ''} ${payment.vendorName}`.toLowerCase().includes(needle),
-    );
-  }, [payments, query]);
-
   const columns: readonly DataTableColumn<PaymentMade>[] = [
     {
       key: 'payment',
       header: 'Payment',
+      value: (payment) => `${payment.paymentNumber ?? ''} ${payment.vendorName}`,
       cell: (payment) => (
         <div>
-          <strong>{payment.paymentNumber ?? 'Payment'}</strong>
+          <span>{payment.paymentNumber ?? 'Payment'}</span>
           <span className="rb-table-secondary">{payment.vendorName}</span>
         </div>
       ),
     },
-    { key: 'status', header: 'Status', cell: (payment) => <StatusBadge status={payment.status} /> },
+    {
+      key: 'status',
+      header: 'Status',
+      value: (payment) => payment.status,
+      cell: (payment) => <StatusBadge status={payment.status} />,
+    },
     {
       key: 'amount',
       header: 'Amount',
       align: 'right',
+      value: (payment) => payment.amountMinor,
       cell: (payment) => formatMinor(payment.amountMinor, payment.currency),
     },
     {
       key: 'unapplied',
       header: 'Unapplied',
       align: 'right',
+      value: (payment) => payment.unappliedMinor,
       cell: (payment) => formatMinor(payment.unappliedMinor, payment.currency),
       hideBelow: 'tablet',
     },
@@ -125,19 +125,6 @@ export function PaymentsMadePage() {
 
   return (
     <>
-      <PageHeader
-        title="Payments made"
-        description="Record vendor payments and apply them against open bills."
-        actions={
-          canRecord ? (
-            <Button asChild>
-              <Link href="/payments-made/new">
-                <PlusCircle aria-hidden="true" /> Record payment
-              </Link>
-            </Button>
-          ) : null
-        }
-      />
       <div className="rb-ledger-stack">
         {error ? (
           <div className="rb-auth-error" role="alert">
@@ -145,45 +132,22 @@ export function PaymentsMadePage() {
           </div>
         ) : null}
 
-        <Card className="rb-ledger-toolbar">
-          <div className="rb-field">
-            <Label htmlFor="payment-made-search">
-              <Search aria-hidden="true" /> Search payments
-            </Label>
-            <Input
-              id="payment-made-search"
-              value={query}
-              onChange={(event) => setQuery(event.target.value)}
-              placeholder="Search by payment number or vendor..."
-            />
-          </div>
-          <div className="rb-field">
-            <Label htmlFor="payment-made-status">Status</Label>
-            <Select
-              id="payment-made-status"
-              value={statusFilter}
-              onChange={(event) => setStatusFilter(event.target.value as typeof statusFilter)}
-            >
-              <option value="">All payments</option>
-              {statusOptions.map((status) => (
-                <option key={status} value={status}>
-                  {status}
-                </option>
-              ))}
-            </Select>
-          </div>
-          <Badge>{payments?.length ?? 0} payments</Badge>
-        </Card>
-
         {!payments && !error ? (
           <Skeleton />
-        ) : filtered.length === 0 ? (
-          <EmptyState
-            title="No payments yet"
-            description="Record your first vendor payment to start applying it against bills."
-          />
         ) : (
-          <DataTable caption="Payments made" columns={columns} rows={filtered} />
+          <OperationalListing
+            title="All payments made"
+            rows={payments ?? []}
+            columns={columns}
+            searchText={(payment) => `${payment.paymentNumber ?? ''} ${payment.vendorName} ${payment.status}`}
+            filter={<Select aria-label="Payment status" value={statusFilter} onChange={(event) => setStatusFilter(event.target.value as typeof statusFilter)}><option value="">All statuses</option>{statusOptions.map((status) => <option key={status} value={status}>{status}</option>)}</Select>}
+            primaryAction={canRecord ? <Button asChild><Link href="/payments-made/new"><PlusCircle aria-hidden="true" /> New</Link></Button> : null}
+            onRefresh={() => void load()}
+            importEnabled={false}
+            onResetFilters={() => setStatusFilter('')}
+            emptyState={{ title: 'Pay vendors with confidence', description: 'Record payments and allocate them to the bills they settle.', illustration: 'purchases', variant: 'onboarding' }}
+            noResultsState={{ title: 'No payments match this view', description: 'Try a different search term or clear the active status filter.', variant: 'no-results' }}
+          />
         )}
       </div>
     </>

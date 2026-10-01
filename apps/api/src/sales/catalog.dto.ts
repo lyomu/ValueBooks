@@ -115,6 +115,31 @@ export class CreateItemDto {
 
   @IsOptional()
   @IsString()
+  @MaxLength(2_000_000)
+  imageDataUrl?: string;
+
+  @IsOptional()
+  @IsBoolean()
+  salesEnabled?: boolean;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(2_000)
+  @Transform(trimOrUndefined)
+  salesDescription?: string;
+
+  @IsOptional()
+  @IsBoolean()
+  purchaseEnabled?: boolean;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(2_000)
+  @Transform(trimOrUndefined)
+  purchaseDescription?: string;
+
+  @IsOptional()
+  @IsString()
   @Length(36, 36)
   categoryId?: string;
 
@@ -196,6 +221,31 @@ export class UpdateItemDto {
   @IsOptional()
   @IsIn(['GOODS', 'SERVICE', 'NON_STOCK'])
   itemType?: 'GOODS' | 'SERVICE' | 'NON_STOCK';
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(2_000_000)
+  imageDataUrl?: string;
+
+  @IsOptional()
+  @IsBoolean()
+  salesEnabled?: boolean;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(2_000)
+  @Transform(trimOrUndefined)
+  salesDescription?: string;
+
+  @IsOptional()
+  @IsBoolean()
+  purchaseEnabled?: boolean;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(2_000)
+  @Transform(trimOrUndefined)
+  purchaseDescription?: string;
 
   @IsOptional()
   @IsString()

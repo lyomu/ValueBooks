@@ -4,6 +4,7 @@ import { APP_FILTER } from '@nestjs/core';
 import { validateApiEnvironment } from '@valuebooks/config';
 
 import { AuthModule } from './auth/auth.module.js';
+import { AttachmentsModule } from './attachments/attachments.module.js';
 import { AutomationModule } from './automation/automation.module.js';
 import { AiModule } from './ai/ai.module.js';
 import { BankingModule } from './banking/banking.module.js';
@@ -13,6 +14,8 @@ import { ApiExceptionFilter } from './common/api-exception.filter.js';
 import { ObservabilityModule } from './common/logging/observability.module.js';
 import { DatabaseModule } from './database/database.module.js';
 import { DemoSeedService } from './demo-seed.service.js';
+import { DemoWeekExtrasSeedService } from './demo-week-extras-seed.service.js';
+import { DemoWeekSeedService } from './demo-week-seed.service.js';
 import { HealthController } from './health.controller.js';
 import { HealthService } from './health.service.js';
 import { InventoryModule } from './inventory/inventory.module.js';
@@ -36,6 +39,7 @@ import { SalesModule } from './sales/sales.module.js';
     AuthModule,
     OrganizationsModule,
     CollaborationModule,
+    AttachmentsModule,
     PortalsModule,
     PlatformModule,
     SalesModule,
@@ -50,6 +54,8 @@ import { SalesModule } from './sales/sales.module.js';
   providers: [
     HealthService,
     DemoSeedService,
+    DemoWeekSeedService,
+    DemoWeekExtrasSeedService,
     // Registered here rather than through useGlobalFilters so the filter can inject the logger and
     // the error-reporting seam. Both the production bootstrap and the test harness pick it up.
     { provide: APP_FILTER, useClass: ApiExceptionFilter },
