@@ -2104,8 +2104,10 @@ FORM: Wave-like breathing room with a QuickBooks-scale menu, alternating proof, 
 /* Hero spotlight: a decisive, high-contrast product moment that stays recognisably ValueBooks. */
 .mk-home-hero--spotlight {
   position: relative;
+  display: block;
   width: 100%;
   margin: 0;
+  padding: 0;
   overflow: hidden;
   color: #fff;
   background:
