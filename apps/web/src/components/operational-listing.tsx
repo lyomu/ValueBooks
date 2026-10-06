@@ -6,6 +6,7 @@ import {
   Button,
   Dialog,
   DialogContent,
+  DataTableToolbar,
   Dropdown,
   DropdownContent,
   DropdownItem,
@@ -305,8 +306,11 @@ export function OperationalListing<T extends { id: string }>({
         </div>
       </header>
 
-      <div className="rb-operational-listing__tools">
-        <label className="rb-operational-listing__search">
+      <DataTableToolbar
+        className="rb-operational-listing__tools"
+        resultLabel={`${visibleRows.length} shown`}
+      >
+        <label className="rb-data-table-toolbar__search rb-operational-listing__search">
           <Search aria-hidden="true" />
           <span className="rb-visually-hidden">Search {title}</span>
           <Input
@@ -328,7 +332,7 @@ export function OperationalListing<T extends { id: string }>({
             {filter ?? <span>No additional filters.</span>}
           </div>
         ) : null}
-      </div>
+      </DataTableToolbar>
 
       {visibleRows.length === 0 ? (
         empty !== undefined && typeof empty !== 'string' ? (

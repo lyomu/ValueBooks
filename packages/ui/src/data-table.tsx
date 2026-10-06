@@ -1,5 +1,5 @@
 import { SearchX } from 'lucide-react';
-import type { ReactNode } from 'react';
+import type { HTMLAttributes, ReactNode } from 'react';
 
 import { Card } from './card';
 import { EmptyState, type EmptyStateConfig } from './empty-state';
@@ -17,6 +17,25 @@ export type DataTableColumn<T> = {
   width?: string;
 };
 
+/**
+ * The shared control strip for record lists. Screens provide their search and
+ * context-specific filters, while the shell, result count, and responsive
+ * behavior remain identical across the product.
+ */
+export function DataTableToolbar({
+  children,
+  resultLabel,
+  className,
+  ...props
+}: HTMLAttributes<HTMLDivElement> & { resultLabel?: ReactNode }) {
+  return (
+    <div className={cn('rb-data-table-toolbar', className)} {...props}>
+      <div className="rb-data-table-toolbar__controls">{children}</div>
+      {resultLabel ? <span className="rb-data-table-toolbar__count">{resultLabel}</span> : null}
+    </div>
+  );
+}
+
 export function DataTable<T extends { id: string }>({
   caption,
   columns,
@@ -26,6 +45,7 @@ export function DataTable<T extends { id: string }>({
   emptyTitle = 'No records yet',
   emptyDescription,
   emptyState,
+  toolbar,
 }: {
   caption: string;
   columns: readonly DataTableColumn<T>[];
@@ -34,9 +54,14 @@ export function DataTable<T extends { id: string }>({
   loading?: boolean;
   emptyTitle?: string;
   emptyDescription?: string;
-  emptyState?: Omit<EmptyStateConfig, 'title' | 'description'> & Partial<Pick<EmptyStateConfig, 'title' | 'description'>>;
+  emptyState?: Omit<EmptyStateConfig, 'title' | 'description'> &
+    Partial<Pick<EmptyStateConfig, 'title' | 'description'>>;
+  /** Optional shared search/filter strip rendered above the column headers. */
+  toolbar?: ReactNode;
 }) {
-  const inferredNoResults = /\b(match|filter|search|nothing)\b/i.test(`${emptyTitle} ${emptyDescription ?? ''}`);
+  const inferredNoResults = /\b(match|filter|search|nothing)\b/i.test(
+    `${emptyTitle} ${emptyDescription ?? ''}`,
+  );
   const resolvedEmptyState: EmptyStateConfig = {
     ...emptyState,
     title: emptyState?.title ?? emptyTitle,
@@ -46,6 +71,7 @@ export function DataTable<T extends { id: string }>({
 
   return (
     <Card className="rb-table-card">
+      {toolbar}
       <div className="rb-table-scroll">
         <table className="rb-table">
           <caption className="rb-visually-hidden">{caption}</caption>

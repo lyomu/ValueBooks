@@ -5,7 +5,7 @@ import {
   Button,
   Card,
   DataTable,
-  EmptyState,
+  DataTableToolbar,
   FieldMessage,
   ForbiddenState,
   Input,
@@ -358,45 +358,52 @@ export function InvoicesPage() {
         </section>
 
         <section className="rb-invoice-list__table" aria-label="Invoice records">
-          <div className="rb-invoice-list__controls">
-            <div className="rb-invoice-list__search">
-              <Search aria-hidden="true" />
-              <Input
-                id="invoice-search"
-                value={query}
-                onChange={(event) => setQuery(event.target.value)}
-                placeholder="Search invoice number or customer"
-                aria-label="Search invoices"
-              />
-            </div>
-            <div className="rb-invoice-list__filter">
-              <Filter aria-hidden="true" />
-              <Label htmlFor="invoice-status">Status</Label>
-              <Select
-                id="invoice-status"
-                value={statusFilter}
-                onChange={(event) => setStatusFilter(event.target.value as typeof statusFilter)}
-              >
-                <option value="">All statuses</option>
-                {statusOptions.map((status) => (
-                  <option key={status} value={status}>
-                    {status.replaceAll('_', ' ')}
-                  </option>
-                ))}
-              </Select>
-            </div>
-            <span className="rb-invoice-list__count">{filtered.length} shown</span>
-          </div>
-
           {!invoices && !error ? (
             <Skeleton />
-          ) : filtered.length === 0 ? (
-            <EmptyState
-              title="No invoices yet"
-              description="Create your first invoice to start billing customers."
-            />
           ) : (
-            <DataTable caption="Invoices" columns={columns} rows={filtered} />
+            <DataTable
+              caption="Invoices"
+              columns={columns}
+              rows={filtered}
+              emptyTitle={invoices?.length ? 'No invoices match this view' : 'No invoices yet'}
+              emptyDescription={
+                invoices?.length
+                  ? 'Try changing the search or status filter to see your records.'
+                  : 'Create your first invoice to start billing customers.'
+              }
+              toolbar={
+                <DataTableToolbar resultLabel={`${filtered.length} shown`}>
+                  <div className="rb-data-table-toolbar__search">
+                    <Search aria-hidden="true" />
+                    <Input
+                      id="invoice-search"
+                      value={query}
+                      onChange={(event) => setQuery(event.target.value)}
+                      placeholder="Search invoice number or customer"
+                      aria-label="Search invoices"
+                    />
+                  </div>
+                  <div className="rb-data-table-toolbar__filter rb-invoice-list__filter">
+                    <Filter aria-hidden="true" />
+                    <Label htmlFor="invoice-status">Status</Label>
+                    <Select
+                      id="invoice-status"
+                      value={statusFilter}
+                      onChange={(event) =>
+                        setStatusFilter(event.target.value as typeof statusFilter)
+                      }
+                    >
+                      <option value="">All statuses</option>
+                      {statusOptions.map((status) => (
+                        <option key={status} value={status}>
+                          {status.replaceAll('_', ' ')}
+                        </option>
+                      ))}
+                    </Select>
+                  </div>
+                </DataTableToolbar>
+              }
+            />
           )}
         </section>
       </div>
@@ -1093,4 +1100,3 @@ function minorToDecimal(value: string): string {
   const cents = amount % 100n;
   return `${whole}.${cents.toString().padStart(2, '0')}`;
 }
-

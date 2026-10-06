@@ -547,6 +547,77 @@
   overflow: hidden;
 }
 
+.rb-data-table-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--rb-space-3);
+  min-height: 4.5rem;
+  padding: var(--rb-space-3) var(--rb-space-4);
+  background: hsl(var(--rb-muted) / 0.3);
+  border-bottom: 1px solid hsl(var(--rb-border));
+}
+
+.rb-data-table-toolbar__controls {
+  display: flex;
+  flex: 1 1 auto;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--rb-space-3);
+}
+
+.rb-data-table-toolbar__count {
+  margin-left: auto;
+  color: hsl(var(--rb-muted-foreground));
+  font-size: 0.8125rem;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.rb-data-table-toolbar__search,
+.rb-data-table-toolbar__filter {
+  display: flex;
+  align-items: center;
+  gap: var(--rb-space-2);
+}
+
+.rb-data-table-toolbar__search {
+  width: min(100%, 34rem);
+  padding: 0 var(--rb-space-3);
+  color: hsl(var(--rb-muted-foreground));
+  background: hsl(var(--rb-card));
+  border: 1px solid hsl(var(--rb-border));
+  border-radius: var(--rb-radius);
+}
+
+.rb-data-table-toolbar__search .rb-input {
+  min-width: 0;
+  border: 0;
+  box-shadow: none;
+}
+
+.rb-data-table-toolbar__search:focus-within {
+  border-color: hsl(var(--rb-ring));
+  box-shadow: 0 0 0 3px hsl(var(--rb-ring) / 0.14);
+}
+
+.rb-data-table-toolbar__search svg,
+.rb-data-table-toolbar__filter > svg {
+  width: 1rem;
+  height: 1rem;
+  flex: 0 0 1rem;
+}
+
+.rb-data-table-toolbar__filter {
+  color: hsl(var(--rb-muted-foreground));
+}
+
+.rb-data-table-toolbar__filter .rb-label {
+  color: inherit;
+  font-size: 0.8125rem;
+  font-weight: 600;
+}
+
 .rb-table-scroll {
   overflow-x: auto;
   scrollbar-width: thin;
@@ -565,10 +636,10 @@
 }
 
 .rb-table th {
-  padding: 0.75rem 1rem;
+  padding: 1rem;
   color: hsl(var(--rb-muted-foreground));
   border-bottom: 1px solid hsl(var(--rb-border));
-  font-size: 0.75rem;
+  font-size: 0.8125rem;
   font-weight: 700;
   letter-spacing: 0.025em;
   text-align: left;
@@ -577,7 +648,7 @@
 }
 
 .rb-table td {
-  padding: 0.875rem 1rem;
+  padding: 1.125rem 1rem;
   border-bottom: 1px solid hsl(var(--rb-border));
   vertical-align: middle;
 }
@@ -613,6 +684,30 @@
   align-items: center;
   gap: var(--rb-space-2);
   color: hsl(var(--rb-muted-foreground));
+}
+
+@media (max-width: 48rem) {
+  .rb-data-table-toolbar {
+    align-items: stretch;
+  }
+
+  .rb-data-table-toolbar__controls {
+    width: 100%;
+  }
+
+  .rb-data-table-toolbar__search,
+  .rb-data-table-toolbar__filter {
+    width: 100%;
+  }
+
+  .rb-data-table-toolbar__filter .rb-select {
+    flex: 1;
+  }
+
+  .rb-data-table-toolbar__count {
+    width: 100%;
+    margin-left: 0;
+  }
 }
 
 .rb-tabs__list {
