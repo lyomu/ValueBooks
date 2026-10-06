@@ -135,7 +135,7 @@ export function CustomerDialog({
               <span>Customer</span>
             </div>
             <div className="rb-customer-form__grid">
-              <div className="rb-field rb-customer-form__primary-field">
+              <div className="rb-field rb-customer-form__wide-field">
                 <Label htmlFor="customer-display-name">Display name</Label>
                 <Input
                   id="customer-display-name"

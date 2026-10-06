@@ -3004,8 +3004,8 @@ a.rb-nav-item:hover {
 }
 
 .rb-customer-dialog {
-  width: min(calc(100vw - 2rem), 78rem);
-  max-height: min(54rem, calc(100dvh - 2rem));
+  width: min(calc(100vw - 2rem), 60rem);
+  max-height: min(48rem, calc(100dvh - 2rem));
   padding: 0;
   overflow-y: auto;
 }
@@ -3077,19 +3077,12 @@ a.rb-nav-item:hover {
 
 .rb-customer-form__grid {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 1.125rem 1.25rem;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem 1.25rem;
 }
 
-.rb-customer-form__primary-field,
 .rb-customer-form__wide-field {
   grid-column: span 2;
-}
-
-@media (max-width: 64rem) {
-  .rb-customer-form__grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
 }
 
 .rb-customer-form__terms-field {
@@ -3566,7 +3559,6 @@ a.rb-nav-item:hover {
     grid-template-columns: 1fr;
   }
 
-  .rb-customer-form__primary-field,
   .rb-customer-form__wide-field {
     grid-column: auto;
   }
