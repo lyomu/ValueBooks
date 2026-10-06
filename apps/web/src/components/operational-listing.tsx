@@ -15,7 +15,17 @@ import {
   Input,
   type EmptyStateConfig,
 } from '@valuebooks/ui';
-import { ArrowDownUp, Download, Filter, MoreHorizontal, Plus, RefreshCw, RotateCcw, Search, Upload } from 'lucide-react';
+import {
+  ArrowDownUp,
+  Download,
+  Filter,
+  MoreHorizontal,
+  Plus,
+  RefreshCw,
+  RotateCcw,
+  Search,
+  Upload,
+} from 'lucide-react';
 
 export type ListingColumn<T> = {
   key: string;
@@ -49,7 +59,19 @@ export type OperationalListingConfig<T extends { id: string }> = {
 function textValue(value: unknown): string {
   if (value === null || value === undefined) return '';
   if (typeof value === 'object') return JSON.stringify(value) ?? '';
-  return String(value);
+  if (typeof value === 'string') return value;
+  if (typeof value === 'number' || typeof value === 'boolean' || typeof value === 'bigint') {
+    return `${value}`;
+  }
+  return '';
+}
+
+function isColumnWidthMap(value: unknown): value is Record<string, number> {
+  return (
+    value !== null &&
+    typeof value === 'object' &&
+    Object.values(value).every((width) => typeof width === 'number' && Number.isFinite(width))
+  );
 }
 
 function csvCell(value: unknown): string {
@@ -77,15 +99,22 @@ function flattenForCsv<T extends { id: string }>(rows: readonly T[]) {
   return rows.flatMap((row) => {
     const source = row as Record<string, unknown>;
     const parent = flattenRecord(source);
-    const childGroups = Object.entries(source).filter(
-      (entry): entry is [string, unknown[]] => Array.isArray(entry[1]),
+    const childGroups = Object.entries(source).filter((entry): entry is [string, unknown[]] =>
+      Array.isArray(entry[1]),
     );
     if (childGroups.length === 0) return [parent];
-    const primaryChildGroup = childGroups.sort(([, first], [, second]) => second.length - first.length)[0];
+    const primaryChildGroup = childGroups.sort(
+      ([, first], [, second]) => second.length - first.length,
+    )[0];
     if (!primaryChildGroup) return [parent];
     const [relationship, children] = primaryChildGroup;
     return children.length > 0
-      ? children.map((child, index) => ({ ...parent, import_child_relation: relationship, import_child_index: String(index + 1), ...flattenRecord(child, relationship) }))
+      ? children.map((child, index) => ({
+          ...parent,
+          import_child_relation: relationship,
+          import_child_index: String(index + 1),
+          ...flattenRecord(child, relationship),
+        }))
       : [parent];
   });
 }
@@ -94,7 +123,9 @@ function downloadCsv<T extends { id: string }>(title: string, rows: readonly T[]
   const detailRows = flattenForCsv(rows);
   const headers = [...new Set(detailRows.flatMap((row) => Object.keys(row)))];
   const csvRows = detailRows.map((row) => headers.map((header) => csvCell(row[header])).join(','));
-  const blob = new Blob([[headers.join(','), ...csvRows].join('\n')], { type: 'text/csv;charset=utf-8' });
+  const blob = new Blob([[headers.join(','), ...csvRows].join('\n')], {
+    type: 'text/csv;charset=utf-8',
+  });
   const url = URL.createObjectURL(blob);
   const anchor = document.createElement('a');
   anchor.href = url;
@@ -120,7 +151,9 @@ export function OperationalListing<T extends { id: string }>({
   empty,
 }: OperationalListingConfig<T>) {
   const [query, setQuery] = useState('');
-  const [sortKey, setSortKey] = useState(columns.find((column) => column.value)?.key ?? columns[0]?.key ?? '');
+  const [sortKey, setSortKey] = useState(
+    columns.find((column) => column.value)?.key ?? columns[0]?.key ?? '',
+  );
   const [direction, setDirection] = useState<SortDirection>('asc');
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [showFilters, setShowFilters] = useState(false);
@@ -134,7 +167,8 @@ export function OperationalListing<T extends { id: string }>({
   useEffect(() => {
     try {
       const saved = window.localStorage.getItem(layoutKey);
-      setColumnWidths(saved ? JSON.parse(saved) : {});
+      const parsed: unknown = saved ? JSON.parse(saved) : {};
+      setColumnWidths(isColumnWidthMap(parsed) ? parsed : {});
     } catch {
       setColumnWidths({});
     }
@@ -147,7 +181,9 @@ export function OperationalListing<T extends { id: string }>({
 
   const visibleRows = useMemo(() => {
     const needle = query.trim().toLowerCase();
-    const matching = needle ? rows.filter((row) => searchText(row).toLowerCase().includes(needle)) : [...rows];
+    const matching = needle
+      ? rows.filter((row) => searchText(row).toLowerCase().includes(needle))
+      : [...rows];
     const column = columns.find((candidate) => candidate.key === sortKey);
     if (!column?.value) return matching;
     return matching.sort((left, right) => {
@@ -187,7 +223,10 @@ export function OperationalListing<T extends { id: string }>({
     const startX = event.clientX;
     const startWidth = header.getBoundingClientRect().width;
     const update = (moveEvent: MouseEvent) => {
-      setColumnWidths((current) => ({ ...current, [key]: Math.max(104, Math.round(startWidth + moveEvent.clientX - startX)) }));
+      setColumnWidths((current) => ({
+        ...current,
+        [key]: Math.max(104, Math.round(startWidth + moveEvent.clientX - startX)),
+      }));
     };
     const finish = () => {
       window.removeEventListener('mousemove', update);
@@ -197,7 +236,8 @@ export function OperationalListing<T extends { id: string }>({
     window.addEventListener('mouseup', finish);
   }
 
-  const exportRows = selectedIds.size > 0 ? visibleRows.filter((row) => selectedIds.has(row.id)) : visibleRows;
+  const exportRows =
+    selectedIds.size > 0 ? visibleRows.filter((row) => selectedIds.has(row.id)) : visibleRows;
   const isDatasetEmpty = rows.length === 0;
   const isNoResults = !isDatasetEmpty && visibleRows.length === 0;
   const legacyEmptyDescription = typeof empty === 'string' ? empty : undefined;
@@ -206,7 +246,11 @@ export function OperationalListing<T extends { id: string }>({
         title: `No ${title.toLowerCase()} match this view`,
         description: 'Try clearing the search or filters to see your records.',
         variant: 'no-results',
-        action: <Button variant="outline" onClick={resetListView}>Clear view</Button>,
+        action: (
+          <Button variant="outline" onClick={resetListView}>
+            Clear view
+          </Button>
+        ),
         ...noResultsState,
       }
     : {
@@ -221,43 +265,197 @@ export function OperationalListing<T extends { id: string }>({
   return (
     <section className="rb-operational-listing">
       <header className="rb-operational-listing__head">
-        <div className="rb-operational-listing__title"><h1>{title}</h1><span aria-hidden="true">⌄</span></div>
+        <div className="rb-operational-listing__title">
+          <h1>{title}</h1>
+          <span aria-hidden="true">⌄</span>
+        </div>
         <div className="rb-operational-listing__actions">
-          {primaryAction ?? <Button><Plus aria-hidden="true" /> New</Button>}
+          {primaryAction ?? (
+            <Button>
+              <Plus aria-hidden="true" /> New
+            </Button>
+          )}
           <Dropdown>
-            <DropdownTrigger asChild><Button variant="outline" size="icon" aria-label={`More ${title} actions`}><MoreHorizontal aria-hidden="true" /></Button></DropdownTrigger>
+            <DropdownTrigger asChild>
+              <Button variant="outline" size="icon" aria-label={`More ${title} actions`}>
+                <MoreHorizontal aria-hidden="true" />
+              </Button>
+            </DropdownTrigger>
             <DropdownContent align="end" className="rb-operational-listing__menu">
-              <DropdownItem onSelect={() => setShowFilters((current) => !current)}><Filter aria-hidden="true" /> Filters</DropdownItem>
-              {importEnabled ? <DropdownItem onSelect={() => setShowImport(true)}><Upload aria-hidden="true" /> Import</DropdownItem> : null}
-              <DropdownItem onSelect={() => downloadCsv(title, exportRows)}><Download aria-hidden="true" /> Export full details</DropdownItem>
+              <DropdownItem onSelect={() => setShowFilters((current) => !current)}>
+                <Filter aria-hidden="true" /> Filters
+              </DropdownItem>
+              {importEnabled ? (
+                <DropdownItem onSelect={() => setShowImport(true)}>
+                  <Upload aria-hidden="true" /> Import
+                </DropdownItem>
+              ) : null}
+              <DropdownItem onSelect={() => downloadCsv(title, exportRows)}>
+                <Download aria-hidden="true" /> Export full details
+              </DropdownItem>
               <DropdownSeparator />
-              <DropdownItem onSelect={onRefresh}><RefreshCw aria-hidden="true" /> Refresh list</DropdownItem>
-              <DropdownItem onSelect={resetListView}><RotateCcw aria-hidden="true" /> Reset list view</DropdownItem>
+              <DropdownItem onSelect={onRefresh}>
+                <RefreshCw aria-hidden="true" /> Refresh list
+              </DropdownItem>
+              <DropdownItem onSelect={resetListView}>
+                <RotateCcw aria-hidden="true" /> Reset list view
+              </DropdownItem>
             </DropdownContent>
           </Dropdown>
         </div>
       </header>
 
       <div className="rb-operational-listing__tools">
-        <label className="rb-operational-listing__search"><Search aria-hidden="true" /><span className="rb-visually-hidden">Search {title}</span><Input value={query} onChange={(event) => setQuery(event.target.value)} placeholder={`Search in ${title}`} /></label>
-        <Button variant="ghost" size="icon" onClick={() => setShowFilters((current) => !current)} aria-label="Show filters"><Filter aria-hidden="true" /></Button>
-        {showFilters ? <div className="rb-operational-listing__filters">{filter ?? <span>No additional filters.</span>}</div> : null}
+        <label className="rb-operational-listing__search">
+          <Search aria-hidden="true" />
+          <span className="rb-visually-hidden">Search {title}</span>
+          <Input
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+            placeholder={`Search in ${title}`}
+          />
+        </label>
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={() => setShowFilters((current) => !current)}
+          aria-label="Show filters"
+        >
+          <Filter aria-hidden="true" />
+        </Button>
+        {showFilters ? (
+          <div className="rb-operational-listing__filters">
+            {filter ?? <span>No additional filters.</span>}
+          </div>
+        ) : null}
       </div>
 
       {visibleRows.length === 0 ? (
-        empty && typeof empty !== 'string' ? empty : <EmptyState {...resolvedEmptyState} description={legacyEmptyDescription ?? resolvedEmptyState.description} />
+        empty !== undefined && typeof empty !== 'string' ? (
+          empty
+        ) : (
+          <EmptyState
+            {...resolvedEmptyState}
+            description={legacyEmptyDescription ?? resolvedEmptyState.description}
+          />
+        )
       ) : (
         <div className="rb-operational-listing__table-wrap">
           <table className="rb-operational-listing__table">
-            <thead><tr><th className="rb-operational-listing__select"><input type="checkbox" checked={selectedIds.size === visibleRows.length} onChange={toggleAll} aria-label="Select all rows" /></th>{columns.map((column) => <th key={column.key} style={{ width: columnWidths[column.key] ?? column.width }} className={column.align === 'right' ? 'rb-table--right' : undefined}><button type="button" onClick={() => { if (!column.value) return; setDirection(sortKey === column.key && direction === 'asc' ? 'desc' : 'asc'); setSortKey(column.key); }} disabled={!column.value}>{column.header}{column.value ? <ArrowDownUp aria-hidden="true" /> : null}</button><span className="rb-operational-listing__resize" onMouseDown={(event) => resizeColumn(column.key, event)} role="separator" aria-orientation="vertical" aria-label={`Resize ${textValue(column.header)} column`} /></th>)}</tr></thead>
-            <tbody>{visibleRows.map((row) => <tr key={row.id} onClick={() => onRowClick?.(row)} data-clickable={onRowClick || undefined}><td className="rb-operational-listing__select"><input type="checkbox" checked={selectedIds.has(row.id)} onClick={(event) => event.stopPropagation()} onChange={() => setSelectedIds((current) => { const next = new Set(current); next.has(row.id) ? next.delete(row.id) : next.add(row.id); return next; })} aria-label="Select row" /></td>{columns.map((column) => <td key={column.key} className={column.align === 'right' ? 'rb-table--right rb-num' : undefined}>{column.cell(row)}</td>)}</tr>)}</tbody>
+            <thead>
+              <tr>
+                <th className="rb-operational-listing__select">
+                  <input
+                    type="checkbox"
+                    checked={selectedIds.size === visibleRows.length}
+                    onChange={toggleAll}
+                    aria-label="Select all rows"
+                  />
+                </th>
+                {columns.map((column) => (
+                  <th
+                    key={column.key}
+                    style={{ width: columnWidths[column.key] ?? column.width }}
+                    className={column.align === 'right' ? 'rb-table--right' : undefined}
+                  >
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (!column.value) return;
+                        setDirection(
+                          sortKey === column.key && direction === 'asc' ? 'desc' : 'asc',
+                        );
+                        setSortKey(column.key);
+                      }}
+                      disabled={!column.value}
+                    >
+                      {column.header}
+                      {column.value ? <ArrowDownUp aria-hidden="true" /> : null}
+                    </button>
+                    <span
+                      className="rb-operational-listing__resize"
+                      onMouseDown={(event) => resizeColumn(column.key, event)}
+                      role="separator"
+                      aria-orientation="vertical"
+                      aria-label={`Resize ${textValue(column.header)} column`}
+                    />
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {visibleRows.map((row) => (
+                <tr
+                  key={row.id}
+                  onClick={() => {
+                    onRowClick?.(row);
+                  }}
+                  data-clickable={onRowClick ? 'true' : undefined}
+                >
+                  <td className="rb-operational-listing__select">
+                    <input
+                      type="checkbox"
+                      checked={selectedIds.has(row.id)}
+                      onClick={(event) => event.stopPropagation()}
+                      onChange={() =>
+                        setSelectedIds((current) => {
+                          const next = new Set(current);
+                          if (next.has(row.id)) next.delete(row.id);
+                          else next.add(row.id);
+                          return next;
+                        })
+                      }
+                      aria-label="Select row"
+                    />
+                  </td>
+                  {columns.map((column) => (
+                    <td
+                      key={column.key}
+                      className={column.align === 'right' ? 'rb-table--right rb-num' : undefined}
+                    >
+                      {column.cell(row)}
+                    </td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
           </table>
         </div>
       )}
 
       <Dialog open={showImport} onOpenChange={setShowImport}>
-        <DialogContent title={`Import ${title}`} description="Upload a flattened CSV, confirm its source namespace, then continue to mapping and validation.">
-          <div className="rb-operational-import"><label>Source namespace<Input value={namespace} onChange={(event) => setNamespace(event.target.value)} placeholder="e.g. zoho-books-2026" /></label><label>CSV file<input ref={fileInput} type="file" accept=".csv,text/csv" onChange={(event) => setImportFile(event.target.files?.[0] ?? null)} /></label>{importFile ? <p>{importFile.name} is ready for column mapping.</p> : null}<div className="rb-dialog-footer"><Button variant="outline" onClick={() => setShowImport(false)}>Cancel</Button><Button onClick={() => void submitImport()} disabled={!importFile || !onImport}>Preview and map</Button></div></div>
+        <DialogContent
+          title={`Import ${title}`}
+          description="Upload a flattened CSV, confirm its source namespace, then continue to mapping and validation."
+        >
+          <div className="rb-operational-import">
+            <label>
+              Source namespace
+              <Input
+                value={namespace}
+                onChange={(event) => setNamespace(event.target.value)}
+                placeholder="e.g. zoho-books-2026"
+              />
+            </label>
+            <label>
+              CSV file
+              <input
+                ref={fileInput}
+                type="file"
+                accept=".csv,text/csv"
+                onChange={(event) => setImportFile(event.target.files?.[0] ?? null)}
+              />
+            </label>
+            {importFile ? <p>{importFile.name} is ready for column mapping.</p> : null}
+            <div className="rb-dialog-footer">
+              <Button variant="outline" onClick={() => setShowImport(false)}>
+                Cancel
+              </Button>
+              <Button onClick={() => void submitImport()} disabled={!importFile || !onImport}>
+                Preview and map
+              </Button>
+            </div>
+          </div>
         </DialogContent>
       </Dialog>
     </section>

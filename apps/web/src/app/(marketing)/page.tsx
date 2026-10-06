@@ -1,20 +1,225 @@
-import { ArrowRight, Sparkles } from 'lucide-react';
+import { ArrowRight, Check, Sparkles } from 'lucide-react';
 import Link from 'next/link';
-import { AiMockup, DashboardMockup, InvoiceMockup, ReconciliationMockup } from '../../components/marketing/mockups';
-import { FeatureList, FinalCta, IndustriesGrid, SectionIntro, SecurityStrip, StatBand, TestimonialGrid, TrustNote } from '../../components/marketing/sections';
+import {
+  AiMockup,
+  DashboardMockup,
+  InvoiceMockup,
+  ReconciliationMockup,
+} from '../../components/marketing/mockups';
+import {
+  FeatureList,
+  FinalCta,
+  IndustriesGrid,
+  MarketingCopy,
+  MarketingKicker,
+  SectionIntro,
+  SecurityStrip,
+  StatBand,
+  TestimonialGrid,
+  TrustNote,
+} from '../../components/marketing/sections';
 import { Photo } from '../../components/marketing/photo';
 
 export default function MarketingHomePage() {
-  return <>
-    <section className="mk-home-hero"><div className="mk-home-hero__copy"><p className="mk-kicker">AI-native invoicing & accounting</p><h1>Run the business. <em>Keep the clarity.</em></h1><p>ValueBooks brings invoices, expenses, accounting, and a practical AI assistant into one calm, capable workspace.</p><div className="mk-hero-actions"><Link className="mk-button" href="/signup">Try ValueBooks free</Link><Link className="mk-text-link" href="/product">Explore the platform <ArrowRight /></Link></div><TrustNote /></div><div className="mk-home-hero__visual"><DashboardMockup /><div className="mk-floating-note"><Sparkles /><span><b>AI insight</b><small>Two invoices need your attention</small></span></div></div></section>
-    <section className="mk-logo-strip"><span>Trusted workflows for teams who care about the details</span><div><b>STUDIO MAVUNO</b><b>NORTHLINE</b><b>THE DAILY TABLE</b><b>COMMON GROUND</b><b>VERDE</b></div></section>
-    <StatBand items={[{number:'10 hrs',label:'saved weekly on finance admin'},{number:'3.2 days',label:'faster invoice follow-up'},{number:'99.99%',label:'target availability for core services'},{number:'140+',label:'currencies ready to work with'}]} />
-    <section className="mk-ai-section"><div><SectionIntro kicker="ValueBooks AI" title="AI that works the books, without working around you." text="Ask a financial question, draft the next document, or surface activity that deserves a closer look. You stay in control." /><div className="mk-ai-feature-list">{[['Draft faster','Turn a short prompt into an invoice-ready starting point.'],['Categorize with context','Bring consistency to spending and bank activity.'],['Spot what changed','Surface unusual movement and timely follow-ups.']].map(([title,text], index) => <article key={title}><span>{index + 1}</span><div><h3>{title}</h3><p>{text}</p></div></article>)}</div><Link className="mk-text-link" href="/ai">Meet ValueBooks AI <ArrowRight /></Link></div><AiMockup /></section>
-    <section className="mk-alternating"><div className="mk-alternating__visual"><InvoiceMockup /></div><div><SectionIntro kicker="Get paid" title="Send invoices that are a pleasure to receive." text="Create professional invoices, convert quotes, automate recurring work, and make payment status easy to understand." /><FeatureList items={['Professional invoice and quote templates', 'Recurring invoices and thoughtful reminders', 'Credit notes and payment tracking', 'Customer portal access for shared visibility']} /><Link className="mk-text-link" href="/invoicing">Explore invoicing <ArrowRight /></Link></div></section>
-    <section className="mk-alternating mk-alternating--reverse"><div><SectionIntro kicker="Keep the books moving" title="Know what happened, then know what to do next." text="Keep banking, expenses, journals, accounts, and reporting close enough to act on—without turning your workday into a reconciliation marathon." /><FeatureList items={['Chart of accounts and journal workflows', 'Bank imports, matching rules, and reconciliation', 'Financial periods, audit history, and permissions', 'Reports that stay connected to the detail']} /><Link className="mk-text-link" href="/accounting">Explore accounting <ArrowRight /></Link></div><div className="mk-alternating__visual"><ReconciliationMockup /></div></section>
-    <section className="mk-personas"><Photo id="photo-1552664730-d307ca884978" alt="Business owners meeting" ratio="21 / 9" /><div className="mk-personas__heading"><p className="mk-kicker">Your way of working</p><h2>One financial home. Different kinds of momentum.</h2></div><div className="mk-personas__list">{[['Freelancers','Keep clients, invoices, and spending in one clear place.'],['Retail teams','Stay closer to cash flow and daily operations.'],['Growing businesses','Give the whole team the right financial view.']].map(([title,text]) => <Link href="/industries" key={title}><h3>{title}</h3><p>{text}</p><span>Learn more →</span></Link>)}</div></section>
-    <section className="mk-industries-section"><SectionIntro centered kicker="Built around your work" title="Accounting that makes sense in your world." text="Start with the things your business already needs to keep moving." /><IndustriesGrid /></section>
-    <section className="mk-testimonial-section"><SectionIntro centered kicker="A calmer way forward" title="What changes when the numbers are clear." /><TestimonialGrid /></section>
-    <SecurityStrip /><FinalCta title="A clearer view of the business starts today." />
-  </>;
+  return (
+    <>
+      <section className="mk-home-hero mk-home-hero--spotlight">
+        <div className="mk-home-hero__inner">
+          <div className="mk-home-hero__copy">
+            <MarketingKicker>ValueBooks AI, grounded in your books</MarketingKicker>
+            <h1>
+              See what matters. <em>Move with clarity.</em>
+            </h1>
+            <MarketingCopy>
+              Invoices, expenses, accounting, and practical next steps—kept together in one calm,
+              capable workspace.
+            </MarketingCopy>
+            <ul className="mk-hero-proof" aria-label="ValueBooks capabilities">
+              {[
+                'Keep invoices and cash flow in view',
+                'Turn financial activity into clear next steps',
+                'Stay in control of every decision',
+              ].map((item) => (
+                <li key={item}>
+                  <Check aria-hidden="true" />
+                  {item}
+                </li>
+              ))}
+            </ul>
+            <div className="mk-hero-actions">
+              <Link className="mk-button mk-button--hero" href="/signup">
+                Try ValueBooks free
+              </Link>
+              <Link className="mk-text-link mk-text-link--on-dark" href="/product">
+                Explore the platform <ArrowRight />
+              </Link>
+            </div>
+            <TrustNote />
+          </div>
+          <div className="mk-home-hero__visual">
+            <DashboardMockup />
+            <div className="mk-hero-copilot" aria-label="Illustrative ValueBooks AI insight">
+              <div className="mk-hero-copilot__head">
+                <Sparkles aria-hidden="true" />
+                <b>ValueBooks AI</b>
+                <span>Live context</span>
+              </div>
+              <p>Three invoices need a closer look.</p>
+              <ul>
+                <li>
+                  <span>Due this week</span>
+                  <strong>KES 94,300</strong>
+                </li>
+                <li>
+                  <span>Suggested next step</span>
+                  <strong>Review follow-ups</strong>
+                </li>
+              </ul>
+              <Link href="/ai">
+                Ask about your business <ArrowRight />
+              </Link>
+            </div>
+            <div className="mk-floating-note">
+              <Sparkles />
+              <span>
+                <b>AI insight</b>
+                <small>Context, not guesswork</small>
+              </span>
+            </div>
+          </div>
+        </div>
+      </section>
+      <section className="mk-logo-strip">
+        <span>Trusted workflows for teams who care about the details</span>
+        <div>
+          <b>STUDIO MAVUNO</b>
+          <b>NORTHLINE</b>
+          <b>THE DAILY TABLE</b>
+          <b>COMMON GROUND</b>
+          <b>VERDE</b>
+        </div>
+      </section>
+      <StatBand
+        items={[
+          { number: '10 hrs', label: 'saved weekly on finance admin' },
+          { number: '3.2 days', label: 'faster invoice follow-up' },
+          { number: '99.99%', label: 'target availability for core services' },
+          { number: '140+', label: 'currencies ready to work with' },
+        ]}
+      />
+      <section className="mk-ai-section">
+        <div>
+          <SectionIntro
+            kicker="ValueBooks AI"
+            title="AI that works the books, without working around you."
+            text="Ask a financial question, draft the next document, or surface activity that deserves a closer look. You stay in control."
+          />
+          <div className="mk-ai-feature-list">
+            {[
+              ['Draft faster', 'Turn a short prompt into an invoice-ready starting point.'],
+              ['Categorize with context', 'Bring consistency to spending and bank activity.'],
+              ['Spot what changed', 'Surface unusual movement and timely follow-ups.'],
+            ].map(([title, text], index) => (
+              <article key={title}>
+                <span>{index + 1}</span>
+                <div>
+                  <h3>{title}</h3>
+                  <MarketingCopy>{text}</MarketingCopy>
+                </div>
+              </article>
+            ))}
+          </div>
+          <Link className="mk-text-link" href="/ai">
+            Meet ValueBooks AI <ArrowRight />
+          </Link>
+        </div>
+        <AiMockup />
+      </section>
+      <section className="mk-alternating">
+        <div className="mk-alternating__visual">
+          <InvoiceMockup />
+        </div>
+        <div>
+          <SectionIntro
+            kicker="Get paid"
+            title="Send invoices that are a pleasure to receive."
+            text="Create professional invoices, convert quotes, automate recurring work, and make payment status easy to understand."
+          />
+          <FeatureList
+            items={[
+              'Professional invoice and quote templates',
+              'Recurring invoices and thoughtful reminders',
+              'Credit notes and payment tracking',
+              'Customer portal access for shared visibility',
+            ]}
+          />
+          <Link className="mk-text-link" href="/invoicing">
+            Explore invoicing <ArrowRight />
+          </Link>
+        </div>
+      </section>
+      <section className="mk-alternating mk-alternating--reverse">
+        <div>
+          <SectionIntro
+            kicker="Keep the books moving"
+            title="Know what happened, then know what to do next."
+            text="Keep banking, expenses, journals, accounts, and reporting close enough to act on—without turning your workday into a reconciliation marathon."
+          />
+          <FeatureList
+            items={[
+              'Chart of accounts and journal workflows',
+              'Bank imports, matching rules, and reconciliation',
+              'Financial periods, audit history, and permissions',
+              'Reports that stay connected to the detail',
+            ]}
+          />
+          <Link className="mk-text-link" href="/accounting">
+            Explore accounting <ArrowRight />
+          </Link>
+        </div>
+        <div className="mk-alternating__visual">
+          <ReconciliationMockup />
+        </div>
+      </section>
+      <section className="mk-personas">
+        <Photo id="photo-1552664730-d307ca884978" alt="Business owners meeting" ratio="21 / 9" />
+        <div className="mk-personas__heading">
+          <MarketingKicker>Your way of working</MarketingKicker>
+          <h2>One financial home. Different kinds of momentum.</h2>
+        </div>
+        <div className="mk-personas__list">
+          {[
+            ['Freelancers', 'Keep clients, invoices, and spending in one clear place.'],
+            ['Retail teams', 'Stay closer to cash flow and daily operations.'],
+            ['Growing businesses', 'Give the whole team the right financial view.'],
+          ].map(([title, text]) => (
+            <Link href="/industries" key={title}>
+              <h3>{title}</h3>
+              <MarketingCopy>{text}</MarketingCopy>
+              <span>Learn more →</span>
+            </Link>
+          ))}
+        </div>
+      </section>
+      <section className="mk-industries-section">
+        <SectionIntro
+          centered
+          kicker="Built around your work"
+          title="Accounting that makes sense in your world."
+          text="Start with the things your business already needs to keep moving."
+        />
+        <IndustriesGrid />
+      </section>
+      <section className="mk-testimonial-section">
+        <SectionIntro
+          centered
+          kicker="A calmer way forward"
+          title="What changes when the numbers are clear."
+        />
+        <TestimonialGrid />
+      </section>
+      <SecurityStrip />
+      <FinalCta title="A clearer view of the business starts today." />
+    </>
+  );
 }
