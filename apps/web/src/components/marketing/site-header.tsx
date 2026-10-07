@@ -8,7 +8,6 @@ import {
   ChevronDown,
   Menu,
   ReceiptText,
-  Sparkles,
   X,
 } from 'lucide-react';
 import Link from 'next/link';
@@ -33,12 +32,6 @@ const productLinks = [
     label: 'Expenses & reporting',
     text: 'See every transaction in one place.',
     icon: BriefcaseBusiness,
-  },
-  {
-    href: '/ai',
-    label: 'ValueBooks AI',
-    text: 'A practical copilot for your finances.',
-    icon: Sparkles,
   },
 ];
 const industries = [

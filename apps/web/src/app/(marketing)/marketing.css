@@ -1,12 +1,11 @@
 /*
 THESIS: A calm, intelligent financial home that refuses the generic SaaS hero-and-card treadmill.
-OWN-WORLD: Outfit, ink navy, quiet white surfaces, crisp cyan action, real workplace photography,
+OWN-WORLD: Hanken Grotesk, ink navy, quiet white surfaces, crisp cyan action, real workplace photography,
 and beautifully legible accounting miniatures—no gradients, gloss, or invented compliance theatre.
 STORY: A growing business sees a complete financial platform, trusts its clarity, then starts or asks for help.
 FIRST VIEWPORT: A spacious two-column promise: direct copy at left and a living dashboard at right.
 FORM: Wave-like breathing room with a QuickBooks-scale menu, alternating proof, and an anchored navy close.
 */
-@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&display=swap');
 
 .mk-root {
   --mk-ink: hsl(var(--rb-brand-navy));
@@ -20,7 +19,7 @@ FORM: Wave-like breathing room with a QuickBooks-scale menu, alternating proof, 
   --mk-muted: hsl(217 56% 25%);
   color: var(--mk-ink);
   background: #fff;
-  font-family: Outfit, ui-sans-serif, system-ui, sans-serif;
+  font-family: var(--font-hanken-grotesk), ui-sans-serif, system-ui, sans-serif;
   font-size: var(--mk-body-size);
   line-height: var(--mk-body-leading);
 }
@@ -406,7 +405,7 @@ FORM: Wave-like breathing room with a QuickBooks-scale menu, alternating proof, 
 }
 .mk-mockup {
   color: var(--mk-ink);
-  font-family: Outfit, sans-serif;
+  font-family: var(--font-hanken-grotesk), sans-serif;
   background: #fff;
   border: 1px solid hsl(var(--rb-border));
   border-radius: 0.95rem;
@@ -676,41 +675,14 @@ FORM: Wave-like breathing room with a QuickBooks-scale menu, alternating proof, 
   margin: 0 auto;
   padding: clamp(4.5rem, 9vw, 8rem) 0;
 }
-.mk-ai-feature-list {
-  display: grid;
-  gap: 0.8rem;
-  margin: 1.8rem 0;
+.mk-ai-section .mk-section-intro h2 {
+  max-width: 20ch;
 }
-.mk-ai-feature-list article {
-  display: flex;
-  gap: 0.85rem;
-  padding: 0.75rem 0;
-  border-top: 1px solid var(--mk-line);
+.mk-ai-section .mk-section-intro > p:last-child {
+  max-width: 48ch;
 }
-.mk-ai-feature-list article:last-child {
-  border-bottom: 1px solid var(--mk-line);
-}
-.mk-ai-feature-list span {
-  display: grid;
-  width: 1.6rem;
-  height: 1.6rem;
-  flex: 0 0 auto;
-  place-items: center;
-  color: var(--mk-blue);
-  background: hsl(var(--rb-primary) / 0.12);
-  border-radius: 0.35rem;
-  font-size: 0.62rem;
-  font-weight: 800;
-}
-.mk-ai-feature-list h3 {
-  margin: 0 0 0.25rem;
-  font-size: 0.8rem;
-}
-.mk-ai-feature-list p {
-  margin: 0;
-  color: var(--mk-muted);
-  font-size: 0.7rem;
-  line-height: 1.55;
+.mk-ai-section > .mk-photo {
+  border-radius: 0.9rem;
 }
 .mk-ai-mockup header {
   display: flex;
@@ -825,13 +797,14 @@ FORM: Wave-like breathing room with a QuickBooks-scale menu, alternating proof, 
   padding: clamp(4.5rem, 9vw, 8rem) 0;
   border-top: 1px solid var(--mk-line);
 }
-.mk-alternating__visual {
-  padding: clamp(1rem, 3vw, 2.6rem);
-  background: hsl(var(--rb-primary) / 0.1);
-  border-radius: 1rem;
+.mk-alternating > .mk-photo {
+  border-radius: 0.9rem;
 }
-.mk-alternating--reverse .mk-alternating__visual {
-  background: hsl(var(--rb-sidebar) / 0.07);
+.mk-alternating .mk-section-intro h2 {
+  max-width: 22ch;
+}
+.mk-alternating .mk-section-intro > p:last-child {
+  max-width: 48ch;
 }
 .mk-feature-list {
   display: grid;
@@ -1386,6 +1359,139 @@ FORM: Wave-like breathing room with a QuickBooks-scale menu, alternating proof, 
   bottom: 1.2rem;
   width: 1.2rem;
   color: hsl(var(--rb-success));
+}
+.mk-feature-grid {
+  width: min(100% - 3rem, 72rem);
+  margin: auto;
+  padding: clamp(4.5rem, 9vw, 8rem) 0;
+}
+.mk-feature-grid > .mk-section-intro {
+  margin-bottom: 2.5rem;
+}
+.mk-feature-grid__row {
+  display: grid;
+  gap: 1.25rem;
+}
+.mk-feature-grid__row--top {
+  grid-template-columns: repeat(2, 1fr);
+  margin-bottom: 1.25rem;
+}
+.mk-feature-grid__row--bottom {
+  grid-template-columns: repeat(3, 1fr);
+}
+.mk-feature-card {
+  position: relative;
+  overflow: hidden;
+  padding: 2rem;
+  border-radius: 1rem;
+}
+.mk-feature-card h3 {
+  margin: 0 0 0.75rem;
+  font-size: 1.25rem;
+}
+.mk-feature-card p {
+  max-width: 32ch;
+  margin: 0 0 1.25rem;
+  font-size: 0.85rem;
+  line-height: 1.65;
+}
+.mk-feature-card .mk-text-link {
+  font-weight: 700;
+}
+.mk-feature-card__icon {
+  display: grid;
+  width: 2.4rem;
+  height: 2.4rem;
+  margin-bottom: 1.25rem;
+  place-items: center;
+  border-radius: 0.6rem;
+}
+.mk-feature-card__icon svg {
+  width: 1.3rem;
+  height: 1.3rem;
+}
+.mk-feature-grid__row--top .mk-feature-card {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  align-items: center;
+  min-height: 18rem;
+  gap: 1rem;
+}
+.mk-feature-card__visual {
+  position: relative;
+  height: 100%;
+  overflow: hidden;
+}
+.mk-feature-card__visual-scale {
+  position: absolute;
+  top: 1rem;
+  right: -2rem;
+  width: 26rem;
+  transform: scale(0.55);
+  transform-origin: top right;
+  pointer-events: none;
+}
+.mk-feature-card--cream {
+  color: var(--mk-ink);
+  background: hsl(40 28% 94%);
+}
+.mk-feature-card--blue {
+  color: var(--mk-ink);
+  background: hsl(var(--rb-info-surface));
+}
+.mk-feature-card--grey {
+  color: var(--mk-ink);
+  background: hsl(var(--rb-muted));
+}
+.mk-feature-card--navy {
+  color: #fff;
+  background: hsl(var(--rb-brand-navy));
+}
+.mk-feature-card--navy p {
+  color: hsl(210 20% 88%);
+}
+.mk-feature-card--gold {
+  color: var(--mk-ink);
+  background: hsl(var(--rb-warning-surface));
+}
+.mk-feature-card--grey .mk-feature-card__icon {
+  color: hsl(var(--rb-primary));
+  background: #fff;
+}
+.mk-feature-card--navy .mk-feature-card__icon {
+  color: #fff;
+  background: hsl(0 0% 100% / 0.12);
+}
+.mk-feature-card__links {
+  display: grid;
+  gap: 0.9rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.mk-feature-card__links a {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  color: var(--mk-ink);
+  font-weight: 700;
+  font-size: 0.85rem;
+  text-decoration: none;
+}
+.mk-feature-card__links a svg {
+  width: 0.9rem;
+}
+@media (max-width: 60rem) {
+  .mk-feature-grid__row--top,
+  .mk-feature-grid__row--bottom {
+    grid-template-columns: 1fr;
+  }
+  .mk-feature-grid__row--top .mk-feature-card {
+    grid-template-columns: 1fr;
+  }
+  .mk-feature-card__visual {
+    display: none;
+  }
 }
 .mk-customer-quote {
   display: grid;
@@ -2061,7 +2167,6 @@ FORM: Wave-like breathing room with a QuickBooks-scale menu, alternating proof, 
 .mk-root .mk-page-hero > div > p:not(.mk-kicker),
 .mk-root .mk-industry-hero > div > p:not(.mk-kicker),
 .mk-root .mk-section-intro > .mk-copy,
-.mk-root .mk-ai-feature-list p,
 .mk-root .mk-feature-list li,
 .mk-root .mk-stat-band span,
 .mk-root .mk-personas__list p,
@@ -2083,7 +2188,6 @@ FORM: Wave-like breathing room with a QuickBooks-scale menu, alternating proof, 
 .mk-root .mk-trust-note,
 .mk-root .mk-logo-strip > span,
 .mk-root .mk-logo-strip > div,
-.mk-root .mk-ai-feature-list h3,
 .mk-root .mk-personas__list span,
 .mk-root .mk-security-strip > a {
   font-size: var(--mk-body-size);
@@ -2128,7 +2232,7 @@ FORM: Wave-like breathing room with a QuickBooks-scale menu, alternating proof, 
   position: relative;
   z-index: 1;
   display: grid;
-  grid-template-columns: minmax(0, 0.88fr) minmax(33rem, 1.12fr);
+  grid-template-columns: minmax(0, 1.05fr) minmax(30rem, 0.95fr);
   gap: clamp(3rem, 7vw, 7.5rem);
   align-items: center;
   width: min(100% - 3rem, 76rem);
@@ -2137,25 +2241,26 @@ FORM: Wave-like breathing room with a QuickBooks-scale menu, alternating proof, 
   padding: clamp(4.5rem, 8vw, 7.5rem) 0;
 }
 .mk-home-hero--spotlight .mk-home-hero__copy {
-  max-width: 35rem;
+  max-width: 48rem;
 }
 .mk-home-hero--spotlight .mk-kicker {
   color: hsl(184 96% 75%);
 }
 .mk-home-hero--spotlight h1 {
-  max-width: 10.5ch;
+  max-width: 16ch;
   margin-bottom: 1.5rem;
   color: #fff;
-  font-size: clamp(3.35rem, 5.7vw, 5.85rem);
+  font-size: 70px;
   line-height: 0.98;
   letter-spacing: -0.06em;
 }
 .mk-home-hero--spotlight h1 em {
-  color: hsl(184 96% 68%);
+  color: #fff;
+  font-style: normal;
 }
-.mk-home-hero--spotlight .mk-copy {
-  max-width: 37ch;
-  color: hsl(190 80% 93%);
+.mk-home-hero--spotlight p.mk-copy {
+  max-width: 52ch;
+  color: hsl(190 80% 93%) !important;
 }
 .mk-hero-proof {
   display: grid;
@@ -2201,10 +2306,13 @@ FORM: Wave-like breathing room with a QuickBooks-scale menu, alternating proof, 
 .mk-home-hero--spotlight .mk-trust-note svg {
   color: hsl(184 96% 68%);
 }
-.mk-home-hero--spotlight .mk-dashboard-mockup {
+.mk-home-hero--spotlight .mk-hero-photo {
   position: relative;
   z-index: 1;
-  transform: perspective(1200px) rotateY(-5deg) rotateZ(1.2deg);
+  display: block;
+  width: 88%;
+  margin-left: auto;
+  border-radius: 1.5rem;
   box-shadow: 0 28px 65px hsl(158 62% 2% / 0.5);
 }
 .mk-hero-copilot {
@@ -2281,6 +2389,7 @@ FORM: Wave-like breathing room with a QuickBooks-scale menu, alternating proof, 
   right: auto;
   bottom: 1.25rem;
   left: -1.35rem;
+  z-index: 2;
   color: hsl(217 82% 13%);
   font-size: 0.85rem;
 }

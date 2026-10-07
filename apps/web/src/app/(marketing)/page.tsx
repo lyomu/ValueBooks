@@ -1,13 +1,7 @@
-import { ArrowRight, Check, Sparkles } from 'lucide-react';
+import { ArrowRight } from 'lucide-react';
 import Link from 'next/link';
 import {
-  AiMockup,
-  DashboardMockup,
-  InvoiceMockup,
-  ReconciliationMockup,
-} from '../../components/marketing/mockups';
-import {
-  FeatureList,
+  FeatureGrid,
   FinalCta,
   IndustriesGrid,
   MarketingCopy,
@@ -26,26 +20,14 @@ export default function MarketingHomePage() {
       <section className="mk-home-hero mk-home-hero--spotlight">
         <div className="mk-home-hero__inner">
           <div className="mk-home-hero__copy">
-            <MarketingKicker>ValueBooks AI, grounded in your books</MarketingKicker>
             <h1>
               See what matters. <em>Move with clarity.</em>
             </h1>
             <MarketingCopy>
               Invoices, expenses, accounting, and practical next steps—kept together in one calm,
-              capable workspace.
+              capable workspace. Keep invoices and cash flow in view, turn financial activity into
+              clear next steps, and stay in control of every decision.
             </MarketingCopy>
-            <ul className="mk-hero-proof" aria-label="ValueBooks capabilities">
-              {[
-                'Keep invoices and cash flow in view',
-                'Turn financial activity into clear next steps',
-                'Stay in control of every decision',
-              ].map((item) => (
-                <li key={item}>
-                  <Check aria-hidden="true" />
-                  {item}
-                </li>
-              ))}
-            </ul>
             <div className="mk-hero-actions">
               <Link className="mk-button mk-button--hero" href="/signup">
                 Try ValueBooks free
@@ -57,10 +39,14 @@ export default function MarketingHomePage() {
             <TrustNote />
           </div>
           <div className="mk-home-hero__visual">
-            <DashboardMockup />
+            <Photo
+              src="/marketing/hero-owner.jpg"
+              alt="A business owner confidently reviewing their finances"
+              ratio="4 / 5"
+              className="mk-hero-photo"
+            />
             <div className="mk-hero-copilot" aria-label="Illustrative ValueBooks AI insight">
               <div className="mk-hero-copilot__head">
-                <Sparkles aria-hidden="true" />
                 <b>ValueBooks AI</b>
                 <span>Live context</span>
               </div>
@@ -80,7 +66,6 @@ export default function MarketingHomePage() {
               </Link>
             </div>
             <div className="mk-floating-note">
-              <Sparkles />
               <span>
                 <b>AI insight</b>
                 <small>Context, not guesswork</small>
@@ -107,51 +92,35 @@ export default function MarketingHomePage() {
           { number: '140+', label: 'currencies ready to work with' },
         ]}
       />
+      <FeatureGrid />
       <section className="mk-ai-section">
         <div>
           <SectionIntro
             kicker="ValueBooks AI"
             title="AI that works the books, without working around you."
-            text="Ask a financial question, draft the next document, or surface activity that deserves a closer look. You stay in control."
+            text="Ask a financial question, draft the next document, or surface activity that deserves a closer look. Turn a short prompt into an invoice-ready starting point, bring consistency to spending and bank activity, and catch unusual movement before it becomes a problem. You stay in control."
           />
-          <div className="mk-ai-feature-list">
-            {[
-              ['Draft faster', 'Turn a short prompt into an invoice-ready starting point.'],
-              ['Categorize with context', 'Bring consistency to spending and bank activity.'],
-              ['Spot what changed', 'Surface unusual movement and timely follow-ups.'],
-            ].map(([title, text], index) => (
-              <article key={title}>
-                <span>{index + 1}</span>
-                <div>
-                  <h3>{title}</h3>
-                  <MarketingCopy>{text}</MarketingCopy>
-                </div>
-              </article>
-            ))}
-          </div>
           <Link className="mk-text-link" href="/ai">
             Meet ValueBooks AI <ArrowRight />
           </Link>
         </div>
-        <AiMockup />
+        <Photo
+          id="photo-1551836022-d5d88e9218df"
+          alt="A business owner reviewing financial activity"
+          ratio="6 / 5"
+        />
       </section>
       <section className="mk-alternating">
-        <div className="mk-alternating__visual">
-          <InvoiceMockup />
-        </div>
+        <Photo
+          id="photo-1556761175-4b46a572b786"
+          alt="A small business owner preparing an invoice"
+          ratio="6 / 5"
+        />
         <div>
           <SectionIntro
             kicker="Get paid"
             title="Send invoices that are a pleasure to receive."
-            text="Create professional invoices, convert quotes, automate recurring work, and make payment status easy to understand."
-          />
-          <FeatureList
-            items={[
-              'Professional invoice and quote templates',
-              'Recurring invoices and thoughtful reminders',
-              'Credit notes and payment tracking',
-              'Customer portal access for shared visibility',
-            ]}
+            text="Create professional invoices and quotes from ready-made templates, automate recurring billing with thoughtful reminders, and keep credit notes and payments tracked. A customer portal gives clients shared visibility into what's outstanding."
           />
           <Link className="mk-text-link" href="/invoicing">
             Explore invoicing <ArrowRight />
@@ -163,23 +132,17 @@ export default function MarketingHomePage() {
           <SectionIntro
             kicker="Keep the books moving"
             title="Know what happened, then know what to do next."
-            text="Keep banking, expenses, journals, accounts, and reporting close enough to act on—without turning your workday into a reconciliation marathon."
-          />
-          <FeatureList
-            items={[
-              'Chart of accounts and journal workflows',
-              'Bank imports, matching rules, and reconciliation',
-              'Financial periods, audit history, and permissions',
-              'Reports that stay connected to the detail',
-            ]}
+            text="Keep banking, expenses, journals, accounts, and reporting close enough to act on—without turning your workday into a reconciliation marathon. Manage your chart of accounts and journal workflows, import and match bank activity, and keep financial periods, audit history, and permissions under control, with reports that stay connected to the detail."
           />
           <Link className="mk-text-link" href="/accounting">
             Explore accounting <ArrowRight />
           </Link>
         </div>
-        <div className="mk-alternating__visual">
-          <ReconciliationMockup />
-        </div>
+        <Photo
+          id="photo-1554224155-6726b3ff858f"
+          alt="A business owner reviewing bank reconciliation"
+          ratio="6 / 5"
+        />
       </section>
       <section className="mk-personas">
         <Photo id="photo-1552664730-d307ca884978" alt="Business owners meeting" ratio="21 / 9" />

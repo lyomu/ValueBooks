@@ -6,10 +6,11 @@ import {
   LockKeyhole,
   Quote,
   ShieldCheck,
-  Sparkles,
+  Users,
 } from 'lucide-react';
 import Link from 'next/link';
 import type { ReactNode } from 'react';
+import { DashboardMockup, InvoiceMockup } from './mockups';
 import { Photo } from './photo';
 
 export { Photo };
@@ -51,7 +52,7 @@ export function PageHero({
         : visual === 'security'
           ? ShieldCheck
           : visual === 'people'
-            ? Sparkles
+            ? Users
             : Check;
   return (
     <section
@@ -99,7 +100,7 @@ export function SectionIntro({
   centered = false,
 }: {
   kicker?: string;
-  title: string;
+  title: ReactNode;
   text?: string;
   centered?: boolean;
 }) {
@@ -132,6 +133,99 @@ export function StatBand({ items }: { items: { number: string; label: string }[]
           <span>{item.label}</span>
         </div>
       ))}
+    </section>
+  );
+}
+const moreFeatureLinks = [
+  { href: '/product', label: 'Expenses & reporting' },
+  { href: '/customers', label: 'Customers' },
+  { href: '/industries', label: 'Industries' },
+  { href: '/contact', label: 'Talk to our team' },
+];
+export function FeatureGrid() {
+  return (
+    <section className="mk-feature-grid">
+      <SectionIntro
+        centered
+        kicker="Built for how you work"
+        title={
+          <>
+            Everything your business needs,
+            <br />
+            in one place.
+          </>
+        }
+      />
+      <div className="mk-feature-grid__row mk-feature-grid__row--top">
+        <article className="mk-feature-card mk-feature-card--cream">
+          <div className="mk-feature-card__copy">
+            <h3>Invoicing</h3>
+            <p>
+              Create and send professional invoices, track what&apos;s outstanding, and send
+              reminders automatically.
+            </p>
+            <Link className="mk-text-link" href="/invoicing">
+              Learn about Invoicing <ArrowRight />
+            </Link>
+          </div>
+          <div className="mk-feature-card__visual">
+            <div className="mk-feature-card__visual-scale">
+              <InvoiceMockup />
+            </div>
+          </div>
+        </article>
+        <article className="mk-feature-card mk-feature-card--blue">
+          <div className="mk-feature-card__copy">
+            <h3>Accounting</h3>
+            <p>
+              Journals, reconciliation, and reports that stay accurate without extra bookkeeping
+              work.
+            </p>
+            <Link className="mk-text-link" href="/accounting">
+              Learn about Accounting <ArrowRight />
+            </Link>
+          </div>
+          <div className="mk-feature-card__visual">
+            <div className="mk-feature-card__visual-scale">
+              <DashboardMockup />
+            </div>
+          </div>
+        </article>
+      </div>
+      <div className="mk-feature-grid__row mk-feature-grid__row--bottom">
+        <article className="mk-feature-card mk-feature-card--grey">
+          <span className="mk-feature-card__icon">
+            <Bot aria-hidden="true" />
+          </span>
+          <h3>ValueBooks AI</h3>
+          <p>Get clear, evidence-backed answers grounded in your own financial data.</p>
+          <Link className="mk-text-link" href="/ai">
+            Learn about AI <ArrowRight />
+          </Link>
+        </article>
+        <article className="mk-feature-card mk-feature-card--navy">
+          <span className="mk-feature-card__icon">
+            <LockKeyhole aria-hidden="true" />
+          </span>
+          <h3>Security</h3>
+          <p>Role-based access, audit trails, and responsible safeguards by default.</p>
+          <Link className="mk-text-link mk-text-link--on-dark" href="/security">
+            Learn about Security <ArrowRight />
+          </Link>
+        </article>
+        <article className="mk-feature-card mk-feature-card--gold">
+          <h3>More features</h3>
+          <ul className="mk-feature-card__links">
+            {moreFeatureLinks.map((link) => (
+              <li key={link.href}>
+                <Link href={link.href}>
+                  {link.label} <ArrowRight />
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </article>
+      </div>
     </section>
   );
 }
