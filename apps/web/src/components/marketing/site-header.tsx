@@ -91,6 +91,7 @@ export function SiteHeader() {
             Industries <ChevronDown aria-hidden="true" />
           </button>
           <Link href="/customers">Customers</Link>
+          <Link href="/pricing">Pricing</Link>
           <Link href="/security">Security</Link>
           <Link href="/contact">Contact</Link>
         </nav>
@@ -167,6 +168,7 @@ export function SiteHeader() {
           <Link href="/ai">ValueBooks AI</Link>
           <Link href="/industries">Industries</Link>
           <Link href="/customers">Customers</Link>
+          <Link href="/pricing">Pricing</Link>
           <Link href="/security">Security</Link>
           <Link href="/contact">Contact</Link>
           <Link className="mk-button" href="/signup">

@@ -6,6 +6,7 @@ const columns: ReadonlyArray<{ title: string; links: ReadonlyArray<readonly [str
     title: 'Product',
     links: [
       ['/product', 'Platform overview'],
+      ['/pricing', 'Pricing'],
       ['/invoicing', 'Invoicing'],
       ['/accounting', 'Accounting'],
       ['/ai', 'ValueBooks AI'],

@@ -14,6 +14,7 @@ import {
 } from '../../components/marketing/sections';
 import { Photo } from '../../components/marketing/photo';
 import { FaqAccordion, type FaqItem } from '../../components/marketing/faq-accordion';
+import { PricingTeaserSection } from '../../components/marketing/pricing-section';
 
 const faqItems: FaqItem[] = [
   {
@@ -129,6 +130,7 @@ export default function MarketingHomePage() {
         ]}
       />
       <FeatureGrid />
+      <PricingTeaserSection />
       <section className="mk-ai-section">
         <div>
           <SectionIntro
