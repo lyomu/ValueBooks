@@ -1,15 +1,7 @@
 'use client';
 
 import type { Contact } from '@valuebooks/contracts';
-import {
-  Button,
-  Dialog,
-  DialogContent,
-  FieldMessage,
-  Input,
-  Label,
-  Select,
-} from '@valuebooks/ui';
+import { Button, Dialog, DialogContent, FieldMessage, Input, Label, Select } from '@valuebooks/ui';
 import { MapPin, Save } from 'lucide-react';
 import { useState, type FormEvent } from 'react';
 
@@ -247,11 +239,21 @@ export function CustomerDialog({
               </div>
               <div className="rb-field">
                 <Label htmlFor="customer-city">City</Label>
-                <Input id="customer-city" name="city" defaultValue={billingAddress?.city ?? ''} maxLength={120} />
+                <Input
+                  id="customer-city"
+                  name="city"
+                  defaultValue={billingAddress?.city ?? ''}
+                  maxLength={120}
+                />
               </div>
               <div className="rb-field">
                 <Label htmlFor="customer-region">Region / county</Label>
-                <Input id="customer-region" name="region" defaultValue={billingAddress?.region ?? ''} maxLength={120} />
+                <Input
+                  id="customer-region"
+                  name="region"
+                  defaultValue={billingAddress?.region ?? ''}
+                  maxLength={120}
+                />
               </div>
               <div className="rb-field">
                 <Label htmlFor="customer-postal-code">Postal code</Label>
@@ -290,7 +292,12 @@ export function CustomerDialog({
           </section>
 
           <footer className="rb-customer-form__footer">
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={saving}>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => onOpenChange(false)}
+              disabled={saving}
+            >
               Cancel
             </Button>
             <Button type="submit" loading={saving}>

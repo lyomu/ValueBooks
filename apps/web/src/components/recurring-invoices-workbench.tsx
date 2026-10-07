@@ -8,21 +8,17 @@ import type {
   TaxCode,
 } from '@valuebooks/contracts';
 import {
-  Badge,
   Button,
   Card,
-  DataTable,
-  EmptyState,
   ForbiddenState,
   Input,
   Label,
-  PageHeader,
   Select,
   Skeleton,
   StatusBadge,
   type DataTableColumn,
 } from '@valuebooks/ui';
-import { Play, Plus, Save, Search, XCircle } from 'lucide-react';
+import { Play, Plus, Save, XCircle } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 
 import { ApiError, apiRequest } from '../lib/api';
@@ -134,7 +130,6 @@ export function RecurringInvoicesPage() {
         : [blankLine()],
     );
     setShowCreate(true);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const currency = customers.find((customer) => customer.id === contactId)?.currency ?? 'KES';
@@ -303,12 +298,22 @@ export function RecurringInvoicesPage() {
       value: (template) => template.contactName,
       cell: (template) => template.contactName,
     },
-    { key: 'cadence', header: 'Cadence', value: (template) => template.cadence, cell: (template) => template.cadence },
-    { key: 'nextRun', header: 'Next run', value: (template) => template.nextRunDate, cell: (template) => template.nextRunDate },
+    {
+      key: 'cadence',
+      header: 'Cadence',
+      value: (template) => template.cadence,
+      cell: (template) => template.cadence,
+    },
+    {
+      key: 'nextRun',
+      header: 'Next run',
+      value: (template) => template.nextRunDate,
+      cell: (template) => template.nextRunDate,
+    },
     {
       key: 'status',
       header: 'Status',
-      value: (template) => template.active ? 'ACTIVE' : 'INACTIVE',
+      value: (template) => (template.active ? 'ACTIVE' : 'INACTIVE'),
       cell: (template) => <StatusBadge status={template.active ? 'ACTIVE' : 'INACTIVE'} />,
     },
     {
@@ -547,12 +552,44 @@ export function RecurringInvoicesPage() {
             title="All recurring invoices"
             rows={templates ?? []}
             columns={columns}
-            searchText={(template) => `${template.contactName} ${template.cadence} ${template.nextRunDate} ${template.active ? 'active' : 'inactive'}`}
-            primaryAction={canManage ? <div className="rb-inline-actions"><Button variant="outline" onClick={() => void runDueTemplates()} loading={busy === 'run-due'}><Play aria-hidden="true" /> Run due</Button><Button onClick={openCreate}><Plus aria-hidden="true" /> New</Button></div> : null}
+            searchText={(template) =>
+              `${template.contactName} ${template.cadence} ${template.nextRunDate} ${template.active ? 'active' : 'inactive'}`
+            }
+            primaryAction={
+              canManage ? (
+                <div className="rb-inline-actions">
+                  <Button
+                    variant="outline"
+                    onClick={() => void runDueTemplates()}
+                    loading={busy === 'run-due'}
+                  >
+                    <Play aria-hidden="true" /> Run due
+                  </Button>
+                  <Button onClick={openCreate}>
+                    <Plus aria-hidden="true" /> New
+                  </Button>
+                </div>
+              ) : null
+            }
             onRefresh={() => void load()}
-            onImport={async () => undefined}
-            emptyState={{ title: 'Create. Set. Repeat.', description: 'Set up recurring invoices to automatically draft or issue the work you bill on a schedule.', illustration: 'sales', variant: 'onboarding', benefits: ['Choose the cadence and start date', 'Review generated invoices or send them automatically'] }}
-            noResultsState={{ title: 'No recurring invoices match this view', description: 'Clear the search to see recurring invoice templates.', illustration: 'sales', variant: 'no-results' }}
+            onImport={() => undefined}
+            emptyState={{
+              title: 'Create. Set. Repeat.',
+              description:
+                'Set up recurring invoices to automatically draft or issue the work you bill on a schedule.',
+              illustration: 'sales',
+              variant: 'onboarding',
+              benefits: [
+                'Choose the cadence and start date',
+                'Review generated invoices or send them automatically',
+              ],
+            }}
+            noResultsState={{
+              title: 'No recurring invoices match this view',
+              description: 'Clear the search to see recurring invoice templates.',
+              illustration: 'sales',
+              variant: 'no-results',
+            }}
           />
         )}
       </div>

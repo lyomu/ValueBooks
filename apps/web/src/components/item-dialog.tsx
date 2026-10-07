@@ -73,7 +73,9 @@ export function ItemDialog({
         setVendors(vendorResponse.data);
       })
       .catch((caught: unknown) => {
-        setError(caught instanceof Error ? caught.message : 'Product form options could not be loaded.');
+        setError(
+          caught instanceof Error ? caught.message : 'Product form options could not be loaded.',
+        );
       });
   }, [open, organizationId]);
 
@@ -139,7 +141,9 @@ export function ItemDialog({
       defaultPurchaseTaxCodeId: purchaseEnabled
         ? formValue(data, 'defaultPurchaseTaxCodeId') || undefined
         : undefined,
-      preferredVendorId: purchaseEnabled ? formValue(data, 'preferredVendorId') || undefined : undefined,
+      preferredVendorId: purchaseEnabled
+        ? formValue(data, 'preferredVendorId') || undefined
+        : undefined,
       inventoryTracked: itemType === 'GOODS' && inventoryTracked,
       reorderThreshold:
         itemType === 'GOODS' && inventoryTracked
@@ -184,7 +188,9 @@ export function ItemDialog({
       onSaved(response.data);
       onOpenChange(false);
     } catch (caught) {
-      setError(caught instanceof ApiError ? caught.message : 'The product or service could not be saved.');
+      setError(
+        caught instanceof ApiError ? caught.message : 'The product or service could not be saved.',
+      );
     } finally {
       setSaving(false);
     }
@@ -201,34 +207,88 @@ export function ItemDialog({
         description="Set up the product, sales, purchase, and inventory defaults used throughout ValueBooks."
       >
         <form key={formKey} className="rb-item-form" onSubmit={(event) => void submit(event)}>
-          {error ? <div className="rb-auth-error" role="alert">{error}</div> : null}
+          {error ? (
+            <div className="rb-auth-error" role="alert">
+              {error}
+            </div>
+          ) : null}
 
           <section className="rb-item-form__section rb-item-form__overview">
             <div className="rb-item-form__fields">
               <div className="rb-field">
                 <Label htmlFor="item-dialog-name">Name</Label>
-                <Input id="item-dialog-name" name="name" defaultValue={item?.name ?? ''} required maxLength={160} />
+                <Input
+                  id="item-dialog-name"
+                  name="name"
+                  defaultValue={item?.name ?? ''}
+                  required
+                  maxLength={160}
+                />
               </div>
               <fieldset className="rb-item-form__type">
                 <legend>Type</legend>
-                <label><input type="radio" name="itemType" value="GOODS" checked={itemType === 'GOODS'} onChange={() => setItemType('GOODS')} /> Goods</label>
-                <label><input type="radio" name="itemType" value="SERVICE" checked={itemType === 'SERVICE'} onChange={() => setItemType('SERVICE')} /> Service</label>
-                <label><input type="radio" name="itemType" value="NON_STOCK" checked={itemType === 'NON_STOCK'} onChange={() => setItemType('NON_STOCK')} /> Non-stock</label>
+                <label>
+                  <input
+                    type="radio"
+                    name="itemType"
+                    value="GOODS"
+                    checked={itemType === 'GOODS'}
+                    onChange={() => setItemType('GOODS')}
+                  />{' '}
+                  Goods
+                </label>
+                <label>
+                  <input
+                    type="radio"
+                    name="itemType"
+                    value="SERVICE"
+                    checked={itemType === 'SERVICE'}
+                    onChange={() => setItemType('SERVICE')}
+                  />{' '}
+                  Service
+                </label>
+                <label>
+                  <input
+                    type="radio"
+                    name="itemType"
+                    value="NON_STOCK"
+                    checked={itemType === 'NON_STOCK'}
+                    onChange={() => setItemType('NON_STOCK')}
+                  />{' '}
+                  Non-stock
+                </label>
               </fieldset>
               <div className="rb-field">
                 <Label htmlFor="item-dialog-unit">Unit</Label>
-                <Select id="item-dialog-unit" name="defaultUnitId" defaultValue={item?.defaultUnitId ?? ''}>
+                <Select
+                  id="item-dialog-unit"
+                  name="defaultUnitId"
+                  defaultValue={item?.defaultUnitId ?? ''}
+                >
                   <option value="">Select a unit</option>
-                  {units.map((unit) => <option key={unit.id} value={unit.id}>{unit.name} ({unit.code})</option>)}
+                  {units.map((unit) => (
+                    <option key={unit.id} value={unit.id}>
+                      {unit.name} ({unit.code})
+                    </option>
+                  ))}
                 </Select>
               </div>
               <div className="rb-field">
                 <Label htmlFor="item-dialog-sku">SKU</Label>
-                <Input id="item-dialog-sku" name="sku" defaultValue={item?.sku ?? ''} maxLength={60} />
+                <Input
+                  id="item-dialog-sku"
+                  name="sku"
+                  defaultValue={item?.sku ?? ''}
+                  maxLength={60}
+                />
               </div>
             </div>
             <label className="rb-item-form__image-picker">
-              {imageDataUrl ? <img src={imageDataUrl} alt="Selected product" /> : <ImagePlus aria-hidden="true" />}
+              {imageDataUrl ? (
+                <img src={imageDataUrl} alt="Selected product" />
+              ) : (
+                <ImagePlus aria-hidden="true" />
+              )}
               <span>{imageDataUrl ? 'Change product image' : 'Add product image'}</span>
               <small>PNG or JPG, up to 1.5 MB</small>
               <input type="file" accept="image/png,image/jpeg,image/webp" onChange={selectImage} />
@@ -237,31 +297,65 @@ export function ItemDialog({
 
           <section className="rb-item-form__section">
             <label className="rb-item-form__section-toggle">
-              <input type="checkbox" checked={salesEnabled} onChange={(event) => setSalesEnabled(event.target.checked)} />
+              <input
+                type="checkbox"
+                checked={salesEnabled}
+                onChange={(event) => setSalesEnabled(event.target.checked)}
+              />
               <span>Sales information</span>
             </label>
             {salesEnabled ? (
               <div className="rb-item-form__grid">
                 <div className="rb-field">
                   <Label htmlFor="item-dialog-sales-price">Selling price ({currency})</Label>
-                  <Input id="item-dialog-sales-price" name="salesPrice" type="number" min={0} step="0.01" defaultValue={decimalPrice(item, 'default', currency)} required />
+                  <Input
+                    id="item-dialog-sales-price"
+                    name="salesPrice"
+                    type="number"
+                    min={0}
+                    step="0.01"
+                    defaultValue={decimalPrice(item, 'default', currency)}
+                    required
+                  />
                 </div>
                 <div className="rb-field">
                   <Label htmlFor="item-dialog-revenue-account">Sales account</Label>
-                  <Select id="item-dialog-revenue-account" name="revenueAccountId" defaultValue={item?.revenueAccountId ?? ''}>
+                  <Select
+                    id="item-dialog-revenue-account"
+                    name="revenueAccountId"
+                    defaultValue={item?.revenueAccountId ?? ''}
+                  >
                     <option value="">Select an account</option>
-                    {salesAccounts.map((account) => <option key={account.id} value={account.id}>{account.code} · {account.name}</option>)}
+                    {salesAccounts.map((account) => (
+                      <option key={account.id} value={account.id}>
+                        {account.code} · {account.name}
+                      </option>
+                    ))}
                   </Select>
                 </div>
                 <div className="rb-field">
                   <Label htmlFor="item-dialog-sales-description">Sales description</Label>
-                  <Textarea id="item-dialog-sales-description" name="salesDescription" defaultValue={item?.salesDescription ?? ''} placeholder="Shown as the default description on sales documents" maxLength={2000} />
+                  <Textarea
+                    id="item-dialog-sales-description"
+                    name="salesDescription"
+                    defaultValue={item?.salesDescription ?? ''}
+                    placeholder="Shown as the default description on sales documents"
+                    maxLength={2000}
+                  />
                 </div>
                 <div className="rb-field">
                   <Label htmlFor="item-dialog-sales-tax">Sales tax</Label>
-                  <Select id="item-dialog-sales-tax" name="defaultTaxCodeId" defaultValue={item?.defaultTaxCodeId ?? ''}>
+                  <Select
+                    id="item-dialog-sales-tax"
+                    name="defaultTaxCodeId"
+                    defaultValue={item?.defaultTaxCodeId ?? ''}
+                  >
                     <option value="">No tax</option>
-                    {taxCodes.map((tax) => <option key={tax.id} value={tax.id}>{tax.code} · {tax.name}</option>)}
+                    {taxCodes.map((tax) => (
+                      <option key={tax.id} value={tax.id}>
+                        {tax.code} · {tax.name}
+                      </option>
+                    ))}
                   </Select>
                 </div>
               </div>
@@ -270,38 +364,80 @@ export function ItemDialog({
 
           <section className="rb-item-form__section">
             <label className="rb-item-form__section-toggle">
-              <input type="checkbox" checked={purchaseEnabled} onChange={(event) => setPurchaseEnabled(event.target.checked)} />
+              <input
+                type="checkbox"
+                checked={purchaseEnabled}
+                onChange={(event) => setPurchaseEnabled(event.target.checked)}
+              />
               <span>Purchase information</span>
             </label>
             {purchaseEnabled ? (
               <div className="rb-item-form__grid">
                 <div className="rb-field">
                   <Label htmlFor="item-dialog-purchase-price">Cost price ({currency})</Label>
-                  <Input id="item-dialog-purchase-price" name="purchasePrice" type="number" min={0} step="0.01" defaultValue={decimalPrice(item, 'purchase', currency)} required />
+                  <Input
+                    id="item-dialog-purchase-price"
+                    name="purchasePrice"
+                    type="number"
+                    min={0}
+                    step="0.01"
+                    defaultValue={decimalPrice(item, 'purchase', currency)}
+                    required
+                  />
                 </div>
                 <div className="rb-field">
                   <Label htmlFor="item-dialog-purchase-account">Purchase account</Label>
-                  <Select id="item-dialog-purchase-account" name="purchaseAccountId" defaultValue={item?.purchaseAccountId ?? ''}>
+                  <Select
+                    id="item-dialog-purchase-account"
+                    name="purchaseAccountId"
+                    defaultValue={item?.purchaseAccountId ?? ''}
+                  >
                     <option value="">Select an account</option>
-                    {purchaseAccounts.map((account) => <option key={account.id} value={account.id}>{account.code} · {account.name}</option>)}
+                    {purchaseAccounts.map((account) => (
+                      <option key={account.id} value={account.id}>
+                        {account.code} · {account.name}
+                      </option>
+                    ))}
                   </Select>
                 </div>
                 <div className="rb-field">
                   <Label htmlFor="item-dialog-purchase-description">Purchase description</Label>
-                  <Textarea id="item-dialog-purchase-description" name="purchaseDescription" defaultValue={item?.purchaseDescription ?? ''} placeholder="Shown as the default description on purchase documents" maxLength={2000} />
+                  <Textarea
+                    id="item-dialog-purchase-description"
+                    name="purchaseDescription"
+                    defaultValue={item?.purchaseDescription ?? ''}
+                    placeholder="Shown as the default description on purchase documents"
+                    maxLength={2000}
+                  />
                 </div>
                 <div className="rb-field">
                   <Label htmlFor="item-dialog-purchase-tax">Purchase tax</Label>
-                  <Select id="item-dialog-purchase-tax" name="defaultPurchaseTaxCodeId" defaultValue={item?.defaultPurchaseTaxCodeId ?? ''}>
+                  <Select
+                    id="item-dialog-purchase-tax"
+                    name="defaultPurchaseTaxCodeId"
+                    defaultValue={item?.defaultPurchaseTaxCodeId ?? ''}
+                  >
                     <option value="">No tax</option>
-                    {taxCodes.map((tax) => <option key={tax.id} value={tax.id}>{tax.code} · {tax.name}</option>)}
+                    {taxCodes.map((tax) => (
+                      <option key={tax.id} value={tax.id}>
+                        {tax.code} · {tax.name}
+                      </option>
+                    ))}
                   </Select>
                 </div>
                 <div className="rb-field">
                   <Label htmlFor="item-dialog-vendor">Preferred vendor</Label>
-                  <Select id="item-dialog-vendor" name="preferredVendorId" defaultValue={item?.preferredVendorId ?? ''}>
+                  <Select
+                    id="item-dialog-vendor"
+                    name="preferredVendorId"
+                    defaultValue={item?.preferredVendorId ?? ''}
+                  >
                     <option value="">Select a vendor</option>
-                    {vendors.map((vendor) => <option key={vendor.id} value={vendor.id}>{vendor.displayName}</option>)}
+                    {vendors.map((vendor) => (
+                      <option key={vendor.id} value={vendor.id}>
+                        {vendor.displayName}
+                      </option>
+                    ))}
                   </Select>
                 </div>
               </div>
@@ -310,22 +446,61 @@ export function ItemDialog({
 
           <section className="rb-item-form__section">
             <label className="rb-item-form__section-toggle">
-              <input type="checkbox" checked={inventoryTracked} disabled={!isGoods} onChange={(event) => setInventoryTracked(event.target.checked)} />
+              <input
+                type="checkbox"
+                checked={inventoryTracked}
+                disabled={!isGoods}
+                onChange={(event) => setInventoryTracked(event.target.checked)}
+              />
               <span>Track inventory for this item</span>
             </label>
-            {!isGoods ? <FieldMessage>Inventory tracking is available for goods only.</FieldMessage> : null}
+            {!isGoods ? (
+              <FieldMessage>Inventory tracking is available for goods only.</FieldMessage>
+            ) : null}
             {isGoods && inventoryTracked ? (
               <div className="rb-item-form__grid rb-item-form__inventory-grid">
-                <div className="rb-field"><Label htmlFor="item-dialog-reorder-threshold">Reorder point</Label><Input id="item-dialog-reorder-threshold" name="reorderThreshold" inputMode="decimal" defaultValue={item?.reorderThreshold ?? ''} /></div>
-                <div className="rb-field"><Label htmlFor="item-dialog-reorder-quantity">Reorder quantity</Label><Input id="item-dialog-reorder-quantity" name="reorderQuantity" inputMode="decimal" defaultValue={item?.reorderQuantity ?? ''} /></div>
+                <div className="rb-field">
+                  <Label htmlFor="item-dialog-reorder-threshold">Reorder point</Label>
+                  <Input
+                    id="item-dialog-reorder-threshold"
+                    name="reorderThreshold"
+                    inputMode="decimal"
+                    defaultValue={item?.reorderThreshold ?? ''}
+                  />
+                </div>
+                <div className="rb-field">
+                  <Label htmlFor="item-dialog-reorder-quantity">Reorder quantity</Label>
+                  <Input
+                    id="item-dialog-reorder-quantity"
+                    name="reorderQuantity"
+                    inputMode="decimal"
+                    defaultValue={item?.reorderQuantity ?? ''}
+                  />
+                </div>
               </div>
             ) : null}
-            <label className="rb-item-form__sub-toggle"><input type="checkbox" name="freeDescriptionAllowed" defaultChecked={item?.freeDescriptionAllowed ?? true} /> Allow a free-text description on invoice lines</label>
+            <label className="rb-item-form__sub-toggle">
+              <input
+                type="checkbox"
+                name="freeDescriptionAllowed"
+                defaultChecked={item?.freeDescriptionAllowed ?? true}
+              />{' '}
+              Allow a free-text description on invoice lines
+            </label>
           </section>
 
           <footer className="rb-item-form__footer">
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={saving}>Cancel</Button>
-            <Button type="submit" loading={saving}><Save aria-hidden="true" /> {item ? 'Save changes' : 'Save product or service'}</Button>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => onOpenChange(false)}
+              disabled={saving}
+            >
+              Cancel
+            </Button>
+            <Button type="submit" loading={saving}>
+              <Save aria-hidden="true" /> {item ? 'Save changes' : 'Save product or service'}
+            </Button>
           </footer>
         </form>
       </DialogContent>

@@ -1,9 +1,10 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import type { ReportColumn, ReportKey, ReportRow } from '@valuebooks/contracts';
 import ExcelJS from 'exceljs';
 import type { Response } from 'express';
 
 import { DocumentRenderingService } from '../sales/document-rendering.service.js';
+import { AsyncReportExportService } from './async-report-export.service.js';
 import type { ReportExportQueryDto } from './reporting.dto.js';
 import { ReportingService } from './reporting.service.js';
 
@@ -15,6 +16,7 @@ export class ReportExportService {
   constructor(
     private readonly reports: ReportingService,
     private readonly rendering: DocumentRenderingService,
+    private readonly asyncExports: AsyncReportExportService,
   ) {}
 
   async export(
@@ -22,10 +24,17 @@ export class ReportExportService {
     organizationId: string,
     key: ReportKey,
     query: ReportExportQueryDto,
-  ): Promise<void> {
-    if (query.format === 'csv') return this.csv(response, organizationId, key, query);
-    if (query.format === 'xlsx') return this.xlsx(response, organizationId, key, query);
-    return this.pdf(response, organizationId, key, query);
+    userId: string,
+  ): Promise<{ executionId: string; status: 'QUEUED' } | undefined> {
+    if (query.format === 'csv') {
+      await this.csv(response, organizationId, key, query);
+      return undefined;
+    }
+    if (query.format === 'xlsx') {
+      await this.xlsx(response, organizationId, key, query);
+      return undefined;
+    }
+    return this.pdf(response, organizationId, userId, key, query);
   }
 
   private async csv(
@@ -113,6 +122,7 @@ export class ReportExportService {
   private async pdf(
     response: Response,
     organizationId: string,
+    userId: string,
     key: ReportKey,
     query: ReportExportQueryDto,
   ) {
@@ -122,9 +132,7 @@ export class ReportExportService {
       pageSize: 500,
     });
     if (result.pagination.totalRows > PDF_ROW_LIMIT) {
-      throw new BadRequestException(
-        `PDF export is limited to ${PDF_ROW_LIMIT} rows until the Phase 10 report worker is available. Use streaming CSV or XLSX for this result.`,
-      );
+      return this.asyncExports.request(organizationId, userId, key, query);
     }
     const rows = [...result.rows];
     for (let page = 2; rows.length < result.pagination.totalRows; page += 1) {
@@ -136,6 +144,7 @@ export class ReportExportService {
     );
     setDownloadHeaders(response, key, 'pdf', 'application/pdf');
     response.end(pdf);
+    return undefined;
   }
 }
 

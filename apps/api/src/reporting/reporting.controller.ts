@@ -27,6 +27,7 @@ import { OrganizationGuard } from '../organizations/organization.guard.js';
 import { FeatureFlagGuard, RequireFeatureFlag } from '../platform/feature-flag.guard.js';
 import { PHASE13_FEATURE_FLAGS } from '../platform/phase13-feature-flags.js';
 import { ReportExportService } from './report-export.service.js';
+import { AsyncReportExportService } from './async-report-export.service.js';
 import {
   CreateSavedReportDto,
   DrillDownQueryDto,
@@ -42,6 +43,7 @@ export class ReportingController {
   constructor(
     private readonly reports: ReportingService,
     private readonly exports: ReportExportService,
+    private readonly asyncExports: AsyncReportExportService,
     private readonly auth: AuthService,
   ) {}
 
@@ -123,7 +125,30 @@ export class ReportingController {
     @Req() request: OrganizationRequest,
     @Res() response: Response,
   ) {
-    await this.exports.export(response, request.organization.id, reportKey as ReportKey, query);
+    const queued = await this.exports.export(
+      response,
+      request.organization.id,
+      reportKey as ReportKey,
+      query,
+      request.auth.user.id,
+    );
+    if (queued) {
+      return response.status(202).json({
+        data: {
+          ...queued,
+          statusUrl: `/organizations/${request.organization.id}/reports/exports/${queued.executionId}`,
+        },
+      });
+    }
+  }
+
+  @Get('exports/:executionId')
+  @RequirePermission('reports.view')
+  async exportStatus(
+    @Param('executionId', new ParseUUIDPipe()) executionId: string,
+    @Req() request: OrganizationRequest,
+  ) {
+    return { data: await this.asyncExports.status(request.organization.id, executionId) };
   }
 
   @Get(':reportKey/rows/:rowId/drill-down')

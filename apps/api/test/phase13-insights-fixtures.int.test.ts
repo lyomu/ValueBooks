@@ -144,7 +144,9 @@ describe('Phase 13F-P2 adviser correctness against real posted activity', () => 
       owner,
       {
         contactId: customer.id,
-        lines: [{ itemId: item.id, warehouseId: warehouse.id, quantity: '15', unitPriceMinor: '5000' }],
+        lines: [
+          { itemId: item.id, warehouseId: warehouse.id, quantity: '15', unitPriceMinor: '5000' },
+        ],
       },
       metadata,
     );

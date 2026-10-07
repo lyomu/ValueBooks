@@ -24,6 +24,16 @@ Whole-repo gate at this snapshot: lint, prettier, and typecheck clean; unit test
 files / 412+ tests**; migration drift zero in both directions plus migration replay from scratch into
 a shadow database; API and web production builds green.
 
+**Current gate status (2026-10-06):** the preceding snapshot is historical evidence for the
+2026-09-12 commit, not a current release claim. Root lint and API typecheck/build pass after
+Prisma generation; `format:check` fails in 79 files, the system-account catalog unit test fails,
+and the web production build fails with 35 lint/type-rule errors. See `docs/GAPS.md` items 43-44.
+
+**Phase 13 correction:** the legacy summary below saying Phases 13-14 have no code is superseded.
+Phase 13 implementation exists across AI, documents, insights, feature flags, and web workbenches;
+it remains incomplete pending its security/privacy, evaluation, live E2E, and gate requirements.
+Phase 14 has not started.
+
 - **Phase 1 (Foundation)** — functionally complete, hardening/test debt open (Milestone 1J).
 - **Phase 2 (Sales)** — complete and verified (2A–2K); see `docs/PHASE2_TODO.md`.
 - **Phase 3 (Purchases)** — complete and verified (3A–3H); see `docs/PHASE3_TODO.md`.

@@ -292,10 +292,13 @@ export class CatalogService {
           sku: input.sku ?? existing.sku,
           name: input.name ?? existing.name,
           itemType: input.itemType ?? existing.itemType,
-          imageDataUrl: input.imageDataUrl !== undefined ? input.imageDataUrl : existing.imageDataUrl,
+          imageDataUrl:
+            input.imageDataUrl !== undefined ? input.imageDataUrl : existing.imageDataUrl,
           salesEnabled: input.salesEnabled ?? existing.salesEnabled,
           salesDescription:
-            input.salesDescription !== undefined ? input.salesDescription : existing.salesDescription,
+            input.salesDescription !== undefined
+              ? input.salesDescription
+              : existing.salesDescription,
           purchaseEnabled: input.purchaseEnabled ?? existing.purchaseEnabled,
           purchaseDescription:
             input.purchaseDescription !== undefined

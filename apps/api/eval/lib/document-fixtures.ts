@@ -1,4 +1,8 @@
-import type { KnownCategory, KnownVendor, ReceiptLine } from '../../src/documents/receipt-extractor.ts';
+import type {
+  KnownCategory,
+  KnownVendor,
+  ReceiptLine,
+} from '../../src/documents/receipt-extractor.ts';
 import { intBetween, mulberry32, pick } from './rng.ts';
 
 /**
@@ -17,11 +21,31 @@ export interface OrgProfile {
 }
 
 export const ORG_PROFILES: readonly OrgProfile[] = [
-  { key: 'kenya_retail', displayName: 'Nairobi Retail Collective', countryCode: 'KE', currency: 'KES' },
+  {
+    key: 'kenya_retail',
+    displayName: 'Nairobi Retail Collective',
+    countryCode: 'KE',
+    currency: 'KES',
+  },
   { key: 'us_saas', displayName: 'Northbridge SaaS Inc', countryCode: 'US', currency: 'USD' },
-  { key: 'uk_consulting', displayName: 'Thameside Consulting LLP', countryCode: 'GB', currency: 'GBP' },
-  { key: 'eu_manufacturing', displayName: 'Rheinland Fertigung GmbH', countryCode: 'DE', currency: 'EUR' },
-  { key: 'uganda_logistics', displayName: 'Kampala Freight Partners', countryCode: 'UG', currency: 'UGX' },
+  {
+    key: 'uk_consulting',
+    displayName: 'Thameside Consulting LLP',
+    countryCode: 'GB',
+    currency: 'GBP',
+  },
+  {
+    key: 'eu_manufacturing',
+    displayName: 'Rheinland Fertigung GmbH',
+    countryCode: 'DE',
+    currency: 'EUR',
+  },
+  {
+    key: 'uganda_logistics',
+    displayName: 'Kampala Freight Partners',
+    countryCode: 'UG',
+    currency: 'UGX',
+  },
 ];
 
 const VENDOR_POOL: readonly string[] = [
@@ -56,7 +80,8 @@ type ScanQuality = 'clean' | 'degraded' | 'poor';
 type DateStyle = 'iso' | 'slash_unambiguous' | 'slash_ambiguous' | 'missing';
 type CurrencyStyle = 'code' | 'symbol' | 'ksh_shorthand' | 'missing';
 type VendorMatchStyle = 'exact' | 'noisy_match' | 'unmatched' | 'garbled' | 'no_vendor_line';
-type AmountStyle = 'complete_correct' | 'arithmetic_mismatch' | 'missing_tax' | 'missing_total' | 'missing_all';
+type AmountStyle =
+  'complete_correct' | 'arithmetic_mismatch' | 'missing_tax' | 'missing_total' | 'missing_all';
 
 export interface GroundTruthField<T> {
   readonly value: T | null;
@@ -198,12 +223,16 @@ function buildCase(params: BuildParams): DocumentCase {
   } else if (dateStyle === 'slash_unambiguous') {
     // day > 12 so day/month order is unambiguous regardless of locale.
     const unambiguousDay = intBetween(rng, 13, 28);
-    lines.push(`Date: ${String(unambiguousDay).padStart(2, '0')}/${String(month).padStart(2, '0')}/${year}`);
+    lines.push(
+      `Date: ${String(unambiguousDay).padStart(2, '0')}/${String(month).padStart(2, '0')}/${year}`,
+    );
     const iso = `${year}-${String(month).padStart(2, '0')}-${String(unambiguousDay).padStart(2, '0')}`;
     groundTruthDate = { value: iso, correctlyNull: false };
   } else if (dateStyle === 'slash_ambiguous') {
     const ambiguousDay = intBetween(rng, 1, 12);
-    lines.push(`Date: ${String(ambiguousDay).padStart(2, '0')}/${String(month).padStart(2, '0')}/${year}`);
+    lines.push(
+      `Date: ${String(ambiguousDay).padStart(2, '0')}/${String(month).padStart(2, '0')}/${year}`,
+    );
     // Both components <= 12: genuinely ambiguous, correct behavior is to abstain.
     groundTruthDate = { value: null, correctlyNull: true };
   } else {
@@ -296,7 +325,12 @@ function buildCase(params: BuildParams): DocumentCase {
   };
 }
 
-const DATE_STYLES: readonly DateStyle[] = ['iso', 'slash_unambiguous', 'slash_ambiguous', 'missing'];
+const DATE_STYLES: readonly DateStyle[] = [
+  'iso',
+  'slash_unambiguous',
+  'slash_ambiguous',
+  'missing',
+];
 const CURRENCY_STYLES: readonly CurrencyStyle[] = ['code', 'symbol', 'ksh_shorthand', 'missing'];
 const AMOUNT_STYLES: readonly AmountStyle[] = [
   'complete_correct',
@@ -307,7 +341,11 @@ const AMOUNT_STYLES: readonly AmountStyle[] = [
   'missing_all',
 ];
 const SCAN_QUALITIES: readonly ScanQuality[] = ['clean', 'clean', 'degraded', 'degraded', 'poor'];
-const PERMISSION_LEVELS: readonly DocumentCase['permissionLevel'][] = ['OWNER', 'ACCOUNTANT', 'VIEWER'];
+const PERMISSION_LEVELS: readonly DocumentCase['permissionLevel'][] = [
+  'OWNER',
+  'ACCOUNTANT',
+  'VIEWER',
+];
 
 /** Generates a stratified, reproducible set of >=100 synthetic document cases: every axis
  * (org/currency, scan quality, date style, currency style, vendor-match style, amount

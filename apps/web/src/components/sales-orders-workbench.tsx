@@ -5,8 +5,6 @@ import {
   Badge,
   Button,
   Card,
-  DataTable,
-  EmptyState,
   FieldMessage,
   ForbiddenState,
   Input,
@@ -17,7 +15,7 @@ import {
   StatusBadge,
   type DataTableColumn,
 } from '@valuebooks/ui';
-import { CheckCircle2, FilePlus2, Save, Search, XCircle } from 'lucide-react';
+import { CheckCircle2, FilePlus2, Save, XCircle } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -103,7 +101,12 @@ export function SalesOrdersPage() {
         </div>
       ),
     },
-    { key: 'status', header: 'Status', value: (order) => order.status, cell: (order) => <StatusBadge status={order.status} /> },
+    {
+      key: 'status',
+      header: 'Status',
+      value: (order) => order.status,
+      cell: (order) => <StatusBadge status={order.status} />,
+    },
     {
       key: 'total',
       header: 'Total',
@@ -142,16 +145,62 @@ export function SalesOrdersPage() {
           <Skeleton />
         ) : (
           <OperationalListing
-            title={statusFilter ? `${statusFilter.replaceAll('_', ' ').toLowerCase()} sales orders` : 'All sales orders'}
+            title={
+              statusFilter
+                ? `${statusFilter.replaceAll('_', ' ').toLowerCase()} sales orders`
+                : 'All sales orders'
+            }
             rows={orders ?? []}
             columns={columns}
-            searchText={(order) => `${order.orderNumber ?? ''} ${order.contactName} ${order.status}`}
-            filter={<Select aria-label="Sales order status" value={statusFilter} onChange={(event) => setStatusFilter(event.target.value as typeof statusFilter)}><option value="">All statuses</option>{statusOptions.map((status) => <option key={status} value={status}>{status.replaceAll('_', ' ')}</option>)}</Select>}
-            primaryAction={canManage ? <Button asChild><Link href="/sales-orders/new"><FilePlus2 aria-hidden="true" /> New</Link></Button> : null}
+            searchText={(order) =>
+              `${order.orderNumber ?? ''} ${order.contactName} ${order.status}`
+            }
+            filter={
+              <Select
+                aria-label="Sales order status"
+                value={statusFilter}
+                onChange={(event) => setStatusFilter(event.target.value as typeof statusFilter)}
+              >
+                <option value="">All statuses</option>
+                {statusOptions.map((status) => (
+                  <option key={status} value={status}>
+                    {status.replaceAll('_', ' ')}
+                  </option>
+                ))}
+              </Select>
+            }
+            primaryAction={
+              canManage ? (
+                <Button asChild>
+                  <Link href="/sales-orders/new">
+                    <FilePlus2 aria-hidden="true" /> New
+                  </Link>
+                </Button>
+              ) : null
+            }
             onRefresh={() => void load()}
-            onImport={async () => undefined}
-            emptyState={{ title: 'Confirm your first sales order', description: 'Create a sales order to reserve what your customer has agreed to buy.', illustration: 'sales', variant: 'onboarding', benefits: ['Track order status from draft to fulfillment', 'Convert confirmed orders into invoices'] }}
-            noResultsState={{ title: 'No sales orders match this view', description: 'Clear the search or status filter to see sales orders.', illustration: 'sales', variant: 'no-results', action: <Button variant="outline" onClick={() => setStatusFilter('')}>Clear filters</Button> }}
+            onImport={() => undefined}
+            emptyState={{
+              title: 'Confirm your first sales order',
+              description: 'Create a sales order to reserve what your customer has agreed to buy.',
+              illustration: 'sales',
+              variant: 'onboarding',
+              benefits: [
+                'Track order status from draft to fulfillment',
+                'Convert confirmed orders into invoices',
+              ],
+            }}
+            noResultsState={{
+              title: 'No sales orders match this view',
+              description: 'Clear the search or status filter to see sales orders.',
+              illustration: 'sales',
+              variant: 'no-results',
+              action: (
+                <Button variant="outline" onClick={() => setStatusFilter('')}>
+                  Clear filters
+                </Button>
+              ),
+            }}
             onResetFilters={() => setStatusFilter('')}
             empty="No sales orders match this view."
           />

@@ -4,7 +4,18 @@
 double-entry accounting & invoicing web platform (monorepo: `apps/api` NestJS, `apps/web` Next.js,
 `packages/*` shared libs).
 
-**Last refreshed:** 2026-09-11 (Phases 11 and 12 both closed with captured green evidence).
+**Last refreshed:** 2026-10-06 (current-source reconciliation and release-gate audit).
+
+## Current reconciliation — 2026-10-06
+
+This document's September closure records are historical evidence, not a current green release
+claim. Phase 13 is implemented but has not passed its security/privacy, evaluation, remaining live
+E2E, and release-gate requirements; Phase 14 has not started. All eight cross-module acceptance
+scenarios now have integration coverage. On the current branch, `format:check` fails in 79 files,
+the system-account catalog unit test expects the obsolete 15-key set, and the web production build
+fails with 35 lint/type-rule errors. API typecheck/build succeeds after Prisma client generation,
+which is not yet automated for a fresh checkout. See `docs/GAPS.md` items 43-44 and
+`docs/PHASE13_TODO.md` for the detailed evidence.
 
 ## 1. Where things stand
 

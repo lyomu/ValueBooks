@@ -240,7 +240,9 @@ export class InvoicesService {
   ) {
     const existing = await this.findOrThrow(context.id, invoiceId);
     if (existing.status !== 'DRAFT') {
-      throw new ConflictException('Only draft invoices can be deleted; void issued invoices instead.');
+      throw new ConflictException(
+        'Only draft invoices can be deleted; void issued invoices instead.',
+      );
     }
 
     await this.prisma.$transaction(async (tx) => {
@@ -629,7 +631,9 @@ export class InvoicesService {
       });
       if (!invoice) throw new NotFoundException('Invoice not found.');
       if (invoice.status !== 'ISSUED' && invoice.status !== 'PARTIALLY_PAID') {
-        throw new ConflictException('Only issued invoices with an open balance can be written off.');
+        throw new ConflictException(
+          'Only issued invoices with an open balance can be written off.',
+        );
       }
 
       const organization = await tx.organization.findUniqueOrThrow({

@@ -20,16 +20,16 @@ Known constraint: services stamp "today" as the issue date. Backdating invoices 
 
 ## 3. Master data (created once, before the week)
 
-| Module | Records |
-| --- | --- |
-| Customers | 8: mix of KES/USD, with and without email, one deactivated, one in credit |
-| Vendors | 5: stationery, logistics, utilities, packaging supplier, one USD supplier |
-| Catalog items | 12: 7 goods (tracked stock), 3 services, 2 non-inventory; default prices, VAT-STD or VAT-ZERO |
-| Warehouses | 2 (Main, Westlands) |
-| Financial accounts | Cash till, Equity bank, M-Pesa paybill |
-| Expense categories | Rent, Utilities, Transport, Office supplies, Marketing |
-| Projects | 2, used to tag a few invoice lines |
-| Reminder policy | 1 active (offsets -3, 0, +7) |
+| Module             | Records                                                                                       |
+| ------------------ | --------------------------------------------------------------------------------------------- |
+| Customers          | 8: mix of KES/USD, with and without email, one deactivated, one in credit                     |
+| Vendors            | 5: stationery, logistics, utilities, packaging supplier, one USD supplier                     |
+| Catalog items      | 12: 7 goods (tracked stock), 3 services, 2 non-inventory; default prices, VAT-STD or VAT-ZERO |
+| Warehouses         | 2 (Main, Westlands)                                                                           |
+| Financial accounts | Cash till, Equity bank, M-Pesa paybill                                                        |
+| Expense categories | Rent, Utilities, Transport, Office supplies, Marketing                                        |
+| Projects           | 2, used to tag a few invoice lines                                                            |
+| Reminder policy    | 1 active (offsets -3, 0, +7)                                                                  |
 
 Customer names should include an overdue-prone one and a long name (to test list truncation).
 
@@ -37,15 +37,15 @@ Customer names should include an overdue-prone one and a long name (to test list
 
 Amounts in KES unless stated. "Issued" means posted to the ledger.
 
-| Day | Sales | Purchases | Banking / other |
-| --- | --- | --- | --- |
-| Fri 18 | 3 invoices issued (one 30-day terms, one due on receipt, one with 16% VAT lines). 1 quote drafted then approved and sent. | 2 vendor bills issued. 1 purchase order created and approved. | Opening bank and till balances posted as a journal. |
-| Sat 19 | 2 invoices issued (one to a USD customer). 1 sales order approved. | 1 expense (transport) paid from till. | Statement import: 6 bank lines. |
-| Sun 20 | 1 walk-in invoice, paid same day by payment. | 1 recurring expense template created (rent, monthly). | None (quiet day). |
-| Mon 21 | Payment received in full for a Friday invoice. Partial payment (50%) on another. 1 quote converted to invoice. | Goods received against the purchase order, 1 bill posted from it. Inventory adjustment (-2 damaged). | Bank rule created; 3 statement lines matched. |
-| Tue 22 | 1 credit note issued and allocated to an invoice. 1 invoice voided (no payments). 1 draft invoice left unissued. | Payment made against a Friday bill. Vendor credit issued. | Transfer between till and Equity bank. |
-| Wed 23 | Overdue invoice: issued on a past date so it shows "overdue by N days". Reminder stopped on one open invoice; expected payment date set on another. | 1 recurring bill template. | Reconciliation started (left open). |
-| Thu 24 | 1 invoice partly written off (exercises the new write-off flow). 1 recurring invoice template run manually via run-due. Payment received unapplied (to test allocation). | Expense claim awaiting approval. | Timesheet entries for 2 users, one submitted. |
+| Day    | Sales                                                                                                                                                                    | Purchases                                                                                            | Banking / other                                     |
+| ------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------- | --------------------------------------------------- |
+| Fri 18 | 3 invoices issued (one 30-day terms, one due on receipt, one with 16% VAT lines). 1 quote drafted then approved and sent.                                                | 2 vendor bills issued. 1 purchase order created and approved.                                        | Opening bank and till balances posted as a journal. |
+| Sat 19 | 2 invoices issued (one to a USD customer). 1 sales order approved.                                                                                                       | 1 expense (transport) paid from till.                                                                | Statement import: 6 bank lines.                     |
+| Sun 20 | 1 walk-in invoice, paid same day by payment.                                                                                                                             | 1 recurring expense template created (rent, monthly).                                                | None (quiet day).                                   |
+| Mon 21 | Payment received in full for a Friday invoice. Partial payment (50%) on another. 1 quote converted to invoice.                                                           | Goods received against the purchase order, 1 bill posted from it. Inventory adjustment (-2 damaged). | Bank rule created; 3 statement lines matched.       |
+| Tue 22 | 1 credit note issued and allocated to an invoice. 1 invoice voided (no payments). 1 draft invoice left unissued.                                                         | Payment made against a Friday bill. Vendor credit issued.                                            | Transfer between till and Equity bank.              |
+| Wed 23 | Overdue invoice: issued on a past date so it shows "overdue by N days". Reminder stopped on one open invoice; expected payment date set on another.                      | 1 recurring bill template.                                                                           | Reconciliation started (left open).                 |
+| Thu 24 | 1 invoice partly written off (exercises the new write-off flow). 1 recurring invoice template run manually via run-due. Payment received unapplied (to test allocation). | Expense claim awaiting approval.                                                                     | Timesheet entries for 2 users, one submitted.       |
 
 Target totals for the week: about 12 sales invoices, 6 payments received, 3 bills, 2 payments made, 1 credit note, 1 vendor credit, 2 quotes, 1 sales order, 1 purchase order, 5 expenses, 1 reconciliation.
 
@@ -62,16 +62,16 @@ Target totals for the week: about 12 sales invoices, 6 payments received, 3 bill
 
 Every status below should have at least one record, so filters and badges are testable. Quantities are minimums.
 
-| Document | Statuses to cover |
-| --- | --- |
-| Invoices | DRAFT, PENDING_APPROVAL (1), ISSUED, PARTIALLY_PAID, PAID, OVERDUE by date, VOID |
-| Quotes | DRAFT, PENDING_APPROVAL, APPROVED, SENT, ACCEPTED, DECLINED, EXPIRED, CONVERTED (to an invoice) |
-| Sales orders | DRAFT, APPROVED, CONFIRMED, PARTIALLY_FULFILLED, FULFILLED, CANCELLED |
-| Credit notes | DRAFT, ISSUED, APPLIED, REFUNDED, VOID |
-| Payments received | UNAPPLIED, PARTIALLY_ALLOCATED, FULLY_ALLOCATED |
-| Bills | DRAFT, ISSUED, PARTIALLY_PAID, PAID, VOID |
-| Purchase orders | DRAFT, APPROVED, ISSUED, CLOSED, CANCELLED; receipt status NOT_RECEIVED, PARTIALLY_RECEIVED, RECEIVED |
-| Vendor credits | DRAFT, ISSUED, APPLIED, VOID |
+| Document          | Statuses to cover                                                                                     |
+| ----------------- | ----------------------------------------------------------------------------------------------------- |
+| Invoices          | DRAFT, PENDING_APPROVAL (1), ISSUED, PARTIALLY_PAID, PAID, OVERDUE by date, VOID                      |
+| Quotes            | DRAFT, PENDING_APPROVAL, APPROVED, SENT, ACCEPTED, DECLINED, EXPIRED, CONVERTED (to an invoice)       |
+| Sales orders      | DRAFT, APPROVED, CONFIRMED, PARTIALLY_FULFILLED, FULFILLED, CANCELLED                                 |
+| Credit notes      | DRAFT, ISSUED, APPLIED, REFUNDED, VOID                                                                |
+| Payments received | UNAPPLIED, PARTIALLY_ALLOCATED, FULLY_ALLOCATED                                                       |
+| Bills             | DRAFT, ISSUED, PARTIALLY_PAID, PAID, VOID                                                             |
+| Purchase orders   | DRAFT, APPROVED, ISSUED, CLOSED, CANCELLED; receipt status NOT_RECEIVED, PARTIALLY_RECEIVED, RECEIVED |
+| Vendor credits    | DRAFT, ISSUED, APPLIED, VOID                                                                          |
 
 ### 5b. Linked document chains
 
@@ -89,91 +89,91 @@ Rule: no module ships empty. Each row lists the minimum seed. "From week" means 
 
 **Sales**
 
-| Module | Minimum data |
-| --- | --- |
-| Customers | 8 (see section 3) |
-| Quotes | 8, one per status |
-| Sales orders | 6, one per status |
-| Invoices | 12, all statuses (5a) |
-| Recurring invoices | 2 templates (one active, one deactivated) |
-| Payments received | 6, all three statuses |
-| Credit notes | 4, one per status except VOID plus one VOID |
-| Statements | From week (customer statement for the overdue customer) |
+| Module             | Minimum data                                            |
+| ------------------ | ------------------------------------------------------- |
+| Customers          | 8 (see section 3)                                       |
+| Quotes             | 8, one per status                                       |
+| Sales orders       | 6, one per status                                       |
+| Invoices           | 12, all statuses (5a)                                   |
+| Recurring invoices | 2 templates (one active, one deactivated)               |
+| Payments received  | 6, all three statuses                                   |
+| Credit notes       | 4, one per status except VOID plus one VOID             |
+| Statements         | From week (customer statement for the overdue customer) |
 
 **Purchases**
 
-| Module | Minimum data |
-| --- | --- |
-| Vendors | 5 |
-| Purchase orders | 4, all statuses |
-| Bills | 5, all statuses |
-| Recurring bills | 1 |
-| Payments made | 3 |
-| Vendor credits | 2 |
-| Expenses | 6, across 4 categories, one pending approval |
-| Expense categories | 5 |
-| Recurring expenses | 2 |
+| Module             | Minimum data                                 |
+| ------------------ | -------------------------------------------- |
+| Vendors            | 5                                            |
+| Purchase orders    | 4, all statuses                              |
+| Bills              | 5, all statuses                              |
+| Recurring bills    | 1                                            |
+| Payments made      | 3                                            |
+| Vendor credits     | 2                                            |
+| Expenses           | 6, across 4 categories, one pending approval |
+| Expense categories | 5                                            |
+| Recurring expenses | 2                                            |
 
 **Inventory**
 
-| Module | Minimum data |
-| --- | --- |
-| Catalog (items) | 12 (goods, services, non-inventory) |
-| Warehouses | 2 |
-| Stock movements | From week (opening, sale, receipt, adjustment) |
-| Inventory adjustments | 2 (one write-down, one recount) |
-| Inventory transfers | 2 between the warehouses |
-| Inventory valuation | From week |
-| Reorder | 3 items below reorder point |
+| Module                | Minimum data                                   |
+| --------------------- | ---------------------------------------------- |
+| Catalog (items)       | 12 (goods, services, non-inventory)            |
+| Warehouses            | 2                                              |
+| Stock movements       | From week (opening, sale, receipt, adjustment) |
+| Inventory adjustments | 2 (one write-down, one recount)                |
+| Inventory transfers   | 2 between the warehouses                       |
+| Inventory valuation   | From week                                      |
+| Reorder               | 3 items below reorder point                    |
 
 **Banking**
 
-| Module | Minimum data |
-| --- | --- |
-| Financial accounts | 3 |
-| Bank transactions | 20 (matched and unmatched) |
-| Statement imports | 2 (one CSV parsed, one with duplicate lines) |
-| Bank rules | 3 |
-| Transfers | 2 |
-| Reconciliation | 1 completed, 1 open |
+| Module             | Minimum data                                 |
+| ------------------ | -------------------------------------------- |
+| Financial accounts | 3                                            |
+| Bank transactions  | 20 (matched and unmatched)                   |
+| Statement imports  | 2 (one CSV parsed, one with duplicate lines) |
+| Bank rules         | 3                                            |
+| Transfers          | 2                                            |
+| Reconciliation     | 1 completed, 1 open                          |
 
 **Accounting**
 
-| Module | Minimum data |
-| --- | --- |
-| Chart of accounts | Starter chart plus 3 custom accounts (including 5180 if missing) |
-| Journals | 10 (manual, posted, one reversed, one draft) |
-| Recurring journals | 1 |
-| Opening balances | 1 batch |
-| Periods | Fiscal year open; one earlier period closed |
-| Tax | VAT-STD, VAT-ZERO, one exempt code |
-| Trial balance / Reports | From week; verified in section 6 |
-| Numbering | Prefixes set for invoice, bill, quote, order |
+| Module                  | Minimum data                                                     |
+| ----------------------- | ---------------------------------------------------------------- |
+| Chart of accounts       | Starter chart plus 3 custom accounts (including 5180 if missing) |
+| Journals                | 10 (manual, posted, one reversed, one draft)                     |
+| Recurring journals      | 1                                                                |
+| Opening balances        | 1 batch                                                          |
+| Periods                 | Fiscal year open; one earlier period closed                      |
+| Tax                     | VAT-STD, VAT-ZERO, one exempt code                               |
+| Trial balance / Reports | From week; verified in section 6                                 |
+| Numbering               | Prefixes set for invoice, bill, quote, order                     |
 
 **Projects and time**
 
-| Module | Minimum data |
-| --- | --- |
-| Projects | 3 (with budgets), invoice and bill lines tagged to them |
-| Project profitability | From week |
-| Timesheets | 2 users, 5 days each, one submitted |
-| Time approvals | 2 entries awaiting approval |
+| Module                | Minimum data                                            |
+| --------------------- | ------------------------------------------------------- |
+| Projects              | 3 (with budgets), invoice and bill lines tagged to them |
+| Project profitability | From week                                               |
+| Timesheets            | 2 users, 5 days each, one submitted                     |
+| Time approvals        | 2 entries awaiting approval                             |
 
 **Platform and workspace**
 
-| Module | Minimum data |
-| --- | --- |
-| Dashboard | From week |
-| Insights | From week (collections priorities need the overdue invoices) |
-| Approvals | 3 pending (quote, expense, invoice) |
-| Automation | Reminder policy plus 1 workflow rule |
-| Documents / attachments | 4 files attached to invoices and bills |
-| Comments and activity | Comments on 3 invoices, so collaboration threads show |
-| Notifications | 6, mixed read and unread |
-| Portal | Existing customer, plus 2 more invoices visible to them |
-| Settings: team | 5 demo users (existing), one pending invitation |
-| Settings: currencies, security, audit log | Currencies existing; audit log from week |
-| Platform admin | 2 extra organizations (one suspended) |
+| Module                                    | Minimum data                                                 |
+| ----------------------------------------- | ------------------------------------------------------------ |
+| Dashboard                                 | From week                                                    |
+| Insights                                  | From week (collections priorities need the overdue invoices) |
+| Approvals                                 | 3 pending (quote, expense, invoice)                          |
+| Automation                                | Reminder policy plus 1 workflow rule                         |
+| Documents / attachments                   | 4 files attached to invoices and bills                       |
+| Comments and activity                     | Comments on 3 invoices, so collaboration threads show        |
+| Notifications                             | 6, mixed read and unread                                     |
+| Portal                                    | Existing customer, plus 2 more invoices visible to them      |
+| Settings: team                            | 5 demo users (existing), one pending invitation              |
+| Settings: currencies, security, audit log | Currencies existing; audit log from week                     |
+| Platform admin                            | 2 extra organizations (one suspended)                        |
 
 Any module not listed here that turns up under `apps/web/src/app` when implementation starts is added to this table before the seed is considered done. The final `verify()` step should loop over a list of these tables and fail if any has zero rows.
 
@@ -191,12 +191,12 @@ Add assertions for these in the seed's `verify()` step, the same way the existin
 
 ## 7. Files to touch
 
-| File | Change |
-| --- | --- |
-| `apps/api/src/demo-week-seed.service.ts` | New. Master data, per-day steps, verify. |
-| `apps/api/src/demo-seed.service.ts` | Call the new service; include its counts in the summary. |
-| `apps/api/src/app.module.ts` | Register the provider. |
-| `docs/MOCK_DATA_PLAN.md` | This plan; update with credentials and counts once built. |
+| File                                     | Change                                                    |
+| ---------------------------------------- | --------------------------------------------------------- |
+| `apps/api/src/demo-week-seed.service.ts` | New. Master data, per-day steps, verify.                  |
+| `apps/api/src/demo-seed.service.ts`      | Call the new service; include its counts in the summary.  |
+| `apps/api/src/app.module.ts`             | Register the provider.                                    |
+| `docs/MOCK_DATA_PLAN.md`                 | This plan; update with credentials and counts once built. |
 
 ## 11. Implementation status
 
@@ -253,8 +253,6 @@ Known unknowns to confirm on the first run (nothing has been executed yet): the 
 non-opening adjustments, and whether `QuotesService#submitForApproval` reaches PENDING_APPROVAL
 without an approval policy (it is assumed to, because the base seed already calls it).
 
-
-
 ## 8. Risks and open questions
 
 1. **Backdating.** See section 2, and section 10 for the confirmed mechanics and the options. Blocked on the decision below.
@@ -279,17 +277,17 @@ without an approval policy (it is assumed to, because the base seed already call
 Services stamp the document date from the server clock (`dateOnly(new Date())` inline); there is no
 business-date seam on the sales/purchases paths. The stamping sites that matter here:
 
-| Service call | Stamps | Consequence of using the run day |
-| --- | --- | --- |
-| `InvoicesService#issueInvoice` (`invoices.service.ts:310`) | `issueDate` | Journal date, tax rate resolved as of that date, document-number allocation date, invoice/due date; COGS movement + journal dates already read `invoice.issueDate` (`inventory.service.ts:656,676`) |
-| `InvoicesService#writeOff` (`invoices.service.ts:667`) | Journal date | Bad-debt posting lands on the run day |
-| `BillsService#issueBill` (`bills.service.ts:250`) | `issueDate` | AP journal date, bill date, recoverable-tax date |
-| `CreditNotesService#issueCreditNote` (`:273`), `#applyToInvoices` (`:641`), `#refund` (`:772`) | Issue, allocation, refund dates | Customer-credit postings |
-| `VendorCreditsService#issue` (`:261`), `#apply` (`:607`) | Issue, application dates | Vendor-credit postings |
-| `ExpensesService` post/approve (`expenses.service.ts:278`) | `postDate` | Expense journal date (the `expenseDate` itself is already an input) |
-| `QuotesService#approve` (`quotes.service.ts:218`), `SalesOrdersService#approve` (`:212`), `PurchaseOrdersService#issue` (`:236`) | Approval/issue date | Display only -- these never post |
-| `InventoryService#recordPurchaseOrderReceipt` (`inventory.service.ts:600`) | Movement date | Inbound stock layer date |
-| `InvoicesService#sendInvoice`, reminder sweeps | `sentAt`, reminder schedule | Enqueues real email jobs |
+| Service call                                                                                                                     | Stamps                          | Consequence of using the run day                                                                                                                                                                    |
+| -------------------------------------------------------------------------------------------------------------------------------- | ------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `InvoicesService#issueInvoice` (`invoices.service.ts:310`)                                                                       | `issueDate`                     | Journal date, tax rate resolved as of that date, document-number allocation date, invoice/due date; COGS movement + journal dates already read `invoice.issueDate` (`inventory.service.ts:656,676`) |
+| `InvoicesService#writeOff` (`invoices.service.ts:667`)                                                                           | Journal date                    | Bad-debt posting lands on the run day                                                                                                                                                               |
+| `BillsService#issueBill` (`bills.service.ts:250`)                                                                                | `issueDate`                     | AP journal date, bill date, recoverable-tax date                                                                                                                                                    |
+| `CreditNotesService#issueCreditNote` (`:273`), `#applyToInvoices` (`:641`), `#refund` (`:772`)                                   | Issue, allocation, refund dates | Customer-credit postings                                                                                                                                                                            |
+| `VendorCreditsService#issue` (`:261`), `#apply` (`:607`)                                                                         | Issue, application dates        | Vendor-credit postings                                                                                                                                                                              |
+| `ExpensesService` post/approve (`expenses.service.ts:278`)                                                                       | `postDate`                      | Expense journal date (the `expenseDate` itself is already an input)                                                                                                                                 |
+| `QuotesService#approve` (`quotes.service.ts:218`), `SalesOrdersService#approve` (`:212`), `PurchaseOrdersService#issue` (`:236`) | Approval/issue date             | Display only -- these never post                                                                                                                                                                    |
+| `InventoryService#recordPurchaseOrderReceipt` (`inventory.service.ts:600`)                                                       | Movement date                   | Inbound stock layer date                                                                                                                                                                            |
+| `InvoicesService#sendInvoice`, reminder sweeps                                                                                   | `sentAt`, reminder schedule     | Enqueues real email jobs                                                                                                                                                                            |
 
 Already backdatable through existing inputs, so no change needed: payments received
 (`CreatePaymentDto.receivedDate`), payments made (`CreatePaymentDto.paidDate`), expenses

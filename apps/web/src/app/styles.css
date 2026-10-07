@@ -5638,7 +5638,7 @@ a.rb-nav-item:hover {
   height: 0.85rem;
 }
 .rb-invoice-toolbar__button:hover:not(:disabled),
-.rb-invoice-toolbar__button[aria-expanded="true"] {
+.rb-invoice-toolbar__button[aria-expanded='true'] {
   background: hsl(var(--rb-accent));
 }
 .rb-invoice-toolbar__button:disabled {
@@ -6449,21 +6449,21 @@ a.rb-nav-item:hover {
   white-space: nowrap;
 }
 
-.rb-customer-tabs .rb-tabs__trigger[data-state="active"] {
+.rb-customer-tabs .rb-tabs__trigger[data-state='active'] {
   color: hsl(var(--rb-primary));
   background: none;
   box-shadow: none;
   font-weight: 600;
 }
 
-.rb-customer-tabs .rb-tabs__trigger[data-state="active"]::after {
+.rb-customer-tabs .rb-tabs__trigger[data-state='active']::after {
   position: absolute;
   right: 0;
   bottom: -1px;
   left: 0;
   height: 2px;
   background: hsl(var(--rb-primary));
-  content: "";
+  content: '';
 }
 
 .rb-customer-tabs .rb-tabs__content {
@@ -6663,28 +6663,28 @@ button.rb-customer-facts__heading {
   border-radius: 999px;
 }
 
-.rb-customer-aging__segment[data-bucket="current"],
-.rb-customer-aging__swatch[data-bucket="current"] {
+.rb-customer-aging__segment[data-bucket='current'],
+.rb-customer-aging__swatch[data-bucket='current'] {
   background: hsl(var(--rb-success));
 }
 
-.rb-customer-aging__segment[data-bucket="days1To30"],
-.rb-customer-aging__swatch[data-bucket="days1To30"] {
+.rb-customer-aging__segment[data-bucket='days1To30'],
+.rb-customer-aging__swatch[data-bucket='days1To30'] {
   background: hsl(var(--rb-primary));
 }
 
-.rb-customer-aging__segment[data-bucket="days31To60"],
-.rb-customer-aging__swatch[data-bucket="days31To60"] {
+.rb-customer-aging__segment[data-bucket='days31To60'],
+.rb-customer-aging__swatch[data-bucket='days31To60'] {
   background: hsl(38 92% 55%);
 }
 
-.rb-customer-aging__segment[data-bucket="days61To90"],
-.rb-customer-aging__swatch[data-bucket="days61To90"] {
+.rb-customer-aging__segment[data-bucket='days61To90'],
+.rb-customer-aging__swatch[data-bucket='days61To90'] {
   background: hsl(22 90% 56%);
 }
 
-.rb-customer-aging__segment[data-bucket="days90Plus"],
-.rb-customer-aging__swatch[data-bucket="days90Plus"] {
+.rb-customer-aging__segment[data-bucket='days90Plus'],
+.rb-customer-aging__swatch[data-bucket='days90Plus'] {
   background: hsl(var(--rb-danger));
 }
 
@@ -6756,7 +6756,7 @@ button.rb-customer-facts__heading {
   left: 50%;
   width: 2px;
   background: hsl(var(--rb-border));
-  content: "";
+  content: '';
   transform: translateX(-50%);
 }
 

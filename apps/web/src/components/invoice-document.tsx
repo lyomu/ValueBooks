@@ -17,7 +17,10 @@ function ribbonFor(invoice: Invoice): { label: string; tone: RibbonTone } {
   if (invoice.status === 'PAID') return { label: 'Paid', tone: 'success' };
   if (invoice.status === 'DRAFT') return { label: 'Draft', tone: 'muted' };
   if (invoice.status === 'PENDING_APPROVAL') return { label: 'Pending', tone: 'warning' };
-  if (invoice.status === 'OVERDUE' || daysOverdue(invoice.dueDate, invoice.balanceMinor, invoice.status) > 0) {
+  if (
+    invoice.status === 'OVERDUE' ||
+    daysOverdue(invoice.dueDate, invoice.balanceMinor, invoice.status) > 0
+  ) {
     return { label: 'Overdue', tone: 'danger' };
   }
   if (invoice.status === 'PARTIALLY_PAID') return { label: 'Partial', tone: 'info' };
@@ -138,38 +141,38 @@ export function InvoiceDocument({
       </table>
 
       {isInvoice ? (
-      <dl className="rb-invoice-document__totals">
-        <div>
-          <dt>Sub Total</dt>
-          <dd>{formatAmount(invoice.subtotalMinor)}</dd>
-        </div>
-        {taxTotal > 0n ? (
+        <dl className="rb-invoice-document__totals">
           <div>
-            <dt>Tax</dt>
-            <dd>{formatAmount(invoice.taxTotalMinor)}</dd>
+            <dt>Sub Total</dt>
+            <dd>{formatAmount(invoice.subtotalMinor)}</dd>
           </div>
-        ) : null}
-        <div className="is-strong">
-          <dt>Total</dt>
-          <dd>{formatMinor(invoice.totalMinor, invoice.currency)}</dd>
-        </div>
-        {paid > 0n ? (
-          <div>
-            <dt>Payment Made</dt>
-            <dd>(-) {formatAmount(invoice.paidMinor)}</dd>
+          {taxTotal > 0n ? (
+            <div>
+              <dt>Tax</dt>
+              <dd>{formatAmount(invoice.taxTotalMinor)}</dd>
+            </div>
+          ) : null}
+          <div className="is-strong">
+            <dt>Total</dt>
+            <dd>{formatMinor(invoice.totalMinor, invoice.currency)}</dd>
           </div>
-        ) : null}
-        {BigInt(invoice.writtenOffMinor) > 0n ? (
-          <div>
-            <dt>Written Off</dt>
-            <dd>(-) {formatAmount(invoice.writtenOffMinor)}</dd>
+          {paid > 0n ? (
+            <div>
+              <dt>Payment Made</dt>
+              <dd>(-) {formatAmount(invoice.paidMinor)}</dd>
+            </div>
+          ) : null}
+          {BigInt(invoice.writtenOffMinor) > 0n ? (
+            <div>
+              <dt>Written Off</dt>
+              <dd>(-) {formatAmount(invoice.writtenOffMinor)}</dd>
+            </div>
+          ) : null}
+          <div className="is-balance">
+            <dt>Balance Due</dt>
+            <dd>{formatMinor(invoice.balanceMinor, invoice.currency)}</dd>
           </div>
-        ) : null}
-        <div className="is-balance">
-          <dt>Balance Due</dt>
-          <dd>{formatMinor(invoice.balanceMinor, invoice.currency)}</dd>
-        </div>
-      </dl>
+        </dl>
       ) : null}
     </div>
   );

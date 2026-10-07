@@ -13,17 +13,27 @@ checkable list of everything still open across the whole project, pulled from th
 `docs/EXECUTION_PLAN.md`, `docs/HANDOVER.md`, and the individual `docs/PHASE<N>_TODO.md` files,
 cross-checked against the code and the latest captured gate logs.
 
-**Snapshot:** 2026-09-12. **Branch note:** `chore/verification-closure` is 35 commits ahead of
+**Snapshot:** 2026-10-06. **Branch note:** `chore/verification-closure` is 45 commits ahead of
 `main` with nothing behind — Phases 10, 11, and 12 are not yet on `main`.
+
+Phase 13 implementation and the current UI work are also on this branch; merging remains the
+repository owner's decision.
 
 ---
 
-## A. Unbuilt phases
+## A. Incomplete phases
+
+**Reconciliation note (2026-10-06):** the legacy Phase 13 heading immediately below is retained
+only to preserve the original checklist numbering. Its "no code exists" wording is superseded:
+Phase 13 is implemented, but its acceptance gates remain incomplete.
 
 ### A1. Phase 13 — AI Layer (no code exists)
 
-No `apps/api/src/ai` module; zero AI-related identifiers anywhere in `apps/` or `packages/`.
-(`docs/BUILD_ROADMAP.md:804-823`)
+The API module, web workbenches, feature flags, migrations, private/hosted gateway controls,
+document-extraction pipeline, report drill-down, suggestions, and advisory insights are implemented.
+They remain unchecked because Phase 13's threat/privacy review, labeled evaluation sets and frozen
+holdouts, per-capability evaluation evidence, and the remaining live browser tests have not passed.
+See `docs/PHASE13_TODO.md` for capability-level evidence and open acceptance work.
 
 - [ ] 1. Receipt extraction — candidate vendor/date/amount/tax/category; user must review before
       creating/posting (feeds Phase 3 Expenses)
@@ -89,6 +99,12 @@ Nine tracks, run incrementally then fully before public V1. (`docs/BUILD_ROADMAP
 ---
 
 ## C. Phase 10 tracked debt — 12 open items
+
+**Reconciliation update (2026-10-06):** items 23, 25, 27, and 28 below are closed. The safe
+`UPDATE_AUTOMATION_TASK` action is limited to an organization-scoped task title/detail update and
+is audited; oversized PDFs now create a durable worker execution and return `202` plus a scoped
+status resource; and `AUTOMATION_OPERATIONS_RUNBOOK.md` supplies both operations documents. The
+legacy unchecked lines remain below only to preserve their original audit references.
 
 All in `docs/PHASE10_TODO.md`, each honestly annotated "partial" or "not done":
 
@@ -210,6 +226,16 @@ _(Explicitly out of scope for V1 per spec §19, not a gap: public API/webhook co
       `node .next/standalone/server.js`, which is the correct invocation for Next.js standalone
       output. The pre-existing warning logged in `docs/PHASE11_TODO.md` no longer applies.
 
+- [ ] 43. **Restore the current repository gate.** On 2026-10-06, `npm run format:check` failed
+      in 79 files; `test/system-account-keys.test.ts` expected the obsolete 15-key catalog while
+      the chart now exposes 17 keys; and the web production build failed with 35 lint/type-rule
+      errors across 16 components. Historical green-gate records remain useful evidence for their
+      commits, but do not describe the current branch.
+- [ ] 44. **Make Prisma client generation reproducible.** A fresh API typecheck failed until
+      `npm run db:generate --workspace @valuebooks/api` regenerated the client from the committed
+      schema. Add generation to the install/CI build path or otherwise make this prerequisite
+      explicit and enforced.
+
 ---
 
 ## G. Documentation that contradicts captured evidence
@@ -231,8 +257,8 @@ _(Explicitly out of scope for V1 per spec §19, not a gap: public API/webhook co
 
 ## Totals
 
-**31 unchecked boxes remain.** Category labels above intentionally overlap where release tracks,
+**33 unchecked boxes remain.** Category labels above intentionally overlap where release tracks,
 cross-module scenarios, and source-phase follow-ups refer to the same public-V1 work.
 
-No unchecked item is currently flagged as a live correctness risk; the remaining items are unbuilt
-scope, unproven scope, or paperwork.
+The current gate regressions in items 43-44 are release blockers. The other unchecked items are
+unbuilt scope, unproven scope, or paperwork.

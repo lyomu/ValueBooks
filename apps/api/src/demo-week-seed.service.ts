@@ -207,7 +207,13 @@ export class DemoWeekSeedService {
         select: { id: true },
       });
       if (!existing) {
-        await this.tax.createRate(context, owner, code.id, { ratePercent, effectiveFrom }, metadata);
+        await this.tax.createRate(
+          context,
+          owner,
+          code.id,
+          { ratePercent, effectiveFrom },
+          metadata,
+        );
       }
     }
   }
@@ -456,7 +462,10 @@ export class DemoWeekSeedService {
           context,
           owner,
           {
-            itemId: required(state.items.get(definition.item), `Unknown adjusted item ${definition.item}.`),
+            itemId: required(
+              state.items.get(definition.item),
+              `Unknown adjusted item ${definition.item}.`,
+            ),
             warehouseId: state.warehouses.main,
             adjustmentDate: week.day(definition.on),
             quantityDelta: definition.quantityDelta,
@@ -484,7 +493,10 @@ export class DemoWeekSeedService {
           context,
           owner,
           {
-            itemId: required(state.items.get(definition.item), `Unknown transferred item ${definition.item}.`),
+            itemId: required(
+              state.items.get(definition.item),
+              `Unknown transferred item ${definition.item}.`,
+            ),
             fromWarehouseId: state.warehouses.main,
             toWarehouseId: state.warehouses.westlands,
             transferDate: week.day(definition.on),
@@ -626,7 +638,9 @@ export class DemoWeekSeedService {
 
       if (definition.target === 'APPLIED') {
         const invoiceId = required(
-          state.invoices.get(required(definition.invoice, 'An applied credit note needs an invoice.')),
+          state.invoices.get(
+            required(definition.invoice, 'An applied credit note needs an invoice.'),
+          ),
           'Applied credit note references an unknown invoice.',
         );
         const invoice = await this.prisma.invoice.findUniqueOrThrow({
@@ -638,7 +652,9 @@ export class DemoWeekSeedService {
           select: { remainingMinor: true },
         });
         const amountMinor =
-          issued.remainingMinor < invoice.balanceMinor ? issued.remainingMinor : invoice.balanceMinor;
+          issued.remainingMinor < invoice.balanceMinor
+            ? issued.remainingMinor
+            : invoice.balanceMinor;
         if (amountMinor > 0n) {
           await this.step(context, `credit-note:${definition.key}:allocate`, 'CREDIT_NOTE', () =>
             this.creditNotes.allocate(
@@ -767,7 +783,14 @@ export class DemoWeekSeedService {
           () => this.salesOrders.convertToInvoice(context, owner, order.id, metadata),
         );
         await this.step(context, `order:${definition.key}:issue`, 'INVOICE', () =>
-          this.invoices.issueInvoice(context, owner, converted.id, metadata, undefined, week.day(-2)),
+          this.invoices.issueInvoice(
+            context,
+            owner,
+            converted.id,
+            metadata,
+            undefined,
+            week.day(-2),
+          ),
         );
         state.invoices.set(`order-${definition.key}`, converted.id);
         continue;
@@ -810,9 +833,15 @@ export class DemoWeekSeedService {
     state: WeekState,
   ): Promise<void> {
     const partial = required(state.invoices.get('vat-lines'), 'Missing the part-paid invoice.');
-    const dueReceipt = required(state.invoices.get('due-receipt'), 'Missing the due-on-receipt invoice.');
+    const dueReceipt = required(
+      state.invoices.get('due-receipt'),
+      'Missing the due-on-receipt invoice.',
+    );
     const voidTarget = required(state.invoices.get('void-me'), 'Missing the invoice to void.');
-    const writeOffTarget = required(state.invoices.get('aging-45'), 'Missing the invoice to write off.');
+    const writeOffTarget = required(
+      state.invoices.get('aging-45'),
+      'Missing the invoice to write off.',
+    );
 
     // Wed: one open invoice with reminders switched off, another with a promised payment date.
     await this.step(context, 'collections:stop-reminders', 'INVOICE', () =>
@@ -973,14 +1002,19 @@ export class DemoWeekSeedService {
     assert(statementImports >= 2, `Expected 2 statement imports, found ${statementImports}.`);
     assert(bankRules >= 3, `Expected 3 bank rules, found ${bankRules}.`);
     assert(bankTransfers >= 2, `Expected 2 bank transfers, found ${bankTransfers}.`);
-    const [dispositions, reconciliationStatuses, adjustmentStatuses, stockTransfers, duplicateImports] =
-      await Promise.all([
-        this.prisma.bankTransaction.groupBy({ by: ['disposition'], where, _count: true }),
-        this.prisma.reconciliation.groupBy({ by: ['status'], where, _count: true }),
-        this.prisma.inventoryAdjustment.groupBy({ by: ['status'], where, _count: true }),
-        this.prisma.stockMovement.count({ where: { ...where, sourceType: 'TRANSFER' } }),
-        this.prisma.statementImport.count({ where: { ...where, duplicateCount: { gt: 0 } } }),
-      ]);
+    const [
+      dispositions,
+      reconciliationStatuses,
+      adjustmentStatuses,
+      stockTransfers,
+      duplicateImports,
+    ] = await Promise.all([
+      this.prisma.bankTransaction.groupBy({ by: ['disposition'], where, _count: true }),
+      this.prisma.reconciliation.groupBy({ by: ['status'], where, _count: true }),
+      this.prisma.inventoryAdjustment.groupBy({ by: ['status'], where, _count: true }),
+      this.prisma.stockMovement.count({ where: { ...where, sourceType: 'TRANSFER' } }),
+      this.prisma.statementImport.count({ where: { ...where, duplicateCount: { gt: 0 } } }),
+    ]);
     assert(
       ['UNRESOLVED', 'MATCHED', 'POSTED', 'EXCLUDED'].every((disposition) =>
         dispositions.some((row) => row.disposition === disposition),
@@ -1062,16 +1096,23 @@ export class DemoWeekSeedService {
       this.prisma.attachment.count({ where }),
     ]);
 
-    const [templateStates, timeStates, pendingApprovals, notificationStates, suspended, closed, journalStates] =
-      await Promise.all([
-        this.prisma.recurringInvoiceTemplate.groupBy({ by: ['active'], where, _count: true }),
-        this.prisma.timeEntry.groupBy({ by: ['status'], where, _count: true }),
-        this.prisma.approvalRequest.count({ where: { ...where, status: 'PENDING' } }),
-        this.prisma.notification.groupBy({ by: ['status'], where, _count: true }),
-        this.prisma.organization.count({ where: { status: 'SUSPENDED' } }),
-        this.prisma.fiscalPeriod.count({ where: { ...where, status: 'CLOSED' } }),
-        this.prisma.journal.groupBy({ by: ['status'], where, _count: true }),
-      ]);
+    const [
+      templateStates,
+      timeStates,
+      pendingApprovals,
+      notificationStates,
+      suspended,
+      closed,
+      journalStates,
+    ] = await Promise.all([
+      this.prisma.recurringInvoiceTemplate.groupBy({ by: ['active'], where, _count: true }),
+      this.prisma.timeEntry.groupBy({ by: ['status'], where, _count: true }),
+      this.prisma.approvalRequest.count({ where: { ...where, status: 'PENDING' } }),
+      this.prisma.notification.groupBy({ by: ['status'], where, _count: true }),
+      this.prisma.organization.count({ where: { status: 'SUSPENDED' } }),
+      this.prisma.fiscalPeriod.count({ where: { ...where, status: 'CLOSED' } }),
+      this.prisma.journal.groupBy({ by: ['status'], where, _count: true }),
+    ]);
     assert(
       templateStates.length === 2,
       'The demo week needs one active and one deactivated recurring invoice template.',
@@ -1191,9 +1232,7 @@ export class DemoWeekSeedService {
           context,
           owner,
           {
-            payeeVendorId: definition.vendor
-              ? this.vendorId(state, definition.vendor)
-              : undefined,
+            payeeVendorId: definition.vendor ? this.vendorId(state, definition.vendor) : undefined,
             payeeName: definition.payeeName,
             expenseDate: week.day(definition.spentOn),
             paidThroughAccountId,
@@ -1348,9 +1387,13 @@ export class DemoWeekSeedService {
             name: definition.name,
             priority: definition.priority,
             matchAny: false,
-            conditions: [{ field: 'description', operator: 'contains', value: definition.contains }],
+            conditions: [
+              { field: 'description', operator: 'contains', value: definition.contains },
+            ],
             suggestAccountId,
-            suggestVendorId: definition.vendor ? this.vendorId(state, definition.vendor) : undefined,
+            suggestVendorId: definition.vendor
+              ? this.vendorId(state, definition.vendor)
+              : undefined,
             stopOnMatch: true,
           },
           metadata,
@@ -1388,7 +1431,9 @@ export class DemoWeekSeedService {
       select: { id: true, receivedDate: true, amountMinor: true },
     });
     const utilitiesPayment = await this.prisma.paymentMade.findUniqueOrThrow({
-      where: { id: required(state.paymentsMade.get('utilities-full'), 'Missing the utilities payment.') },
+      where: {
+        id: required(state.paymentsMade.get('utilities-full'), 'Missing the utilities payment.'),
+      },
       select: { paidDate: true, amountMinor: true },
     });
     const [rentExpense, adsExpense] = await Promise.all([
@@ -1403,8 +1448,20 @@ export class DemoWeekSeedService {
     ]);
 
     const equityRows: StatementRow[] = [
-      { key: 'rent', date: dateOnly(rentExpense.expenseDate), description: 'STANDING ORDER PRIME PROPERTIES RENT', reference: 'SO-0912', amountMinor: -rentExpense.totalMinor },
-      { key: 'ads', date: dateOnly(adsExpense.expenseDate), description: 'GOOGLE ADS CARD PAYMENT', reference: 'CARD-4410', amountMinor: -adsExpense.totalMinor },
+      {
+        key: 'rent',
+        date: dateOnly(rentExpense.expenseDate),
+        description: 'STANDING ORDER PRIME PROPERTIES RENT',
+        reference: 'SO-0912',
+        amountMinor: -rentExpense.totalMinor,
+      },
+      {
+        key: 'ads',
+        date: dateOnly(adsExpense.expenseDate),
+        description: 'GOOGLE ADS CARD PAYMENT',
+        reference: 'CARD-4410',
+        amountMinor: -adsExpense.totalMinor,
+      },
       ...receipts.map((receipt, index) => ({
         key: `receipt-${index + 1}`,
         date: dateOnly(receipt.receivedDate),
@@ -1412,26 +1469,116 @@ export class DemoWeekSeedService {
         reference: `RCV-${index + 1}`,
         amountMinor: receipt.amountMinor,
       })),
-      { key: 'supplier', date: dateOnly(utilitiesPayment.paidDate), description: 'EFT KENYA POWER AND LIGHTING', reference: 'EFT-2201', amountMinor: -utilitiesPayment.amountMinor },
-      { key: 'transfer', date: week.day(-5), description: 'TRANSFER TO PETTY CASH', reference: 'TRF-01', amountMinor: -5000000n },
-      { key: 'charges', date: week.day(-4), description: 'EQUITY BANK CHARGES SEP', amountMinor: -45000n },
+      {
+        key: 'supplier',
+        date: dateOnly(utilitiesPayment.paidDate),
+        description: 'EFT KENYA POWER AND LIGHTING',
+        reference: 'EFT-2201',
+        amountMinor: -utilitiesPayment.amountMinor,
+      },
+      {
+        key: 'transfer',
+        date: week.day(-5),
+        description: 'TRANSFER TO PETTY CASH',
+        reference: 'TRF-01',
+        amountMinor: -5000000n,
+      },
+      {
+        key: 'charges',
+        date: week.day(-4),
+        description: 'EQUITY BANK CHARGES SEP',
+        amountMinor: -45000n,
+      },
       { key: 'interest', date: week.day(-4), description: 'INTEREST CREDIT', amountMinor: 12000n },
-      { key: 'fuel', date: week.day(-3), description: 'SHELL WESTLANDS FUEL', reference: 'POS-7731', amountMinor: -180000n },
-      { key: 'kplc', date: week.day(-2), description: 'KPLC POSTPAID SEP', reference: 'KPLC-9921', amountMinor: -1850000n },
-      { key: 'atm', date: week.day(-1), description: 'ATM WITHDRAWAL NAIROBI CBD', amountMinor: -2000000n },
-      { key: 'deposit', date: week.day(0), description: 'ONLINE CUSTOMER DEPOSIT', reference: 'DEP-5510', amountMinor: 3500000n },
-      { key: 'reversed', date: week.day(-3), description: 'CARD AUTH REVERSED', amountMinor: 150000n },
-      { key: 'advance', date: week.day(-2), description: 'STAFF ADVANCE REPAYMENT', amountMinor: 500000n },
+      {
+        key: 'fuel',
+        date: week.day(-3),
+        description: 'SHELL WESTLANDS FUEL',
+        reference: 'POS-7731',
+        amountMinor: -180000n,
+      },
+      {
+        key: 'kplc',
+        date: week.day(-2),
+        description: 'KPLC POSTPAID SEP',
+        reference: 'KPLC-9921',
+        amountMinor: -1850000n,
+      },
+      {
+        key: 'atm',
+        date: week.day(-1),
+        description: 'ATM WITHDRAWAL NAIROBI CBD',
+        amountMinor: -2000000n,
+      },
+      {
+        key: 'deposit',
+        date: week.day(0),
+        description: 'ONLINE CUSTOMER DEPOSIT',
+        reference: 'DEP-5510',
+        amountMinor: 3500000n,
+      },
+      {
+        key: 'reversed',
+        date: week.day(-3),
+        description: 'CARD AUTH REVERSED',
+        amountMinor: 150000n,
+      },
+      {
+        key: 'advance',
+        date: week.day(-2),
+        description: 'STAFF ADVANCE REPAYMENT',
+        amountMinor: 500000n,
+      },
     ];
     const mpesaRows: StatementRow[] = [
-      { key: 'transfer', date: week.day(-3), description: 'TRANSFER FROM EQUITY BANK', reference: 'TRF-02', amountMinor: 2000000n },
-      { key: 'sale-1', date: week.day(-4), description: 'M-PESA TILL 5512 SALES', reference: 'MP24A', amountMinor: 1240000n },
-      { key: 'sale-1-dup', date: week.day(-4), description: 'M-PESA TILL 5512 SALES', reference: 'MP24A', amountMinor: 1240000n },
-      { key: 'sale-2', date: week.day(-3), description: 'M-PESA TILL 5512 SALES', reference: 'MP24B', amountMinor: 820000n },
-      { key: 'sale-3', date: week.day(-1), description: 'M-PESA TILL 5512 SALES', reference: 'MP24C', amountMinor: 375000n },
-      { key: 'airtime', date: week.day(-2), description: 'SAFARICOM AIRTIME BUNDLES', amountMinor: -50000n },
+      {
+        key: 'transfer',
+        date: week.day(-3),
+        description: 'TRANSFER FROM EQUITY BANK',
+        reference: 'TRF-02',
+        amountMinor: 2000000n,
+      },
+      {
+        key: 'sale-1',
+        date: week.day(-4),
+        description: 'M-PESA TILL 5512 SALES',
+        reference: 'MP24A',
+        amountMinor: 1240000n,
+      },
+      {
+        key: 'sale-1-dup',
+        date: week.day(-4),
+        description: 'M-PESA TILL 5512 SALES',
+        reference: 'MP24A',
+        amountMinor: 1240000n,
+      },
+      {
+        key: 'sale-2',
+        date: week.day(-3),
+        description: 'M-PESA TILL 5512 SALES',
+        reference: 'MP24B',
+        amountMinor: 820000n,
+      },
+      {
+        key: 'sale-3',
+        date: week.day(-1),
+        description: 'M-PESA TILL 5512 SALES',
+        reference: 'MP24C',
+        amountMinor: 375000n,
+      },
+      {
+        key: 'airtime',
+        date: week.day(-2),
+        description: 'SAFARICOM AIRTIME BUNDLES',
+        amountMinor: -50000n,
+      },
       { key: 'ride', date: week.day(-2), description: 'BOLT RIDE NAIROBI', amountMinor: -150000n },
-      { key: 'groceries', date: week.day(-1), description: 'NAIVAS SUPERMARKET', amountMinor: -220000n },
+      {
+        key: 'groceries',
+        date: week.day(-1),
+        description: 'NAIVAS SUPERMARKET',
+        amountMinor: -220000n,
+      },
     ];
 
     await this.step(context, 'statement-import:equity', 'STATEMENT_IMPORT', () =>
@@ -1448,7 +1595,9 @@ export class DemoWeekSeedService {
         context,
         owner,
         mpesa,
-        this.csvFile('mpesa-till-sep.csv', mpesaRows, ['24/09,MALFORMED ROW WITH BAD DATE,100.00,BAD-1']),
+        this.csvFile('mpesa-till-sep.csv', mpesaRows, [
+          '24/09,MALFORMED ROW WITH BAD DATE,100.00,BAD-1',
+        ]),
         metadata,
       ),
     );
@@ -1465,9 +1614,30 @@ export class DemoWeekSeedService {
         })
       ).id;
 
-    const matches: { key: string; description: string; reference: string; account: string; targetType: 'PAYMENT_RECEIVED' | 'PAYMENT_MADE' | 'EXPENSE' | 'TRANSFER'; targetId: string }[] = [
-      { key: 'rent', description: 'STANDING ORDER PRIME PROPERTIES RENT', reference: 'SO-0912', account: equity, targetType: 'EXPENSE', targetId: required(state.expenses.get('rent'), 'Missing the rent expense.') },
-      { key: 'ads', description: 'GOOGLE ADS CARD PAYMENT', reference: 'CARD-4410', account: equity, targetType: 'EXPENSE', targetId: required(state.expenses.get('ads'), 'Missing the ads expense.') },
+    const matches: {
+      key: string;
+      description: string;
+      reference: string;
+      account: string;
+      targetType: 'PAYMENT_RECEIVED' | 'PAYMENT_MADE' | 'EXPENSE' | 'TRANSFER';
+      targetId: string;
+    }[] = [
+      {
+        key: 'rent',
+        description: 'STANDING ORDER PRIME PROPERTIES RENT',
+        reference: 'SO-0912',
+        account: equity,
+        targetType: 'EXPENSE',
+        targetId: required(state.expenses.get('rent'), 'Missing the rent expense.'),
+      },
+      {
+        key: 'ads',
+        description: 'GOOGLE ADS CARD PAYMENT',
+        reference: 'CARD-4410',
+        account: equity,
+        targetType: 'EXPENSE',
+        targetId: required(state.expenses.get('ads'), 'Missing the ads expense.'),
+      },
       ...receipts.map((receipt, index) => ({
         key: `receipt-${index + 1}`,
         description: `CUSTOMER TRANSFER RECEIVED ${index + 1}`,
@@ -1476,9 +1646,33 @@ export class DemoWeekSeedService {
         targetType: 'PAYMENT_RECEIVED' as const,
         targetId: receipt.id,
       })),
-      { key: 'supplier', description: 'EFT KENYA POWER AND LIGHTING', reference: 'EFT-2201', account: equity, targetType: 'PAYMENT_MADE', targetId: required(state.paymentsMade.get('utilities-full'), 'Missing the utilities payment.') },
-      { key: 'transfer', description: 'TRANSFER TO PETTY CASH', reference: 'TRF-01', account: equity, targetType: 'TRANSFER', targetId: required(state.transfers.get('to-cash'), 'Missing the petty cash transfer.') },
-      { key: 'mpesa-transfer', description: 'TRANSFER FROM EQUITY BANK', reference: 'TRF-02', account: mpesa, targetType: 'TRANSFER', targetId: required(state.transfers.get('to-mpesa'), 'Missing the M-Pesa transfer.') },
+      {
+        key: 'supplier',
+        description: 'EFT KENYA POWER AND LIGHTING',
+        reference: 'EFT-2201',
+        account: equity,
+        targetType: 'PAYMENT_MADE',
+        targetId: required(
+          state.paymentsMade.get('utilities-full'),
+          'Missing the utilities payment.',
+        ),
+      },
+      {
+        key: 'transfer',
+        description: 'TRANSFER TO PETTY CASH',
+        reference: 'TRF-01',
+        account: equity,
+        targetType: 'TRANSFER',
+        targetId: required(state.transfers.get('to-cash'), 'Missing the petty cash transfer.'),
+      },
+      {
+        key: 'mpesa-transfer',
+        description: 'TRANSFER FROM EQUITY BANK',
+        reference: 'TRF-02',
+        account: mpesa,
+        targetType: 'TRANSFER',
+        targetId: required(state.transfers.get('to-mpesa'), 'Missing the M-Pesa transfer.'),
+      },
     ];
     for (const match of matches) {
       const id = await transactionId(match.account, match.description, match.reference);
@@ -1511,9 +1705,7 @@ export class DemoWeekSeedService {
           owner,
           id,
           {
-            lines: [
-              { accountId, amountMinor: transaction.amountMinor.toString() },
-            ],
+            lines: [{ accountId, amountMinor: transaction.amountMinor.toString() }],
           },
           metadata,
         ),
@@ -1553,19 +1745,23 @@ export class DemoWeekSeedService {
       row.direction === 'INFLOW' ? row.amountMinor : -row.amountMinor;
     const equityClosing = clearedRows.reduce((sum, row) => sum + signed(row), 0n);
 
-    const completed = await this.step(context, 'reconciliation:equity:start', 'RECONCILIATION', () =>
-      this.reconciliations.start(
-        context,
-        owner,
-        {
-          financialAccountId: equity,
-          statementStartDate: week.day(-8),
-          statementEndDate: week.day(0),
-          openingBalanceMinor: '0',
-          closingBalanceMinor: equityClosing.toString(),
-        },
-        metadata,
-      ),
+    const completed = await this.step(
+      context,
+      'reconciliation:equity:start',
+      'RECONCILIATION',
+      () =>
+        this.reconciliations.start(
+          context,
+          owner,
+          {
+            financialAccountId: equity,
+            statementStartDate: week.day(-8),
+            statementEndDate: week.day(0),
+            openingBalanceMinor: '0',
+            closingBalanceMinor: equityClosing.toString(),
+          },
+          metadata,
+        ),
     );
     await this.step(context, 'reconciliation:equity:clear', 'RECONCILIATION', async () => {
       await this.reconciliations.setCleared(
@@ -1909,9 +2105,7 @@ export class DemoWeekSeedService {
               description: line.description,
               quantity: line.quantity,
               unitPriceMinor: line.unitPriceMinor,
-              accountId: line.accountCode
-                ? accountByCode.get(line.accountCode)
-                : defaultAccountId,
+              accountId: line.accountCode ? accountByCode.get(line.accountCode) : defaultAccountId,
             })),
           },
           metadata,
@@ -2398,7 +2592,12 @@ const WEEK_ITEMS: readonly WeekItemDefinition[] = [
   {
     slug: 'delivery',
     name: 'Delivery and handling',
-    dto: { sku: 'SVC-DELIVERY', itemType: 'SERVICE', purchaseEnabled: false, prices: KES('120000') },
+    dto: {
+      sku: 'SVC-DELIVERY',
+      itemType: 'SERVICE',
+      purchaseEnabled: false,
+      prices: KES('120000'),
+    },
   },
   {
     slug: 'install',
@@ -2456,10 +2655,40 @@ interface WeekStockAdjustmentDefinition {
 }
 
 const WEEK_STOCK_ADJUSTMENTS: readonly WeekStockAdjustmentDefinition[] = [
-  { key: 'writedown', item: 'padlock', on: -2, quantityDelta: '-2', reason: 'Damaged in handling - write-down', target: 'POSTED' },
-  { key: 'recount', item: 'paint', on: -1, quantityDelta: '3', valueDeltaMinor: '600000', reason: 'Cycle count found extra tins', target: 'POSTED' },
-  { key: 'pending', item: 'cement', on: 0, quantityDelta: '-5', reason: 'Torn bags - awaiting approval', target: 'PENDING_APPROVAL' },
-  { key: 'draft', item: 'tank', on: 0, quantityDelta: '1', valueDeltaMinor: '900000', reason: 'Returned display unit', target: 'DRAFT' },
+  {
+    key: 'writedown',
+    item: 'padlock',
+    on: -2,
+    quantityDelta: '-2',
+    reason: 'Damaged in handling - write-down',
+    target: 'POSTED',
+  },
+  {
+    key: 'recount',
+    item: 'paint',
+    on: -1,
+    quantityDelta: '3',
+    valueDeltaMinor: '600000',
+    reason: 'Cycle count found extra tins',
+    target: 'POSTED',
+  },
+  {
+    key: 'pending',
+    item: 'cement',
+    on: 0,
+    quantityDelta: '-5',
+    reason: 'Torn bags - awaiting approval',
+    target: 'PENDING_APPROVAL',
+  },
+  {
+    key: 'draft',
+    item: 'tank',
+    on: 0,
+    quantityDelta: '1',
+    valueDeltaMinor: '900000',
+    reason: 'Returned display unit',
+    target: 'DRAFT',
+  },
 ];
 
 interface WeekStockTransferDefinition {
@@ -2488,7 +2717,13 @@ interface WeekPaymentDefinition {
 
 const WEEK_PAYMENTS: readonly WeekPaymentDefinition[] = [
   { key: 'walkin', customer: 'walkin', invoice: 'walkin', receivedOn: -4, allocate: true },
-  { key: 'thursday-full', customer: 'longname', invoice: 'thirty-day', receivedOn: -3, allocate: true },
+  {
+    key: 'thursday-full',
+    customer: 'longname',
+    invoice: 'thirty-day',
+    receivedOn: -3,
+    allocate: true,
+  },
   {
     key: 'vat-half',
     customer: 'overdue',
@@ -2505,7 +2740,13 @@ const WEEK_PAYMENTS: readonly WeekPaymentDefinition[] = [
     fraction: 'half',
     allocate: true,
   },
-  { key: 'converted', customer: 'regular', invoice: 'quote-converted', receivedOn: -2, allocate: true },
+  {
+    key: 'converted',
+    customer: 'regular',
+    invoice: 'quote-converted',
+    receivedOn: -2,
+    allocate: true,
+  },
   { key: 'unapplied', customer: 'credit', invoice: 'aging-25', receivedOn: 0, allocate: false },
 ];
 
@@ -2654,12 +2895,7 @@ const WEEK_QUOTES: readonly WeekQuoteDefinition[] = [
 ];
 
 type SalesOrderTarget =
-  | 'DRAFT'
-  | 'APPROVED'
-  | 'CONFIRMED'
-  | 'PARTIALLY_FULFILLED'
-  | 'FULFILLED'
-  | 'CANCELLED';
+  'DRAFT' | 'APPROVED' | 'CONFIRMED' | 'PARTIALLY_FULFILLED' | 'FULFILLED' | 'CANCELLED';
 
 interface WeekOrderDefinition {
   key: string;
@@ -2855,7 +3091,9 @@ const WEEK_PURCHASE_ORDERS: readonly WeekPurchaseOrderDefinition[] = [
     vendor: 'logistics',
     target: 'CLOSED',
     expectedOn: -2,
-    lines: [{ description: 'Weekly deliveries — September', quantity: '4', unitPriceMinor: '450000' }],
+    lines: [
+      { description: 'Weekly deliveries — September', quantity: '4', unitPriceMinor: '450000' },
+    ],
   },
   {
     key: 'cancelled',
@@ -2915,7 +3153,9 @@ const WEEK_BILLS: readonly WeekBillDefinition[] = [
     dueOn: -5,
     vendorReference: 'NSM-0871',
     accountCode: '5060',
-    lines: [{ description: 'Printer paper and toner - August', quantity: '1', unitPriceMinor: '620000' }],
+    lines: [
+      { description: 'Printer paper and toner - August', quantity: '1', unitPriceMinor: '620000' },
+    ],
   },
   {
     key: 'utilities',
@@ -2935,7 +3175,9 @@ const WEEK_BILLS: readonly WeekBillDefinition[] = [
     dueOn: 9,
     vendorReference: 'KIF-2209',
     accountCode: '5080',
-    lines: [{ description: 'Freight - customer deliveries', quantity: '3', unitPriceMinor: '450000' }],
+    lines: [
+      { description: 'Freight - customer deliveries', quantity: '3', unitPriceMinor: '450000' },
+    ],
   },
   {
     key: 'usd',
@@ -2946,7 +3188,13 @@ const WEEK_BILLS: readonly WeekBillDefinition[] = [
     currency: 'USD',
     vendorReference: 'SZH-7730',
     accountCode: '5060',
-    lines: [{ description: 'Sample shipment - hardware fittings', quantity: '1', unitPriceMinor: '250000' }],
+    lines: [
+      {
+        description: 'Sample shipment - hardware fittings',
+        quantity: '1',
+        unitPriceMinor: '250000',
+      },
+    ],
   },
   {
     key: 'draft',
@@ -2981,9 +3229,30 @@ interface WeekPaymentMadeDefinition {
 
 /** Full, half and unapplied: the three allocation states of the payments-made screen. */
 const WEEK_PAYMENTS_MADE: readonly WeekPaymentMadeDefinition[] = [
-  { key: 'utilities-full', vendor: 'utilities', bill: 'utilities', paidOn: -3, fraction: 'full', allocate: true },
-  { key: 'freight-half', vendor: 'logistics', bill: 'freight', paidOn: -2, fraction: 'half', allocate: true },
-  { key: 'stationery-unapplied', vendor: 'stationery', bill: 'overdue', paidOn: -1, fraction: 'full', allocate: false },
+  {
+    key: 'utilities-full',
+    vendor: 'utilities',
+    bill: 'utilities',
+    paidOn: -3,
+    fraction: 'full',
+    allocate: true,
+  },
+  {
+    key: 'freight-half',
+    vendor: 'logistics',
+    bill: 'freight',
+    paidOn: -2,
+    fraction: 'half',
+    allocate: true,
+  },
+  {
+    key: 'stationery-unapplied',
+    vendor: 'stationery',
+    bill: 'overdue',
+    paidOn: -1,
+    fraction: 'full',
+    allocate: false,
+  },
 ];
 
 interface WeekVendorCreditDefinition {
@@ -2995,7 +3264,12 @@ interface WeekVendorCreditDefinition {
   bill?: string;
   currency?: string;
   accountCode?: string;
-  lines: readonly { item?: string; description?: string; quantity: string; unitPriceMinor: string }[];
+  lines: readonly {
+    item?: string;
+    description?: string;
+    quantity: string;
+    unitPriceMinor: string;
+  }[];
 }
 
 /** One credit per section 5a status; the applied one reduces the bill raised from the PO. */
@@ -3007,7 +3281,13 @@ const WEEK_VENDOR_CREDITS: readonly WeekVendorCreditDefinition[] = [
     issuedOn: -2,
     bill: 'received',
     accountCode: '5060',
-    lines: [{ description: 'Credit - chipped tiles in delivery', quantity: '1', unitPriceMinor: '180000' }],
+    lines: [
+      {
+        description: 'Credit - chipped tiles in delivery',
+        quantity: '1',
+        unitPriceMinor: '180000',
+      },
+    ],
   },
   {
     key: 'issued',
@@ -3015,7 +3295,13 @@ const WEEK_VENDOR_CREDITS: readonly WeekVendorCreditDefinition[] = [
     target: 'ISSUED',
     issuedOn: -1,
     accountCode: '5080',
-    lines: [{ description: 'Credit - late delivery penalty waived', quantity: '1', unitPriceMinor: '120000' }],
+    lines: [
+      {
+        description: 'Credit - late delivery penalty waived',
+        quantity: '1',
+        unitPriceMinor: '120000',
+      },
+    ],
   },
   {
     key: 'draft',
@@ -3023,7 +3309,9 @@ const WEEK_VENDOR_CREDITS: readonly WeekVendorCreditDefinition[] = [
     target: 'DRAFT',
     issuedOn: 0,
     accountCode: '5060',
-    lines: [{ description: 'Credit - returned toner cartridges', quantity: '2', unitPriceMinor: '45000' }],
+    lines: [
+      { description: 'Credit - returned toner cartridges', quantity: '2', unitPriceMinor: '45000' },
+    ],
   },
   {
     key: 'void',
@@ -3031,7 +3319,9 @@ const WEEK_VENDOR_CREDITS: readonly WeekVendorCreditDefinition[] = [
     target: 'VOID',
     issuedOn: -3,
     accountCode: '5010',
-    lines: [{ description: 'Credit - meter reading correction', quantity: '1', unitPriceMinor: '60000' }],
+    lines: [
+      { description: 'Credit - meter reading correction', quantity: '1', unitPriceMinor: '60000' },
+    ],
   },
 ];
 
@@ -3053,13 +3343,72 @@ interface WeekExpenseDefinition {
 
 /** Section 5c's expense states: five posted (three cash, two bank), one awaiting approval, one draft. */
 const WEEK_EXPENSES: readonly WeekExpenseDefinition[] = [
-  { key: 'rent', payeeName: 'Prime Properties Ltd', spentOn: -6, paidThroughCode: '1010', category: 'rent', amountMinor: '15000000', target: 'POSTED' },
-  { key: 'fuel', payeeName: 'Shell Westlands', spentOn: -5, paidThroughCode: '1000', category: 'transport', amountMinor: '350000', target: 'POSTED' },
-  { key: 'snacks', payeeName: 'Naivas Supermarket', spentOn: -4, paidThroughCode: '1000', category: 'supplies', amountMinor: '128000', tax: 'standard', target: 'POSTED' },
-  { key: 'ads', payeeName: 'Google Ads', spentOn: -2, paidThroughCode: '1010', category: 'marketing', amountMinor: '480000', tax: 'standard', target: 'POSTED' },
-  { key: 'site-transport', payeeName: 'Uber Business', spentOn: -1, paidThroughCode: '1000', category: 'transport', project: 'westlands-fitout', amountMinor: '95000', target: 'POSTED' },
-  { key: 'flights', payeeName: 'Kenya Airways', spentOn: 0, paidThroughCode: '1010', category: 'transport', amountMinor: '2850000', target: 'SUBMITTED' },
-  { key: 'stamps', vendor: 'stationery', spentOn: 0, paidThroughCode: '1000', category: 'supplies', amountMinor: '24000', target: 'DRAFT' },
+  {
+    key: 'rent',
+    payeeName: 'Prime Properties Ltd',
+    spentOn: -6,
+    paidThroughCode: '1010',
+    category: 'rent',
+    amountMinor: '15000000',
+    target: 'POSTED',
+  },
+  {
+    key: 'fuel',
+    payeeName: 'Shell Westlands',
+    spentOn: -5,
+    paidThroughCode: '1000',
+    category: 'transport',
+    amountMinor: '350000',
+    target: 'POSTED',
+  },
+  {
+    key: 'snacks',
+    payeeName: 'Naivas Supermarket',
+    spentOn: -4,
+    paidThroughCode: '1000',
+    category: 'supplies',
+    amountMinor: '128000',
+    tax: 'standard',
+    target: 'POSTED',
+  },
+  {
+    key: 'ads',
+    payeeName: 'Google Ads',
+    spentOn: -2,
+    paidThroughCode: '1010',
+    category: 'marketing',
+    amountMinor: '480000',
+    tax: 'standard',
+    target: 'POSTED',
+  },
+  {
+    key: 'site-transport',
+    payeeName: 'Uber Business',
+    spentOn: -1,
+    paidThroughCode: '1000',
+    category: 'transport',
+    project: 'westlands-fitout',
+    amountMinor: '95000',
+    target: 'POSTED',
+  },
+  {
+    key: 'flights',
+    payeeName: 'Kenya Airways',
+    spentOn: 0,
+    paidThroughCode: '1010',
+    category: 'transport',
+    amountMinor: '2850000',
+    target: 'SUBMITTED',
+  },
+  {
+    key: 'stamps',
+    vendor: 'stationery',
+    spentOn: 0,
+    paidThroughCode: '1000',
+    category: 'supplies',
+    amountMinor: '24000',
+    target: 'DRAFT',
+  },
 ];
 
 interface WeekRecurringBillDefinition {
@@ -3087,7 +3436,9 @@ const WEEK_RECURRING_BILLS: readonly WeekRecurringBillDefinition[] = [
     cadence: 'WEEKLY',
     startsOn: 3,
     accountCode: '5060',
-    lines: [{ description: 'Packaging supplies - weekly', quantity: '10', unitPriceMinor: '32000' }],
+    lines: [
+      { description: 'Packaging supplies - weekly', quantity: '10', unitPriceMinor: '32000' },
+    ],
   },
 ];
 
@@ -3105,8 +3456,26 @@ interface WeekRecurringExpenseDefinition {
 }
 
 const WEEK_RECURRING_EXPENSES: readonly WeekRecurringExpenseDefinition[] = [
-  { key: 'rent', payeeName: 'Prime Properties Ltd', cadence: 'MONTHLY', startsOn: 25, paidThroughCode: '1010', category: 'rent', amountMinor: '15000000' },
-  { key: 'ads', payeeName: 'Google Ads', cadence: 'WEEKLY', startsOn: 5, paidThroughCode: '1010', category: 'marketing', amountMinor: '480000', tax: 'standard', autoCreate: true },
+  {
+    key: 'rent',
+    payeeName: 'Prime Properties Ltd',
+    cadence: 'MONTHLY',
+    startsOn: 25,
+    paidThroughCode: '1010',
+    category: 'rent',
+    amountMinor: '15000000',
+  },
+  {
+    key: 'ads',
+    payeeName: 'Google Ads',
+    cadence: 'WEEKLY',
+    startsOn: 5,
+    paidThroughCode: '1010',
+    category: 'marketing',
+    amountMinor: '480000',
+    tax: 'standard',
+    autoCreate: true,
+  },
 ];
 
 interface WeekFinancialAccountDefinition {
@@ -3120,9 +3489,21 @@ interface WeekFinancialAccountDefinition {
 
 /** Three accounts: the current account, petty cash, and a mobile-money till. */
 const WEEK_FINANCIAL_ACCOUNTS: readonly WeekFinancialAccountDefinition[] = [
-  { slug: 'equity', name: 'Equity Bank - Current', type: 'BANK', glCode: '1010', openingBalanceMinor: '0' },
+  {
+    slug: 'equity',
+    name: 'Equity Bank - Current',
+    type: 'BANK',
+    glCode: '1010',
+    openingBalanceMinor: '0',
+  },
   { slug: 'cash', name: 'Petty cash', type: 'CASH', glCode: '1000', openingBalanceMinor: '0' },
-  { slug: 'mpesa', name: 'M-Pesa Till 5512', type: 'OTHER', glCode: '1030', openingBalanceMinor: '0' },
+  {
+    slug: 'mpesa',
+    name: 'M-Pesa Till 5512',
+    type: 'OTHER',
+    glCode: '1030',
+    openingBalanceMinor: '0',
+  },
 ];
 
 interface WeekBankRuleDefinition {
@@ -3136,9 +3517,22 @@ interface WeekBankRuleDefinition {
 }
 
 const WEEK_BANK_RULES: readonly WeekBankRuleDefinition[] = [
-  { key: 'kplc', name: 'Kenya Power bills', priority: 10, contains: 'KPLC', accountCode: '5010', vendor: 'utilities' },
+  {
+    key: 'kplc',
+    name: 'Kenya Power bills',
+    priority: 10,
+    contains: 'KPLC',
+    accountCode: '5010',
+    vendor: 'utilities',
+  },
   { key: 'fuel', name: 'Fuel stations', priority: 20, contains: 'SHELL', accountCode: '5080' },
-  { key: 'bank-charges', name: 'Bank charges', priority: 30, contains: 'BANK CHARGES', accountCode: '5130' },
+  {
+    key: 'bank-charges',
+    name: 'Bank charges',
+    priority: 30,
+    contains: 'BANK CHARGES',
+    accountCode: '5130',
+  },
 ];
 
 interface StatementRow {
@@ -3192,8 +3586,20 @@ const WEEK_INVOICES: readonly WeekInvoiceDefinition[] = [
     issuedOn: -45,
     dueOn: -35,
     lines: [
-      { item: 'tiles', quantity: '40', unitPriceMinor: '145000', warehouse: 'main', project: 'tumaini-refit' },
-      { item: 'paint', quantity: '10', unitPriceMinor: '320000', warehouse: 'main', project: 'tumaini-refit' },
+      {
+        item: 'tiles',
+        quantity: '40',
+        unitPriceMinor: '145000',
+        warehouse: 'main',
+        project: 'tumaini-refit',
+      },
+      {
+        item: 'paint',
+        quantity: '10',
+        unitPriceMinor: '320000',
+        warehouse: 'main',
+        project: 'tumaini-refit',
+      },
     ],
   },
   {
@@ -3218,7 +3624,9 @@ const WEEK_INVOICES: readonly WeekInvoiceDefinition[] = [
     customer: 'regular',
     issuedOn: -6,
     dueOn: 'receipt',
-    lines: [{ item: 'install', quantity: '6', unitPriceMinor: '85000', project: 'westlands-fitout' }],
+    lines: [
+      { item: 'install', quantity: '6', unitPriceMinor: '85000', project: 'westlands-fitout' },
+    ],
   },
   {
     key: 'vat-lines',

@@ -9,11 +9,12 @@ import {
 const TEMPLATES = ['general-business', 'retail', 'services', 'nonprofit'];
 
 describe('system account keys', () => {
-  it('defines exactly the fifteen keys the specification requires', () => {
+  it('defines exactly the seventeen keys required by the V1 starter charts', () => {
     expect([...SYSTEM_ACCOUNT_KEYS].sort()).toEqual(
       [
         'accounts_payable',
         'accounts_receivable',
+        'bank_charges',
         'bank_default',
         'cogs',
         'customer_credit',
@@ -27,6 +28,7 @@ describe('system account keys', () => {
         'tax_payable',
         'tax_receivable',
         'vendor_credit',
+        'withholding_tax_receivable',
       ].sort(),
     );
   });

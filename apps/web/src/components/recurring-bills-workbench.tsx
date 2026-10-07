@@ -9,21 +9,17 @@ import type {
   Vendor,
 } from '@valuebooks/contracts';
 import {
-  Badge,
   Button,
   Card,
-  DataTable,
-  EmptyState,
   ForbiddenState,
   Input,
   Label,
-  PageHeader,
   Select,
   Skeleton,
   StatusBadge,
   type DataTableColumn,
 } from '@valuebooks/ui';
-import { Play, Plus, Save, Search, XCircle } from 'lucide-react';
+import { Play, Plus, Save, XCircle } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 
 import { ApiError, apiRequest } from '../lib/api';
@@ -553,7 +549,8 @@ export function RecurringBillsPage() {
             importEnabled={false}
             emptyState={{
               title: 'Create. Set. Repeat.',
-              description: 'Set up recurring bills so supplier charges are created on the cadence you choose.',
+              description:
+                'Set up recurring bills so supplier charges are created on the cadence you choose.',
               illustration: 'purchases',
               variant: 'onboarding',
               benefits: [

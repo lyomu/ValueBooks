@@ -121,14 +121,25 @@ describe('Phase 13E/13F-P2 adviser correctness against real posted activity (rou
     const draft = await expenses.createDraft(
       context,
       owner,
-      { payeeVendorId: vendorId, categoryId, expenseDate, paidThroughAccountId: bankAccount.id, amountMinor },
+      {
+        payeeVendorId: vendorId,
+        categoryId,
+        expenseDate,
+        paidThroughAccountId: bankAccount.id,
+        amountMinor,
+      },
       metadata,
     );
     return expenses.post(context, owner, draft.id, metadata);
   }
 
-  it('categorization suggestion: picks the vendor\'s most-used category by real occurrence count', async () => {
-    const vendor = await vendors.create(context, owner, { displayName: 'Round 3 Vendor' }, metadata);
+  it("categorization suggestion: picks the vendor's most-used category by real occurrence count", async () => {
+    const vendor = await vendors.create(
+      context,
+      owner,
+      { displayName: 'Round 3 Vendor' },
+      metadata,
+    );
     const expenseAccount = await ledger.accountBySystemKey(context.id, 'general_expense');
     const categoryA = await harness.prisma.expenseCategory.create({
       data: { organizationId: context.id, name: 'Category A', accountId: expenseAccount.id },
@@ -159,15 +170,31 @@ describe('Phase 13E/13F-P2 adviser correctness against real posted activity (rou
   });
 
   it('categorization suggestion: returns null for a vendor with no posted history', async () => {
-    const vendor = await vendors.create(context, owner, { displayName: 'No History Vendor' }, metadata);
-    await expect(categorizationSuggestion.suggestForVendor(context.id, vendor.id)).resolves.toBeNull();
+    const vendor = await vendors.create(
+      context,
+      owner,
+      { displayName: 'No History Vendor' },
+      metadata,
+    );
+    await expect(
+      categorizationSuggestion.suggestForVendor(context.id, vendor.id),
+    ).resolves.toBeNull();
   });
 
-  it('draft note: renders the expense\'s own recorded facts verbatim, no invented detail', async () => {
-    const vendor = await vendors.create(context, owner, { displayName: 'Draft Note Vendor' }, metadata);
+  it("draft note: renders the expense's own recorded facts verbatim, no invented detail", async () => {
+    const vendor = await vendors.create(
+      context,
+      owner,
+      { displayName: 'Draft Note Vendor' },
+      metadata,
+    );
     const expenseAccount = await ledger.accountBySystemKey(context.id, 'general_expense');
     const category = await harness.prisma.expenseCategory.create({
-      data: { organizationId: context.id, name: 'Draft Note Category', accountId: expenseAccount.id },
+      data: {
+        organizationId: context.id,
+        name: 'Draft Note Category',
+        accountId: expenseAccount.id,
+      },
     });
     const posted = await postExpense(vendor.id, category.id, '123456', '2026-03-15');
 
@@ -180,13 +207,26 @@ describe('Phase 13E/13F-P2 adviser correctness against real posted activity (rou
   });
 
   it('variance insight: flags a significant increase, a brand-new category, and skips an insignificant change', async () => {
-    const vendor = await vendors.create(context, owner, { displayName: 'Variance Vendor' }, metadata);
+    const vendor = await vendors.create(
+      context,
+      owner,
+      { displayName: 'Variance Vendor' },
+      metadata,
+    );
     const expenseAccount = await ledger.accountBySystemKey(context.id, 'general_expense');
     const increasing = await harness.prisma.expenseCategory.create({
-      data: { organizationId: context.id, name: 'Increasing Category', accountId: expenseAccount.id },
+      data: {
+        organizationId: context.id,
+        name: 'Increasing Category',
+        accountId: expenseAccount.id,
+      },
     });
     const brandNew = await harness.prisma.expenseCategory.create({
-      data: { organizationId: context.id, name: 'Brand New Category', accountId: expenseAccount.id },
+      data: {
+        organizationId: context.id,
+        name: 'Brand New Category',
+        accountId: expenseAccount.id,
+      },
     });
     const stable = await harness.prisma.expenseCategory.create({
       data: { organizationId: context.id, name: 'Stable Category', accountId: expenseAccount.id },
@@ -227,10 +267,19 @@ describe('Phase 13E/13F-P2 adviser correctness against real posted activity (rou
   });
 
   it('audit evidence pack: assembles real audit events, attachments, and a reversal journal for a voided expense', async () => {
-    const vendor = await vendors.create(context, owner, { displayName: 'Evidence Pack Vendor' }, metadata);
+    const vendor = await vendors.create(
+      context,
+      owner,
+      { displayName: 'Evidence Pack Vendor' },
+      metadata,
+    );
     const expenseAccount = await ledger.accountBySystemKey(context.id, 'general_expense');
     const category = await harness.prisma.expenseCategory.create({
-      data: { organizationId: context.id, name: 'Evidence Pack Category', accountId: expenseAccount.id },
+      data: {
+        organizationId: context.id,
+        name: 'Evidence Pack Category',
+        accountId: expenseAccount.id,
+      },
     });
     const posted = await postExpense(vendor.id, category.id, '75000', '2026-03-20');
 

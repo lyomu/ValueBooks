@@ -5,7 +5,11 @@ import { CustomerStatementPage } from '../../../../../components/customer-statem
 
 export const metadata: Metadata = { title: 'Customer statement | ValueBooks' };
 
-export default async function CustomerStatementRoute({ params }: { params: Promise<{ id: string }> }) {
+export default async function CustomerStatementRoute({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
   const { id } = await params;
 
   return (

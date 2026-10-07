@@ -39,7 +39,10 @@ const documentBaselineReport = {
     overall: summarizeFieldScores(documentResults),
   },
   arithmeticValidAccuracy: {
-    dev: rate(devResults.filter((result) => result.arithmeticValidCorrect).length, devResults.length),
+    dev: rate(
+      devResults.filter((result) => result.arithmeticValidCorrect).length,
+      devResults.length,
+    ),
     holdout: rate(
       holdoutResults.filter((result) => result.arithmeticValidCorrect).length,
       holdoutResults.length,

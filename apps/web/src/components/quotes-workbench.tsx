@@ -5,8 +5,6 @@ import {
   Badge,
   Button,
   Card,
-  DataTable,
-  EmptyState,
   FieldMessage,
   ForbiddenState,
   Input,
@@ -17,7 +15,7 @@ import {
   StatusBadge,
   type DataTableColumn,
 } from '@valuebooks/ui';
-import { CheckCircle2, FilePlus2, Save, Search, XCircle } from 'lucide-react';
+import { CheckCircle2, FilePlus2, Save, XCircle } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -105,7 +103,12 @@ export function QuotesPage() {
         </div>
       ),
     },
-    { key: 'status', header: 'Status', value: (quote) => quote.status, cell: (quote) => <StatusBadge status={quote.status} /> },
+    {
+      key: 'status',
+      header: 'Status',
+      value: (quote) => quote.status,
+      cell: (quote) => <StatusBadge status={quote.status} />,
+    },
     {
       key: 'total',
       header: 'Total',
@@ -144,16 +147,63 @@ export function QuotesPage() {
           <Skeleton />
         ) : (
           <OperationalListing
-            title={statusFilter ? `${statusFilter.replaceAll('_', ' ').toLowerCase()} quotes` : 'All estimates'}
+            title={
+              statusFilter
+                ? `${statusFilter.replaceAll('_', ' ').toLowerCase()} quotes`
+                : 'All estimates'
+            }
             rows={quotes ?? []}
             columns={columns}
-            searchText={(quote) => `${quote.quoteNumber ?? ''} ${quote.contactName} ${quote.status}`}
-            filter={<Select aria-label="Estimate status" value={statusFilter} onChange={(event) => setStatusFilter(event.target.value as typeof statusFilter)}><option value="">All statuses</option>{statusOptions.map((status) => <option key={status} value={status}>{status.replaceAll('_', ' ')}</option>)}</Select>}
-            primaryAction={canManage ? <Button asChild><Link href="/quotes/new"><FilePlus2 aria-hidden="true" /> New</Link></Button> : null}
+            searchText={(quote) =>
+              `${quote.quoteNumber ?? ''} ${quote.contactName} ${quote.status}`
+            }
+            filter={
+              <Select
+                aria-label="Estimate status"
+                value={statusFilter}
+                onChange={(event) => setStatusFilter(event.target.value as typeof statusFilter)}
+              >
+                <option value="">All statuses</option>
+                {statusOptions.map((status) => (
+                  <option key={status} value={status}>
+                    {status.replaceAll('_', ' ')}
+                  </option>
+                ))}
+              </Select>
+            }
+            primaryAction={
+              canManage ? (
+                <Button asChild>
+                  <Link href="/quotes/new">
+                    <FilePlus2 aria-hidden="true" /> New
+                  </Link>
+                </Button>
+              ) : null
+            }
             onRefresh={() => void load()}
-            onImport={async () => undefined}
-            emptyState={{ title: 'Turn opportunities into clear estimates', description: 'Create an estimate with your catalog items, prices, and terms before sending it to a customer.', illustration: 'sales', variant: 'onboarding', benefits: ['Reuse products and services from your catalog', 'Convert accepted estimates into invoices'] }}
-            noResultsState={{ title: 'No estimates match this view', description: 'Clear the search or status filter to see your estimates.', illustration: 'sales', variant: 'no-results', action: <Button variant="outline" onClick={() => setStatusFilter('')}>Clear filters</Button> }}
+            onImport={() => undefined}
+            emptyState={{
+              title: 'Turn opportunities into clear estimates',
+              description:
+                'Create an estimate with your catalog items, prices, and terms before sending it to a customer.',
+              illustration: 'sales',
+              variant: 'onboarding',
+              benefits: [
+                'Reuse products and services from your catalog',
+                'Convert accepted estimates into invoices',
+              ],
+            }}
+            noResultsState={{
+              title: 'No estimates match this view',
+              description: 'Clear the search or status filter to see your estimates.',
+              illustration: 'sales',
+              variant: 'no-results',
+              action: (
+                <Button variant="outline" onClick={() => setStatusFilter('')}>
+                  Clear filters
+                </Button>
+              ),
+            }}
             onResetFilters={() => setStatusFilter('')}
             empty="No estimates match this view."
           />

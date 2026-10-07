@@ -342,12 +342,24 @@
   filter: saturate(0.82) brightness(1.08);
 }
 
-.rb-empty-state__illustration--sales { background-position: 0 0; }
-.rb-empty-state__illustration--purchases { background-position: 50% 0; }
-.rb-empty-state__illustration--inventory { background-position: 100% 0; }
-.rb-empty-state__illustration--accounting { background-position: 0 100%; }
-.rb-empty-state__illustration--banking { background-position: 50% 100%; }
-.rb-empty-state__illustration--administration { background-position: 100% 100%; }
+.rb-empty-state__illustration--sales {
+  background-position: 0 0;
+}
+.rb-empty-state__illustration--purchases {
+  background-position: 50% 0;
+}
+.rb-empty-state__illustration--inventory {
+  background-position: 100% 0;
+}
+.rb-empty-state__illustration--accounting {
+  background-position: 0 100%;
+}
+.rb-empty-state__illustration--banking {
+  background-position: 50% 100%;
+}
+.rb-empty-state__illustration--administration {
+  background-position: 100% 100%;
+}
 
 .rb-empty-state__icon {
   display: grid;
@@ -408,8 +420,13 @@
 }
 
 @media (max-width: 42rem) {
-  .rb-empty-state--onboarding { min-height: 20rem; }
-  .rb-empty-state__illustration { width: 7.5rem; height: 5.5rem; }
+  .rb-empty-state--onboarding {
+    min-height: 20rem;
+  }
+  .rb-empty-state__illustration {
+    width: 7.5rem;
+    height: 5.5rem;
+  }
 }
 
 .rb-spinner {

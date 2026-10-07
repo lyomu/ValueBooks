@@ -13,6 +13,42 @@ import {
   TrustNote,
 } from '../../components/marketing/sections';
 import { Photo } from '../../components/marketing/photo';
+import { FaqAccordion, type FaqItem } from '../../components/marketing/faq-accordion';
+
+const faqItems: FaqItem[] = [
+  {
+    q: 'What is ValueBooks?',
+    a: 'ValueBooks is an accounting platform built for growing businesses — invoicing, expenses, banking, reporting, and AI assistance in one place.',
+  },
+  {
+    q: 'Do I need to be an accountant to use ValueBooks?',
+    a: "No. ValueBooks is built for business owners, not just bookkeepers — ValueBooks AI and guided workflows handle the accounting logic so you don't have to.",
+  },
+  {
+    q: 'Is there a free trial?',
+    a: 'Yes, you can try ValueBooks free before committing to a plan.',
+  },
+  {
+    q: 'What does ValueBooks AI actually do?',
+    a: 'It answers financial questions grounded in your own books, drafts documents, and flags activity worth a closer look — you stay in control of every decision.',
+  },
+  {
+    q: 'Can my customers view and pay their invoices themselves?',
+    a: 'Yes. The customer portal lets clients view invoices and quotes, download statements, and pay online.',
+  },
+  {
+    q: 'Does ValueBooks support multiple currencies?',
+    a: 'Yes, ValueBooks works with 140+ currencies, so you can bill and track activity in the currencies your business actually uses.',
+  },
+  {
+    q: 'Is my financial data secure with ValueBooks?',
+    a: 'Yes. Role-based access, audit trails, and responsible safeguards are built in by default.',
+  },
+  {
+    q: 'Can I move my existing records into ValueBooks?',
+    a: "Yes. You can set opening balances and bring your current financial position into ValueBooks as you get started.",
+  },
+];
 
 export default function MarketingHomePage() {
   return (
@@ -182,6 +218,10 @@ export default function MarketingHomePage() {
         <TestimonialGrid />
       </section>
       <SecurityStrip />
+      <section className="mk-faq-section">
+        <SectionIntro centered title="Frequently asked questions" />
+        <FaqAccordion items={faqItems} />
+      </section>
       <FinalCta title="A clearer view of the business starts today." />
     </>
   );

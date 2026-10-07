@@ -21,7 +21,7 @@ import {
   TabsTrigger,
   Textarea,
 } from '@valuebooks/ui';
-import { Bot, Check, ExternalLink, RefreshCw, Send, Sparkles, X } from 'lucide-react';
+import { Bot, Check, ExternalLink, RefreshCw, Send, X } from 'lucide-react';
 import Link from 'next/link';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
@@ -65,9 +65,45 @@ const SUGGESTED_QUESTIONS = [
 
 /** Words too common to say anything about report intent -- excluded so they never inflate a match. */
 const STOPWORDS = new Set([
-  'the', 'a', 'an', 'is', 'are', 'was', 'were', 'did', 'do', 'does', 'i', 'my', 'me', 'of', 'for',
-  'to', 'in', 'on', 'at', 'this', 'that', 'get', 'got', 'how', 'what', 'many', 'much', 'today',
-  'yesterday', 'week', 'month', 'year', 'quarter', 'last', 'new', 'and', 'any', 'right', 'now',
+  'the',
+  'a',
+  'an',
+  'is',
+  'are',
+  'was',
+  'were',
+  'did',
+  'do',
+  'does',
+  'i',
+  'my',
+  'me',
+  'of',
+  'for',
+  'to',
+  'in',
+  'on',
+  'at',
+  'this',
+  'that',
+  'get',
+  'got',
+  'how',
+  'what',
+  'many',
+  'much',
+  'today',
+  'yesterday',
+  'week',
+  'month',
+  'year',
+  'quarter',
+  'last',
+  'new',
+  'and',
+  'any',
+  'right',
+  'now',
 ]);
 
 /** A small set of seed words for the reports people actually ask about in everyday language --
@@ -116,7 +152,10 @@ function tokenize(text: string): string[] {
 /** Best-effort report match from free text: word overlap against each report's own name,
  * description, and family, boosted by a small everyday-language seed list. Never blocks asking --
  * an unmatched question just falls back to the first report the caller can see. */
-function inferReportKey(question: string, definitions: readonly ReportDefinition[]): ReportKey | null {
+function inferReportKey(
+  question: string,
+  definitions: readonly ReportDefinition[],
+): ReportKey | null {
   if (definitions.length === 0) return null;
   const words = tokenize(question);
   if (words.length === 0) return null;
@@ -273,7 +312,9 @@ export function AiAssistantWidget({ organization }: { organization: Organization
         className="rb-ai-fab"
         onClick={() => setOpen(true)}
         aria-label={
-          pendingCount > 0 ? `Open AI assistant, ${pendingCount} pending suggestions` : 'Open AI assistant'
+          pendingCount > 0
+            ? `Open AI assistant, ${pendingCount} pending suggestions`
+            : 'Open AI assistant'
         }
       >
         <Bot aria-hidden="true" />
@@ -290,7 +331,6 @@ export function AiAssistantWidget({ organization }: { organization: Organization
           <div className="rb-ai-panel">
             <div className="rb-ai-panel__header">
               <div className="rb-ai-panel__heading">
-                <Sparkles aria-hidden="true" />
                 <div>
                   <strong>AI assistant</strong>
                   <span className="rb-muted">Evidence-backed answers from your own records</span>
@@ -405,7 +445,12 @@ function AskPanel({ organizationId, canAsk }: { organizationId: string; canAsk: 
         },
       );
       setResult(response.data);
-      setAskedWith({ reportKey: targetReportKey, from: targetFrom, to: targetTo, label: targetLabel });
+      setAskedWith({
+        reportKey: targetReportKey,
+        from: targetFrom,
+        to: targetTo,
+        label: targetLabel,
+      });
     } catch (caught) {
       // A zero-row date range is common for a narrow inferred window (e.g. "this month" when
       // nothing posted yet this month) -- offer the obvious next step instead of a dead end.
@@ -445,7 +490,12 @@ function AskPanel({ organizationId, canAsk }: { organizationId: string; canAsk: 
     <div className="rb-ai-ask">
       <div className="rb-ai-suggested-questions">
         {SUGGESTED_QUESTIONS.map((prompt) => (
-          <button key={prompt} type="button" className="rb-ai-chip" onClick={() => setQuestion(prompt)}>
+          <button
+            key={prompt}
+            type="button"
+            className="rb-ai-chip"
+            onClick={() => setQuestion(prompt)}
+          >
             {prompt}
           </button>
         ))}
@@ -472,7 +522,11 @@ function AskPanel({ organizationId, canAsk }: { organizationId: string; canAsk: 
         </p>
       ) : null}
 
-      <Button onClick={ask} loading={busy} disabled={!effectiveReportKey || question.trim().length < 3}>
+      <Button
+        onClick={ask}
+        loading={busy}
+        disabled={!effectiveReportKey || question.trim().length < 3}
+      >
         <Send aria-hidden="true" /> Ask
       </Button>
 
@@ -621,7 +675,7 @@ function AskResult({
 function describeAskError(caught: unknown): string {
   if (caught instanceof ApiError) {
     if (caught.status >= 500) {
-      return "The AI assistant is temporarily unavailable -- it may not be configured for this workspace yet.";
+      return 'The AI assistant is temporarily unavailable -- it may not be configured for this workspace yet.';
     }
     return caught.message;
   }
@@ -674,7 +728,9 @@ function SuggestionsPanel({
   return (
     <div className="rb-ai-suggestions">
       <div className="rb-ai-suggestions__toolbar">
-        <span className="rb-muted">{suggestions === null ? 'Loading…' : `${pending.length} pending`}</span>
+        <span className="rb-muted">
+          {suggestions === null ? 'Loading…' : `${pending.length} pending`}
+        </span>
         <Button size="sm" variant="ghost" onClick={onRefresh}>
           <RefreshCw aria-hidden="true" /> Refresh
         </Button>
@@ -706,7 +762,9 @@ function SuggestionsPanel({
             <p>{suggestionText(suggestion)}</p>
           </div>
           <div className="rb-ai-suggestion__actions">
-            {suggestionHref(suggestion) ? <Link href={suggestionHref(suggestion)!}>View</Link> : null}
+            {suggestionHref(suggestion) ? (
+              <Link href={suggestionHref(suggestion)!}>View</Link>
+            ) : null}
             {canManage ? (
               <>
                 <Button
@@ -755,7 +813,11 @@ function suggestionText(suggestion: AiSuggestion): string {
 }
 
 function suggestionHref(suggestion: AiSuggestion): string | null {
-  if (suggestion.capability === 'DRAFT_NOTE' && suggestion.entityType === 'EXPENSE' && suggestion.entityId) {
+  if (
+    suggestion.capability === 'DRAFT_NOTE' &&
+    suggestion.entityType === 'EXPENSE' &&
+    suggestion.entityId
+  ) {
     return `/expenses/${suggestion.entityId}`;
   }
   if (suggestion.capability === 'EXPENSE_CATEGORIZATION') return '/expenses';

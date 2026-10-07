@@ -9,21 +9,17 @@ import type {
   Vendor,
 } from '@valuebooks/contracts';
 import {
-  Badge,
   Button,
   Card,
-  DataTable,
-  EmptyState,
   ForbiddenState,
   Input,
   Label,
-  PageHeader,
   Select,
   Skeleton,
   StatusBadge,
   type DataTableColumn,
 } from '@valuebooks/ui';
-import { Play, Plus, Save, Search } from 'lucide-react';
+import { Play, Plus, Save } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 
 import { ApiError, apiRequest } from '../lib/api';
@@ -467,7 +463,8 @@ export function RecurringExpensesPage() {
             importEnabled={false}
             emptyState={{
               title: 'Create. Set. Repeat.',
-              description: 'Schedule expenses once, then let ValueBooks create them when they are due.',
+              description:
+                'Schedule expenses once, then let ValueBooks create them when they are due.',
               illustration: 'purchases',
               variant: 'onboarding',
               benefits: [

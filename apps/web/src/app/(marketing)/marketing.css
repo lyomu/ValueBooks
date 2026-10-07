@@ -215,7 +215,7 @@ FORM: Wave-like breathing room with a QuickBooks-scale menu, alternating proof, 
   display: block;
 }
 .mk-mega__links strong {
-  font-size: 0.78rem;
+  font-size: 1rem;
 }
 .mk-mega__links small {
   margin-top: 0.2rem;
@@ -276,7 +276,7 @@ FORM: Wave-like breathing room with a QuickBooks-scale menu, alternating proof, 
   color: var(--mk-ink);
   border: 1px solid var(--mk-line);
   border-radius: 0.55rem;
-  font-size: 0.75rem;
+  font-size: 1rem;
   font-weight: 600;
   text-decoration: none;
 }
@@ -291,7 +291,7 @@ FORM: Wave-like breathing room with a QuickBooks-scale menu, alternating proof, 
   display: inline-block;
   margin-top: 1rem;
   color: var(--mk-blue);
-  font-size: 0.75rem;
+  font-size: 1rem;
   font-weight: 700;
   text-decoration: none;
 }
@@ -673,7 +673,7 @@ FORM: Wave-like breathing room with a QuickBooks-scale menu, alternating proof, 
   align-items: center;
   width: min(100% - 3rem, 72rem);
   margin: 0 auto;
-  padding: clamp(4.5rem, 9vw, 8rem) 0;
+  padding: clamp(3rem, 6vw, 5rem) 0;
 }
 .mk-ai-section .mk-section-intro h2 {
   max-width: 20ch;
@@ -794,7 +794,7 @@ FORM: Wave-like breathing room with a QuickBooks-scale menu, alternating proof, 
   align-items: center;
   width: min(100% - 3rem, 72rem);
   margin: 0 auto;
-  padding: clamp(4.5rem, 9vw, 8rem) 0;
+  padding: clamp(3rem, 6vw, 5rem) 0;
   border-top: 1px solid var(--mk-line);
 }
 .mk-alternating > .mk-photo {
@@ -1076,7 +1076,7 @@ FORM: Wave-like breathing room with a QuickBooks-scale menu, alternating proof, 
 }
 .mk-industry-card h3 {
   margin: 0 0 0.75rem;
-  font-size: 0.85rem;
+  font-size: 1rem;
 }
 .mk-industry-card span {
   display: flex;
@@ -1187,6 +1187,54 @@ FORM: Wave-like breathing room with a QuickBooks-scale menu, alternating proof, 
 .mk-security-strip > a svg {
   width: 0.9rem;
   height: 0.9rem;
+}
+.mk-faq-section {
+  width: min(100% - 3rem, 72rem);
+  margin: auto;
+  padding: clamp(3rem, 6vw, 5rem) 0;
+}
+.mk-faq {
+  width: min(100%, 48rem);
+  margin: 2rem auto 0;
+}
+.mk-faq__item {
+  background: hsl(var(--rb-muted));
+  border-radius: 0.75rem;
+  margin-bottom: 0.75rem;
+  overflow: hidden;
+}
+.mk-faq__q {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  width: 100%;
+  padding: 1.1rem 1.5rem;
+  color: var(--mk-ink);
+  background: transparent;
+  border: 0;
+  font-size: 1rem;
+  font-weight: 700;
+  text-align: left;
+  cursor: pointer;
+}
+.mk-faq__icon {
+  width: 1.1rem;
+  flex: 0 0 auto;
+  color: var(--mk-blue);
+  transition: transform 0.2s;
+}
+.mk-faq__item.is-open .mk-faq__icon {
+  transform: rotate(45deg);
+}
+.mk-faq__a {
+  padding: 0 1.5rem 1.25rem;
+}
+.mk-faq__a p {
+  margin: 0;
+  color: var(--mk-muted);
+  font-size: 0.92rem;
+  line-height: 1.7;
 }
 .mk-final-cta {
   display: flex;
@@ -1363,7 +1411,7 @@ FORM: Wave-like breathing room with a QuickBooks-scale menu, alternating proof, 
 .mk-feature-grid {
   width: min(100% - 3rem, 72rem);
   margin: auto;
-  padding: clamp(4.5rem, 9vw, 8rem) 0;
+  padding: clamp(3rem, 6vw, 5rem) 0;
 }
 .mk-feature-grid > .mk-section-intro {
   margin-bottom: 2.5rem;

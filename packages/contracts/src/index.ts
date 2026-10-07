@@ -3898,6 +3898,19 @@ export const workflowActionSchema = z.discriminatedUnion('type', [
     detail: z.string().trim().max(4_000).optional(),
     assignedToUserId: z.uuid().optional(),
   }),
+  // Intentionally scoped to automation tasks. Workflow actions must never mutate accounting
+  // records: posted financial documents remain owned by their respective domain services.
+  z
+    .object({
+      type: z.literal('UPDATE_AUTOMATION_TASK'),
+      /** Name of the event-payload property containing the target task UUID. */
+      taskIdField: z.string().trim().min(1).max(80),
+      title: z.string().trim().min(1).max(240).optional(),
+      detail: z.string().trim().max(4_000).nullable().optional(),
+    })
+    .refine((value) => value.title !== undefined || value.detail !== undefined, {
+      message: 'An automation task update needs a title or detail.',
+    }),
 ]);
 export const createWorkflowRuleSchema = z.object({
   name: z.string().trim().min(1).max(120),

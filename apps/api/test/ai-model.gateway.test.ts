@@ -7,7 +7,9 @@ import type { EntitlementsService } from '../src/platform/entitlements.service';
 const ORGANIZATION_ID = 'org-1';
 
 function fakeEntitlements(isFlagEnabled = false): EntitlementsService {
-  return { isFlagEnabled: vi.fn().mockResolvedValue(isFlagEnabled) } as unknown as EntitlementsService;
+  return {
+    isFlagEnabled: vi.fn().mockResolvedValue(isFlagEnabled),
+  } as unknown as EntitlementsService;
 }
 
 const evidence = {

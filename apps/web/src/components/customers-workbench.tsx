@@ -94,11 +94,15 @@ export function CustomersPage() {
       key: 'email',
       header: 'Email',
       value: (customer) => customer.email ?? '',
-      cell: (customer) =>
-        customer.email ?? <span className="rb-table-empty">—</span>,
+      cell: (customer) => customer.email ?? <span className="rb-table-empty">—</span>,
       hideBelow: 'tablet',
     },
-    { key: 'currency', header: 'Currency', value: (customer) => customer.currency, cell: (customer) => customer.currency },
+    {
+      key: 'currency',
+      header: 'Currency',
+      value: (customer) => customer.currency,
+      cell: (customer) => customer.currency,
+    },
     {
       key: 'status',
       header: 'Status',
@@ -172,7 +176,10 @@ export function CustomersPage() {
       <CustomerDialog
         open={formOpen}
         onOpenChange={(open) => {
-          if (!open) { setEditing(null); setShowCreate(false); }
+          if (!open) {
+            setEditing(null);
+            setShowCreate(false);
+          }
         }}
         organizationId={organizationId}
         baseCurrency={organization?.baseCurrency ?? 'KES'}
@@ -180,11 +187,21 @@ export function CustomersPage() {
         customer={formTarget}
         onSaved={(customer) => {
           setNotice(`${customer.displayName} was ${formTarget ? 'updated' : 'added'}.`);
-          setEditing(null); setShowCreate(false); void load();
+          setEditing(null);
+          setShowCreate(false);
+          void load();
         }}
       />
-      {error ? <div className="rb-auth-error" role="alert">{error}</div> : null}
-      {notice ? <div className="rb-auth-notice" role="status">{notice}</div> : null}
+      {error ? (
+        <div className="rb-auth-error" role="alert">
+          {error}
+        </div>
+      ) : null}
+      {notice ? (
+        <div className="rb-auth-notice" role="status">
+          {notice}
+        </div>
+      ) : null}
       {selectedCustomer ? (
         <RecordDetailWorkspace
           variant="compact"
@@ -243,22 +260,76 @@ export function CustomersPage() {
             />
           )}
         />
-      ) : !customers && !error ? <Skeleton /> : <OperationalListing
-        title={statusFilter === 'ACTIVE' ? 'Active customers' : statusFilter === 'INACTIVE' ? 'Inactive customers' : 'All customers'}
-        rows={customers ?? []}
-        columns={columns}
-        searchText={(customer) => `${customer.displayName} ${customer.legalName ?? ''} ${customer.email ?? ''} ${customer.phone ?? ''}`}
-        filter={<Select aria-label="Customer status" value={statusFilter} onChange={(event) => setStatusFilter(event.target.value as typeof statusFilter)}><option value="">All statuses</option><option value="ACTIVE">Active</option><option value="INACTIVE">Inactive</option></Select>}
-          primaryAction={canManage ? <Button onClick={() => { setEditing(null); setShowCreate(true); }}><Plus aria-hidden="true" /> New</Button> : null}
+      ) : !customers && !error ? (
+        <Skeleton />
+      ) : (
+        <OperationalListing
+          title={
+            statusFilter === 'ACTIVE'
+              ? 'Active customers'
+              : statusFilter === 'INACTIVE'
+                ? 'Inactive customers'
+                : 'All customers'
+          }
+          rows={customers ?? []}
+          columns={columns}
+          searchText={(customer) =>
+            `${customer.displayName} ${customer.legalName ?? ''} ${customer.email ?? ''} ${customer.phone ?? ''}`
+          }
+          filter={
+            <Select
+              aria-label="Customer status"
+              value={statusFilter}
+              onChange={(event) => setStatusFilter(event.target.value as typeof statusFilter)}
+            >
+              <option value="">All statuses</option>
+              <option value="ACTIVE">Active</option>
+              <option value="INACTIVE">Inactive</option>
+            </Select>
+          }
+          primaryAction={
+            canManage ? (
+              <Button
+                onClick={() => {
+                  setEditing(null);
+                  setShowCreate(true);
+                }}
+              >
+                <Plus aria-hidden="true" /> New
+              </Button>
+            ) : null
+          }
           onRefresh={() => void load()}
-          onImport={async (file, sourceNamespace) => { setNotice(`${file.name} is ready to map under ${sourceNamespace}.`); }}
-          emptyState={{ title: 'Every sale starts with a customer', description: 'Create a customer to track their contact details, invoices, and receivables in one place.', illustration: 'sales', variant: 'onboarding', benefits: ['Keep customer records and statements together', 'Issue invoices in the customer’s currency'] }}
-          noResultsState={{ title: 'No customers match this view', description: 'Clear the search or status filter to see your customers.', illustration: 'sales', variant: 'no-results', action: <Button variant="outline" onClick={() => setStatusFilter('')}>Clear filters</Button> }}
+          onImport={(file, sourceNamespace) => {
+            setNotice(`${file.name} is ready to map under ${sourceNamespace}.`);
+          }}
+          emptyState={{
+            title: 'Every sale starts with a customer',
+            description:
+              'Create a customer to track their contact details, invoices, and receivables in one place.',
+            illustration: 'sales',
+            variant: 'onboarding',
+            benefits: [
+              'Keep customer records and statements together',
+              'Issue invoices in the customer’s currency',
+            ],
+          }}
+          noResultsState={{
+            title: 'No customers match this view',
+            description: 'Clear the search or status filter to see your customers.',
+            illustration: 'sales',
+            variant: 'no-results',
+            action: (
+              <Button variant="outline" onClick={() => setStatusFilter('')}>
+                Clear filters
+              </Button>
+            ),
+          }}
           onResetFilters={() => setStatusFilter('')}
           empty="No customers match this view."
           onRowClick={(customer) => setSelectedCustomerId(customer.id)}
-      />}
+        />
+      )}
     </>
   );
-
 }

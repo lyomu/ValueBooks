@@ -12,7 +12,7 @@ export interface StarterAccount {
   readonly isControl?: boolean;
 }
 
-/** The system account keys required by the Phase 1 specification. */
+/** Stable system accounts required by the V1 financial workflows and starter charts. */
 export const SYSTEM_ACCOUNT_KEYS = [
   'accounts_receivable',
   'accounts_payable',
@@ -91,7 +91,8 @@ const generalBusinessAccounts: readonly StarterAccount[] = Object.freeze([
     name: 'Withholding tax receivable',
     type: 'ASSET',
     normalBalance: d,
-    description: 'Tax customers withhold at source and remit to the revenue authority on our behalf.',
+    description:
+      'Tax customers withhold at source and remit to the revenue authority on our behalf.',
     systemKey: 'withholding_tax_receivable',
   },
   { code: '1500', name: 'Furniture and fittings', type: 'ASSET', normalBalance: d },

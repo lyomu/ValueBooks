@@ -200,6 +200,50 @@ describe('workflow rule execution properties against a real database', () => {
     expect(await harness.prisma.notification.count({ where: { organizationId: orgA.id } })).toBe(0);
   });
 
+  it('updates only an automation task in the event organization and records an audit event', async () => {
+    const task = await harness.prisma.automationTask.create({
+      data: { organizationId: orgA.id, title: 'Original task', detail: 'Original detail' },
+    });
+    const rule = await workflows.create(
+      orgA,
+      owner,
+      {
+        name: 'safe task update',
+        trigger: 'invoice.issued',
+        conditions: [],
+        actions: [
+          {
+            type: 'UPDATE_AUTOMATION_TASK',
+            taskIdField: 'taskId',
+            title: 'Review {{invoiceNumber}}',
+            detail: 'Updated by automation',
+          },
+        ],
+      },
+      metadata,
+    );
+    await workflows.setStatus(orgA, owner, rule.id, 'ACTIVE', metadata);
+    const eventId = await emitAndDispatch(orgA.id, {
+      taskId: task.id,
+      invoiceNumber: 'INV-100',
+    });
+
+    await workflows.consumeEvent(eventId);
+
+    await expect(
+      harness.prisma.automationTask.findUniqueOrThrow({ where: { id: task.id } }),
+    ).resolves.toMatchObject({ title: 'Review INV-100', detail: 'Updated by automation' });
+    expect(
+      await harness.prisma.auditEvent.count({
+        where: {
+          organizationId: orgA.id,
+          entityId: task.id,
+          eventKey: 'automation.task_updated_by_workflow',
+        },
+      }),
+    ).toBe(1);
+  });
+
   describe('worker retry resume', () => {
     it('resumes a FAILED workflow run on a BullMQ replay and applies the actions exactly once', async () => {
       const rule = await workflows.create(

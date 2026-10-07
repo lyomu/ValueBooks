@@ -498,7 +498,9 @@ export function RecordPaymentDialog({
                         currency,
                       )}
                     </strong>
-                    {overAllocated ? <Badge tone="danger">Exceeds the amount received</Badge> : null}
+                    {overAllocated ? (
+                      <Badge tone="danger">Exceeds the amount received</Badge>
+                    ) : null}
                   </p>
                 </>
               )}

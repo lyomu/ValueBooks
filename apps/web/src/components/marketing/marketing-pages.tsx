@@ -6,7 +6,7 @@ import {
   FileText,
   Landmark,
   ShieldCheck,
-  Sparkles,
+  TrendingUp,
   Users,
 } from 'lucide-react';
 import Link from 'next/link';
@@ -33,7 +33,8 @@ const productPages = {
       'Simple reports that make the numbers understandable',
       'Automations that gently take repetitive work off your plate',
     ],
-    photo: 'https://images.unsplash.com/photo-1556761175-b413da4baf72?auto=format&fit=crop&w=1200&q=85',
+    photo:
+      'https://images.unsplash.com/photo-1556761175-b413da4baf72?auto=format&fit=crop&w=1200&q=85',
   },
   invoicing: {
     kicker: 'INVOICES THAT DO THE FOLLOW-UP',
@@ -45,7 +46,8 @@ const productPages = {
       'Accept cards and bank payments from the same invoice',
       'Set smart reminders so fewer invoices go quiet',
     ],
-    photo: 'https://images.unsplash.com/photo-1556761175-4b46a572b786?auto=format&fit=crop&w=1200&q=85',
+    photo:
+      'https://images.unsplash.com/photo-1556761175-4b46a572b786?auto=format&fit=crop&w=1200&q=85',
   },
   accounting: {
     kicker: 'BOOKS YOU CAN ACTUALLY READ',
@@ -57,7 +59,8 @@ const productPages = {
       'Track the signals that shape cash flow and profitability',
       'Share organized records with your accountant whenever needed',
     ],
-    photo: 'https://images.unsplash.com/photo-1554224155-6726b3ff858f?auto=format&fit=crop&w=1200&q=85',
+    photo:
+      'https://images.unsplash.com/photo-1554224155-6726b3ff858f?auto=format&fit=crop&w=1200&q=85',
   },
   ai: {
     kicker: 'AI WITH A BUSINESS BRAIN',
@@ -69,7 +72,8 @@ const productPages = {
       'Surface follow-ups, unusual activity, and cash-flow patterns',
       'Automate routine work while keeping you in control',
     ],
-    photo: 'https://images.unsplash.com/photo-1521737711867-e3b97375f902?auto=format&fit=crop&w=1200&q=85',
+    photo:
+      'https://images.unsplash.com/photo-1521737711867-e3b97375f902?auto=format&fit=crop&w=1200&q=85',
   },
 } satisfies Record<string, ProductDetail>;
 
@@ -93,7 +97,11 @@ export function ProductDetailPage({ page }: { page: ProductPageKey }) {
         <div className="mk-container mk-split">
           <div>
             <span className="mk-eyebrow">THE DETAILS, MADE SIMPLE</span>
-            <h2>{product ? 'Everything works better when it works together.' : 'Designed to feel like less work.'}</h2>
+            <h2>
+              {product
+                ? 'Everything works better when it works together.'
+                : 'Designed to feel like less work.'}
+            </h2>
             <p className="mk-lead">
               {product
                 ? 'Each ValueBooks tool is useful on its own—and even more useful when it shares the same picture of your business.'
@@ -112,9 +120,12 @@ export function ProductDetailPage({ page }: { page: ProductPageKey }) {
             <span className="mk-eyebrow">A LITTLE MORE ROOM TO BREATHE</span>
             <h2>Less time untangling the work. More time building the work you love.</h2>
             <p className="mk-lead">
-              ValueBooks is made for owners who want a reliable system, not another complicated project. Start with what you need and grow from there.
+              ValueBooks is made for owners who want a reliable system, not another complicated
+              project. Start with what you need and grow from there.
             </p>
-            <Link className="mk-text-link" href="/contact">Talk to our team <span aria-hidden="true">→</span></Link>
+            <Link className="mk-text-link" href="/contact">
+              Talk to our team <span aria-hidden="true">→</span>
+            </Link>
           </div>
         </div>
       </section>
@@ -130,20 +141,26 @@ const customerStories = [
   {
     name: 'Mina K.',
     role: 'Owner, Morrow Studio',
-    quote: 'I used to put off invoices because they always turned into an hour. Now I send them before I make coffee.',
-    photo: 'https://images.unsplash.com/photo-1551836022-d5d88e9218df?auto=format&fit=crop&w=900&q=85',
+    quote:
+      'I used to put off invoices because they always turned into an hour. Now I send them before I make coffee.',
+    photo:
+      'https://images.unsplash.com/photo-1551836022-d5d88e9218df?auto=format&fit=crop&w=900&q=85',
   },
   {
     name: 'Jordan R.',
     role: 'Founder, Ridgeway Goods',
-    quote: 'The dashboard helps me see what matters without making me feel like I need an accounting degree.',
-    photo: 'https://images.unsplash.com/photo-1556761175-5973dc0f32e7?auto=format&fit=crop&w=900&q=85',
+    quote:
+      'The dashboard helps me see what matters without making me feel like I need an accounting degree.',
+    photo:
+      'https://images.unsplash.com/photo-1556761175-5973dc0f32e7?auto=format&fit=crop&w=900&q=85',
   },
   {
     name: 'Priya S.',
     role: 'Independent consultant',
-    quote: 'The reminders are polite, the reports are clear, and my end-of-month routine finally feels manageable.',
-    photo: 'https://images.unsplash.com/photo-1556761175-129418cb2dfe?auto=format&fit=crop&w=900&q=85',
+    quote:
+      'The reminders are polite, the reports are clear, and my end-of-month routine finally feels manageable.',
+    photo:
+      'https://images.unsplash.com/photo-1556761175-129418cb2dfe?auto=format&fit=crop&w=900&q=85',
   },
 ];
 
@@ -160,13 +177,21 @@ export function CustomersPage() {
 
       <section className="mk-section mk-section--cream">
         <div className="mk-container">
-          <SectionIntro kicker="REAL WORK, REAL MOMENTUM" title="Small wins add up." text="Here are a few of the ways teams use ValueBooks to make their day-to-day feel lighter." />
+          <SectionIntro
+            kicker="REAL WORK, REAL MOMENTUM"
+            title="Small wins add up."
+            text="Here are a few of the ways teams use ValueBooks to make their day-to-day feel lighter."
+          />
           <div className="mk-story-grid">
             {customerStories.map((story) => (
               <article className="mk-story-card" key={story.name}>
                 <Photo src={story.photo} alt="" />
                 <blockquote>“{story.quote}”</blockquote>
-                <p><strong>{story.name}</strong><br />{story.role}</p>
+                <p>
+                  <strong>{story.name}</strong>
+                  <br />
+                  {story.role}
+                </p>
               </article>
             ))}
           </div>
@@ -175,9 +200,21 @@ export function CustomersPage() {
 
       <section className="mk-section mk-section--navy">
         <div className="mk-container mk-trust-grid">
-          <div><Users aria-hidden="true" /><h3>Made for small teams</h3><p>Helpful from day one, even if you are the whole finance department.</p></div>
-          <div><BookOpen aria-hidden="true" /><h3>Clarity you can share</h3><p>Keep your accountant, partner, or team aligned without extra work.</p></div>
-          <div><Sparkles aria-hidden="true" /><h3>Progress, not perfection</h3><p>Start simply and add more structure as your business grows.</p></div>
+          <div>
+            <Users aria-hidden="true" />
+            <h3>Made for small teams</h3>
+            <p>Helpful from day one, even if you are the whole finance department.</p>
+          </div>
+          <div>
+            <BookOpen aria-hidden="true" />
+            <h3>Clarity you can share</h3>
+            <p>Keep your accountant, partner, or team aligned without extra work.</p>
+          </div>
+          <div>
+            <TrendingUp aria-hidden="true" />
+            <h3>Progress, not perfection</h3>
+            <p>Start simply and add more structure as your business grows.</p>
+          </div>
         </div>
       </section>
 
@@ -187,9 +224,21 @@ export function CustomersPage() {
 }
 
 const securityPoints = [
-  { Icon: ShieldCheck, title: 'Security by design', text: 'Thoughtful safeguards, careful access controls, and a privacy-first approach are woven into the product.' },
-  { Icon: Landmark, title: 'Your data stays yours', text: 'Your financial records are yours to access, export, and share with the people you choose.' },
-  { Icon: CheckCircle2, title: 'Clear, accountable systems', text: 'We build policies and processes that make responsible data handling a daily practice.' },
+  {
+    Icon: ShieldCheck,
+    title: 'Security by design',
+    text: 'Thoughtful safeguards, careful access controls, and a privacy-first approach are woven into the product.',
+  },
+  {
+    Icon: Landmark,
+    title: 'Your data stays yours',
+    text: 'Your financial records are yours to access, export, and share with the people you choose.',
+  },
+  {
+    Icon: CheckCircle2,
+    title: 'Clear, accountable systems',
+    text: 'We build policies and processes that make responsible data handling a daily practice.',
+  },
 ];
 
 export function SecurityPage() {
@@ -205,7 +254,11 @@ export function SecurityPage() {
 
       <section className="mk-section mk-section--cream">
         <div className="mk-container">
-          <SectionIntro kicker="A THOUGHTFUL FOUNDATION" title="Security that supports your confidence." text="We pair practical protections with plain language, so you can understand how your information is handled." />
+          <SectionIntro
+            kicker="A THOUGHTFUL FOUNDATION"
+            title="Security that supports your confidence."
+            text="We pair practical protections with plain language, so you can understand how your information is handled."
+          />
           <div className="mk-security-grid">
             {securityPoints.map(({ Icon, title, text }) => (
               <article className="mk-security-card" key={title}>
@@ -220,12 +273,23 @@ export function SecurityPage() {
 
       <section className="mk-section mk-section--blue">
         <div className="mk-container mk-split">
-          <div className="mk-demo-frame"><DashboardMockup /></div>
+          <div className="mk-demo-frame">
+            <DashboardMockup />
+          </div>
           <div>
             <span className="mk-eyebrow">YOU STAY IN CONTROL</span>
             <h2>Clear access. Clear records. Clear choices.</h2>
-            <p className="mk-lead">Manage your business with a system that makes sensitive work feel organized and grounded—not mysterious.</p>
-            <FeatureList items={['Invite the right people with the right level of access', 'Keep a cleaner record of the work that matters', 'Get help from a real person when you need it']} />
+            <p className="mk-lead">
+              Manage your business with a system that makes sensitive work feel organized and
+              grounded—not mysterious.
+            </p>
+            <FeatureList
+              items={[
+                'Invite the right people with the right level of access',
+                'Keep a cleaner record of the work that matters',
+                'Get help from a real person when you need it',
+              ]}
+            />
           </div>
         </div>
       </section>

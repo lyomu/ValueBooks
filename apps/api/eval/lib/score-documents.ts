@@ -1,4 +1,7 @@
-import { extractReceiptCandidate, type ReceiptCandidate } from '../../src/documents/receipt-extractor.ts';
+import {
+  extractReceiptCandidate,
+  type ReceiptCandidate,
+} from '../../src/documents/receipt-extractor.ts';
 import type { DocumentCase, GroundTruthField } from './document-fixtures.ts';
 
 export interface FieldScore {
@@ -15,7 +18,10 @@ export interface DocumentCaseResult {
   readonly caseId: string;
   readonly scanQuality: string;
   readonly candidate: ReturnType<typeof serializeCandidate>;
-  readonly fieldOutcomes: Record<string, 'true_positive' | 'false_positive' | 'false_negative' | 'correct_abstention' | 'incorrect_value'>;
+  readonly fieldOutcomes: Record<
+    string,
+    'true_positive' | 'false_positive' | 'false_negative' | 'correct_abstention' | 'incorrect_value'
+  >;
   readonly arithmeticValidCorrect: boolean;
   readonly categoryMatchTestable: boolean;
 }
@@ -38,7 +44,8 @@ function serializeCandidate(candidate: ReceiptCandidate) {
 function scoreField(
   truth: GroundTruthField<string>,
   actual: string | null,
-): 'true_positive' | 'false_positive' | 'false_negative' | 'correct_abstention' | 'incorrect_value' {
+):
+  'true_positive' | 'false_positive' | 'false_negative' | 'correct_abstention' | 'incorrect_value' {
   if (truth.correctlyNull) {
     return actual === null ? 'correct_abstention' : 'false_positive';
   }

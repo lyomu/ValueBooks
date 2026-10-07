@@ -32,6 +32,14 @@ update them only once a capability has passed its acceptance tests, and the gate
 **Scope authority:** `docs/BUILD_ROADMAP.md` Phase 13. This document adds implementation detail
 and staged enhancements; it does not mark roadmap or `docs/GAPS.md` items done.
 
+## Current verification status — 2026-10-06
+
+The successful command results recorded below are historical evidence for the 2026-09-14 commit,
+not a current green repository gate. On 2026-10-06, root lint and API typecheck/build pass after
+Prisma client generation; `format:check` fails in 79 files, the system-account catalog unit test
+fails, and the web production build fails with 35 lint/type-rule errors. The remaining live E2E,
+threat/privacy review, evaluation-set, and holdout work remains open.
+
 ## Outcome and fixed boundaries
 
 ValueBooks will use DeepSeek models to help users find, understand, and prepare accounting work.
@@ -253,7 +261,7 @@ priority is based on existing ValueBooks modules and the ability to verify resul
       deterministic receipt extractor's actual per-field accuracy on the document holdout, and a
       trivial keyword classifier's category accuracy on the question holdout (the latter's
       ceiling is not trustworthy yet — see the README's limitations section). **Not done:** no
-      inference or OCR *model* selection has happened (tesseract.js is the only OCR in use; no
+      inference or OCR _model_ selection has happened (tesseract.js is the only OCR in use; no
       model comparison has been run), since that depends on 13A's other gates and on
       `AI_MODE` actually being enabled for evaluation, which stays off.
 
@@ -439,14 +447,14 @@ route and calls `.process()` on the resulting attachment. Proven against real by
 hand-fed OCR text: a clean, valid PNG reaches `READY_FOR_REVIEW` with a real ClamAV engine version
 string and a real OCR text hash; the EICAR antivirus test string (a real string every AV engine,
 ClamAV included, flags without being actual malware) is quarantined by a genuine ClamAV detection
-*before* OCR ever runs (no OCR text recorded); a clean file whose content type isn't OCR-supported
+_before_ OCR ever runs (no OCR text recorded); a clean file whose content type isn't OCR-supported
 reaches `UNSUPPORTED_FOR_EXTRACTION`, not stuck or failed.
 
 **A real production bug, found and fixed by adding PDF coverage (2026-09-14):** the PDF branch of
 the pipeline was completely broken — any real PDF upload would have thrown
 `TypeError: CanvasFactory is not a constructor` inside `pdfjs-dist`'s `getDocument()` before a
 single page was parsed, because `PdfRasterizerService` passed an already-constructed
-`NodeCanvasFactory` *instance* where pdf.js's current API expects the *class itself* (it
+`NodeCanvasFactory` _instance_ where pdf.js's current API expects the _class itself_ (it
 instantiates it internally: `new CanvasFactory({ownerDocument, enableHWA})`). Every earlier test
 of this code path used hand-fed OCR text, never a real PDF, so this had never actually run. Fixed
 in `apps/api/src/documents/pdf-rasterizer.service.ts` by passing the class, not an instance. No
@@ -490,7 +498,7 @@ majority-vote prior category (2 of 3 posted expenses in one category correctly w
 `occurrences`/`totalObserved` counts) and correctly returns `null` with no posting history;
 `DraftNoteService.draftForExpense()` renders the expense's real recorded facts into the exact
 expected string, nothing invented; `VarianceInsightService.detect()` against a real 3-month
-baseline correctly flags a >=30%-significant increase and a brand-new category while *excluding* a
+baseline correctly flags a >=30%-significant increase and a brand-new category while _excluding_ a
 real but insignificant (10%) change — the exclusion case is what actually exercises the
 significance threshold, not just the flagging path.
 
@@ -590,7 +598,7 @@ correctness tests — this time actually true, not just claimed.
       `build` all pass clean. `npm run test --workspace=@valuebooks/api` passes 199/199 (33 new
       this pass: receipt-extractor, attachment zip-bomb/encrypted-PDF/type-spoofing adversarial
       cases, `FeatureFlagGuard`, and a prompt-injection adversarial test). `npm run test:integration
-      --workspace=@valuebooks/api` passes 457/457 across 66 files (up from 436/62 on 2026-09-14,
+  --workspace=@valuebooks/api` passes 457/457 across 66 files (up from 436/62 on 2026-09-14,
       see below), including a full 8-role permission-matrix/tenant-isolation/404-envelope sweep
       over all 353 organization-scoped routes (26 of them new this pass), a dedicated
       flag-kill-switch/pilot-rollout suite, and a bigint regression suite (below).
@@ -599,119 +607,120 @@ correctness tests — this time actually true, not just claimed.
       opportunistically.
 
       **Browser verification (2026-09-14):** a first Playwright pass
-      (`apps/web/e2e/phase13-ai-workflows.spec.ts`, following the existing `phaseNN-*.spec.ts`
-      convention) covers the report Explain panel (deterministic breakdown, AI-unavailable notice,
-      keyboard access, Escape-to-close, narrow-viewport layout), all six `insights` tabs, and
-      document search — 5 tests, passing across the desktop/tablet/mobile projects each is scoped
-      to. Getting there surfaced and fixed real problems, none of them hypothetical:
-      - The e2e harness itself was broken in four independent ways that had nothing to do with
-        Phase 13 code and had evidently gone unexercised for a while: `prepare.mjs`'s
-        `migrate deploy` never set `DATABASE_MIGRATION_URL` (this schema's `directUrl`), so it
-        silently migrated the *dev* database instead of `valuebooks_e2e`, leaving that database
-        frozen at Phase 12; `apps/web/package.json`'s `start` script pointed at
-        `.next/standalone/server.js` when this monorepo's standalone build actually nests it at
-        `.next/standalone/apps/web/server.js`; the standalone server never had `.next/static`
-        copied into it (Next's standalone mode doesn't do this automatically), so every asset
-        would have 404'd; and `playwright.config.ts` passed `--hostname`/`--port` as CLI args to a
-        server that only reads `HOSTNAME`/`PORT` env vars, so it always bound to the default
-        `0.0.0.0:3000` and the config's own health check just timed out. All four fixed and each
-        verified in isolation before relying on them together.
-      - `prepare.mjs`'s truncate-then-seed cycle wiped the Phase 13 feature flags (inserted by
-        migration) before every run, with nothing to put them back — the same class of problem
-        already fixed for the vitest harness in `test/support/app.ts`, just not carried over here.
-        Fixed by reseeding the five flags after truncation, mirroring that fix.
-      - **A real product bug**, reproducible only against non-empty aggregate data: `SUM()` over a
-        bigint expression returns PostgreSQL `numeric`, not `bigint`, and Prisma does not map that
-        back to a real JS `bigint` — mixing it into bigint arithmetic throws
-        `TypeError: Cannot mix BigInt and other types`. `cash-flow-scenario.service.ts`'s opening
-        cash position and `project-margin-adviser.service.ts`'s per-project margin query both had
-        this gap; every earlier test for them used a freshly-created, empty organization, where the
-        aggregate is always SQL `NULL` and the bug never fires. Fixed with explicit `::bigint`
-        casts, matching the pattern already used correctly elsewhere in both files, and covered by
-        a new regression suite (`test/phase13-insights-bigint.int.test.ts`) that posts real ledger
-        activity specifically to keep this from regressing silently again.
-      - While fixing that, found a second, related bug in the same query:
-        `project-margin-adviser.service.ts`'s "only show projects with unbilled work" filter
-        compared a (mistyped) bigint field to the string `'0'`, which is never `===`/`!==` equal
-        regardless of the actual value — the filter was a complete no-op, and the same mistyped
-        field would have thrown on `JSON.stringify` in the HTTP response for any organization with
-        real project data. Fixed alongside the cast fix; also covered by the new regression suite.
+              (`apps/web/e2e/phase13-ai-workflows.spec.ts`, following the existing `phaseNN-*.spec.ts`
+              convention) covers the report Explain panel (deterministic breakdown, AI-unavailable notice,
+              keyboard access, Escape-to-close, narrow-viewport layout), all six `insights` tabs, and
+              document search — 5 tests, passing across the desktop/tablet/mobile projects each is scoped
+              to. Getting there surfaced and fixed real problems, none of them hypothetical:
+              - The e2e harness itself was broken in four independent ways that had nothing to do with
+                Phase 13 code and had evidently gone unexercised for a while: `prepare.mjs`'s
+                `migrate deploy` never set `DATABASE_MIGRATION_URL` (this schema's `directUrl`), so it
+                silently migrated the *dev* database instead of `valuebooks_e2e`, leaving that database
+                frozen at Phase 12; `apps/web/package.json`'s `start` script pointed at
+                `.next/standalone/server.js` when this monorepo's standalone build actually nests it at
+                `.next/standalone/apps/web/server.js`; the standalone server never had `.next/static`
+                copied into it (Next's standalone mode doesn't do this automatically), so every asset
+                would have 404'd; and `playwright.config.ts` passed `--hostname`/`--port` as CLI args to a
+                server that only reads `HOSTNAME`/`PORT` env vars, so it always bound to the default
+                `0.0.0.0:3000` and the config's own health check just timed out. All four fixed and each
+                verified in isolation before relying on them together.
+              - `prepare.mjs`'s truncate-then-seed cycle wiped the Phase 13 feature flags (inserted by
+                migration) before every run, with nothing to put them back — the same class of problem
+                already fixed for the vitest harness in `test/support/app.ts`, just not carried over here.
+                Fixed by reseeding the five flags after truncation, mirroring that fix.
+              - **A real product bug**, reproducible only against non-empty aggregate data: `SUM()` over a
+                bigint expression returns PostgreSQL `numeric`, not `bigint`, and Prisma does not map that
+                back to a real JS `bigint` — mixing it into bigint arithmetic throws
+                `TypeError: Cannot mix BigInt and other types`. `cash-flow-scenario.service.ts`'s opening
+                cash position and `project-margin-adviser.service.ts`'s per-project margin query both had
+                this gap; every earlier test for them used a freshly-created, empty organization, where the
+                aggregate is always SQL `NULL` and the bug never fires. Fixed with explicit `::bigint`
+                casts, matching the pattern already used correctly elsewhere in both files, and covered by
+                a new regression suite (`test/phase13-insights-bigint.int.test.ts`) that posts real ledger
+                activity specifically to keep this from regressing silently again.
+              - While fixing that, found a second, related bug in the same query:
+                `project-margin-adviser.service.ts`'s "only show projects with unbilled work" filter
+                compared a (mistyped) bigint field to the string `'0'`, which is never `===`/`!==` equal
+                regardless of the actual value — the filter was a complete no-op, and the same mistyped
+                field would have thrown on `JSON.stringify` in the HTTP response for any organization with
+                real project data. Fixed alongside the cast fix; also covered by the new regression suite.
 
-      **Closed since (2026-09-14):** a live-infrastructure round trip through the real ClamAV/OCR
-      pipeline (`test/phase13-document-extraction-pipeline.int.test.ts`, 4 tests — real EICAR
-      quarantine, real tesseract OCR on both images and a real PDF, real unsupported-type
-      handling; closing out the PDF case found and fixed a real production bug, not just added
-      coverage — see 13D above); a cross-tenant citation
-      adversarial test (`test/ai.int.test.ts`, proving a real evidence-row id from a different
-      organization is rejected as an unsupported citation even though it genuinely exists); a
-      prompt-injection adversarial test (`test/ai.orchestrator.test.ts` — plants an instruction-like
-      payload directly in report evidence text and proves that even a model that fully obeyed it
-      (fabricating a citation and a digit-bearing summary) is still rejected by the same
-      deterministic validation every answer goes through); fixture-based correctness tests for
-      two more advisers (`test/phase13-insights-fixtures.int.test.ts` —
-      `InventoryPurchasingAdviserService`, `CollectionsPrioritizerService`); and correctness tests
-      for five of the six remaining 13F services with no raw-SQL bigint exposure
-      (`test/phase13-insights-fixtures-round2.int.test.ts`, 6 tests —
-      `CloseChecklistService` against a real unreconciled account, pending approval, unresolved
-      bank transaction, missing-receipt posted expense, and stale draft simultaneously;
-      `DocumentDiscrepancyService` against controlled amount/currency/date-mismatch fixtures and a
-      fully-matching control case; `CountryPackQaService` against a real adopted
-      `CountryPack`/`TaxPack`/`DocumentRule` fixture, covering all three source types and citation
-      fields; `BankMatchProposalService` against two real, distinct bank transactions with the
-      same amount — verifying the exact score formula and that claiming one via a real `Match` row
-      excludes it from a second transaction's proposals; `ApprovalBriefingService` across an
-      unchanged-since-submission and a changed-since-submission state on a real Bill). Two real,
-      narrow findings surfaced by writing these against actual service behavior rather than
-      assumptions: `StatementImportsService.import()` never populates `BankTransaction
-      .statementImportId` despite the column existing (not a bug to fix here, just something a
-      correctness test needed to work around by querying on `financialAccountId` instead); and two
-      CSV rows with identical date/description/amount collapse into one transaction via fingerprint
-      deduplication unless their `reference` differs. Together these three test files add 14
-      integration tests (436 → 450) and 1 unit test (198 → 199).
+              **Closed since (2026-09-14):** a live-infrastructure round trip through the real ClamAV/OCR
+              pipeline (`test/phase13-document-extraction-pipeline.int.test.ts`, 4 tests — real EICAR
+              quarantine, real tesseract OCR on both images and a real PDF, real unsupported-type
+              handling; closing out the PDF case found and fixed a real production bug, not just added
+              coverage — see 13D above); a cross-tenant citation
+              adversarial test (`test/ai.int.test.ts`, proving a real evidence-row id from a different
+              organization is rejected as an unsupported citation even though it genuinely exists); a
+              prompt-injection adversarial test (`test/ai.orchestrator.test.ts` — plants an instruction-like
+              payload directly in report evidence text and proves that even a model that fully obeyed it
+              (fabricating a citation and a digit-bearing summary) is still rejected by the same
+              deterministic validation every answer goes through); fixture-based correctness tests for
+              two more advisers (`test/phase13-insights-fixtures.int.test.ts` —
+              `InventoryPurchasingAdviserService`, `CollectionsPrioritizerService`); and correctness tests
+              for five of the six remaining 13F services with no raw-SQL bigint exposure
+              (`test/phase13-insights-fixtures-round2.int.test.ts`, 6 tests —
+              `CloseChecklistService` against a real unreconciled account, pending approval, unresolved
+              bank transaction, missing-receipt posted expense, and stale draft simultaneously;
+              `DocumentDiscrepancyService` against controlled amount/currency/date-mismatch fixtures and a
+              fully-matching control case; `CountryPackQaService` against a real adopted
+              `CountryPack`/`TaxPack`/`DocumentRule` fixture, covering all three source types and citation
+              fields; `BankMatchProposalService` against two real, distinct bank transactions with the
+              same amount — verifying the exact score formula and that claiming one via a real `Match` row
+              excludes it from a second transaction's proposals; `ApprovalBriefingService` across an
+              unchanged-since-submission and a changed-since-submission state on a real Bill). Two real,
+              narrow findings surfaced by writing these against actual service behavior rather than
+              assumptions: `StatementImportsService.import()` never populates `BankTransaction
+              .statementImportId` despite the column existing (not a bug to fix here, just something a
+              correctness test needed to work around by querying on `financialAccountId` instead); and two
+              CSV rows with identical date/description/amount collapse into one transaction via fingerprint
+              deduplication unless their `reference` differs. Together these three test files add 14
+              integration tests (436 → 450) and 1 unit test (198 → 199).
 
-      **Correction and actual close-out (2026-09-14):** the "closing out the full set of thirteen"
-      language originally here was wrong — round 2 above covered nine of the thirteen 13E/13F
-      services, missing `AuditEvidencePackService` (13F-P2's sixth service) and all three 13E
-      services (`CategorizationSuggestionService`, `DraftNoteService`, `VarianceInsightService`).
-      `test/phase13-insights-fixtures-round3.int.test.ts` (6 tests) closes those four for real,
-      and in doing so found a **third genuine production bug** this phase:
-      `AuditEvidencePackService.assemble()` crashed for every Expense — one of its three documented
-      entity types (`EXPENSE`/`BILL`/`INVOICE`) — because `EXPENSE` is not a valid
-      `ApprovalTargetType`, and the code cast past that mismatch (`as unknown as
-      ApprovalTargetType`) straight into a Prisma call that then threw a validation error before
-      any other section of the pack could be returned. Fixed by checking real enum membership
-      first and returning no approval requests for entity types the approval system doesn't cover,
-      rather than casting past the type system's own warning. Adds 6 more integration tests
-      (450 → 457). All thirteen 13E/13F services now genuinely have real-posted-data correctness
-      tests.
+              **Correction and actual close-out (2026-09-14):** the "closing out the full set of thirteen"
+              language originally here was wrong — round 2 above covered nine of the thirteen 13E/13F
+              services, missing `AuditEvidencePackService` (13F-P2's sixth service) and all three 13E
+              services (`CategorizationSuggestionService`, `DraftNoteService`, `VarianceInsightService`).
+              `test/phase13-insights-fixtures-round3.int.test.ts` (6 tests) closes those four for real,
+              and in doing so found a **third genuine production bug** this phase:
+              `AuditEvidencePackService.assemble()` crashed for every Expense — one of its three documented
+              entity types (`EXPENSE`/`BILL`/`INVOICE`) — because `EXPENSE` is not a valid
+              `ApprovalTargetType`, and the code cast past that mismatch (`as unknown as
+              ApprovalTargetType`) straight into a Prisma call that then threw a validation error before
+              any other section of the pack could be returned. Fixed by checking real enum membership
+              first and returning no approval requests for entity types the approval system doesn't cover,
+              rather than casting past the type system's own warning. Adds 6 more integration tests
+              (450 → 457). All thirteen 13E/13F services now genuinely have real-posted-data correctness
+              tests.
 
-      **E2E specs written, not yet run (2026-09-14):**
-      `apps/web/e2e/phase13-workflow-actions.spec.ts` covers all four remaining UI surfaces —
-      document extraction accept and dismiss, document discrepancy detection, bank match
-      proposals, and the approval briefing's "changed since submission" state — each seeding real
-      backend state via direct API calls (`apps/web/e2e/lib/api-fixtures.ts`; the demo seed data
-      has none of these: no bank transactions, approval requests, AI suggestions, or document
-      extractions) rather than mocking anything. The document-extraction tests required actually
-      fixing a real harness gap: the `document-extraction` BullMQ worker was never started for
-      E2E at all (only the API and web servers were), so an uploaded file's `DocumentExtraction`
-      row would have sat at `PENDING` forever — fixed by spawning it as a detached background
-      process from `prepare.mjs` once the build it depends on has finished (`webServer` array
-      entries start concurrently and have no way to depend on a sibling's build step, so a third
-      concurrent entry would have raced the build). A synthetic receipt image renderer
-      (`apps/web/e2e/lib/receipt-image.ts`, using `@napi-rs/canvas`) was smoke-tested end-to-end
-      through the real tesseract.js OCR before being relied on. All new/changed files pass
-      typecheck and lint. **Not yet run against live infrastructure**: the local machine had only
-      1.3GB of 15.7GB RAM free (unrelated concurrent work on the same machine, not anything this
-      session started), and the E2E harness's `nest build` step needs more than that — it failed
-      with an out-of-memory crash twice in a row. Per the user's explicit decision, this is left
-      for a later run once memory is available (`npx playwright test
-      phase13-workflow-actions.spec.ts --project=desktop` from `apps/web`) rather than claimed as
-      verified now.
+              **E2E specs written, not yet run (2026-09-14):**
+              `apps/web/e2e/phase13-workflow-actions.spec.ts` covers all four remaining UI surfaces —
+              document extraction accept and dismiss, document discrepancy detection, bank match
+              proposals, and the approval briefing's "changed since submission" state — each seeding real
+              backend state via direct API calls (`apps/web/e2e/lib/api-fixtures.ts`; the demo seed data
+              has none of these: no bank transactions, approval requests, AI suggestions, or document
+              extractions) rather than mocking anything. The document-extraction tests required actually
+              fixing a real harness gap: the `document-extraction` BullMQ worker was never started for
+              E2E at all (only the API and web servers were), so an uploaded file's `DocumentExtraction`
+              row would have sat at `PENDING` forever — fixed by spawning it as a detached background
+              process from `prepare.mjs` once the build it depends on has finished (`webServer` array
+              entries start concurrently and have no way to depend on a sibling's build step, so a third
+              concurrent entry would have raced the build). A synthetic receipt image renderer
+              (`apps/web/e2e/lib/receipt-image.ts`, using `@napi-rs/canvas`) was smoke-tested end-to-end
+              through the real tesseract.js OCR before being relied on. All new/changed files pass
+              typecheck and lint. **Not yet run against live infrastructure**: the local machine had only
+              1.3GB of 15.7GB RAM free (unrelated concurrent work on the same machine, not anything this
+              session started), and the E2E harness's `nest build` step needs more than that — it failed
+              with an out-of-memory crash twice in a row. Per the user's explicit decision, this is left
+              for a later run once memory is available (`npx playwright test
+              phase13-workflow-actions.spec.ts --project=desktop` from `apps/web`) rather than claimed as
+              verified now.
 
-      **Still not done:** 13A's threat model, 100-item evaluation set, and frozen-holdout quality
-      gates (first-pass drafts exist, not yet human-reviewed — see 13A above); and running the new
-      E2E specs against live infrastructure (written and
-      typecheck/lint-clean, blocked on local machine memory — see above).
+              **Still not done:** 13A's threat model, 100-item evaluation set, and frozen-holdout quality
+              gates (first-pass drafts exist, not yet human-reviewed — see 13A above); and running the new
+              E2E specs against live infrastructure (written and
+              typecheck/lint-clean, blocked on local machine memory — see above).
+
 - [x] Roll out behind per-organization feature flags: internal synthetic data, pilot tenants in
       private mode, then broader availability. Keep an immediate kill switch and model/version
       rollback. Do not turn on hosted mode as a side effect of a feature flag.

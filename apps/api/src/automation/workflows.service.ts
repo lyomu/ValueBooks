@@ -338,7 +338,7 @@ export class WorkflowsService {
             href: action.href,
             metadata: { eventId: event.id, ruleId: rule.id },
           });
-        } else {
+        } else if (action.type === 'CREATE_TASK') {
           await tx.automationTask.create({
             data: {
               organizationId: event.organizationId,
@@ -347,6 +347,43 @@ export class WorkflowsService {
               detail: action.detail ? interpolate(action.detail, event.payload) : undefined,
               assignedToUserId: action.assignedToUserId,
             },
+          });
+        } else {
+          const taskId = taskIdFromPayload(action.taskIdField, event.payload);
+          if (!taskId) {
+            throw new BadRequestException(
+              `Workflow action target field "${action.taskIdField}" must contain a task UUID.`,
+            );
+          }
+          const task = await tx.automationTask.findFirst({
+            where: { id: taskId, organizationId: event.organizationId },
+          });
+          // A deleted or cross-tenant task is deliberately a no-op. This makes delayed event
+          // delivery safe and, critically, never permits an action in one tenant to probe or
+          // modify another tenant's data.
+          if (!task) continue;
+          const updated = await tx.automationTask.update({
+            where: { id: task.id },
+            data: {
+              title: action.title ? interpolate(action.title, event.payload) : undefined,
+              detail:
+                action.detail === undefined
+                  ? undefined
+                  : action.detail === null
+                    ? null
+                    : interpolate(action.detail, event.payload),
+            },
+          });
+          await writeAuditEvent(tx, {
+            organizationId: event.organizationId,
+            actorUserId: rule.createdByUserId,
+            eventKey: 'automation.task_updated_by_workflow',
+            entityType: 'automation_task',
+            entityId: task.id,
+            action: AuditAction.UPDATE,
+            before: { title: task.title, detail: task.detail },
+            after: { title: updated.title, detail: updated.detail },
+            metadata: { eventId: event.id, ruleId: rule.id },
           });
         }
       }
@@ -447,12 +484,34 @@ function previewAction(action: WorkflowAction, payload: Record<string, unknown>)
       body: action.body ? interpolate(action.body, jsonPayload) : undefined,
     };
   }
+  if (action.type === 'CREATE_TASK') {
+    return {
+      type: action.type,
+      title: interpolate(action.title, jsonPayload),
+      detail: action.detail ? interpolate(action.detail, jsonPayload) : undefined,
+      assignedToUserId: action.assignedToUserId,
+    };
+  }
   return {
     type: action.type,
-    title: interpolate(action.title, jsonPayload),
-    detail: action.detail ? interpolate(action.detail, jsonPayload) : undefined,
-    assignedToUserId: action.assignedToUserId,
+    taskId: taskIdFromPayload(action.taskIdField, jsonPayload),
+    title: action.title ? interpolate(action.title, jsonPayload) : undefined,
+    detail:
+      action.detail === undefined
+        ? undefined
+        : action.detail === null
+          ? null
+          : interpolate(action.detail, jsonPayload),
   };
+}
+
+function taskIdFromPayload(field: string, payload: Prisma.JsonValue): string | undefined {
+  if (!payload || typeof payload !== 'object' || Array.isArray(payload)) return undefined;
+  const value = (payload as Record<string, unknown>)[field];
+  if (typeof value !== 'string') return undefined;
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value)
+    ? value
+    : undefined;
 }
 
 function isUniqueViolation(error: unknown): boolean {

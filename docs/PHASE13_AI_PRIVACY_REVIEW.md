@@ -10,13 +10,13 @@ system from a security rather than a privacy/data-residency angle.
 
 ## 1. The two inference modes, and what "private" actually means today
 
-| | `AI_MODE=private` | `AI_MODE=hosted_limited` |
-|---|---|---|
-| Where inference runs | An operator-provisioned, self-hosted DeepSeek-compatible endpoint — ValueBooks does not run or manage this itself | DeepSeek's own hosted API (`api.deepseek.com`) |
-| Who controls the data once sent | The tenant/operator, via whatever infrastructure they provisioned for `AI_PRIVATE_ENDPOINT` | DeepSeek, under DeepSeek's own hosted-service terms |
-| Default state | Off (`AI_MODE=off` is the schema default) | Off, and additionally gated by `phase13.hosted_ai_egress` seeded `default_enabled: false` everywhere |
-| Production config requirements | HTTPS endpoint, host must appear in `AI_PRIVATE_ALLOWED_HOSTS`, API key required | `AI_HOSTED_MODEL` always required, `AI_HOSTED_API_KEY` required in production |
-| Cross-border implication | Depends entirely on where the operator hosts the endpoint — this document cannot answer that for you; it is a deployment decision made per-installation | Data leaves to whatever infrastructure DeepSeek's hosted API runs on — jurisdiction, subprocessors, and retention are governed by DeepSeek's terms, not ValueBooks' code |
+|                                 | `AI_MODE=private`                                                                                                                                       | `AI_MODE=hosted_limited`                                                                                                                                                 |
+| ------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Where inference runs            | An operator-provisioned, self-hosted DeepSeek-compatible endpoint — ValueBooks does not run or manage this itself                                       | DeepSeek's own hosted API (`api.deepseek.com`)                                                                                                                           |
+| Who controls the data once sent | The tenant/operator, via whatever infrastructure they provisioned for `AI_PRIVATE_ENDPOINT`                                                             | DeepSeek, under DeepSeek's own hosted-service terms                                                                                                                      |
+| Default state                   | Off (`AI_MODE=off` is the schema default)                                                                                                               | Off, and additionally gated by `phase13.hosted_ai_egress` seeded `default_enabled: false` everywhere                                                                     |
+| Production config requirements  | HTTPS endpoint, host must appear in `AI_PRIVATE_ALLOWED_HOSTS`, API key required                                                                        | `AI_HOSTED_MODEL` always required, `AI_HOSTED_API_KEY` required in production                                                                                            |
+| Cross-border implication        | Depends entirely on where the operator hosts the endpoint — this document cannot answer that for you; it is a deployment decision made per-installation | Data leaves to whatever infrastructure DeepSeek's hosted API runs on — jurisdiction, subprocessors, and retention are governed by DeepSeek's terms, not ValueBooks' code |
 
 **The load-bearing point:** "private mode" is private in the sense that ValueBooks' code never
 talks to a public endpoint under that mode (the public DeepSeek host is explicitly rejected as a
@@ -59,7 +59,7 @@ off until someone says otherwise for a specific tenant.
    tenant, which is exactly why the technical gate is per-organization rather than global.
 3. **Lawful basis and tenant consent.** For a tenant to have their report data sent to a
    third-party hosted model, what consent or contractual basis is needed, and how/where is it
-   captured? The `ORGANIZATION`-scope `FeatureFlagRule` is the technical *mechanism* for turning
+   captured? The `ORGANIZATION`-scope `FeatureFlagRule` is the technical _mechanism_ for turning
    this on per-tenant — it is not itself evidence of informed consent having been obtained. A real
    consent-capture step (a signed agreement, an explicit in-product opt-in with disclosure, or
    equivalent) needs to exist and be referenced from wherever the flag gets flipped operationally.

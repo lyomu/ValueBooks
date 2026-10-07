@@ -11,8 +11,6 @@ import {
   Badge,
   Button,
   Card,
-  DataTable,
-  EmptyState,
   FieldMessage,
   ForbiddenState,
   Input,
@@ -23,7 +21,7 @@ import {
   StatusBadge,
   type DataTableColumn,
 } from '@valuebooks/ui';
-import { CheckCircle2, FilePlus2, Save, Search, Send, XCircle } from 'lucide-react';
+import { CheckCircle2, FilePlus2, Save, Send, XCircle } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -108,7 +106,12 @@ export function PurchaseOrdersPage() {
         </div>
       ),
     },
-    { key: 'status', header: 'Status', value: (order) => order.status, cell: (order) => <StatusBadge status={order.status} /> },
+    {
+      key: 'status',
+      header: 'Status',
+      value: (order) => order.status,
+      cell: (order) => <StatusBadge status={order.status} />,
+    },
     {
       key: 'receipt',
       header: 'Receipt',
@@ -156,14 +159,46 @@ export function PurchaseOrdersPage() {
             title="All purchase orders"
             rows={orders ?? []}
             columns={columns}
-            searchText={(order) => `${order.orderNumber ?? ''} ${order.vendorName} ${order.status} ${order.receiptStatus}`}
-            filter={<Select aria-label="Purchase order status" value={statusFilter} onChange={(event) => setStatusFilter(event.target.value as typeof statusFilter)}><option value="">All statuses</option>{statusOptions.map((status) => <option key={status} value={status}>{status}</option>)}</Select>}
-            primaryAction={canManage ? <Button asChild><Link href="/purchase-orders/new"><FilePlus2 aria-hidden="true" /> New</Link></Button> : null}
+            searchText={(order) =>
+              `${order.orderNumber ?? ''} ${order.vendorName} ${order.status} ${order.receiptStatus}`
+            }
+            filter={
+              <Select
+                aria-label="Purchase order status"
+                value={statusFilter}
+                onChange={(event) => setStatusFilter(event.target.value as typeof statusFilter)}
+              >
+                <option value="">All statuses</option>
+                {statusOptions.map((status) => (
+                  <option key={status} value={status}>
+                    {status}
+                  </option>
+                ))}
+              </Select>
+            }
+            primaryAction={
+              canManage ? (
+                <Button asChild>
+                  <Link href="/purchase-orders/new">
+                    <FilePlus2 aria-hidden="true" /> New
+                  </Link>
+                </Button>
+              ) : null
+            }
             onRefresh={() => void load()}
             importEnabled={false}
             onResetFilters={() => setStatusFilter('')}
-            emptyState={{ title: 'Plan every vendor purchase', description: 'Create, approve, and receive purchase orders in one place.', illustration: 'purchases', variant: 'onboarding' }}
-            noResultsState={{ title: 'No purchase orders match this view', description: 'Try a different search term or clear the active status filter.', variant: 'no-results' }}
+            emptyState={{
+              title: 'Plan every vendor purchase',
+              description: 'Create, approve, and receive purchase orders in one place.',
+              illustration: 'purchases',
+              variant: 'onboarding',
+            }}
+            noResultsState={{
+              title: 'No purchase orders match this view',
+              description: 'Try a different search term or clear the active status filter.',
+              variant: 'no-results',
+            }}
           />
         )}
       </div>

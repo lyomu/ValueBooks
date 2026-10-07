@@ -10,7 +10,6 @@ import {
   Badge,
   Button,
   Card,
-  DataTable,
   EmptyState,
   FieldMessage,
   ForbiddenState,
@@ -22,7 +21,7 @@ import {
   StatusBadge,
   type DataTableColumn,
 } from '@valuebooks/ui';
-import { CheckCircle2, PlusCircle, Save, Search } from 'lucide-react';
+import { CheckCircle2, PlusCircle, Save } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -139,14 +138,46 @@ export function PaymentsMadePage() {
             title="All payments made"
             rows={payments ?? []}
             columns={columns}
-            searchText={(payment) => `${payment.paymentNumber ?? ''} ${payment.vendorName} ${payment.status}`}
-            filter={<Select aria-label="Payment status" value={statusFilter} onChange={(event) => setStatusFilter(event.target.value as typeof statusFilter)}><option value="">All statuses</option>{statusOptions.map((status) => <option key={status} value={status}>{status}</option>)}</Select>}
-            primaryAction={canRecord ? <Button asChild><Link href="/payments-made/new"><PlusCircle aria-hidden="true" /> New</Link></Button> : null}
+            searchText={(payment) =>
+              `${payment.paymentNumber ?? ''} ${payment.vendorName} ${payment.status}`
+            }
+            filter={
+              <Select
+                aria-label="Payment status"
+                value={statusFilter}
+                onChange={(event) => setStatusFilter(event.target.value as typeof statusFilter)}
+              >
+                <option value="">All statuses</option>
+                {statusOptions.map((status) => (
+                  <option key={status} value={status}>
+                    {status}
+                  </option>
+                ))}
+              </Select>
+            }
+            primaryAction={
+              canRecord ? (
+                <Button asChild>
+                  <Link href="/payments-made/new">
+                    <PlusCircle aria-hidden="true" /> New
+                  </Link>
+                </Button>
+              ) : null
+            }
             onRefresh={() => void load()}
             importEnabled={false}
             onResetFilters={() => setStatusFilter('')}
-            emptyState={{ title: 'Pay vendors with confidence', description: 'Record payments and allocate them to the bills they settle.', illustration: 'purchases', variant: 'onboarding' }}
-            noResultsState={{ title: 'No payments match this view', description: 'Try a different search term or clear the active status filter.', variant: 'no-results' }}
+            emptyState={{
+              title: 'Pay vendors with confidence',
+              description: 'Record payments and allocate them to the bills they settle.',
+              illustration: 'purchases',
+              variant: 'onboarding',
+            }}
+            noResultsState={{
+              title: 'No payments match this view',
+              description: 'Try a different search term or clear the active status filter.',
+              variant: 'no-results',
+            }}
           />
         )}
       </div>

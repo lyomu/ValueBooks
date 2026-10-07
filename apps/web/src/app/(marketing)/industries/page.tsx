@@ -1,11 +1,4 @@
-import {
-  Building2,
-  Camera,
-  HeartHandshake,
-  Palette,
-  ShoppingBag,
-  Wrench,
-} from 'lucide-react';
+import { Building2, Camera, HeartHandshake, Palette, ShoppingBag, Wrench } from 'lucide-react';
 import { FinalCta, PageHero } from '../../../components/marketing/sections';
 
 const industries = [
@@ -67,10 +60,15 @@ export default function IndustriesPage() {
           <div className="mk-industry-grid">
             {industries.map(({ Icon, title, text, href }) => (
               <a className="mk-industry-card" href={href} key={title}>
-                <span className="mk-icon-tile"><Icon aria-hidden="true" size={25} /></span>
+                <span className="mk-icon-tile">
+                  <Icon aria-hidden="true" size={25} />
+                </span>
                 <h3>{title}</h3>
                 <p>{text}</p>
-                <span className="mk-text-link">Explore {title}<span aria-hidden="true"> →</span></span>
+                <span className="mk-text-link">
+                  Explore {title}
+                  <span aria-hidden="true"> →</span>
+                </span>
               </a>
             ))}
           </div>

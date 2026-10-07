@@ -138,16 +138,60 @@ export function PaymentsPage() {
           <Skeleton />
         ) : (
           <OperationalListing
-            title={statusFilter ? `${statusFilter.replaceAll('_', ' ').toLowerCase()} payments` : 'All received payments'}
+            title={
+              statusFilter
+                ? `${statusFilter.replaceAll('_', ' ').toLowerCase()} payments`
+                : 'All received payments'
+            }
             rows={payments ?? []}
             columns={columns}
-            searchText={(payment) => `${payment.paymentNumber ?? ''} ${payment.contactName} ${payment.status}`}
-            filter={<Select aria-label="Payment status" value={statusFilter} onChange={(event) => setStatusFilter(event.target.value as typeof statusFilter)}><option value="">All statuses</option>{statusOptions.map((status) => <option key={status} value={status}>{status.replaceAll('_', ' ')}</option>)}</Select>}
-            primaryAction={canRecord ? <Button onClick={() => setRecording(true)}><PlusCircle aria-hidden="true" /> New</Button> : null}
+            searchText={(payment) =>
+              `${payment.paymentNumber ?? ''} ${payment.contactName} ${payment.status}`
+            }
+            filter={
+              <Select
+                aria-label="Payment status"
+                value={statusFilter}
+                onChange={(event) => setStatusFilter(event.target.value as typeof statusFilter)}
+              >
+                <option value="">All statuses</option>
+                {statusOptions.map((status) => (
+                  <option key={status} value={status}>
+                    {status.replaceAll('_', ' ')}
+                  </option>
+                ))}
+              </Select>
+            }
+            primaryAction={
+              canRecord ? (
+                <Button onClick={() => setRecording(true)}>
+                  <PlusCircle aria-hidden="true" /> New
+                </Button>
+              ) : null
+            }
             onRefresh={() => void load()}
-            onImport={async () => undefined}
-            emptyState={{ title: 'Record the payments you receive', description: 'Capture a customer payment, then apply it against their open invoices.', illustration: 'sales', variant: 'onboarding', benefits: ['Keep invoice balances current', 'See unapplied funds before allocating them'] }}
-            noResultsState={{ title: 'No payments match this view', description: 'Clear the search or status filter to see received payments.', illustration: 'sales', variant: 'no-results', action: <Button variant="outline" onClick={() => setStatusFilter('')}>Clear filters</Button> }}
+            onImport={() => undefined}
+            emptyState={{
+              title: 'Record the payments you receive',
+              description: 'Capture a customer payment, then apply it against their open invoices.',
+              illustration: 'sales',
+              variant: 'onboarding',
+              benefits: [
+                'Keep invoice balances current',
+                'See unapplied funds before allocating them',
+              ],
+            }}
+            noResultsState={{
+              title: 'No payments match this view',
+              description: 'Clear the search or status filter to see received payments.',
+              illustration: 'sales',
+              variant: 'no-results',
+              action: (
+                <Button variant="outline" onClick={() => setStatusFilter('')}>
+                  Clear filters
+                </Button>
+              ),
+            }}
             onResetFilters={() => setStatusFilter('')}
             empty="No payments match this view."
           />
@@ -195,7 +239,9 @@ export function NewPaymentPage() {
   }, []);
 
   if (!workspace.loading && organization && !canRecord) {
-    return <ForbiddenState description="Ask an organization owner, administrator, or accountant to grant payment access." />;
+    return (
+      <ForbiddenState description="Ask an organization owner, administrator, or accountant to grant payment access." />
+    );
   }
 
   return (

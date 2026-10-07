@@ -112,7 +112,9 @@ async function grantTestRuntimePrivileges(migrationUrl: string): Promise<void> {
     await admin.query(
       `GRANT SELECT, INSERT, UPDATE, DELETE, TRUNCATE ON ALL TABLES IN SCHEMA public TO ${quotedRole}`,
     );
-    await admin.query(`GRANT USAGE, SELECT, UPDATE ON ALL SEQUENCES IN SCHEMA public TO ${quotedRole}`);
+    await admin.query(
+      `GRANT USAGE, SELECT, UPDATE ON ALL SEQUENCES IN SCHEMA public TO ${quotedRole}`,
+    );
   } finally {
     await admin.end();
   }
@@ -120,9 +122,13 @@ async function grantTestRuntimePrivileges(migrationUrl: string): Promise<void> {
 
 function runtimeRoleName(): string {
   loadEnvFiles();
-  const role = decodeURIComponent(new URL(process.env.DATABASE_URL ?? DEFAULT_RUNTIME_URL).username);
+  const role = decodeURIComponent(
+    new URL(process.env.DATABASE_URL ?? DEFAULT_RUNTIME_URL).username,
+  );
   if (!/^[A-Za-z_][A-Za-z0-9_]*$/.test(role)) {
-    throw new Error('The integration runtime database role must be a simple PostgreSQL identifier.');
+    throw new Error(
+      'The integration runtime database role must be a simple PostgreSQL identifier.',
+    );
   }
   return role;
 }

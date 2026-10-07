@@ -293,30 +293,36 @@ export class DemoWeekExtrasSeedService {
     state: WeekState,
   ): Promise<void> {
     const sheets = [
-      { key: 'grace', email: 'demo.accountant@valuebooks.local', project: 'westlands-fitout', hours: ['7.50', '8.00', '6.00', '7.00', '8.00'] },
-      { key: 'musa', email: 'demo.sales@valuebooks.local', project: 'tumaini-refit', hours: ['4.00', '5.50', '6.00', '4.50', '5.00'] },
+      {
+        key: 'grace',
+        email: 'demo.accountant@valuebooks.local',
+        project: 'westlands-fitout',
+        hours: ['7.50', '8.00', '6.00', '7.00', '8.00'],
+      },
+      {
+        key: 'musa',
+        email: 'demo.sales@valuebooks.local',
+        project: 'tumaini-refit',
+        hours: ['4.00', '5.50', '6.00', '4.50', '5.00'],
+      },
     ] as const;
     for (const sheet of sheets) {
       const userId = await this.userId(sheet.email);
       const entryIds: string[] = [];
       for (const [index, hours] of sheet.hours.entries()) {
-        const entry = await this.step(
-          context,
-          `time:${sheet.key}:${index}`,
-          'TIME_ENTRY',
-          () =>
-            this.projects.createTimeEntry(
-              context,
-              owner,
-              {
-                projectId: required(state.projects.get(sheet.project), 'Unknown timesheet project.'),
-                userId,
-                entryDate: week.day(index - 6),
-                hours,
-                note: `Demo week - day ${index + 1}`,
-              },
-              metadata,
-            ),
+        const entry = await this.step(context, `time:${sheet.key}:${index}`, 'TIME_ENTRY', () =>
+          this.projects.createTimeEntry(
+            context,
+            owner,
+            {
+              projectId: required(state.projects.get(sheet.project), 'Unknown timesheet project.'),
+              userId,
+              entryDate: week.day(index - 6),
+              hours,
+              note: `Demo week - day ${index + 1}`,
+            },
+            metadata,
+          ),
         );
         entryIds.push(entry.id);
       }
@@ -375,10 +381,15 @@ export class DemoWeekExtrasSeedService {
             metadata,
           ),
       );
-      await this.step(context, `approval-policy:${target.type}:activate`, 'APPROVAL_POLICY', async () => {
-        await this.approvals.setPolicyStatus(context, owner, policy.id, 'ACTIVE', metadata);
-        return { id: policy.id };
-      });
+      await this.step(
+        context,
+        `approval-policy:${target.type}:activate`,
+        'APPROVAL_POLICY',
+        async () => {
+          await this.approvals.setPolicyStatus(context, owner, policy.id, 'ACTIVE', metadata);
+          return { id: policy.id };
+        },
+      );
     }
     for (const target of targets) {
       const targetId = required(target.id, `Missing the ${target.label} awaiting approval.`);
@@ -394,7 +405,10 @@ export class DemoWeekExtrasSeedService {
     state: WeekState,
   ): Promise<void> {
     for (const definition of INVOICE_COMMENTS) {
-      const invoiceId = required(state.invoices.get(definition.invoice), `Unknown invoice ${definition.invoice}.`);
+      const invoiceId = required(
+        state.invoices.get(definition.invoice),
+        `Unknown invoice ${definition.invoice}.`,
+      );
       for (const [index, body] of definition.comments.entries()) {
         await this.step(context, `comment:${definition.invoice}:${index}`, 'COMMENT', () =>
           this.collaboration.addCommentInternal(context, owner, 'INVOICE', invoiceId, {
@@ -468,7 +482,10 @@ export class DemoWeekExtrasSeedService {
       await this.prisma.notification.createMany({
         data: NOTIFICATIONS.map((notification, index) => ({
           organizationId: context.id,
-          recipientUserId: required(users.get(notification.recipient), `Missing user ${notification.recipient}.`).id,
+          recipientUserId: required(
+            users.get(notification.recipient),
+            `Missing user ${notification.recipient}.`,
+          ).id,
           eventKey: notification.eventKey,
           title: notification.title,
           body: notification.body,
@@ -548,20 +565,32 @@ export class DemoWeekExtrasSeedService {
     state: WeekState,
   ): Promise<void> {
     for (const definition of ATTACHMENTS) {
-      const entityId = (definition.entityType === 'INVOICE' ? state.invoices : state.bills).get(definition.key);
+      const entityId = (definition.entityType === 'INVOICE' ? state.invoices : state.bills).get(
+        definition.key,
+      );
       if (!entityId) continue;
       try {
-        await this.step(context, `attachment:${definition.entityType}:${definition.key}`, 'ATTACHMENT', () => {
-          const buffer = Buffer.from(definition.content, 'utf8');
-          return this.attachments.upload(
-            context,
-            owner,
-            definition.entityType,
-            entityId,
-            { originalname: definition.filename, mimetype: 'text/plain', size: buffer.length, buffer },
-            metadata,
-          );
-        });
+        await this.step(
+          context,
+          `attachment:${definition.entityType}:${definition.key}`,
+          'ATTACHMENT',
+          () => {
+            const buffer = Buffer.from(definition.content, 'utf8');
+            return this.attachments.upload(
+              context,
+              owner,
+              definition.entityType,
+              entityId,
+              {
+                originalname: definition.filename,
+                mimetype: 'text/plain',
+                size: buffer.length,
+                buffer,
+              },
+              metadata,
+            );
+          },
+        );
       } catch (error) {
         this.logger.warn(
           `Skipped attachment ${definition.filename}: ${error instanceof Error ? error.message : String(error)}`,
@@ -588,7 +617,13 @@ export class DemoWeekExtrasSeedService {
     });
     if (!period) return;
     await this.step(context, 'period:close-earlier', 'FISCAL_PERIOD', async () => {
-      await this.periods.close(context, owner, period.id, { note: 'Closed for the demo week' }, metadata);
+      await this.periods.close(
+        context,
+        owner,
+        period.id,
+        { note: 'Closed for the demo week' },
+        metadata,
+      );
       return { id: period.id };
     });
   }
@@ -618,16 +653,96 @@ interface ManualJournalDefinition {
 
 /** Ten manual journals: eight posted, one posted then reversed, one draft. */
 const MANUAL_JOURNALS: readonly ManualJournalDefinition[] = [
-  { key: 'insurance', on: -6, description: 'Annual insurance premium prepaid', debit: '1350', credit: '1010', amountMinor: '3600000', target: 'POSTED' },
-  { key: 'software', on: -5, description: 'Accounting software subscription', debit: '5150', credit: '1010', amountMinor: '450000', target: 'POSTED' },
-  { key: 'reclass', on: -4, description: 'Reclassify fuel from office supplies to transport', debit: '5080', credit: '5060', amountMinor: '45000', target: 'POSTED' },
-  { key: 'welfare', on: -4, description: 'Staff tea and coffee', debit: '5050', credit: '1000', amountMinor: '85000', target: 'POSTED' },
-  { key: 'internet', on: -3, description: 'Office internet - September', debit: '5020', credit: '1010', amountMinor: '650000', target: 'POSTED' },
-  { key: 'training', on: -3, description: 'Staff training workshop', debit: '5230', credit: '1010', amountMinor: '900000', target: 'POSTED' },
-  { key: 'security', on: -2, description: 'Security guard services', debit: '5240', credit: '1010', amountMinor: '1200000', target: 'POSTED' },
-  { key: 'wrong', on: -2, description: 'Licence fee posted to the wrong account', debit: '5160', credit: '1010', amountMinor: '300000', target: 'REVERSED' },
-  { key: 'permits', on: -1, description: 'County permits', debit: '5160', credit: '1000', amountMinor: '200000', target: 'POSTED' },
-  { key: 'draft', on: 0, description: 'Travel accrual - awaiting receipts', debit: '5090', credit: '1010', amountMinor: '250000', target: 'DRAFT' },
+  {
+    key: 'insurance',
+    on: -6,
+    description: 'Annual insurance premium prepaid',
+    debit: '1350',
+    credit: '1010',
+    amountMinor: '3600000',
+    target: 'POSTED',
+  },
+  {
+    key: 'software',
+    on: -5,
+    description: 'Accounting software subscription',
+    debit: '5150',
+    credit: '1010',
+    amountMinor: '450000',
+    target: 'POSTED',
+  },
+  {
+    key: 'reclass',
+    on: -4,
+    description: 'Reclassify fuel from office supplies to transport',
+    debit: '5080',
+    credit: '5060',
+    amountMinor: '45000',
+    target: 'POSTED',
+  },
+  {
+    key: 'welfare',
+    on: -4,
+    description: 'Staff tea and coffee',
+    debit: '5050',
+    credit: '1000',
+    amountMinor: '85000',
+    target: 'POSTED',
+  },
+  {
+    key: 'internet',
+    on: -3,
+    description: 'Office internet - September',
+    debit: '5020',
+    credit: '1010',
+    amountMinor: '650000',
+    target: 'POSTED',
+  },
+  {
+    key: 'training',
+    on: -3,
+    description: 'Staff training workshop',
+    debit: '5230',
+    credit: '1010',
+    amountMinor: '900000',
+    target: 'POSTED',
+  },
+  {
+    key: 'security',
+    on: -2,
+    description: 'Security guard services',
+    debit: '5240',
+    credit: '1010',
+    amountMinor: '1200000',
+    target: 'POSTED',
+  },
+  {
+    key: 'wrong',
+    on: -2,
+    description: 'Licence fee posted to the wrong account',
+    debit: '5160',
+    credit: '1010',
+    amountMinor: '300000',
+    target: 'REVERSED',
+  },
+  {
+    key: 'permits',
+    on: -1,
+    description: 'County permits',
+    debit: '5160',
+    credit: '1000',
+    amountMinor: '200000',
+    target: 'POSTED',
+  },
+  {
+    key: 'draft',
+    on: 0,
+    description: 'Travel accrual - awaiting receipts',
+    debit: '5090',
+    credit: '1010',
+    amountMinor: '250000',
+    target: 'DRAFT',
+  },
 ];
 
 const INVOICE_COMMENTS: readonly { invoice: string; comments: readonly string[] }[] = [
@@ -641,7 +756,10 @@ const INVOICE_COMMENTS: readonly { invoice: string; comments: readonly string[] 
   { invoice: 'usd', comments: ['Customer asked for the USD statement before paying.'] },
   {
     invoice: 'thirty-day',
-    comments: ['Delivery confirmed by the warehouse.', 'Customer disputed one line - checking the delivery note.'],
+    comments: [
+      'Delivery confirmed by the warehouse.',
+      'Customer disputed one line - checking the delivery note.',
+    ],
   },
 ];
 
@@ -653,17 +771,69 @@ const NOTIFICATIONS: readonly {
   href: string;
   read: boolean;
 }[] = [
-  { recipient: 'OWNER', eventKey: 'approval.submitted', title: 'Approval requested: quote', body: 'A quote is waiting for sign-off.', href: '/approvals', read: false },
-  { recipient: 'OWNER', eventKey: 'invoice.overdue', title: 'Invoice overdue', body: 'An invoice is 45 days past issue and unpaid.', href: '/invoices', read: false },
-  { recipient: 'OWNER', eventKey: 'payment.recorded', title: 'Payment received', body: 'A customer payment was recorded.', href: '/payments', read: true },
-  { recipient: 'ADMIN', eventKey: 'approval.submitted', title: 'You have 3 approvals waiting', body: 'A quote, an invoice and a bill need your decision.', href: '/approvals', read: false },
-  { recipient: 'ADMIN', eventKey: 'reconciliation.completed', title: 'Reconciliation completed', body: 'The current account reconciliation balanced.', href: '/reconciliations', read: true },
-  { recipient: 'ACCOUNTANT', eventKey: 'bill.posted', title: 'Bill posted', body: 'A supplier bill was posted to accounts payable.', href: '/bills', read: false },
+  {
+    recipient: 'OWNER',
+    eventKey: 'approval.submitted',
+    title: 'Approval requested: quote',
+    body: 'A quote is waiting for sign-off.',
+    href: '/approvals',
+    read: false,
+  },
+  {
+    recipient: 'OWNER',
+    eventKey: 'invoice.overdue',
+    title: 'Invoice overdue',
+    body: 'An invoice is 45 days past issue and unpaid.',
+    href: '/invoices',
+    read: false,
+  },
+  {
+    recipient: 'OWNER',
+    eventKey: 'payment.recorded',
+    title: 'Payment received',
+    body: 'A customer payment was recorded.',
+    href: '/payments',
+    read: true,
+  },
+  {
+    recipient: 'ADMIN',
+    eventKey: 'approval.submitted',
+    title: 'You have 3 approvals waiting',
+    body: 'A quote, an invoice and a bill need your decision.',
+    href: '/approvals',
+    read: false,
+  },
+  {
+    recipient: 'ADMIN',
+    eventKey: 'reconciliation.completed',
+    title: 'Reconciliation completed',
+    body: 'The current account reconciliation balanced.',
+    href: '/reconciliations',
+    read: true,
+  },
+  {
+    recipient: 'ACCOUNTANT',
+    eventKey: 'bill.posted',
+    title: 'Bill posted',
+    body: 'A supplier bill was posted to accounts payable.',
+    href: '/bills',
+    read: false,
+  },
 ];
 
 const EXTRA_TENANTS = [
-  { legalName: 'Mwangaza Traders Ltd', tradingName: 'Mwangaza Traders', creator: 'ACCOUNTANT', suspended: false },
-  { legalName: 'Pwani Freight Ltd', tradingName: 'Pwani Freight', creator: 'SALES', suspended: true },
+  {
+    legalName: 'Mwangaza Traders Ltd',
+    tradingName: 'Mwangaza Traders',
+    creator: 'ACCOUNTANT',
+    suspended: false,
+  },
+  {
+    legalName: 'Pwani Freight Ltd',
+    tradingName: 'Pwani Freight',
+    creator: 'SALES',
+    suspended: true,
+  },
 ] as const;
 
 const ATTACHMENTS: readonly {
@@ -672,8 +842,28 @@ const ATTACHMENTS: readonly {
   filename: string;
   content: string;
 }[] = [
-  { entityType: 'INVOICE', key: 'aging-45', filename: 'signed-delivery-note.txt', content: 'Delivery note DN-2291 signed by the customer on receipt.' },
-  { entityType: 'INVOICE', key: 'usd', filename: 'export-packing-list.txt', content: 'Packing list for the USD order: 20 solar panels, 30 air fresheners.' },
-  { entityType: 'BILL', key: 'received', filename: 'supplier-invoice-TPS-2291.txt', content: 'Supplier invoice TPS-INV-2291 for tiles and padlocks.' },
-  { entityType: 'BILL', key: 'overdue', filename: 'statement-of-account.txt', content: 'Nairobi Stationery Mart statement - August balance outstanding.' },
+  {
+    entityType: 'INVOICE',
+    key: 'aging-45',
+    filename: 'signed-delivery-note.txt',
+    content: 'Delivery note DN-2291 signed by the customer on receipt.',
+  },
+  {
+    entityType: 'INVOICE',
+    key: 'usd',
+    filename: 'export-packing-list.txt',
+    content: 'Packing list for the USD order: 20 solar panels, 30 air fresheners.',
+  },
+  {
+    entityType: 'BILL',
+    key: 'received',
+    filename: 'supplier-invoice-TPS-2291.txt',
+    content: 'Supplier invoice TPS-INV-2291 for tiles and padlocks.',
+  },
+  {
+    entityType: 'BILL',
+    key: 'overdue',
+    filename: 'statement-of-account.txt',
+    content: 'Nairobi Stationery Mart statement - August balance outstanding.',
+  },
 ];

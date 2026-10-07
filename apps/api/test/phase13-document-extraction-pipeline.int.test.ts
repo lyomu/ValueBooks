@@ -169,9 +169,11 @@ describe('Document extraction pipeline against a real ClamAV and OCR backend', (
       await harness.prisma.auditEvent.count({
         where: {
           organizationId: context.id,
-          entityId: (await harness.prisma.attachment.findUniqueOrThrow({
-            where: { id: attachmentId },
-          })).entityId,
+          entityId: (
+            await harness.prisma.attachment.findUniqueOrThrow({
+              where: { id: attachmentId },
+            })
+          ).entityId,
           eventKey: 'documents.extraction_ready',
         },
       }),

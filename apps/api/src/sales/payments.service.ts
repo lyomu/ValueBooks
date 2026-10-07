@@ -164,7 +164,11 @@ export class PaymentsService {
         });
       }
 
-      const depositAccount = await this.resolveDepositAccount(tx, context.id, input.depositAccountId);
+      const depositAccount = await this.resolveDepositAccount(
+        tx,
+        context.id,
+        input.depositAccountId,
+      );
       const arAccount = contact.receivableAccountId
         ? await tx.ledgerAccount.findUniqueOrThrow({ where: { id: contact.receivableAccountId } })
         : await this.ledger.accountBySystemKey(context.id, 'accounts_receivable', tx);
@@ -219,13 +223,8 @@ export class PaymentsService {
         ...(withholdingTaxMinor > 0n
           ? [
               line(
-                (
-                  await this.ledger.accountBySystemKey(
-                    context.id,
-                    'withholding_tax_receivable',
-                    tx,
-                  )
-                ).id,
+                (await this.ledger.accountBySystemKey(context.id, 'withholding_tax_receivable', tx))
+                  .id,
                 withholdingTaxMinor,
                 0n,
               ),

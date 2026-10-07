@@ -22,7 +22,6 @@ import {
   Send,
   Settings2,
   Share2,
-  Sparkles,
   Trash2,
   Truck,
   WalletCards,
@@ -280,21 +279,24 @@ export function InvoiceDetailPane({
     setError(null);
     setNotice(null);
     try {
-      const response = await apiRequest<InvoiceResponse>(`/organizations/${organizationId}/invoices`, {
-        method: 'POST',
-        body: JSON.stringify({
-          contactId: invoice.contactId,
-          currency: invoice.currency,
-          lines: seedFromInvoice().lines.map((line) => ({
-            itemId: line.itemId ?? undefined,
-            description: line.itemId ? undefined : line.description,
-            quantity: line.quantity,
-            unitPriceMinor: line.unitPriceMinor,
-            discountMinor: line.discountMinor === '0' ? undefined : line.discountMinor,
-            taxCodeId: line.taxCodeId ?? undefined,
-          })),
-        }),
-      });
+      const response = await apiRequest<InvoiceResponse>(
+        `/organizations/${organizationId}/invoices`,
+        {
+          method: 'POST',
+          body: JSON.stringify({
+            contactId: invoice.contactId,
+            currency: invoice.currency,
+            lines: seedFromInvoice().lines.map((line) => ({
+              itemId: line.itemId ?? undefined,
+              description: line.itemId ? undefined : line.description,
+              quantity: line.quantity,
+              unitPriceMinor: line.unitPriceMinor,
+              discountMinor: line.discountMinor === '0' ? undefined : line.discountMinor,
+              taxCodeId: line.taxCodeId ?? undefined,
+            })),
+          }),
+        },
+      );
       router.push(`/invoices/${response.data.id}`);
     } catch (caught) {
       setError(caught instanceof ApiError ? caught.message : 'The invoice could not be cloned.');
@@ -402,14 +404,18 @@ export function InvoiceDetailPane({
           <button
             type="button"
             className="rb-invoice-toolbar__button"
-            onClick={sendInvoice}
+            onClick={() => void sendInvoice()}
             disabled={disabled}
           >
             <Send aria-hidden="true" />
             <span>{busy === 'send' ? 'Sending…' : 'Send Email'}</span>
           </button>
         ) : null}
-        <button type="button" className="rb-invoice-toolbar__button" onClick={shareLink}>
+        <button
+          type="button"
+          className="rb-invoice-toolbar__button"
+          onClick={() => void shareLink()}
+        >
           <Share2 aria-hidden="true" />
           <span>Share</span>
         </button>
@@ -576,7 +582,11 @@ export function InvoiceDetailPane({
                 label="Delete"
                 danger
                 disabled={disabled || !canDeleteNow}
-                title={canDeleteNow ? undefined : 'Only draft invoices can be deleted; void issued invoices instead.'}
+                title={
+                  canDeleteNow
+                    ? undefined
+                    : 'Only draft invoices can be deleted; void issued invoices instead.'
+                }
                 onSelect={() => {
                   close();
                   void deleteInvoice();
@@ -609,7 +619,6 @@ export function InvoiceDetailPane({
 
         <section className="rb-invoice-next" aria-label="What's next">
           <div className="rb-invoice-next__row">
-            <Sparkles aria-hidden="true" />
             <p>
               <strong>WHAT&apos;S NEXT?</strong>{' '}
               {isVoid ? (
@@ -622,7 +631,11 @@ export function InvoiceDetailPane({
                 <>
                   Payment is overdue. Send a{' '}
                   {canSendNow ? (
-                    <button type="button" className="rb-invoice-next__link" onClick={sendInvoice}>
+                    <button
+                      type="button"
+                      className="rb-invoice-next__link"
+                      onClick={() => void sendInvoice()}
+                    >
                       payment reminder
                     </button>
                   ) : (
@@ -650,7 +663,7 @@ export function InvoiceDetailPane({
               <button
                 type="button"
                 className="rb-invoice-next__cta"
-                onClick={issueInvoice}
+                onClick={() => void issueInvoice()}
                 disabled={disabled}
               >
                 <Check aria-hidden="true" />
@@ -728,7 +741,12 @@ export function InvoiceDetailPane({
               />
             </div>
             <footer className="rb-invoice-dialog__footer">
-              <Button type="button" variant="outline" onClick={() => setDialog(null)} disabled={saving}>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setDialog(null)}
+                disabled={saving}
+              >
                 Cancel
               </Button>
               <Button type="submit" loading={saving}>
@@ -795,7 +813,12 @@ export function InvoiceDetailPane({
               />
             </div>
             <footer className="rb-invoice-dialog__footer">
-              <Button type="button" variant="outline" onClick={() => setDialog(null)} disabled={saving}>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setDialog(null)}
+                disabled={saving}
+              >
                 Cancel
               </Button>
               <Button type="submit" loading={saving}>

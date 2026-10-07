@@ -13,6 +13,7 @@ import {
 import { DomainEventsService } from './domain-events.service.js';
 import { RecurringScheduleRunnerService } from './recurring-schedule-runner.service.js';
 import { RemindersService } from './reminders.service.js';
+import { AsyncReportExportService } from '../reporting/async-report-export.service.js';
 import { ScheduledReportRunnerService } from './scheduled-report-runner.service.js';
 import { SchedulerService } from './scheduler.service.js';
 import { WorkflowsService } from './workflows.service.js';
@@ -35,6 +36,7 @@ export class AutomationWorker implements OnModuleInit, OnModuleDestroy {
     private readonly scheduledReports: ScheduledReportRunnerService,
     private readonly scheduler: SchedulerService,
     private readonly reminders: RemindersService,
+    private readonly asyncExports: AsyncReportExportService,
   ) {}
 
   onModuleInit(): void {
@@ -81,6 +83,7 @@ export class AutomationWorker implements OnModuleInit, OnModuleDestroy {
       const handler = await this.scheduler.handlerForExecution(data.executionId);
       if (!handler) return;
       if (handler === 'report.scheduled') await this.scheduledReports.execute(data.executionId);
+      else if (handler === 'report.export') await this.asyncExports.execute(data.executionId);
       else if (handler.startsWith('recurring.')) await this.recurring.execute(data.executionId);
       else if (handler === 'invoice.reminder') await this.reminders.execute(data.executionId);
       else throw new Error(`No scheduled handler is registered for ${handler}.`);

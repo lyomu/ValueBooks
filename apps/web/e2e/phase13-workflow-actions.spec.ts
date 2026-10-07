@@ -42,7 +42,11 @@ test.describe('Phase 13 document extraction review panel', () => {
     test.setTimeout(120_000);
     await signIn(page);
     const organizationId = await getActiveOrganizationId(page);
-    const bankAccountId = await findAccountIdByName(page, organizationId, 'Bank account - operating');
+    const bankAccountId = await findAccountIdByName(
+      page,
+      organizationId,
+      'Bank account - operating',
+    );
 
     const expense = await apiPost<{ data: { id: string } }>(
       page,
@@ -87,7 +91,11 @@ test.describe('Phase 13 document extraction review panel', () => {
     test.setTimeout(120_000);
     await signIn(page);
     const organizationId = await getActiveOrganizationId(page);
-    const bankAccountId = await findAccountIdByName(page, organizationId, 'Bank account - operating');
+    const bankAccountId = await findAccountIdByName(
+      page,
+      organizationId,
+      'Bank account - operating',
+    );
 
     const expense = await apiPost<{ data: { id: string } }>(
       page,
@@ -132,7 +140,11 @@ test.describe('Phase 13 document discrepancy detection', () => {
     test.setTimeout(120_000);
     await signIn(page);
     const organizationId = await getActiveOrganizationId(page);
-    const bankAccountId = await findAccountIdByName(page, organizationId, 'Bank account - operating');
+    const bankAccountId = await findAccountIdByName(
+      page,
+      organizationId,
+      'Bank account - operating',
+    );
 
     // Recorded at 500.00; the receipt below reads 1,100.00 -- a deliberate mismatch.
     const expense = await apiPost<{ data: { id: string } }>(
@@ -193,7 +205,11 @@ test.describe('Phase 13 bank match proposals', () => {
     await signIn(page);
     const organization = await getActiveOrganization(page);
     const organizationId = organization.id;
-    const bankGlAccountId = await findAccountIdByName(page, organizationId, 'Bank account - operating');
+    const bankGlAccountId = await findAccountIdByName(
+      page,
+      organizationId,
+      'Bank account - operating',
+    );
 
     const financialAccount = await apiPost<{ data: { id: string } }>(
       page,
@@ -255,7 +271,11 @@ test.describe('Phase 13 approval briefing', () => {
     test.setTimeout(90_000);
     await signIn(page);
     const organizationId = await getActiveOrganizationId(page);
-    const expenseAccountId = await findAccountIdByName(page, organizationId, 'Miscellaneous expense');
+    const expenseAccountId = await findAccountIdByName(
+      page,
+      organizationId,
+      'Miscellaneous expense',
+    );
 
     const vendorA = await apiPost<{ data: { id: string } }>(
       page,
@@ -332,8 +352,16 @@ test.describe('Phase 13 categorization suggestion', () => {
     test.setTimeout(90_000);
     await signIn(page);
     const organizationId = await getActiveOrganizationId(page);
-    const bankAccountId = await findAccountIdByName(page, organizationId, 'Bank account - operating');
-    const expenseAccountId = await findAccountIdByName(page, organizationId, 'Miscellaneous expense');
+    const bankAccountId = await findAccountIdByName(
+      page,
+      organizationId,
+      'Bank account - operating',
+    );
+    const expenseAccountId = await findAccountIdByName(
+      page,
+      organizationId,
+      'Miscellaneous expense',
+    );
 
     const vendor = await apiPost<{ data: { id: string } }>(
       page,

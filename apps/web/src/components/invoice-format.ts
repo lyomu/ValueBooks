@@ -34,7 +34,8 @@ export function daysOverdue(dueDate: string | null, balanceMinor: string, status
 export function paymentTerms(issueDate: string | null, dueDate: string | null): string {
   if (!issueDate || !dueDate || issueDate === dueDate) return 'Due on Receipt';
   const days = Math.round(
-    (new Date(`${dueDate}T00:00:00`).getTime() - new Date(`${issueDate}T00:00:00`).getTime()) / 86_400_000,
+    (new Date(`${dueDate}T00:00:00`).getTime() - new Date(`${issueDate}T00:00:00`).getTime()) /
+      86_400_000,
   );
   return days > 0 ? `Net ${days}` : 'Due on Receipt';
 }
@@ -43,7 +44,10 @@ export function paymentTerms(issueDate: string | null, dueDate: string | null): 
 export function formatQuantity(value: string): string {
   const parsed = Number(value);
   if (!Number.isFinite(parsed)) return value;
-  return new Intl.NumberFormat('en-KE', { minimumFractionDigits: 2, maximumFractionDigits: 4 }).format(parsed);
+  return new Intl.NumberFormat('en-KE', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 4,
+  }).format(parsed);
 }
 
 /** Minor units as a plain decimal string (no grouping), e.g. "6550.00". */

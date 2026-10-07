@@ -12,7 +12,6 @@ import {
   Badge,
   Button,
   Card,
-  DataTable,
   EmptyState,
   FieldMessage,
   ForbiddenState,
@@ -24,7 +23,7 @@ import {
   StatusBadge,
   type DataTableColumn,
 } from '@valuebooks/ui';
-import { CheckCircle2, FilePlus2, Mail, Save, Search, XCircle } from 'lucide-react';
+import { CheckCircle2, FilePlus2, Mail, Save, XCircle } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -166,14 +165,56 @@ export function CreditNotesPage() {
             title={statusFilter ? `${statusFilter.toLowerCase()} credit notes` : 'All credit notes'}
             rows={creditNotes ?? []}
             columns={columns}
-            searchText={(creditNote) => `${creditNote.creditNoteNumber ?? ''} ${creditNote.contactName} ${creditNote.status}`}
-            filter={<Select aria-label="Credit note status" value={statusFilter} onChange={(event) => setStatusFilter(event.target.value as typeof statusFilter)}><option value="">All statuses</option>{statusOptions.map((status) => <option key={status} value={status}>{status}</option>)}</Select>}
-            primaryAction={canManage ? <Button asChild><Link href="/credit-notes/new"><FilePlus2 aria-hidden="true" /> New</Link></Button> : null}
+            searchText={(creditNote) =>
+              `${creditNote.creditNoteNumber ?? ''} ${creditNote.contactName} ${creditNote.status}`
+            }
+            filter={
+              <Select
+                aria-label="Credit note status"
+                value={statusFilter}
+                onChange={(event) => setStatusFilter(event.target.value as typeof statusFilter)}
+              >
+                <option value="">All statuses</option>
+                {statusOptions.map((status) => (
+                  <option key={status} value={status}>
+                    {status}
+                  </option>
+                ))}
+              </Select>
+            }
+            primaryAction={
+              canManage ? (
+                <Button asChild>
+                  <Link href="/credit-notes/new">
+                    <FilePlus2 aria-hidden="true" /> New
+                  </Link>
+                </Button>
+              ) : null
+            }
             onRefresh={() => void load()}
-            onImport={async () => undefined}
+            onImport={() => undefined}
             onResetFilters={() => setStatusFilter('')}
-            emptyState={{ title: 'Keep customer credits organized', description: 'Create a credit note when you need to reduce what a customer owes.', illustration: 'sales', variant: 'onboarding', benefits: ['Apply credits to open invoices', 'Refund remaining credit when appropriate'] }}
-            noResultsState={{ title: 'No credit notes match this view', description: 'Clear the search or status filter to see credit notes.', illustration: 'sales', variant: 'no-results', action: <Button variant="outline" onClick={() => setStatusFilter('')}>Clear filters</Button> }}
+            emptyState={{
+              title: 'Keep customer credits organized',
+              description: 'Create a credit note when you need to reduce what a customer owes.',
+              illustration: 'sales',
+              variant: 'onboarding',
+              benefits: [
+                'Apply credits to open invoices',
+                'Refund remaining credit when appropriate',
+              ],
+            }}
+            noResultsState={{
+              title: 'No credit notes match this view',
+              description: 'Clear the search or status filter to see credit notes.',
+              illustration: 'sales',
+              variant: 'no-results',
+              action: (
+                <Button variant="outline" onClick={() => setStatusFilter('')}>
+                  Clear filters
+                </Button>
+              ),
+            }}
           />
         )}
       </div>

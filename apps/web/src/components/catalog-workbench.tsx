@@ -74,13 +74,18 @@ export function ItemsPage() {
       key: 'name',
       header: 'Item',
       value: (item) => item.name,
-      cell: (item) => <>{item.name}{item.sku ? <span> {item.sku}</span> : null}</>,
+      cell: (item) => (
+        <>
+          {item.name}
+          {item.sku ? <span> {item.sku}</span> : null}
+        </>
+      ),
     },
     { key: 'type', header: 'Type', value: (item) => item.itemType, cell: (item) => item.itemType },
     {
       key: 'inventory',
       header: 'Inventory',
-      value: (item) => item.inventoryTracked ? 'Tracked' : 'Not tracked',
+      value: (item) => (item.inventoryTracked ? 'Tracked' : 'Not tracked'),
       cell: (item) =>
         item.inventoryTracked ? (
           <div>
@@ -102,7 +107,12 @@ export function ItemsPage() {
           ? `${item.prices[0].currency} ${(Number(item.prices[0].unitPriceMinor) / 100).toFixed(2)}`
           : '—',
     },
-    { key: 'status', header: 'Status', value: (item) => item.status, cell: (item) => <StatusBadge status={item.status} /> },
+    {
+      key: 'status',
+      header: 'Status',
+      value: (item) => item.status,
+      cell: (item) => <StatusBadge status={item.status} />,
+    },
     {
       key: 'actions',
       header: '',
@@ -140,29 +150,96 @@ export function ItemsPage() {
     <>
       <ItemDialog
         open={formOpen}
-        onOpenChange={(open) => { if (!open) { setEditing(null); setShowCreate(false); } }}
+        onOpenChange={(open) => {
+          if (!open) {
+            setEditing(null);
+            setShowCreate(false);
+          }
+        }}
         organizationId={organizationId}
         currency={currency}
         item={formTarget}
-        onSaved={(savedItem) => { setNotice(`${savedItem.name} was ${formTarget ? 'updated' : 'added'}.`); setEditing(null); setShowCreate(false); void load(); }}
+        onSaved={(savedItem) => {
+          setNotice(`${savedItem.name} was ${formTarget ? 'updated' : 'added'}.`);
+          setEditing(null);
+          setShowCreate(false);
+          void load();
+        }}
       />
-      {error ? <div className="rb-auth-error" role="alert">{error}</div> : null}
-      {notice ? <div className="rb-auth-notice" role="status">{notice}</div> : null}
-      {!items && !error ? <Skeleton /> : <OperationalListing
-        title={statusFilter === 'ACTIVE' ? 'Active items & services' : statusFilter === 'INACTIVE' ? 'Inactive items & services' : 'All items & services'}
-        rows={items ?? []}
-        columns={columns}
-        searchText={(item) => `${item.name} ${item.sku ?? ''} ${item.itemType}`}
-        filter={<Select aria-label="Item status" value={statusFilter} onChange={(event) => setStatusFilter(event.target.value as typeof statusFilter)}><option value="">All statuses</option><option value="ACTIVE">Active</option><option value="INACTIVE">Inactive</option></Select>}
-        primaryAction={canManage ? <Button onClick={() => { setEditing(null); setShowCreate(true); }}><Plus aria-hidden="true" /> New</Button> : null}
-        onRefresh={() => void load()}
-        onImport={async (file, sourceNamespace) => { setNotice(`${file.name} is ready to map under ${sourceNamespace}.`); }}
-        emptyState={{ title: 'Build your product and service catalog', description: 'Add the goods and services you sell so invoices and quotes stay consistent.', illustration: 'inventory', variant: 'onboarding', benefits: ['Reuse prices and tax defaults', 'Track stock on goods when needed'] }}
-        noResultsState={{ title: 'No items or services match this view', description: 'Clear the search or status filter to see your catalog.', illustration: 'inventory', variant: 'no-results', action: <Button variant="outline" onClick={() => setStatusFilter('')}>Clear filters</Button> }}
-        onResetFilters={() => setStatusFilter('')}
-        empty="No items or services match this view."
-      />}
+      {error ? (
+        <div className="rb-auth-error" role="alert">
+          {error}
+        </div>
+      ) : null}
+      {notice ? (
+        <div className="rb-auth-notice" role="status">
+          {notice}
+        </div>
+      ) : null}
+      {!items && !error ? (
+        <Skeleton />
+      ) : (
+        <OperationalListing
+          title={
+            statusFilter === 'ACTIVE'
+              ? 'Active items & services'
+              : statusFilter === 'INACTIVE'
+                ? 'Inactive items & services'
+                : 'All items & services'
+          }
+          rows={items ?? []}
+          columns={columns}
+          searchText={(item) => `${item.name} ${item.sku ?? ''} ${item.itemType}`}
+          filter={
+            <Select
+              aria-label="Item status"
+              value={statusFilter}
+              onChange={(event) => setStatusFilter(event.target.value as typeof statusFilter)}
+            >
+              <option value="">All statuses</option>
+              <option value="ACTIVE">Active</option>
+              <option value="INACTIVE">Inactive</option>
+            </Select>
+          }
+          primaryAction={
+            canManage ? (
+              <Button
+                onClick={() => {
+                  setEditing(null);
+                  setShowCreate(true);
+                }}
+              >
+                <Plus aria-hidden="true" /> New
+              </Button>
+            ) : null
+          }
+          onRefresh={() => void load()}
+          onImport={(file, sourceNamespace) => {
+            setNotice(`${file.name} is ready to map under ${sourceNamespace}.`);
+          }}
+          emptyState={{
+            title: 'Build your product and service catalog',
+            description:
+              'Add the goods and services you sell so invoices and quotes stay consistent.',
+            illustration: 'inventory',
+            variant: 'onboarding',
+            benefits: ['Reuse prices and tax defaults', 'Track stock on goods when needed'],
+          }}
+          noResultsState={{
+            title: 'No items or services match this view',
+            description: 'Clear the search or status filter to see your catalog.',
+            illustration: 'inventory',
+            variant: 'no-results',
+            action: (
+              <Button variant="outline" onClick={() => setStatusFilter('')}>
+                Clear filters
+              </Button>
+            ),
+          }}
+          onResetFilters={() => setStatusFilter('')}
+          empty="No items or services match this view."
+        />
+      )}
     </>
   );
-
 }

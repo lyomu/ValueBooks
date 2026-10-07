@@ -230,14 +230,12 @@ No second report query or rendering implementation is allowed.
       is understood to have done. No hard delete, matching `ApprovalPolicy`'s own no-delete pattern)
 - [x] Implement condition evaluation with explicit operators per field type and no arbitrary code or
       data access
-- [ ] Implement safe actions: create in-app/email notification, create `AutomationTask`, and execute
+- [x] Implement safe actions: create in-app/email notification, create `AutomationTask`, and execute
       only registered non-financial field updates on mutable targets
-      (partial: `CREATE_NOTIFICATION` now sends both an in-app row and an email, each independently
-      gated by the recipient's preference; `CREATE_TASK` exists and its tasks can now be listed and
-      completed via `AutomationTasksController`. There is still no third action type for a registered
-      non-financial field update on a mutable target -- a real, deliberately-scoped-out capability:
-      it needs its own per-entity-type allowlist of updatable fields, which is a meaningfully sized
-      new subsystem on its own, not a small addition to this pass)
+      (`UPDATE_AUTOMATION_TASK` is a deliberately narrow third action: it resolves a task UUID from
+      a named event-payload field and may update only task `title` and `detail`, always scoped to the
+      event organization. It cannot target or mutate accounting records, cross-tenant rows, assignee,
+      completion state, or any other entity type; each applied update writes an immutable audit row.)
 - [x] Enforce action authorization at create/activate and execution time; fail closed when the
       authorizing membership or permission no longer exists
 - [x] Implement loop protection, per-event/rule idempotency, bounded fan-out, run history, and
@@ -321,12 +319,14 @@ No second report query or rendering implementation is allowed.
       key immediately after the new one is durably uploaded and pointed at, via a new
       `StorageService#delete`. A genuine "keep N / keep for N days" retention window would need a
       table tracking every artifact ever generated, which nothing does today -- out of scope here)
-- [ ] Route oversized interactive PDF exports through the same worker and return `202 Accepted` with
+- [x] Route oversized interactive PDF exports through the same worker and return `202 Accepted` with
       a tenant-scoped job status resource; notify the requester when ready
-      (deliberately not attempted: a correctly-sized version of this needs a size/row-count threshold,
-      a new one-off job type, and a job-status polling resource and UI -- a genuinely new feature, not
-      a bounded fix, and one this session cannot verify end-to-end (S3 upload, Playwright rendering,
-      polling) without running anything)
+      (interactive PDFs over 2,000 rows now create a durable paused `report.export` scheduled-job
+      execution, enqueue it through the existing worker, and return `202` with
+      `GET /organizations/:organizationId/reports/exports/:executionId`. The worker renders/uploads
+      the artifact, records its key on the execution, sends the requester a preference-aware
+      `reports.export_ready` notification, and exposes a short-lived signed download URL only to the
+      same organization.)
 - [x] Implement organization-scoped failed-job list/detail/retry endpoints over execution records;
       retry creates a new attempt for the same idempotent occurrence rather than editing history
       (list, a new per-execution detail endpoint (`GET .../automation/jobs/:executionId`), and retry
@@ -467,11 +467,15 @@ capability exists end-to-end, but it is not integrated into each document's own 
 
 ## Milestone 10I — Close-out
 
-- [ ] Update worker/environment documentation with queue names, concurrency, lease, retry, retention,
-      artifact cleanup, and operational recovery settings (not done -- no dedicated ops doc written)
-- [ ] Document the event catalog, approval target matrix, safe rule-action registry, schedule/misfire
-      semantics, and operator retry runbook (not done as a standalone doc; each is documented inline
-      in code comments and in this file's own notes, but not collected into an operator-facing runbook)
+**Documentation closure (2026-10-06):** `docs/AUTOMATION_OPERATIONS_RUNBOOK.md` now collects the
+queue catalog, concurrency, retry/retention defaults, worker recovery procedure, approval-target
+lifecycle, action/retry safety boundaries, and scheduler misfire rules. The runbook must be kept in
+sync with any new queue, action, or approval target.
+
+- [x] Update worker/environment documentation with queue names, concurrency, lease, retry, retention,
+      artifact cleanup, and operational recovery settings (`AUTOMATION_OPERATIONS_RUNBOOK.md`)
+- [x] Document the event catalog, approval target matrix, safe rule-action registry, schedule/misfire
+      semantics, and operator retry runbook (`AUTOMATION_OPERATIONS_RUNBOOK.md`)
 - [x] Run format, lint, typecheck, unit tests, migration drift both directions, integration tests,
       production builds, and Docker Compose validation
       (all run this session against the real local stack, not simulated: `prettier --check`,

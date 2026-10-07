@@ -466,12 +466,7 @@ describe('AI report explanation foundation against a real database', () => {
           outputTokens: 5,
         }),
     };
-    const crossTenantAi = new AiOrchestrator(
-      reporting,
-      fabricatingGateway as never,
-      store,
-      access,
-    );
+    const crossTenantAi = new AiOrchestrator(reporting, fabricatingGateway as never, store, access);
 
     await expect(
       crossTenantAi.explainReport(

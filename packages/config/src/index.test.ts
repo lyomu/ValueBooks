@@ -131,9 +131,9 @@ describe('validateApiEnvironment', () => {
   });
 
   it('requires AI_HOSTED_MODEL when AI_MODE is hosted_limited', () => {
-    expect(() =>
-      validateApiEnvironment({ NODE_ENV: 'test', AI_MODE: 'hosted_limited' }),
-    ).toThrow(/AI_HOSTED_MODEL is required/);
+    expect(() => validateApiEnvironment({ NODE_ENV: 'test', AI_MODE: 'hosted_limited' })).toThrow(
+      /AI_HOSTED_MODEL is required/,
+    );
 
     expect(
       validateApiEnvironment({

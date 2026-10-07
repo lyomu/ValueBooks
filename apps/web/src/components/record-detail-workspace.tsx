@@ -46,23 +46,34 @@ export function RecordDetailWorkspace<T extends { id: string }>({
   const selected = records.find((record) => record.id === selectedId) ?? records[0];
   const [query, setQuery] = useState('');
   const [checked, setChecked] = useState<ReadonlySet<string>>(new Set());
-  const visibleRecords = records.filter((record) => searchText(record).toLowerCase().includes(query.trim().toLowerCase()));
+  const visibleRecords = records.filter((record) =>
+    searchText(record).toLowerCase().includes(query.trim().toLowerCase()),
+  );
 
   if (!selected) return null;
 
   if (variant === 'compact') {
     return (
-      <section className="rb-record-workspace rb-record-workspace--compact" aria-label={`${title} details`}>
+      <section
+        className="rb-record-workspace rb-record-workspace--compact"
+        aria-label={`${title} details`}
+      >
         <aside className="rb-record-workspace__rail" aria-label={`${title} list`}>
-          <div className="rb-record-workspace__rail-head">
-            {railHeader ?? <h1>{title}</h1>}
-          </div>
+          <div className="rb-record-workspace__rail-head">{railHeader ?? <h1>{title}</h1>}</div>
           <label className="rb-record-workspace__search">
             <Search aria-hidden="true" />
             <span className="rb-visually-hidden">Search {title}</span>
-            <Input value={query} onChange={(event) => setQuery(event.target.value)} placeholder={`Search ${title}`} />
+            <Input
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              placeholder={`Search ${title}`}
+            />
           </label>
-          <div className="rb-record-workspace__records" role="listbox" aria-label={`${title} records`}>
+          <div
+            className="rb-record-workspace__records"
+            role="listbox"
+            aria-label={`${title} records`}
+          >
             {visibleRecords.map((record) => {
               const isSelected = record.id === selected.id;
               return (
@@ -129,9 +140,17 @@ export function RecordDetailWorkspace<T extends { id: string }>({
         </div>
         <label className="rb-record-workspace__search">
           <span className="rb-visually-hidden">Search {title}</span>
-          <Input value={query} onChange={(event) => setQuery(event.target.value)} placeholder={`Search ${title}`} />
+          <Input
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+            placeholder={`Search ${title}`}
+          />
         </label>
-        <div className="rb-record-workspace__records" role="listbox" aria-label={`${title} records`}>
+        <div
+          className="rb-record-workspace__records"
+          role="listbox"
+          aria-label={`${title} records`}
+        >
           {visibleRecords.map((record) => (
             <button
               key={record.id}

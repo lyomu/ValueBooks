@@ -2,22 +2,18 @@
 
 import type { Vendor } from '@valuebooks/contracts';
 import {
-  Badge,
   Button,
   Card,
-  DataTable,
-  EmptyState,
   FieldMessage,
   ForbiddenState,
   Input,
   Label,
-  PageHeader,
   Select,
   Skeleton,
   StatusBadge,
   type DataTableColumn,
 } from '@valuebooks/ui';
-import { Plus, Save, Search } from 'lucide-react';
+import { Plus, Save } from 'lucide-react';
 import { useCallback, useEffect, useState, type FormEvent } from 'react';
 
 import { ApiError, apiRequest } from '../lib/api';
@@ -177,8 +173,7 @@ export function VendorsPage() {
       key: 'email',
       header: 'Email',
       value: (vendor) => vendor.email ?? '',
-      cell: (vendor) =>
-        vendor.email ?? <span className="rb-table-empty">—</span>,
+      cell: (vendor) => vendor.email ?? <span className="rb-table-empty">—</span>,
       hideBelow: 'tablet',
     },
     {
@@ -373,10 +368,18 @@ export function VendorsPage() {
           <Skeleton />
         ) : (
           <OperationalListing
-            title={statusFilter === 'ACTIVE' ? 'Active vendors' : statusFilter === 'INACTIVE' ? 'Inactive vendors' : 'All vendors'}
+            title={
+              statusFilter === 'ACTIVE'
+                ? 'Active vendors'
+                : statusFilter === 'INACTIVE'
+                  ? 'Inactive vendors'
+                  : 'All vendors'
+            }
             rows={vendors ?? []}
             columns={columns}
-            searchText={(vendor) => `${vendor.displayName} ${vendor.legalName ?? ''} ${vendor.email ?? ''} ${vendor.phone ?? ''}`}
+            searchText={(vendor) =>
+              `${vendor.displayName} ${vendor.legalName ?? ''} ${vendor.email ?? ''} ${vendor.phone ?? ''}`
+            }
             filter={
               <Select
                 aria-label="Vendor status"
@@ -410,7 +413,10 @@ export function VendorsPage() {
               description: 'Create and manage your vendors and their contact details in one place.',
               illustration: 'purchases',
               variant: 'onboarding',
-              benefits: ['Keep vendor contact and payment details together.', 'Use vendors across bills, orders, and payments.'],
+              benefits: [
+                'Keep vendor contact and payment details together.',
+                'Use vendors across bills, orders, and payments.',
+              ],
             }}
             noResultsState={{
               title: 'No vendors match this view',

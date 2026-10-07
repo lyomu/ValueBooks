@@ -30,6 +30,7 @@ gone through it.
 ## What this does and doesn't prove
 
 **Proves today, for real, with no model involved:**
+
 - The deterministic receipt extractor's actual field-level accuracy against 110 varied synthetic
   documents (5 organizations/currencies, 3 scan-quality tiers, multiple date/currency/vendor/amount
   presentation styles) — this is real code being scored against real (if synthetic) input, not a
@@ -39,6 +40,7 @@ gone through it.
   a real model have a non-empty floor to beat, rather than nothing to compare against.
 
 **Does not yet prove, and is explicitly out of scope for this pass:**
+
 - Actual model answer quality, retrieval recall, or abstention correctness — there is no live
   model to run these questions through (`AI_MODE` is `off` by default; `private` needs a
   self-hosted endpoint; `hosted_limited` is gated behind the still-open 13A privacy review this
@@ -54,7 +56,7 @@ gone through it.
 - **The Q&A baseline classifier is likely over-fit to its own question templates.** Both the
   question generator and the baseline classifier were written by the same process in the same
   pass, so keyword overlap between them is expected and the reported ~100% baseline accuracy is
-  not a meaningful signal of how well *any* classifier would do on real, human-written questions —
+  not a meaningful signal of how well _any_ classifier would do on real, human-written questions —
   only that this specific trivial classifier can recognize its own template vocabulary. Treat the
   category-accuracy number as a harness smoke test, not a real baseline, until the question set has
   real-world (or at least independently-written) examples mixed in.

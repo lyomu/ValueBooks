@@ -9,8 +9,9 @@ import { defineConfig } from 'vitest/config';
  * `emitDecoratorMetadata`, which vitest's default esbuild transform does not emit. Without it every
  * injected dependency arrives as `undefined`.
  *
- * Files run one at a time in a single process: every spec truncates the shared test database, so
- * running them in parallel would have them clearing each other's fixtures.
+ * Files run one at a time because every spec truncates the shared test database. Each file gets a
+ * fresh worker process so Nest/Prisma metadata and fixture graphs are released between the large
+ * integration suites instead of exhausting local developer memory during a full release gate.
  */
 export default defineConfig({
   plugins: [swc.vite({ module: { type: 'es6' } })],
@@ -20,7 +21,7 @@ export default defineConfig({
     setupFiles: ['test/support/setup-env.ts'],
     fileParallelism: false,
     pool: 'forks',
-    poolOptions: { forks: { singleFork: true } },
+    poolOptions: { forks: { maxForks: 1, minForks: 1 } },
     testTimeout: 30_000,
     hookTimeout: 60_000,
   },

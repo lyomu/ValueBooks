@@ -200,6 +200,24 @@ describe('Phase 10 automation contract schemas (GAP #18)', () => {
       expect(result.success).toBe(true);
     });
 
+    it('accepts a non-financial automation task field update', () => {
+      const result = workflowActionSchema.safeParse({
+        type: 'UPDATE_AUTOMATION_TASK',
+        taskIdField: 'taskId',
+        title: 'Review {{invoiceNumber}}',
+        detail: 'Escalated by the invoice workflow',
+      });
+      expect(result.success).toBe(true);
+    });
+
+    it('rejects an automation task update with no mutable fields', () => {
+      const result = workflowActionSchema.safeParse({
+        type: 'UPDATE_AUTOMATION_TASK',
+        taskIdField: 'taskId',
+      });
+      expect(result.success).toBe(false);
+    });
+
     it('rejects an unknown action type', () => {
       const result = workflowActionSchema.safeParse({
         type: 'SEND_SMS',

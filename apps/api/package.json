@@ -5,6 +5,7 @@
   "scripts": {
     "dev": "nest start --watch",
     "dev:worker": "nest start --entryFile worker --watch",
+    "prebuild": "npm run db:generate",
     "build": "nest build",
     "start": "node dist/src/main.js",
     "start:worker": "node dist/src/worker.js",
@@ -12,8 +13,11 @@
     "db:migrate": "prisma migrate dev",
     "db:deploy": "prisma migrate deploy",
     "db:seed": "npm run build && node dist/prisma/seed.js",
+    "pretypecheck": "npm run db:generate",
     "typecheck": "tsc --noEmit",
+    "pretest": "npm run db:generate",
     "test": "vitest run",
+    "pretest:integration": "npm run db:generate",
     "test:integration": "vitest run --config vitest.integration.config.ts"
   },
   "dependencies": {

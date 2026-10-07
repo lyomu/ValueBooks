@@ -33,7 +33,12 @@ function daysAgo(days: number): string {
   return date.toISOString().slice(0, 10);
 }
 
-function csvFile(rows: string): { originalname: string; mimetype: string; size: number; buffer: Buffer } {
+function csvFile(rows: string): {
+  originalname: string;
+  mimetype: string;
+  size: number;
+  buffer: Buffer;
+} {
   const buffer = Buffer.from(rows, 'utf8');
   return { originalname: 'statement.csv', mimetype: 'text/csv', size: buffer.length, buffer };
 }
@@ -346,7 +351,14 @@ describe('Phase 13E/F adviser correctness against real posted activity (round 2)
         countryPackId: pack.id,
         version: '2026.1',
         name: 'E2E Fixture Tax Pack',
-        rates: [{ label: 'E2E Standard VAT', ratePercent: '16', treatment: 'EXCLUSIVE', recoverable: true }],
+        rates: [
+          {
+            label: 'E2E Standard VAT',
+            ratePercent: '16',
+            treatment: 'EXCLUSIVE',
+            recoverable: true,
+          },
+        ],
         notes: ['E2E fixture zero-rated exports require a customs declaration.'],
       },
     });
@@ -388,7 +400,10 @@ describe('Phase 13E/F adviser correctness against real posted activity (round 2)
 
     const requiredFieldResults = await countryPackQa.search(context.id, 'e2e fixture tax pin');
     expect(requiredFieldResults).toEqual([
-      expect.objectContaining({ source: 'DOCUMENT_RULE', text: 'Required field: E2E Fixture Tax PIN' }),
+      expect.objectContaining({
+        source: 'DOCUMENT_RULE',
+        text: 'Required field: E2E Fixture Tax PIN',
+      }),
     ]);
 
     await expect(countryPackQa.search(context.id, 'no such phrase anywhere')).resolves.toEqual([]);
@@ -470,8 +485,18 @@ describe('Phase 13E/F adviser correctness against real posted activity (round 2)
 
   it('approval briefing: reports what changed on a Bill since submission, alongside its policy conditions', async () => {
     const expenseAccount = await ledger.accountBySystemKey(context.id, 'general_expense');
-    const vendorA = await vendors.create(context, owner, { displayName: 'Briefing Fixture Vendor A' }, metadata);
-    const vendorB = await vendors.create(context, owner, { displayName: 'Briefing Fixture Vendor B' }, metadata);
+    const vendorA = await vendors.create(
+      context,
+      owner,
+      { displayName: 'Briefing Fixture Vendor A' },
+      metadata,
+    );
+    const vendorB = await vendors.create(
+      context,
+      owner,
+      { displayName: 'Briefing Fixture Vendor B' },
+      metadata,
+    );
 
     const policy = await approvals.createPolicy(
       context,
