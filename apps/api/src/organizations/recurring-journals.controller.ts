@@ -33,8 +33,8 @@ export class RecurringJournalsController {
 
   @Get()
   @RequirePermission('journals.recurring.view')
-  list(@Query('active') active: string | undefined, @Req() request: OrganizationRequest) {
-    return { data: this.recurringJournals.list(request.organization.id, active) };
+  async list(@Query('active') active: string | undefined, @Req() request: OrganizationRequest) {
+    return { data: await this.recurringJournals.list(request.organization.id, active) };
   }
 
   @Get(':templateId')

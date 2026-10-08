@@ -11,7 +11,6 @@ import {
   DropdownTrigger,
 } from '@valuebooks/ui';
 import {
-  AlarmClock,
   AlertOctagon,
   ArrowRightLeft,
   Banknote,
@@ -21,7 +20,6 @@ import {
   Building2,
   Calculator,
   CalendarClock,
-  CircleDollarSign,
   ChevronDown,
   ChevronLeft,
   ChevronRight,
@@ -39,17 +37,14 @@ import {
   Package,
   Plus,
   Receipt,
-  Repeat,
   Search,
   Settings,
-  ShieldCheck,
   SlidersHorizontal,
   SquareCheckBig,
   Timer,
   TrendingUp,
   Undo2,
   Users,
-  Workflow,
 } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
@@ -89,7 +84,6 @@ const navigationGroups: NavigationGroup[] = [
       { label: 'Credit notes', icon: Undo2, href: '/credit-notes' },
       { label: 'Quotes', icon: FileQuestion, href: '/quotes' },
       { label: 'Sales orders', icon: ClipboardList, href: '/sales-orders' },
-      { label: 'Recurring invoices', icon: Repeat, href: '/recurring-invoices' },
     ],
   },
   {
@@ -102,9 +96,6 @@ const navigationGroups: NavigationGroup[] = [
       { label: 'Expense categories', icon: Package, href: '/expense-categories' },
       { label: 'Vendor credits', icon: Undo2, href: '/vendor-credits' },
       { label: 'Payments made', icon: Banknote, href: '/payments-made' },
-      { label: 'Recurring bills', icon: Repeat, href: '/recurring-bills' },
-      { label: 'Recurring expenses', icon: Repeat, href: '/recurring-expenses' },
-      { label: 'Search receipts & bills', icon: Search, href: '/documents/search' },
     ],
   },
   {
@@ -113,9 +104,7 @@ const navigationGroups: NavigationGroup[] = [
       { label: 'Chart of accounts', icon: BookOpenText, href: '/accounts' },
       { label: 'Opening balances', icon: BookOpenText, href: '/opening-balances' },
       { label: 'Journals', icon: FileText, href: '/journals' },
-      { label: 'Recurring journals', icon: Repeat, href: '/recurring-journals' },
       { label: 'Trial balance', icon: Calculator, href: '/trial-balance' },
-      { label: 'Account ledger', icon: FileClock, href: '/accounts' },
     ],
   },
   {
@@ -151,11 +140,9 @@ const navigationGroups: NavigationGroup[] = [
     ],
   },
   {
-    label: 'Automation',
+    label: 'Workflow',
     items: [
       { label: 'Approvals', icon: SquareCheckBig, href: '/approvals' },
-      { label: 'Workflow rules', icon: Workflow, href: '/automation/rules' },
-      { label: 'Reminders', icon: AlarmClock, href: '/automation/reminders' },
       { label: 'Job failures', icon: AlertOctagon, href: '/automation/jobs' },
     ],
   },
@@ -168,27 +155,7 @@ const navigationGroups: NavigationGroup[] = [
       { label: 'Insights', icon: TrendingUp, href: '/insights' },
     ],
   },
-  {
-    label: 'Finance controls',
-    items: [
-      { label: 'Fiscal periods', icon: CalendarClock, href: '/periods' },
-      { label: 'Tax codes', icon: Landmark, href: '/tax' },
-      { label: 'Numbering', icon: SlidersHorizontal, href: '/numbering' },
-    ],
-  },
-  {
-    label: 'Organization',
-    items: [
-      { label: 'Organization profile', icon: Building2, href: '/settings/organization' },
-      { label: 'Currencies', icon: CircleDollarSign, href: '/settings/currencies' },
-      { label: 'Team & roles', icon: Users, href: '/settings/team' },
-      { label: 'Audit log', icon: ShieldCheck, href: '/settings/audit-log' },
-      { label: 'Security', icon: Settings, href: '/settings/security' },
-      { label: 'Design system', icon: SlidersHorizontal, href: '/design-system' },
-    ],
-  },
 ];
-
 function ValueBooksMark({ onExpand }: { onExpand?: () => void }) {
   if (onExpand) {
     return (
@@ -427,6 +394,9 @@ function TopBar({
           <span className="rb-notification-button__dot" aria-hidden="true" />
           <span className="rb-visually-hidden">Notifications</span>
         </button>
+        <Link className="rb-icon-button" href="/settings" aria-label="Settings">
+          <Settings aria-hidden="true" />
+        </Link>
 
         <Dropdown>
           <DropdownTrigger asChild>
@@ -450,13 +420,7 @@ function TopBar({
             <DropdownLabel>{displayName}</DropdownLabel>
             <DropdownSeparator />
             <DropdownItem asChild>
-              <Link href="/settings/organization">Organization profile</Link>
-            </DropdownItem>
-            <DropdownItem asChild>
-              <Link href="/settings/team">Team &amp; roles</Link>
-            </DropdownItem>
-            <DropdownItem asChild>
-              <Link href="/settings/security">Security</Link>
+              <Link href="/settings">Settings</Link>
             </DropdownItem>
             <DropdownSeparator />
             <DropdownItem onSelect={() => void signOut()}>Sign out</DropdownItem>

@@ -1,7 +1,6 @@
 import { PageHeader, Tabs, TabsContent, TabsList, TabsTrigger } from '@valuebooks/ui';
 import type { Metadata } from 'next';
 
-import { AppShell } from '../../../components/app-shell';
 import { RolePermissionsMatrix } from '../../../components/role-permissions-matrix';
 import { TeamManagement } from '../../../components/team-management';
 
@@ -9,7 +8,7 @@ export const metadata: Metadata = { title: 'Team & roles | ValueBooks' };
 
 export default function TeamPage() {
   return (
-    <AppShell>
+    <>
       <PageHeader
         title="Team & roles"
         description="Manage who can reach this organization's books and how they join."
@@ -26,6 +25,6 @@ export default function TeamPage() {
           <RolePermissionsMatrix />
         </TabsContent>
       </Tabs>
-    </AppShell>
+    </>
   );
 }

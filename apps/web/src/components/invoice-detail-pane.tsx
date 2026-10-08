@@ -523,7 +523,7 @@ export function InvoiceDetailPane({
               <MenuItem
                 icon={Repeat}
                 label="Make Recurring"
-                href="/recurring-invoices"
+                href="/invoices?tab=recurring"
                 disabled={!permissions.canManageRecurring || isVoid}
                 onSelect={() => {
                   saveInvoiceSeed('recurring-invoice', seedFromInvoice());
@@ -596,7 +596,7 @@ export function InvoiceDetailPane({
               <MenuItem
                 icon={Settings2}
                 label="Invoice Preferences"
-                href="/numbering"
+                href="/settings/numbering"
                 disabled={!permissions.canViewNumbering}
                 onSelect={close}
               />

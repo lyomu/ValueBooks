@@ -6932,3 +6932,265 @@ button.rb-customer-facts__heading {
     text-align: left;
   }
 }
+
+/* Settings takeover -- configuration is a mode you enter and leave, so it replaces the product
+   navigation entirely rather than sitting inside it. */
+.rb-settings {
+  display: flex;
+  min-height: 100dvh;
+  flex-direction: column;
+  background: hsl(var(--rb-background));
+}
+
+.rb-settings__header {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  height: var(--rb-topbar-height);
+  flex-shrink: 0;
+  padding: 0 1.25rem;
+  background: hsl(var(--rb-card));
+  border-bottom: 1px solid hsl(var(--rb-border));
+}
+
+.rb-settings__back {
+  display: grid;
+  width: 2rem;
+  height: 2rem;
+  place-items: center;
+  color: hsl(var(--rb-muted-foreground));
+  border: 1px solid hsl(var(--rb-border));
+  border-radius: var(--rb-radius-sm);
+}
+
+.rb-settings__back:hover {
+  color: hsl(var(--rb-foreground));
+  background: hsl(var(--rb-muted));
+}
+
+.rb-settings__back svg {
+  width: 1.05rem;
+  height: 1.05rem;
+}
+
+.rb-settings__title {
+  display: flex;
+  flex-direction: column;
+  margin-right: auto;
+}
+
+.rb-settings__title strong {
+  font-size: 1.0625rem;
+  line-height: 1.2;
+}
+
+.rb-settings__title small {
+  color: hsl(var(--rb-muted-foreground));
+  font-size: 0.75rem;
+}
+
+.rb-settings__close {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  min-height: 2.25rem;
+  padding: 0 0.75rem;
+  color: hsl(var(--rb-foreground));
+  border: 1px solid hsl(var(--rb-border));
+  border-radius: var(--rb-radius-sm);
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.rb-settings__close:hover {
+  background: hsl(var(--rb-muted));
+}
+
+.rb-settings__close svg {
+  width: 0.9rem;
+  height: 0.9rem;
+  color: hsl(var(--rb-danger));
+}
+
+.rb-settings__body {
+  display: grid;
+  min-height: 0;
+  flex: 1;
+  grid-template-columns: 15rem minmax(0, 1fr);
+}
+
+.rb-settings__nav {
+  overflow-y: auto;
+  padding: 1.25rem 0.75rem 2rem;
+  background: hsl(var(--rb-card));
+  border-right: 1px solid hsl(var(--rb-border));
+}
+
+.rb-settings__nav-group + .rb-settings__nav-group {
+  margin-top: 1.5rem;
+}
+
+.rb-settings__nav-group h2 {
+  margin: 0 0 0.5rem 0.75rem;
+  color: hsl(var(--rb-muted-foreground));
+  font-size: 0.625rem;
+  font-weight: 700;
+  letter-spacing: 0.045em;
+  text-transform: uppercase;
+}
+
+.rb-settings__nav-group ul {
+  display: grid;
+  gap: 0.125rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.rb-settings__nav-group a {
+  display: block;
+  padding: 0.5rem 0.75rem;
+  color: hsl(var(--rb-foreground));
+  border-radius: var(--rb-radius-sm);
+  font-size: 0.875rem;
+  text-decoration: none;
+}
+
+.rb-settings__nav-group a:hover {
+  background: hsl(var(--rb-muted));
+}
+
+.rb-settings__nav-group a.is-active {
+  color: #fff;
+  background: hsl(var(--rb-primary-mid));
+  font-weight: 600;
+}
+
+.rb-settings__main {
+  overflow-y: auto;
+}
+
+.rb-settings__content {
+  width: min(100%, 64rem);
+  margin: 0 auto;
+  padding: 1.75rem 1.5rem 4rem;
+}
+
+/* All Settings index */
+.rb-settings-index {
+  display: grid;
+  gap: 2rem;
+}
+
+.rb-settings-index__group h2 {
+  margin: 0 0 0.75rem;
+  font-size: 1rem;
+  letter-spacing: -0.01em;
+}
+
+.rb-settings-index__grid {
+  display: grid;
+  gap: var(--rb-space-3);
+  /* Capped rather than 1fr, so a section holding a single card does not stretch it across the
+     whole page and read as a different kind of thing from its neighbours. */
+  grid-template-columns: repeat(auto-fill, minmax(15rem, 20rem));
+}
+
+.rb-settings-index__card {
+  display: grid;
+  gap: 0.35rem;
+  align-content: start;
+  min-height: 8rem;
+  padding: var(--rb-space-4);
+  color: inherit;
+  background: hsl(var(--rb-card));
+  border: 1px solid hsl(var(--rb-border));
+  border-radius: var(--rb-radius);
+  text-decoration: none;
+}
+
+.rb-settings-index__card:hover {
+  border-color: hsl(var(--rb-primary-mid));
+  box-shadow: var(--rb-shadow-sm);
+}
+
+.rb-settings-index__card strong {
+  font-size: 0.9375rem;
+}
+
+.rb-settings-index__card > span:last-child {
+  color: hsl(var(--rb-muted-foreground));
+  font-size: 0.8125rem;
+  line-height: 1.5;
+}
+
+.rb-settings-index__icon {
+  display: grid;
+  width: 2rem;
+  height: 2rem;
+  place-items: center;
+  margin-bottom: 0.35rem;
+  color: hsl(var(--rb-primary-mid));
+  background: hsl(var(--rb-accent));
+  border-radius: var(--rb-radius-sm);
+}
+
+.rb-settings-index__icon svg {
+  width: 1.05rem;
+  height: 1.05rem;
+}
+
+@media (max-width: 56rem) {
+  .rb-settings__body {
+    grid-template-columns: 1fr;
+  }
+
+  .rb-settings__nav {
+    border-right: 0;
+    border-bottom: 1px solid hsl(var(--rb-border));
+  }
+}
+
+/* Listing view switcher -- documents vs their recurring templates. Same underline treatment as
+   the customer pane tabs, but it sits above a page header rather than inside a pane. */
+.rb-listing-tabs {
+  margin-bottom: 1.25rem;
+}
+
+.rb-listing-tabs .rb-tabs__list {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 1.5rem;
+  padding: 0;
+  background: none;
+  border-bottom: 1px solid hsl(var(--rb-border));
+  border-radius: 0;
+}
+
+.rb-listing-tabs .rb-tabs__trigger {
+  position: relative;
+  min-height: 2.5rem;
+  padding: 0 0 0.5rem;
+  background: none;
+  border-radius: 0;
+  box-shadow: none;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.rb-listing-tabs .rb-tabs__trigger[data-state='active'] {
+  color: hsl(var(--rb-primary));
+  background: none;
+  box-shadow: none;
+  font-weight: 600;
+}
+
+.rb-listing-tabs .rb-tabs__trigger[data-state='active']::after {
+  position: absolute;
+  right: 0;
+  bottom: -1px;
+  left: 0;
+  height: 2px;
+  background: hsl(var(--rb-primary));
+  content: '';
+}

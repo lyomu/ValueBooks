@@ -145,7 +145,7 @@ export function Dashboard() {
       description: fiscalYearReady
         ? 'Fiscal years are generated.'
         : 'Generate a fiscal year to post.',
-      href: '/periods',
+      href: '/settings/fiscal-periods',
       icon: CalendarClock,
       ready: fiscalYearReady,
     },
@@ -163,7 +163,7 @@ export function Dashboard() {
       description: taxCodesReady
         ? 'Customized beyond the starter set.'
         : 'Still the untouched starter set.',
-      href: '/tax',
+      href: '/settings/taxes',
       icon: Landmark,
       ready: taxCodesReady,
     },
@@ -172,7 +172,7 @@ export function Dashboard() {
   const nextActions: { href: string; icon: LucideIcon; title: string; description: string }[] = [
     !fiscalYearReady
       ? {
-          href: '/periods',
+          href: '/settings/fiscal-periods',
           icon: CalendarClock,
           title: 'Generate a fiscal year',
           description: 'Journals need an open period before they can post.',
@@ -190,7 +190,7 @@ export function Dashboard() {
       description: 'Review or tune the starter chart.',
     },
     {
-      href: '/numbering',
+      href: '/settings/numbering',
       icon: SlidersHorizontal,
       title: 'Numbering rules',
       description: 'Define journal references by organization.',
