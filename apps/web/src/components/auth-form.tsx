@@ -4,7 +4,7 @@ import { Button, Input, Label } from '@valuebooks/ui';
 import { MailCheck } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { type FormEvent, useState } from 'react';
+import { type FormEvent, useEffect, useRef, useState } from 'react';
 
 import { AppleMark, GoogleMark } from './auth-social-marks';
 import { apiRequest, ApiError } from '../lib/api';
@@ -53,7 +53,14 @@ export function AuthForm({
   const [submittedEmail, setSubmittedEmail] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [complete, setComplete] = useState(false);
+  const errorSummaryRef = useRef<HTMLDivElement>(null);
   const config = modeConfig[mode];
+  const emailInvalid = fieldErrors.some((item) => /email/i.test(item));
+  const passwordInvalid = fieldErrors.some((item) => /password/i.test(item));
+
+  useEffect(() => {
+    if (error) errorSummaryRef.current?.focus();
+  }, [error]);
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -141,6 +148,8 @@ export function AuthForm({
               required
               maxLength={254}
               inputMode="email"
+              aria-invalid={emailInvalid || undefined}
+              aria-describedby={emailInvalid ? 'auth-field-errors' : undefined}
             />
           </div>
         ) : null}
@@ -158,7 +167,14 @@ export function AuthForm({
               required
               minLength={mode === 'login' ? 1 : 12}
               maxLength={128}
-              aria-describedby={mode === 'signup' || mode === 'reset' ? 'password-hint' : undefined}
+              aria-invalid={passwordInvalid || undefined}
+              aria-describedby={
+                passwordInvalid
+                  ? 'auth-field-errors'
+                  : mode === 'signup' || mode === 'reset'
+                    ? 'password-hint'
+                    : undefined
+              }
             />
             <div className="rb-auth-field__hint-row">
               {mode === 'signup' || mode === 'reset' ? (
@@ -182,12 +198,12 @@ export function AuthForm({
         ) : null}
 
         {error ? (
-          <div className="rb-auth-error" role="alert">
+          <div className="rb-auth-error" ref={errorSummaryRef} role="alert" tabIndex={-1}>
             {error}
           </div>
         ) : null}
         {fieldErrors.length ? (
-          <ul className="rb-auth-field-errors" aria-label="Field errors">
+          <ul className="rb-auth-field-errors" id="auth-field-errors" aria-label="Field errors">
             {fieldErrors.map((item) => (
               <li key={item}>{item}</li>
             ))}

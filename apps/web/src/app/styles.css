@@ -452,7 +452,7 @@ body {
 
 .rb-auth__aside {
   display: flex;
-  min-height: 100dvh;
+  min-height: 0;
   flex-direction: column;
   justify-content: center;
   align-items: center;
@@ -461,8 +461,25 @@ body {
   background: transparent;
 }
 
+/* Authentication is a single focused task on desktop. Keep its composition inside the viewport;
+   short and narrow screens retain normal document scrolling through the mobile rules below. */
+@media (min-width: 56.0625rem) and (min-height: 48rem) {
+  .rb-auth--signup,
+  .rb-auth--split {
+    height: 100dvh;
+    overflow: hidden;
+  }
+
+  .rb-auth--signup .rb-auth__content {
+    padding-block: clamp(1rem, 2.5vh, 2rem);
+  }
+}
+
 .rb-auth__aside-content {
+  display: flex;
   width: min(100%, 34rem);
+  flex-direction: column;
+  align-items: center;
   text-align: center;
 }
 
@@ -475,7 +492,7 @@ body {
 
 .rb-auth__aside h2 {
   max-width: none;
-  margin: 0 0 1.25rem;
+  margin: 0 0 0.5rem;
   font-size: clamp(2rem, 2.5vw, 2.75rem);
   line-height: 1.12;
   letter-spacing: -0.04em;
@@ -492,8 +509,10 @@ body {
 
 .rb-auth__aside ul {
   display: grid;
+  width: fit-content;
+  max-width: 100%;
   gap: 1.25rem;
-  margin: clamp(2.75rem, 4vw, 4.25rem) 0 0;
+  margin: clamp(1.5rem, 2.5vw, 2rem) auto 0;
   padding: 0;
   list-style: none;
 }
@@ -837,9 +856,16 @@ body {
   }
 
   .rb-auth--split .rb-auth__content {
+    width: min(100%, 30rem);
+    margin: auto;
     padding-left: 0;
     padding-right: 0;
     background: transparent;
+  }
+
+  .rb-auth--split .rb-auth__main {
+    min-height: 100dvh;
+    padding: clamp(1.5rem, 4vw, 3rem);
   }
 }
 

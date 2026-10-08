@@ -18,7 +18,7 @@ export default async function SignupPage({
       description={
         invitation
           ? 'Use the email address your invitation was sent to. You can join the organization once it is verified.'
-          : 'Start with your identity. We’ll configure the organization and ledger together next.'
+          : 'ValueBooks helps small businesses keep their finances clear and organized.'
       }
     >
       <AuthForm mode="signup" invitation={invitation} />

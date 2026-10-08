@@ -11,6 +11,7 @@ const DATABASE_NAME = 'valuebooks_e2e';
 const DATABASE_URL = `postgresql://valuebooks:valuebooks@127.0.0.1:55432/${DATABASE_NAME}`;
 const MAINTENANCE_URL = 'postgresql://valuebooks:valuebooks@127.0.0.1:55432/postgres';
 const QUEUE_PREFIX = 'valuebooks-e2e';
+const S3_ENDPOINT = process.env.E2E_S3_ENDPOINT ?? 'http://127.0.0.1:59000';
 const PLATFORM_ADMIN_EMAIL = 'demo.admin@valuebooks.local';
 const repoRoot = resolve(process.cwd(), '../..');
 
@@ -152,7 +153,7 @@ function runNpm(args) {
       // the migration URL and the runtime URL are the same connection string here.
       DATABASE_MIGRATION_URL: DATABASE_URL,
       REDIS_URL: 'redis://127.0.0.1:56780',
-      S3_ENDPOINT: 'http://127.0.0.1:59000',
+      S3_ENDPOINT,
       SMTP_HOST: '127.0.0.1',
       NODE_ENV: 'test',
       QUEUE_PREFIX,
@@ -170,7 +171,7 @@ function runNode(args, cwd) {
       ...process.env,
       DATABASE_URL,
       REDIS_URL: 'redis://127.0.0.1:56780',
-      S3_ENDPOINT: 'http://127.0.0.1:59000',
+      S3_ENDPOINT,
       SMTP_HOST: '127.0.0.1',
       NODE_ENV: 'test',
       QUEUE_PREFIX,
@@ -198,7 +199,7 @@ function startDocumentExtractionWorker() {
       ...process.env,
       DATABASE_URL,
       REDIS_URL: 'redis://127.0.0.1:56780',
-      S3_ENDPOINT: 'http://127.0.0.1:59000',
+      S3_ENDPOINT,
       SMTP_HOST: '127.0.0.1',
       NODE_ENV: 'test',
       QUEUE_PREFIX,

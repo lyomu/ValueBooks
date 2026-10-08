@@ -4,9 +4,9 @@ import Link from 'next/link';
 import type { ReactNode } from 'react';
 
 const assurances: ReadonlyArray<string> = [
-  'Create polished invoices your customers can pay online.',
-  'Keep invoices, payments, and customer records in one place.',
-  'See what is paid, overdue, and ready to follow up.',
+  'Create and send professional invoices from one workspace.',
+  'Record customer payments as they arrive.',
+  'See what is due, paid, and ready to reconcile.',
 ];
 
 function AssurancePanel() {
@@ -20,8 +20,8 @@ function AssurancePanel() {
         height={1024}
         priority
       />
-      <h2>Get paid with confidence</h2>
-      <p>Give your customers a clear way to pay while keeping your books up to date.</p>
+      <h2>Run your books with confidence</h2>
+      <p>ValueBooks keeps invoicing, payments, and day-to-day bookkeeping organized.</p>
       <ul>
         {assurances.map((item) => (
           <li key={item}>

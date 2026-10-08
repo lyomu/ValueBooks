@@ -1,5 +1,8 @@
 import { defineConfig, devices } from '@playwright/test';
 
+const baseURL = process.env.PLAYWRIGHT_BASE_URL ?? 'http://127.0.0.1:3300';
+const useExistingServer = Boolean(process.env.PLAYWRIGHT_BASE_URL);
+
 export default defineConfig({
   testDir: './e2e',
   testIgnore: '**/reference-capture.spec.ts',
@@ -17,7 +20,7 @@ export default defineConfig({
     },
   },
   use: {
-    baseURL: 'http://127.0.0.1:3300',
+    baseURL,
     colorScheme: 'light',
     reducedMotion: 'reduce',
     trace: 'retain-on-failure',
@@ -37,47 +40,50 @@ export default defineConfig({
       use: { ...devices['Desktop Chrome'], viewport: { width: 390, height: 844 }, isMobile: true },
     },
   ],
-  webServer: [
-    {
-      command: 'npm run e2e:prepare --workspace @valuebooks/web && node apps/api/dist/src/main.js',
-      url: 'http://127.0.0.1:3401/api/v1/health',
-      reuseExistingServer: !process.env.CI,
-      // This command is not just "start the API": it migrates, truncates, drains the queues,
-      // compiles the Nest build and runs the demo seed first. On a cold cache that is minutes, not
-      // seconds, and the old 120s budget expired mid-build -- which surfaced as a managed-server
-      // lifecycle failure with no browser test ever running.
-      timeout: 900_000,
-      cwd: '../..',
-      env: {
-        ...process.env,
-        API_PORT: '3401',
-        DATABASE_URL: 'postgresql://valuebooks:valuebooks@127.0.0.1:55432/valuebooks_e2e',
-        REDIS_URL: 'redis://127.0.0.1:56780',
-        S3_ENDPOINT: 'http://127.0.0.1:59000',
-        SMTP_HOST: '127.0.0.1',
-        NODE_ENV: 'test',
-        QUEUE_PREFIX: 'valuebooks-e2e',
-        WEB_APP_URL: 'http://127.0.0.1:3300',
-      },
-    },
-    {
-      command:
-        'npm run build --workspace @valuebooks/web && npm run start --workspace @valuebooks/web',
-      url: 'http://127.0.0.1:3300/login',
-      reuseExistingServer: !process.env.CI,
-      // A cold Next production build of the whole app, then the server start.
-      timeout: 900_000,
-      cwd: '../..',
-      env: {
-        ...process.env,
-        NEXT_PUBLIC_API_URL: 'http://127.0.0.1:3401',
-        // The generated standalone server.js reads these env vars, not --hostname/--port CLI
-        // flags (that's `next start`'s interface, not the standalone server's) -- passing them as
-        // args was silently ignored and the server always bound to the 0.0.0.0:3000 default,
-        // which this config's own health-check URL then timed out waiting for.
-        HOSTNAME: '127.0.0.1',
-        PORT: '3300',
-      },
-    },
-  ],
+  webServer: useExistingServer
+    ? undefined
+    : [
+        {
+          command:
+            'npm run e2e:prepare --workspace @valuebooks/web && node apps/api/dist/src/main.js',
+          url: 'http://127.0.0.1:3401/api/v1/health',
+          reuseExistingServer: !process.env.CI,
+          // This command is not just "start the API": it migrates, truncates, drains the queues,
+          // compiles the Nest build and runs the demo seed first. On a cold cache that is minutes, not
+          // seconds, and the old 120s budget expired mid-build -- which surfaced as a managed-server
+          // lifecycle failure with no browser test ever running.
+          timeout: 900_000,
+          cwd: '../..',
+          env: {
+            ...process.env,
+            API_PORT: '3401',
+            DATABASE_URL: 'postgresql://valuebooks:valuebooks@127.0.0.1:55432/valuebooks_e2e',
+            REDIS_URL: 'redis://127.0.0.1:56780',
+            S3_ENDPOINT: process.env.E2E_S3_ENDPOINT ?? 'http://127.0.0.1:59000',
+            SMTP_HOST: '127.0.0.1',
+            NODE_ENV: 'test',
+            QUEUE_PREFIX: 'valuebooks-e2e',
+            WEB_APP_URL: 'http://127.0.0.1:3300',
+          },
+        },
+        {
+          command:
+            'npm run build --workspace @valuebooks/web && npm run start --workspace @valuebooks/web',
+          url: 'http://127.0.0.1:3300/login',
+          reuseExistingServer: !process.env.CI,
+          // A cold Next production build of the whole app, then the server start.
+          timeout: 900_000,
+          cwd: '../..',
+          env: {
+            ...process.env,
+            NEXT_PUBLIC_API_URL: 'http://127.0.0.1:3401',
+            // The generated standalone server.js reads these env vars, not --hostname/--port CLI
+            // flags (that's `next start`'s interface, not the standalone server's) -- passing them as
+            // args was silently ignored and the server always bound to the 0.0.0.0:3000 default,
+            // which this config's own health-check URL then timed out waiting for.
+            HOSTNAME: '127.0.0.1',
+            PORT: '3300',
+          },
+        },
+      ],
 });
