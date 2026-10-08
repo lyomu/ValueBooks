@@ -4,6 +4,7 @@ import {
   Delete,
   Get,
   HttpCode,
+  Patch,
   Param,
   ParseUUIDPipe,
   Post,
@@ -17,7 +18,14 @@ import { clearActiveOrganizationCookie } from '../organizations/organization-coo
 import { hashIdentifier } from './auth.crypto.js';
 import { AuthRateLimitService } from './auth-rate-limit.service.js';
 import { AuthService } from './auth.service.js';
-import { EmailDto, LoginDto, ResetPasswordDto, SignupDto, TokenDto } from './auth.dto.js';
+import {
+  EmailDto,
+  LoginDto,
+  ResetPasswordDto,
+  SignupDto,
+  TokenDto,
+  UpdateProfileDto,
+} from './auth.dto.js';
 import { getCookie, requestMetadata } from './request-context.js';
 import { clearSessionCookie, SESSION_COOKIE, setSessionCookie } from './session-cookie.js';
 import { SessionGuard, type AuthenticatedRequest } from './session.guard.js';
@@ -83,6 +91,12 @@ export class AuthController {
     await this.auth.logout(getCookie(request, SESSION_COOKIE));
     clearSessionCookie(response);
     clearActiveOrganizationCookie(response);
+  }
+
+  @Patch('profile')
+  @UseGuards(SessionGuard)
+  async updateProfile(@Body() input: UpdateProfileDto, @Req() request: AuthenticatedRequest) {
+    return { data: await this.auth.updateProfile(request.auth.user.id, input.displayName) };
   }
 
   @Post('forgot-password')

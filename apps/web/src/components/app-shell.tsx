@@ -53,6 +53,7 @@ import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { apiRequest } from '../lib/api';
 import { hasPermission, useWorkspace } from '../lib/workspace';
 import { AiAssistantWidget } from './ai-assistant';
+import { MaterialIcon, type MaterialIconName } from './material-icon';
 import { OrganizationSwitcher } from './organization-switcher';
 
 type NavigationItem = {
@@ -63,16 +64,19 @@ type NavigationItem = {
 
 type NavigationGroup = {
   label: string;
+  icon: MaterialIconName;
   items: NavigationItem[];
   /** Exempt from the accordion: stays expanded whatever else is open. */
   alwaysOpen?: boolean;
 };
 
 const NAV_GROUP_STORAGE_KEY = 'valuebooks:nav-group';
+const NAV_COLLAPSED_STORAGE_KEY = 'valuebooks:nav-collapsed';
 
 const navigationGroups: NavigationGroup[] = [
   {
     label: 'Overview',
+    icon: 'space_dashboard',
     // Where you land, so it should never cost a click to get back to.
     alwaysOpen: true,
     items: [
@@ -82,6 +86,7 @@ const navigationGroups: NavigationGroup[] = [
   },
   {
     label: 'Sales',
+    icon: 'shopping_cart',
     items: [
       { label: 'Customers', icon: Users, href: '/dashboard/customers' },
       { label: 'Items & services', icon: Package, href: '/catalog/items' },
@@ -94,6 +99,7 @@ const navigationGroups: NavigationGroup[] = [
   },
   {
     label: 'Purchases',
+    icon: 'shopping_bag',
     items: [
       { label: 'Vendors', icon: Users, href: '/vendors' },
       { label: 'Purchase orders', icon: ClipboardList, href: '/purchase-orders' },
@@ -106,6 +112,7 @@ const navigationGroups: NavigationGroup[] = [
   },
   {
     label: 'General ledger',
+    icon: 'menu_book',
     items: [
       { label: 'Chart of accounts', icon: BookOpenText, href: '/accounts' },
       { label: 'Opening balances', icon: BookOpenText, href: '/opening-balances' },
@@ -115,6 +122,7 @@ const navigationGroups: NavigationGroup[] = [
   },
   {
     label: 'Banking',
+    icon: 'account_balance',
     items: [
       { label: 'Financial accounts', icon: Landmark, href: '/financial-accounts' },
       { label: 'Statement imports', icon: FileUp, href: '/statement-imports' },
@@ -126,6 +134,7 @@ const navigationGroups: NavigationGroup[] = [
   },
   {
     label: 'Inventory',
+    icon: 'inventory_2',
     items: [
       { label: 'Items & stock', icon: Package, href: '/catalog/items' },
       { label: 'Warehouses', icon: Building2, href: '/warehouses' },
@@ -138,6 +147,7 @@ const navigationGroups: NavigationGroup[] = [
   },
   {
     label: 'Projects',
+    icon: 'work',
     items: [
       { label: 'Projects', icon: Briefcase, href: '/projects' },
       { label: 'Timesheet', icon: Timer, href: '/timesheets' },
@@ -147,6 +157,7 @@ const navigationGroups: NavigationGroup[] = [
   },
   {
     label: 'Workflow',
+    icon: 'rule',
     items: [
       { label: 'Approvals', icon: SquareCheckBig, href: '/approvals' },
       { label: 'Job failures', icon: AlertOctagon, href: '/automation/jobs' },
@@ -154,6 +165,7 @@ const navigationGroups: NavigationGroup[] = [
   },
   {
     label: 'Reports',
+    icon: 'bar_chart',
     items: [
       { label: 'Report library', icon: FileBarChart, href: '/reports' },
       { label: 'Saved reports', icon: FileClock, href: '/reports/saved' },
@@ -244,22 +256,34 @@ function Sidebar({
           const open = group.alwaysOpen === true || openGroup === group.label;
           return (
             <section className="rb-nav-group" key={group.label}>
-              {!collapsed ? (
-                <button
-                  className="rb-nav-group__trigger"
-                  type="button"
-                  aria-expanded={open}
-                  aria-disabled={group.alwaysOpen === true || undefined}
-                  onClick={() => {
-                    if (group.alwaysOpen !== true) toggleGroup(group.label);
-                  }}
-                >
-                  <span>{group.label}</span>
-                  <ChevronDown className={open ? 'is-open' : ''} />
-                </button>
-              ) : null}
+              {/* One markup for both states: CSS turns the row into a tile when collapsed, so the
+                  rail cannot drift away from the expanded header. */}
+              <button
+                className="rb-nav-group__trigger"
+                type="button"
+                aria-expanded={open}
+                aria-disabled={!collapsed && group.alwaysOpen === true ? true : undefined}
+                onClick={() => {
+                  // Collapsed, the tile is the only way into a group: open the rail with it.
+                  if (collapsed) {
+                    onToggle();
+                    if (group.alwaysOpen !== true && openGroup !== group.label) {
+                      toggleGroup(group.label);
+                    }
+                    return;
+                  }
+                  if (group.alwaysOpen !== true) toggleGroup(group.label);
+                }}
+              >
+                <ChevronDown
+                  className={open ? 'rb-nav-group__caret is-open' : 'rb-nav-group__caret'}
+                  aria-hidden="true"
+                />
+                <MaterialIcon className="rb-nav-group__icon" name={group.icon} />
+                <span className="rb-nav-group__label">{group.label}</span>
+              </button>
 
-              {open || collapsed ? (
+              {open && !collapsed ? (
                 <ul>
                   {group.items.map((item) => {
                     const Icon = item.icon;
@@ -270,20 +294,19 @@ function Sidebar({
                           <Link
                             className={active ? 'rb-nav-item is-active' : 'rb-nav-item'}
                             href={item.href}
-                            title={collapsed ? item.label : undefined}
                             onClick={onNavigate}
                           >
                             <Icon aria-hidden="true" />
-                            {!collapsed ? <span>{item.label}</span> : null}
+                            <span>{item.label}</span>
                           </Link>
                         ) : (
                           <span
                             className="rb-nav-item is-upcoming"
                             aria-label={`${item.label}, coming in a later milestone`}
-                            title={collapsed ? `${item.label} — upcoming` : 'Upcoming'}
+                            title="Upcoming"
                           >
                             <Icon aria-hidden="true" />
-                            {!collapsed ? <span>{item.label}</span> : null}
+                            <span>{item.label}</span>
                           </span>
                         )}
                       </li>
@@ -316,6 +339,7 @@ type QuickCreateEntry = {
 };
 
 const quickCreateEntries: readonly QuickCreateEntry[] = [
+  { label: 'Invoice', href: '/invoices/new', permission: 'sales.invoices.manage' },
   { label: 'Vendor', href: '/vendors', permission: 'vendors.manage' },
   { label: 'Purchase order', href: '/purchase-orders/new', permission: 'purchases.orders.manage' },
   { label: 'Bill', href: '/bills/new', permission: 'purchases.bills.manage' },
@@ -474,10 +498,38 @@ export function AppShell({
   const [mobileOpen, setMobileOpen] = useState(false);
   const workspace = useWorkspace({ requireOrganization });
 
+  // Like the open group, this is restored rather than re-derived: AppShell is mounted per page, so
+  // a collapsed rail would spring back open on every navigation. With nothing stored yet the
+  // viewport decides -- below 64rem the full sidebar leaves too little room for the page itself.
+  // Starts expanded so the server and the first client render agree.
+  useEffect(() => {
+    let stored: string | null = null;
+    try {
+      stored = window.sessionStorage.getItem(NAV_COLLAPSED_STORAGE_KEY);
+    } catch {
+      // Blocked or unavailable storage: fall through to the viewport default.
+    }
+    setCollapsed(
+      stored === null ? window.matchMedia('(max-width: 64rem)').matches : stored === '1',
+    );
+  }, []);
+
+  function toggleSidebar() {
+    setCollapsed((value) => {
+      const next = !value;
+      try {
+        window.sessionStorage.setItem(NAV_COLLAPSED_STORAGE_KEY, next ? '1' : '0');
+      } catch {
+        // See above.
+      }
+      return next;
+    });
+  }
+
   return (
     <div className={collapsed ? 'rb-app-shell has-collapsed-sidebar' : 'rb-app-shell'}>
       <div className="rb-app-shell__desktop-nav">
-        <Sidebar collapsed={collapsed} onToggle={() => setCollapsed((value) => !value)} />
+        <Sidebar collapsed={collapsed} onToggle={toggleSidebar} />
       </div>
 
       <Dialog open={mobileOpen} onOpenChange={setMobileOpen}>

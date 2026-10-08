@@ -64,7 +64,7 @@ export function AuthForm({
     const email = formValue(data, 'email');
     const body =
       mode === 'signup'
-        ? { displayName: data.get('displayName'), email, password: data.get('password') }
+        ? { email, password: data.get('password') }
         : mode === 'reset'
           ? { token, password: data.get('password') }
           : mode === 'forgot'
@@ -72,10 +72,18 @@ export function AuthForm({
             : { email, password: data.get('password') };
 
     try {
-      await apiRequest(config.endpoint, { method: 'POST', body: JSON.stringify(body) });
+      const response = await apiRequest<{ data?: { user?: { profileComplete?: boolean } } }>(
+        config.endpoint,
+        { method: 'POST', body: JSON.stringify(body) },
+      );
       if (mode === 'login') {
+        const destination = invitation
+          ? `/accept-invitation?token=${encodeURIComponent(invitation)}`
+          : redirectTo;
         router.push(
-          invitation ? `/accept-invitation?token=${encodeURIComponent(invitation)}` : redirectTo,
+          response.data?.user?.profileComplete === false
+            ? `/complete-profile?next=${encodeURIComponent(destination)}`
+            : destination,
         );
         router.refresh();
         return;
@@ -122,20 +130,6 @@ export function AuthForm({
   return (
     <>
       <form className="rb-auth-form" onSubmit={(event) => void submit(event)} noValidate>
-        {mode === 'signup' ? (
-          <div className="rb-auth-field">
-            <Label htmlFor="displayName">Your name</Label>
-            <Input
-              id="displayName"
-              name="displayName"
-              autoComplete="name"
-              required
-              minLength={2}
-              maxLength={120}
-            />
-          </div>
-        ) : null}
-
         {mode !== 'reset' ? (
           <div className="rb-auth-field">
             <Label htmlFor="email">Email address</Label>
@@ -155,7 +149,6 @@ export function AuthForm({
           <div className="rb-auth-field">
             <div className="rb-auth-field__label-row">
               <Label htmlFor="password">{mode === 'reset' ? 'New password' : 'Password'}</Label>
-              {mode === 'login' ? <Link href="/forgot-password">Forgot password?</Link> : null}
             </div>
             <Input
               id="password"
@@ -172,6 +165,8 @@ export function AuthForm({
                 <span id="password-hint">
                   Use 12+ characters with uppercase, lowercase, and a number.
                 </span>
+              ) : mode === 'login' ? (
+                <Link href="/forgot-password">Forgot it?</Link>
               ) : (
                 <span />
               )}
@@ -209,13 +204,13 @@ export function AuthForm({
               <span>or</span>
             </div>
             <div className="rb-auth-social">
-              <button type="button" disabled aria-describedby="social-note">
+              <button type="button" disabled aria-describedby="social-note" data-provider="google">
                 <GoogleMark />
-                Continue with Google
+                {mode === 'login' ? 'Sign in with Google' : 'Sign up with Google'}
               </button>
-              <button type="button" disabled aria-describedby="social-note">
+              <button type="button" disabled aria-describedby="social-note" data-provider="apple">
                 <AppleMark />
-                Continue with Apple
+                {mode === 'login' ? 'Sign in with Apple' : 'Sign up with Apple'}
               </button>
               <p className="rb-auth-social__note" id="social-note">
                 Social sign-in is coming soon.

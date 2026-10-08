@@ -33,6 +33,20 @@ function collectBrowserErrors(page: Page) {
 }
 
 test.describe('ValueBooks design foundation', () => {
+  test('@visual authentication references', async ({ page }) => {
+    await page.setViewportSize({ width: 2560, height: 1356 });
+    await openStable(page, '/signup');
+    await expect(page.getByRole('heading', { name: 'Sign up for ValueBooks today!' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Sign up with Google' })).toBeDisabled();
+    await expect(page).toHaveScreenshot('signup.png', { fullPage: true, maxDiffPixelRatio: 0.002 });
+
+    await openStable(page, '/login');
+    await expect(page.getByRole('heading', { name: 'Sign in', exact: true })).toBeVisible();
+    await expect(page.getByAltText('A hand holding payment cards')).toBeVisible();
+    await expect(page.getByRole('link', { name: 'Forgot it?' })).toBeVisible();
+    await expect(page).toHaveScreenshot('login.png', { fullPage: true, maxDiffPixelRatio: 0.002 });
+  });
+
   test('@visual dashboard baseline and shell interactions', async ({ page }, testInfo) => {
     const browserErrors = collectBrowserErrors(page);
     await openStable(page, '/dashboard');

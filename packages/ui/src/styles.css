@@ -872,8 +872,11 @@
   align-items: center;
   gap: var(--rb-space-2);
   padding: 0 var(--rb-space-3);
+  color: inherit;
   border-radius: var(--rb-radius-sm);
   font-size: 0.875rem;
+  /* Menu entries are often links; the browser default underline makes a menu look like a list. */
+  text-decoration: none;
   cursor: pointer;
   outline: none;
 }

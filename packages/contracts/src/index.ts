@@ -172,6 +172,7 @@ export const platformUserSchema = z.object({
   displayName: z.string().min(1),
   status: z.enum(['PENDING_VERIFICATION', 'ACTIVE', 'SUSPENDED', 'CLOSED']),
   emailVerified: z.boolean(),
+  profileComplete: z.boolean().optional(),
   membershipCount: z.number().int().nonnegative(),
   createdAt: z.iso.datetime(),
 });

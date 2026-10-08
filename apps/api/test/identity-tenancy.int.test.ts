@@ -57,7 +57,7 @@ describe('identity and tenancy over HTTP', () => {
 
     const signup = await agent
       .post(`${API}/auth/signup`)
-      .send({ displayName: 'Identity User', email, password: PASSWORD })
+      .send({ email, password: PASSWORD })
       .expect(202);
     expect((signup.body as { data: { message: string } }).data.message).toBe(
       'Check your email for the next step.',
@@ -72,6 +72,13 @@ describe('identity and tenancy over HTTP', () => {
       .set('User-Agent', 'Stage 2 browser')
       .send({ email, password: PASSWORD })
       .expect(200);
+    expect(
+      (login.body as { data: { user: { profileComplete: boolean } } }).data.user.profileComplete,
+    ).toBe(false);
+    await agent.patch(`${API}/auth/profile`).send({ displayName: 'Identity User' }).expect(200);
+    expect((await agent.get(`${API}/me`).expect(200)).body).toMatchObject({
+      data: { displayName: 'Identity User', profileComplete: true },
+    });
     const originalCookie = sessionCookie(login.headers['set-cookie']);
     const user = await harness.prisma.user.findUniqueOrThrow({ where: { email } });
     const originalSession = await harness.prisma.session.findFirstOrThrow({
@@ -238,13 +245,11 @@ describe('identity and tenancy over HTTP', () => {
     });
 
     const agent = harness.http();
-    await agent
-      .post(`${API}/auth/signup`)
-      .send({ displayName: 'New Invitee', email, password: PASSWORD })
-      .expect(202);
+    await agent.post(`${API}/auth/signup`).send({ email, password: PASSWORD }).expect(202);
     const verificationToken = await queuedToken(email, '/verify-email?token=');
     await agent.post(`${API}/auth/verify-email`).send({ token: verificationToken }).expect(200);
     await agent.post(`${API}/auth/login`).send({ email, password: PASSWORD }).expect(200);
+    await agent.patch(`${API}/auth/profile`).send({ displayName: 'New Invitee' }).expect(200);
     await agent.post(`${API}/invitations/accept`).send({ token: invitation.rawToken }).expect(200);
 
     const user = await harness.prisma.user.findUniqueOrThrow({ where: { email } });

@@ -63,7 +63,7 @@
   --rb-ease-out: cubic-bezier(0.16, 1, 0.3, 1);
 
   --rb-sidebar-width: 16rem;
-  --rb-sidebar-collapsed-width: 4rem;
+  --rb-sidebar-collapsed-width: 5.25rem;
   --rb-topbar-height: 3.5rem;
   --rb-content-max: 100rem;
 }

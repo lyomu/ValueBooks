@@ -30,6 +30,7 @@ export interface PublicUser {
   email: string;
   displayName: string;
   emailVerified: boolean;
+  profileComplete?: boolean;
   status: UserStatus;
 }
 
@@ -60,7 +61,7 @@ export class AuthService {
    * controller: normal accounts must prove possession of their email through `verifyEmail`.
    */
   async provisionVerifiedUserForBootstrap(
-    input: SignupDto,
+    input: SignupDto & { displayName: string },
     metadata: RequestMetadata,
   ): Promise<PublicUser> {
     const passwordHash = await hashPassword(input.password);
@@ -71,11 +72,13 @@ export class AuthService {
         create: {
           email: input.email,
           displayName: input.displayName,
+          profileCompletedAt: verifiedAt,
           emailVerifiedAt: verifiedAt,
           status: UserStatus.ACTIVE,
         },
         update: {
           displayName: input.displayName,
+          profileCompletedAt: verifiedAt,
           emailVerifiedAt: verifiedAt,
           status: UserStatus.ACTIVE,
         },
@@ -97,6 +100,7 @@ export class AuthService {
         email: user.email,
         displayName: user.displayName,
         emailVerified: true,
+        profileComplete: true,
         status: user.status,
       };
     });
@@ -125,7 +129,7 @@ export class AuthService {
       const created = await tx.user.create({
         data: {
           email: input.email,
-          displayName: input.displayName,
+          displayName: 'New ValueBooks user',
           authMethods: {
             create: { provider: AuthProvider.PASSWORD, passwordHash },
           },
@@ -142,7 +146,7 @@ export class AuthService {
       return created;
     });
 
-    await this.mailer.sendVerification(user.email, user.displayName, rawToken);
+    await this.mailer.sendVerification(user.email, 'there', rawToken);
     return { message: 'Check your email for the next step.' };
   }
 
@@ -193,6 +197,14 @@ export class AuthService {
     });
 
     return { message: 'Email verified. You can now sign in.' };
+  }
+
+  async updateProfile(userId: string, displayName: string): Promise<PublicUser> {
+    const user = await this.prisma.user.update({
+      where: { id: userId },
+      data: { displayName, profileCompletedAt: new Date() },
+    });
+    return toPublicUser(user);
   }
 
   async login(
@@ -446,6 +458,7 @@ function toPublicUser(user: {
   email: string;
   displayName: string;
   emailVerifiedAt: Date | null;
+  profileCompletedAt: Date | null;
   status: UserStatus;
 }): PublicUser {
   return {
@@ -453,6 +466,7 @@ function toPublicUser(user: {
     email: user.email,
     displayName: user.displayName,
     emailVerified: Boolean(user.emailVerifiedAt),
+    profileComplete: Boolean(user.profileCompletedAt),
     status: user.status,
   };
 }

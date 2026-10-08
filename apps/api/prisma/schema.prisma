@@ -274,6 +274,7 @@ model User {
   id                               String                     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   email                            String                     @unique @db.Citext
   displayName                      String                     @map("display_name") @db.VarChar(120)
+  profileCompletedAt               DateTime?                  @map("profile_completed_at") @db.Timestamptz(6)
   emailVerifiedAt                  DateTime?                  @map("email_verified_at") @db.Timestamptz(6)
   status                           UserStatus                 @default(PENDING_VERIFICATION)
   createdAt                        DateTime                   @default(now()) @map("created_at") @db.Timestamptz(6)

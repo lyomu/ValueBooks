@@ -14,11 +14,9 @@ export default async function LoginPage({
   return (
     <AuthShell
       variant="split"
-      title="Welcome back"
+      title="Sign in"
       description={
-        invitation
-          ? 'Sign in with the invited email address to join the organization.'
-          : 'Sign in to continue to your accounting workspace.'
+        invitation ? 'Sign in with the invited email address to join the organization.' : undefined
       }
     >
       <AuthForm mode="login" invitation={invitation} />

@@ -1,21 +1,27 @@
+import Image from 'next/image';
 import { BookOpenCheck, Check } from 'lucide-react';
 import Link from 'next/link';
 import type { ReactNode } from 'react';
 
 const assurances: ReadonlyArray<string> = [
-  'Adaptive password hashing and protected sessions.',
-  'Roles and permissions arrive with organization setup.',
-  'Accounting configuration follows immediately after access.',
+  'Create polished invoices your customers can pay online.',
+  'Keep invoices, payments, and customer records in one place.',
+  'See what is paid, overdue, and ready to follow up.',
 ];
 
 function AssurancePanel() {
   return (
     <div className="rb-auth__aside-content">
-      <h2>Start with a trustworthy accounting foundation.</h2>
-      <p>
-        Your workspace begins with secure access, a verifiable audit trail, and organization
-        boundaries built into every workflow.
-      </p>
+      <Image
+        className="rb-auth__aside-illustration"
+        src="/images/sign-in-payments-illustration.png"
+        alt="A hand holding payment cards"
+        width={1024}
+        height={1024}
+        priority
+      />
+      <h2>Get paid with confidence</h2>
+      <p>Give your customers a clear way to pay while keeping your books up to date.</p>
       <ul>
         {assurances.map((item) => (
           <li key={item}>
@@ -41,9 +47,9 @@ export function AuthShell({
   panel,
 }: {
   title: string;
-  description: string;
+  description?: string;
   children: ReactNode;
-  variant?: 'split' | 'centered';
+  variant?: 'split' | 'centered' | 'signup';
   panel?: ReactNode;
 }) {
   const main = (
@@ -60,7 +66,7 @@ export function AuthShell({
         </Link>
         <div className="rb-auth__heading">
           <h1 id="auth-title">{title}</h1>
-          <p>{description}</p>
+          {description ? <p>{description}</p> : null}
         </div>
         {children}
         <p className="rb-auth__legal">
@@ -70,9 +76,9 @@ export function AuthShell({
     </section>
   );
 
-  if (variant === 'centered') {
+  if (variant === 'centered' || variant === 'signup') {
     return (
-      <main className="rb-auth rb-auth--centered" id="main-content">
+      <main className={`rb-auth rb-auth--${variant}`} id="main-content">
         {main}
       </main>
     );

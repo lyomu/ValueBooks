@@ -13,7 +13,8 @@ export default async function SignupPage({
   const { invitation } = await searchParams;
   return (
     <AuthShell
-      title="Create your account"
+      variant="signup"
+      title="Sign up for ValueBooks today!"
       description={
         invitation
           ? 'Use the email address your invitation was sent to. You can join the organization once it is verified.'

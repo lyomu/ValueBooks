@@ -73,7 +73,10 @@ body {
    column so nothing competes with the task in front of the visitor. */
 .rb-auth--split {
   display: grid;
-  grid-template-columns: minmax(24rem, 1fr) minmax(26rem, 1fr);
+  grid-template-columns: minmax(0, 1fr) minmax(32rem, 45.5rem);
+  gap: clamp(2rem, 6vw, 9rem);
+  align-items: center;
+  padding: clamp(1.5rem, 5vw, 8rem);
 }
 
 .rb-auth__main {
@@ -94,9 +97,15 @@ body {
 
 .rb-auth--split .rb-auth__content {
   width: min(100%, 30rem);
-  padding: clamp(1.75rem, 3.5vw, 2.5rem);
-  background: hsl(var(--rb-accent));
+  gap: 1.45rem;
+  padding: clamp(2.75rem, 3.25vw, 4rem);
+  background: hsl(202 82% 93%);
   border-radius: 1.25rem;
+}
+
+.rb-auth--split .rb-auth__main {
+  min-height: 0;
+  padding: 0;
 }
 
 .rb-auth--centered .rb-auth__content {
@@ -104,12 +113,27 @@ body {
   text-align: center;
 }
 
+.rb-auth--signup .rb-auth__content {
+  width: min(100%, 30rem);
+  gap: 1.25rem;
+  text-align: center;
+}
+
 .rb-auth--centered .rb-auth__brand {
+  align-self: center;
+}
+
+.rb-auth--signup .rb-auth__brand {
   align-self: center;
 }
 
 .rb-auth--centered .rb-auth-form,
 .rb-auth--centered .rb-auth-success {
+  text-align: left;
+}
+
+.rb-auth--signup .rb-auth-form,
+.rb-auth--signup .rb-auth-success {
   text-align: left;
 }
 
@@ -152,8 +176,42 @@ body {
   font-size: 0.75rem;
 }
 
+.rb-auth--split .rb-auth__brand {
+  align-self: flex-start;
+}
+
+.rb-auth--split .rb-auth__brand-mark {
+  width: 2.25rem;
+  height: 2.25rem;
+  background: transparent;
+}
+
+.rb-auth--split .rb-auth__brand-mark svg {
+  width: 1.65rem;
+  height: 1.65rem;
+}
+
+.rb-auth--split .rb-auth__brand strong {
+  font-size: 1.65rem;
+  letter-spacing: -0.04em;
+}
+
+.rb-auth--split .rb-auth__brand small {
+  display: none;
+}
+
 .rb-auth__heading {
   margin: clamp(1.5rem, 5vh, 3rem) 0 0.5rem;
+}
+
+.rb-auth--split .rb-auth__heading {
+  margin: 0.25rem 0 0;
+}
+
+.rb-auth--split .rb-auth__heading h1 {
+  font-size: 2.25rem;
+  line-height: 1.12;
+  letter-spacing: -0.035em;
 }
 
 .rb-auth__heading h1 {
@@ -170,6 +228,22 @@ body {
   color: hsl(var(--rb-muted-foreground));
   font-size: 0.9375rem;
   line-height: 1.6;
+}
+
+.rb-auth--signup .rb-auth__heading {
+  margin: clamp(1.35rem, 4vh, 2.5rem) 0 0.25rem;
+}
+
+.rb-auth--signup .rb-auth__heading h1 {
+  font-size: clamp(2rem, 2.9vw, 2.45rem);
+}
+
+.rb-auth--signup .rb-auth__heading p {
+  max-width: 35rem;
+  margin-right: auto;
+  margin-left: auto;
+  font-size: 1rem;
+  line-height: 1.45;
 }
 
 .rb-auth-form {
@@ -249,6 +323,25 @@ body {
   border-radius: var(--rb-radius-full);
 }
 
+.rb-auth--split .rb-auth-form__submit {
+  margin-top: 0.35rem;
+  background: hsl(228 100% 52%);
+  box-shadow: none;
+}
+
+.rb-auth--split .rb-auth-form__submit:hover:not(:disabled) {
+  background: hsl(228 100% 46%);
+}
+
+.rb-auth--signup .rb-auth-form__submit {
+  background: hsl(228 100% 52%);
+  box-shadow: none;
+}
+
+.rb-auth--signup .rb-auth-form__submit:hover:not(:disabled) {
+  background: hsl(228 100% 46%);
+}
+
 .rb-auth-divider {
   display: grid;
   align-items: center;
@@ -291,8 +384,28 @@ body {
 }
 
 .rb-auth-social > button:disabled {
-  opacity: 0.55;
+  opacity: 1;
   cursor: not-allowed;
+}
+
+.rb-auth--split .rb-auth-social > button[data-provider='google'] {
+  border-color: hsl(215 18% 60%);
+}
+
+.rb-auth--signup .rb-auth-social > button[data-provider='google'] {
+  border-color: hsl(215 18% 60%);
+}
+
+.rb-auth--split .rb-auth-social > button[data-provider='apple'] {
+  color: white;
+  background: hsl(220 18% 8%);
+  border-color: hsl(220 18% 8%);
+}
+
+.rb-auth--signup .rb-auth-social > button[data-provider='apple'] {
+  color: white;
+  background: hsl(220 18% 8%);
+  border-color: hsl(220 18% 8%);
 }
 
 .rb-auth-social__note {
@@ -342,35 +455,45 @@ body {
   min-height: 100dvh;
   flex-direction: column;
   justify-content: center;
-  padding: clamp(2.5rem, 6vw, 6rem);
-  color: white;
-  background: hsl(var(--rb-brand-navy));
+  align-items: center;
+  padding: 2rem;
+  color: hsl(var(--rb-foreground));
+  background: transparent;
 }
 
 .rb-auth__aside-content {
-  max-width: 33rem;
+  width: min(100%, 34rem);
+  text-align: center;
+}
+
+.rb-auth__aside-illustration {
+  display: block;
+  width: min(100%, 20rem);
+  height: auto;
+  margin: 0 auto clamp(2.5rem, 4vw, 4.5rem);
 }
 
 .rb-auth__aside h2 {
-  max-width: 15ch;
-  margin: 0 0 1rem;
-  font-size: clamp(2rem, 3.4vw, 3.25rem);
-  line-height: 1.08;
-  letter-spacing: -0.035em;
+  max-width: none;
+  margin: 0 0 1.25rem;
+  font-size: clamp(2rem, 2.5vw, 2.75rem);
+  line-height: 1.12;
+  letter-spacing: -0.04em;
   text-wrap: balance;
 }
 
 .rb-auth__aside-content > p {
-  max-width: 55ch;
-  margin: 0;
-  color: hsl(214 28% 82%);
-  line-height: 1.65;
+  max-width: 29rem;
+  margin: 0 auto;
+  color: hsl(var(--rb-foreground));
+  font-size: 1.15rem;
+  line-height: 1.45;
 }
 
 .rb-auth__aside ul {
   display: grid;
   gap: 1.25rem;
-  margin: 2.75rem 0 0;
+  margin: clamp(2.75rem, 4vw, 4.25rem) 0 0;
   padding: 0;
   list-style: none;
 }
@@ -379,23 +502,21 @@ body {
   display: grid;
   grid-template-columns: 1.25rem 1fr;
   gap: 0.875rem;
-  color: hsl(214 28% 86%);
+  color: hsl(var(--rb-foreground));
   font-size: 1rem;
-  line-height: 1.55;
+  line-height: 1.4;
+  text-align: left;
 }
 
 .rb-auth__aside li > svg {
   width: 1.25rem;
   height: 1.25rem;
   margin-top: 0.2rem;
-  color: hsl(var(--rb-primary));
+  color: hsl(153 66% 38%);
 }
 
 .rb-auth__aside-note {
-  margin: auto 0 0;
-  padding-top: 3rem;
-  color: hsl(214 28% 68%);
-  font-size: 0.75rem;
+  display: none;
 }
 
 .rb-auth-success,
@@ -965,31 +1086,44 @@ button.rb-brand-mark:focus-visible {
   width: 100%;
   min-height: 2.25rem;
   align-items: center;
-  justify-content: space-between;
-  padding: 0 0.75rem;
-  color: hsl(var(--rb-sidebar-muted));
+  gap: 0.5rem;
+  padding: 0 0.5rem;
+  color: white;
   background: transparent;
   border: 0;
   border-radius: var(--rb-radius-sm);
-  font-size: 0.625rem;
-  font-weight: 700;
-  letter-spacing: 0.045em;
-  text-transform: uppercase;
+  font-size: 13px;
+  font-weight: 500;
+  text-align: left;
   cursor: pointer;
 }
 
-.rb-nav-group__trigger:hover {
-  color: hsl(var(--rb-sidebar-foreground));
+.rb-nav-group__trigger:hover,
+.rb-nav-group__trigger[aria-expanded='true'] {
+  background: hsl(var(--rb-sidebar-accent) / 0.6);
 }
 
-.rb-nav-group__trigger svg {
+.rb-nav-group__caret {
   width: 0.75rem;
   height: 0.75rem;
+  flex: 0 0 0.75rem;
   transition: transform var(--rb-duration-fast) ease;
 }
 
-.rb-nav-group__trigger svg:not(.is-open) {
+.rb-nav-group__caret:not(.is-open) {
   transform: rotate(-90deg);
+}
+
+.rb-nav-group__icon {
+  width: 1.125rem;
+  height: 1.125rem;
+  flex: 0 0 1.125rem;
+}
+
+.rb-nav-group__label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .rb-nav-group ul {
@@ -1006,11 +1140,12 @@ button.rb-brand-mark:focus-visible {
   min-height: 2.625rem;
   align-items: center;
   gap: 0.75rem;
-  padding: 0 0.75rem;
+  /* Indented past the header's caret and icon, so a row reads as belonging to its group. */
+  padding: 0 0.75rem 0 1.75rem;
   overflow: hidden;
-  color: hsl(var(--rb-sidebar-foreground));
+  color: white;
   border-radius: var(--rb-radius-sm);
-  font-size: 0.875rem;
+  font-size: 13px;
   font-weight: 400;
   text-decoration: none;
   white-space: nowrap;
@@ -1045,13 +1180,56 @@ a.rb-nav-item:hover {
   cursor: default;
 }
 
-.rb-app-sidebar.is-collapsed .rb-nav-item {
+/* Collapsed, a group header becomes a tile: icon over a truncated label, and nothing else. The
+   items are unreachable until the rail is expanded, which clicking a tile does. */
+.rb-app-sidebar.is-collapsed .rb-nav-group ul {
+  display: none;
+}
+
+.rb-app-sidebar.is-collapsed .rb-nav-group__trigger {
+  position: relative;
+  min-height: 3.25rem;
+  flex-direction: column;
   justify-content: center;
-  padding: 0;
+  gap: 0.25rem;
+  padding: 0.375rem 0.25rem;
+}
+
+.rb-app-sidebar.is-collapsed .rb-nav-group__caret {
+  display: none;
+}
+
+/* Nothing is visibly expanded in the rail, so the open-group highlight would only mislead. */
+.rb-app-sidebar.is-collapsed .rb-nav-group__trigger[aria-expanded='true']:not(:hover) {
+  background: transparent;
+}
+
+.rb-app-sidebar.is-collapsed .rb-nav-group__icon {
+  width: 1.375rem;
+  height: 1.375rem;
+  flex: 0 0 1.375rem;
+}
+
+.rb-app-sidebar.is-collapsed .rb-nav-group__label {
+  max-width: 100%;
+  font-size: 11px;
+  line-height: 1.2;
+}
+
+/* The corner marker that says the tile opens into something. */
+.rb-app-sidebar.is-collapsed .rb-nav-group__trigger::after {
+  position: absolute;
+  right: 0.25rem;
+  bottom: 0.25rem;
+  width: 0;
+  height: 0;
+  border-right: 0.3rem solid hsl(var(--rb-sidebar-foreground) / 0.55);
+  border-top: 0.3rem solid transparent;
+  content: '';
 }
 
 .rb-app-sidebar.is-collapsed .rb-nav-group {
-  margin-bottom: 0.5rem;
+  margin-bottom: 0.25rem;
 }
 
 .rb-app-sidebar__help {
@@ -3751,24 +3929,8 @@ a.rb-nav-item:hover {
 }
 
 @media (max-width: 64rem) {
-  .rb-app-sidebar:not(.rb-drawer .rb-app-sidebar) {
-    width: var(--rb-sidebar-collapsed-width);
-  }
-
-  .rb-app-sidebar:not(.rb-drawer .rb-app-sidebar) .rb-app-sidebar__brand-copy,
-  .rb-app-sidebar:not(.rb-drawer .rb-app-sidebar) .rb-app-sidebar__toggle,
-  .rb-app-sidebar:not(.rb-drawer .rb-app-sidebar) .rb-nav-group__trigger,
-  .rb-app-sidebar:not(.rb-drawer .rb-app-sidebar) .rb-nav-item span,
-  .rb-app-sidebar:not(.rb-drawer .rb-app-sidebar) .rb-app-sidebar__help {
-    display: none;
-  }
-
-  .rb-app-sidebar:not(.rb-drawer .rb-app-sidebar) .rb-app-sidebar__brand,
-  .rb-app-sidebar:not(.rb-drawer .rb-app-sidebar) .rb-nav-item {
-    justify-content: center;
-    padding-inline: 0;
-  }
-
+  /* Narrow viewports collapse the rail through AppShell state rather than here, so the collapsed
+     markup is the same one the toggle produces. */
   .rb-dashboard-grid {
     grid-template-columns: 1fr;
   }
