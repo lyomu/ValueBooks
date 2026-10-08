@@ -64,11 +64,17 @@ type NavigationItem = {
 type NavigationGroup = {
   label: string;
   items: NavigationItem[];
+  /** Exempt from the accordion: stays expanded whatever else is open. */
+  alwaysOpen?: boolean;
 };
+
+const NAV_GROUP_STORAGE_KEY = 'valuebooks:nav-group';
 
 const navigationGroups: NavigationGroup[] = [
   {
     label: 'Overview',
+    // Where you land, so it should never cost a click to get back to.
+    alwaysOpen: true,
     items: [
       { label: 'Dashboard', icon: LayoutDashboard, href: '/dashboard' },
       { label: 'Notifications', icon: Bell, href: '/notifications' },
@@ -187,9 +193,31 @@ function Sidebar({
   onNavigate?: () => void;
 }) {
   const pathname = usePathname();
-  const [openGroups, setOpenGroups] = useState<Record<string, boolean>>(() =>
-    Object.fromEntries(navigationGroups.map((group) => [group.label, true])),
-  );
+  // One group open at a time: every group expanded at once is what turned the sidebar into a
+  // scroll rather than a map.
+  const [openGroup, setOpenGroup] = useState<string | null>(null);
+
+  // AppShell is mounted per page rather than in a shared layout, so its state is destroyed on every
+  // navigation. Without restoring it, the group you just opened would close the moment you clicked
+  // something inside it. Starts null so the server and first client render agree.
+  useEffect(() => {
+    try {
+      setOpenGroup(window.sessionStorage.getItem(NAV_GROUP_STORAGE_KEY));
+    } catch {
+      // Blocked or unavailable storage: the accordion still works, it just does not remember.
+    }
+  }, []);
+
+  function toggleGroup(label: string) {
+    const next = openGroup === label ? null : label;
+    setOpenGroup(next);
+    try {
+      if (next) window.sessionStorage.setItem(NAV_GROUP_STORAGE_KEY, next);
+      else window.sessionStorage.removeItem(NAV_GROUP_STORAGE_KEY);
+    } catch {
+      // See above.
+    }
+  }
 
   return (
     <aside className={collapsed ? 'rb-app-sidebar is-collapsed' : 'rb-app-sidebar'}>
@@ -213,7 +241,7 @@ function Sidebar({
 
       <nav className="rb-app-sidebar__nav" aria-label="Primary navigation">
         {navigationGroups.map((group) => {
-          const open = openGroups[group.label] ?? true;
+          const open = group.alwaysOpen === true || openGroup === group.label;
           return (
             <section className="rb-nav-group" key={group.label}>
               {!collapsed ? (
@@ -221,7 +249,10 @@ function Sidebar({
                   className="rb-nav-group__trigger"
                   type="button"
                   aria-expanded={open}
-                  onClick={() => setOpenGroups((current) => ({ ...current, [group.label]: !open }))}
+                  aria-disabled={group.alwaysOpen === true || undefined}
+                  onClick={() => {
+                    if (group.alwaysOpen !== true) toggleGroup(group.label);
+                  }}
                 >
                   <span>{group.label}</span>
                   <ChevronDown className={open ? 'is-open' : ''} />

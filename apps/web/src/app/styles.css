@@ -945,7 +945,7 @@ button.rb-brand-mark:focus-visible {
 
 .rb-app-sidebar__nav {
   flex: 1;
-  padding: 0.5rem;
+  padding: 0.5rem 0.625rem;
   overflow-x: hidden;
   overflow-y: auto;
   scrollbar-width: thin;
@@ -953,13 +953,17 @@ button.rb-brand-mark:focus-visible {
 }
 
 .rb-nav-group {
-  margin-bottom: 0.25rem;
+  margin-bottom: 0.5rem;
+}
+/* Headers read as separators between groups rather than as another row of their own. */
+.rb-nav-group + .rb-nav-group {
+  margin-top: 0.35rem;
 }
 
 .rb-nav-group__trigger {
   display: flex;
   width: 100%;
-  min-height: 1.75rem;
+  min-height: 2.25rem;
   align-items: center;
   justify-content: space-between;
   padding: 0 0.75rem;
@@ -991,7 +995,7 @@ button.rb-brand-mark:focus-visible {
 .rb-nav-group ul {
   display: flex;
   flex-direction: column;
-  gap: 0.125rem;
+  gap: 0.3rem;
   margin: 0;
   padding: 0;
   list-style: none;
@@ -999,7 +1003,7 @@ button.rb-brand-mark:focus-visible {
 
 .rb-nav-item {
   display: flex;
-  min-height: 2.375rem;
+  min-height: 2.625rem;
   align-items: center;
   gap: 0.75rem;
   padding: 0 0.75rem;
