@@ -1,5 +1,5 @@
 import { Building2, Camera, HeartHandshake, Palette, ShoppingBag, Wrench } from 'lucide-react';
-import { FinalCta, PageHero } from '../../../components/marketing/sections';
+import { PageHero } from '../../../components/marketing/sections';
 
 const industries = [
   {
@@ -75,7 +75,6 @@ export default function IndustriesPage() {
         </div>
       </section>
 
-      <FinalCta />
     </>
   );
 }

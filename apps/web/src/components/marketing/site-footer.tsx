@@ -34,15 +34,6 @@ const columns: ReadonlyArray<{ title: string; links: ReadonlyArray<readonly [str
 export function SiteFooter() {
   return (
     <footer className="mk-footer">
-      <div className="mk-footer__cta">
-        <div>
-          <p className="mk-kicker">Ready when you are</p>
-          <h2>Make room for the work that moves your business forward.</h2>
-        </div>
-        <Link className="mk-button mk-button--light" href="/signup">
-          Start with ValueBooks
-        </Link>
-      </div>
       <div className="mk-footer__grid">
         <div className="mk-footer__brand">
           <Link className="mk-brand mk-brand--footer" href="/">

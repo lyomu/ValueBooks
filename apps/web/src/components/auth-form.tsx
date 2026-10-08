@@ -1,11 +1,12 @@
 'use client';
 
-import { Button, FieldMessage, Input, Label } from '@valuebooks/ui';
-import { Eye, EyeOff, MailCheck } from 'lucide-react';
+import { Button, Input, Label } from '@valuebooks/ui';
+import { MailCheck } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { type FormEvent, useState } from 'react';
 
+import { AppleMark, GoogleMark } from './auth-social-marks';
 import { apiRequest, ApiError } from '../lib/api';
 import { formValue } from '../lib/forms';
 
@@ -27,6 +28,7 @@ export function AuthForm({
   token,
   invitation,
   redirectTo = '/dashboard',
+  socialOptions = true,
 }: {
   mode: AuthMode;
   token?: string;
@@ -38,6 +40,11 @@ export function AuthForm({
    * dashboard bounced them straight into onboarding for a business they do not work for.
    */
   redirectTo?: string;
+  /**
+   * Set false on the customer portal, whose visitors are invoice recipients rather than ValueBooks
+   * account holders -- offering them a social account to create would misdescribe the flow.
+   */
+  socialOptions?: boolean;
 }) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
@@ -113,43 +120,43 @@ export function AuthForm({
   }
 
   return (
-    <form className="rb-auth-form" onSubmit={(event) => void submit(event)} noValidate>
-      {mode === 'signup' ? (
-        <div className="rb-auth-field">
-          <Label htmlFor="displayName">Your name</Label>
-          <Input
-            id="displayName"
-            name="displayName"
-            autoComplete="name"
-            required
-            minLength={2}
-            maxLength={120}
-          />
-        </div>
-      ) : null}
-
-      {mode !== 'reset' ? (
-        <div className="rb-auth-field">
-          <Label htmlFor="email">Email address</Label>
-          <Input
-            id="email"
-            name="email"
-            type="email"
-            autoComplete="email"
-            required
-            maxLength={254}
-            inputMode="email"
-          />
-        </div>
-      ) : null}
-
-      {mode === 'login' || mode === 'signup' || mode === 'reset' ? (
-        <div className="rb-auth-field">
-          <div className="rb-auth-field__label-row">
-            <Label htmlFor="password">{mode === 'reset' ? 'New password' : 'Password'}</Label>
-            {mode === 'login' ? <Link href="/forgot-password">Forgot password?</Link> : null}
+    <>
+      <form className="rb-auth-form" onSubmit={(event) => void submit(event)} noValidate>
+        {mode === 'signup' ? (
+          <div className="rb-auth-field">
+            <Label htmlFor="displayName">Your name</Label>
+            <Input
+              id="displayName"
+              name="displayName"
+              autoComplete="name"
+              required
+              minLength={2}
+              maxLength={120}
+            />
           </div>
-          <div className="rb-password-input">
+        ) : null}
+
+        {mode !== 'reset' ? (
+          <div className="rb-auth-field">
+            <Label htmlFor="email">Email address</Label>
+            <Input
+              id="email"
+              name="email"
+              type="email"
+              autoComplete="email"
+              required
+              maxLength={254}
+              inputMode="email"
+            />
+          </div>
+        ) : null}
+
+        {mode === 'login' || mode === 'signup' || mode === 'reset' ? (
+          <div className="rb-auth-field">
+            <div className="rb-auth-field__label-row">
+              <Label htmlFor="password">{mode === 'reset' ? 'New password' : 'Password'}</Label>
+              {mode === 'login' ? <Link href="/forgot-password">Forgot password?</Link> : null}
+            </div>
             <Input
               id="password"
               name="password"
@@ -160,40 +167,63 @@ export function AuthForm({
               maxLength={128}
               aria-describedby={mode === 'signup' || mode === 'reset' ? 'password-hint' : undefined}
             />
-            <button
-              type="button"
-              onClick={() => setShowPassword((visible) => !visible)}
-              aria-label={showPassword ? 'Hide password' : 'Show password'}
-            >
-              {showPassword ? <EyeOff aria-hidden="true" /> : <Eye aria-hidden="true" />}
-            </button>
+            <div className="rb-auth-field__hint-row">
+              {mode === 'signup' || mode === 'reset' ? (
+                <span id="password-hint">
+                  Use 12+ characters with uppercase, lowercase, and a number.
+                </span>
+              ) : (
+                <span />
+              )}
+              <button
+                type="button"
+                onClick={() => setShowPassword((visible) => !visible)}
+                aria-label={showPassword ? 'Hide password' : 'Show password'}
+              >
+                {showPassword ? 'Hide' : 'Show'}
+              </button>
+            </div>
           </div>
-          {mode === 'signup' || mode === 'reset' ? (
-            <FieldMessage>
-              <span id="password-hint">
-                Use 12+ characters with uppercase, lowercase, and a number.
-              </span>
-            </FieldMessage>
-          ) : null}
-        </div>
-      ) : null}
+        ) : null}
 
-      {error ? (
-        <div className="rb-auth-error" role="alert">
-          {error}
-        </div>
-      ) : null}
-      {fieldErrors.length ? (
-        <ul className="rb-auth-field-errors" aria-label="Field errors">
-          {fieldErrors.map((item) => (
-            <li key={item}>{item}</li>
-          ))}
-        </ul>
-      ) : null}
+        {error ? (
+          <div className="rb-auth-error" role="alert">
+            {error}
+          </div>
+        ) : null}
+        {fieldErrors.length ? (
+          <ul className="rb-auth-field-errors" aria-label="Field errors">
+            {fieldErrors.map((item) => (
+              <li key={item}>{item}</li>
+            ))}
+          </ul>
+        ) : null}
 
-      <Button className="rb-auth-form__submit" size="lg" type="submit" loading={loading}>
-        {loading ? config.busy : config.submit}
-      </Button>
+        <Button className="rb-auth-form__submit" size="lg" type="submit" loading={loading}>
+          {loading ? config.busy : config.submit}
+        </Button>
+
+        {socialOptions && (mode === 'login' || mode === 'signup') ? (
+          <>
+            <div className="rb-auth-divider">
+              <span>or</span>
+            </div>
+            <div className="rb-auth-social">
+              <button type="button" disabled aria-describedby="social-note">
+                <GoogleMark />
+                Continue with Google
+              </button>
+              <button type="button" disabled aria-describedby="social-note">
+                <AppleMark />
+                Continue with Apple
+              </button>
+              <p className="rb-auth-social__note" id="social-note">
+                Social sign-in is coming soon.
+              </p>
+            </div>
+          </>
+        ) : null}
+      </form>
 
       <p className="rb-auth-form__switch">
         {mode === 'login' ? (
@@ -203,13 +233,13 @@ export function AuthForm({
         ) : null}
         {mode === 'signup' ? (
           <>
-            Already have an account? <Link href="/login">Sign in</Link>
+            Already have an account? <Link href="/login">Sign in now.</Link>
           </>
         ) : null}
         {mode === 'forgot' || mode === 'reset' ? (
           <Link href="/login">Return to sign in</Link>
         ) : null}
       </p>
-    </form>
+    </>
   );
 }

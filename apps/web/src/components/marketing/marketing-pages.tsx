@@ -11,7 +11,7 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import { AiMockup, DashboardMockup, InvoiceMockup, ReconciliationMockup } from './mockups';
-import { FeatureList, FinalCta, PageHero, Photo, SectionIntro } from './sections';
+import { FeatureList, PageHero, Photo, SectionIntro } from './sections';
 
 type ProductDetail = {
   kicker: string;
@@ -130,7 +130,6 @@ export function ProductDetailPage({ page }: { page: ProductPageKey }) {
         </div>
       </section>
 
-      <FinalCta />
     </>
   );
 }
@@ -218,7 +217,6 @@ export function CustomersPage() {
         </div>
       </section>
 
-      <FinalCta />
     </>
   );
 }
@@ -294,7 +292,6 @@ export function SecurityPage() {
         </div>
       </section>
 
-      <FinalCta />
     </>
   );
 }

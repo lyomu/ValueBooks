@@ -3,7 +3,7 @@
 import { ArrowRight } from 'lucide-react';
 import Link from 'next/link';
 import { useState } from 'react';
-import { FinalCta, PageHero, SectionIntro } from './sections';
+import { PageHero, SectionIntro } from './sections';
 import {
   BillingToggle,
   ComparisonTable,
@@ -63,7 +63,6 @@ export function PricingPageContent() {
         <SectionIntro centered kicker="Compare plans" title="Every feature, side by side." />
         <ComparisonTable />
       </section>
-      <FinalCta title="Ready to see your finances more clearly?" />
     </>
   );
 }

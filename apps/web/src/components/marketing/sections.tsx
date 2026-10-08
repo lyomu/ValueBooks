@@ -320,31 +320,6 @@ export function SecurityStrip() {
     </section>
   );
 }
-export function FinalCta({
-  title = 'The next clear financial decision starts here.',
-}: {
-  title?: string;
-}) {
-  return (
-    <section className="mk-final-cta">
-      <div>
-        <MarketingKicker>Make space for better work</MarketingKicker>
-        <h2>{title}</h2>
-        <MarketingCopy>
-          Bring invoices, expenses, accounting, and AI assistance into one calm workspace.
-        </MarketingCopy>
-      </div>
-      <div>
-        <Link className="mk-button mk-button--light" href="/signup">
-          Try ValueBooks free
-        </Link>
-        <Link className="mk-text-link" href="/contact">
-          Talk to our team <ArrowRight />
-        </Link>
-      </div>
-    </section>
-  );
-}
 export function TrustNote() {
   return (
     <div className="mk-trust-note">

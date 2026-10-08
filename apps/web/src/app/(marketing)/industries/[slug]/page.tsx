@@ -1,7 +1,7 @@
 import { CheckCircle2 } from 'lucide-react';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { FeatureList, FinalCta, StatBand } from '../../../../components/marketing/sections';
+import { FeatureList, StatBand } from '../../../../components/marketing/sections';
 import { Photo } from '../../../../components/marketing/photo';
 
 const industries = {
@@ -123,7 +123,6 @@ export default async function IndustryDetail({ params }: { params: Promise<{ slu
         </div>
       </section>
 
-      <FinalCta title="Give your business a clearer financial home." />
     </>
   );
 }

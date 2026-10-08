@@ -19,7 +19,7 @@ FORM: Wave-like breathing room with a QuickBooks-scale menu, alternating proof, 
   --mk-muted: hsl(217 56% 25%);
   color: var(--mk-ink);
   background: #fff;
-  font-family: var(--font-hanken-grotesk), ui-sans-serif, system-ui, sans-serif;
+  font-family: var(--font-outfit), ui-sans-serif, system-ui, sans-serif;
   font-size: var(--mk-body-size);
   line-height: var(--mk-body-leading);
 }
@@ -156,6 +156,18 @@ FORM: Wave-like breathing room with a QuickBooks-scale menu, alternating proof, 
 .mk-button--light:hover {
   color: #fff;
   background: transparent;
+}
+/* For the cyan call-to-action band, where neither the blue nor the white button reads. */
+.mk-button--contrast {
+  color: #fff;
+  background: var(--mk-ink);
+  border-color: var(--mk-ink);
+  box-shadow: none;
+}
+.mk-button--contrast:hover {
+  color: #fff;
+  background: hsl(217 82% 22%);
+  border-color: hsl(217 82% 22%);
 }
 .mk-menu-button {
   display: none;
@@ -405,7 +417,7 @@ FORM: Wave-like breathing room with a QuickBooks-scale menu, alternating proof, 
 }
 .mk-mockup {
   color: var(--mk-ink);
-  font-family: var(--font-hanken-grotesk), sans-serif;
+  font-family: var(--font-outfit), sans-serif;
   background: #fff;
   border: 1px solid hsl(var(--rb-border));
   border-radius: 0.95rem;
@@ -1236,41 +1248,6 @@ FORM: Wave-like breathing room with a QuickBooks-scale menu, alternating proof, 
   font-size: 0.92rem;
   line-height: 1.7;
 }
-.mk-final-cta {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 2rem;
-  padding: clamp(3rem, 7vw, 6rem) max(1.5rem, calc((100% - 72rem) / 2));
-  color: #fff;
-  background: var(--mk-ink);
-}
-.mk-final-cta h2 {
-  max-width: 20ch;
-  margin: 0 0 0.8rem;
-  font-size: clamp(1.8rem, 3.2vw, 3.3rem);
-  line-height: 1.08;
-  letter-spacing: -0.05em;
-}
-.mk-final-cta > div > p:last-child {
-  max-width: 50ch;
-  margin: 0;
-  color: hsl(var(--rb-primary-foreground) / 0.72);
-  font-size: 0.82rem;
-  line-height: 1.6;
-}
-.mk-final-cta .mk-kicker {
-  color: hsl(var(--rb-primary));
-}
-.mk-final-cta > div:last-child {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 1rem;
-}
-.mk-final-cta .mk-text-link {
-  color: hsl(var(--rb-primary));
-}
 .mk-page-hero {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -1829,28 +1806,10 @@ FORM: Wave-like breathing room with a QuickBooks-scale menu, alternating proof, 
   color: #fff;
   background: var(--mk-ink);
 }
-.mk-footer__cta {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 2rem;
-  padding: 4rem max(1.5rem, calc((100% - 72rem) / 2));
-  border-bottom: 1px solid hsl(var(--rb-primary-foreground) / 0.15);
-}
-.mk-footer__cta h2 {
-  max-width: 20ch;
-  margin: 0;
-  font-size: clamp(1.55rem, 3vw, 2.65rem);
-  line-height: 1.12;
-  letter-spacing: -0.045em;
-}
-.mk-footer__cta .mk-kicker {
-  color: hsl(var(--rb-primary));
-}
 .mk-footer__grid {
   display: grid;
-  grid-template-columns: 1.2fr 0.65fr 0.65fr 0.65fr 1fr;
-  gap: 2rem;
+  grid-template-columns: 1.3fr 0.85fr 0.85fr 0.85fr 1.1fr;
+  gap: 2.5rem;
   width: min(100% - 3rem, 72rem);
   margin: auto;
   padding: 3.5rem 0;
@@ -1863,10 +1822,8 @@ FORM: Wave-like breathing room with a QuickBooks-scale menu, alternating proof, 
   background: #fff;
 }
 .mk-footer__brand > p {
-  max-width: 27ch;
+  max-width: 34ch;
   color: hsl(var(--rb-primary-foreground) / 0.7);
-  font-size: 0.7rem;
-  line-height: 1.65;
 }
 .mk-footer__brand > div {
   display: flex;
@@ -1874,20 +1831,20 @@ FORM: Wave-like breathing room with a QuickBooks-scale menu, alternating proof, 
 }
 .mk-footer__brand > div a {
   display: grid;
-  width: 1.8rem;
-  height: 1.8rem;
+  width: 2.25rem;
+  height: 2.25rem;
   place-items: center;
   color: #fff;
   border: 1px solid hsl(var(--rb-primary-foreground) / 0.25);
   border-radius: 50%;
 }
 .mk-footer__brand svg {
-  width: 0.85rem;
+  width: 1.05rem;
 }
 .mk-footer h3 {
   margin: 0 0 1rem;
   color: hsl(var(--rb-primary-foreground) / 0.7);
-  font-size: 0.65rem;
+  font-size: 0.8125rem;
   letter-spacing: 0.08em;
   text-transform: uppercase;
 }
@@ -1898,9 +1855,7 @@ FORM: Wave-like breathing room with a QuickBooks-scale menu, alternating proof, 
   padding: 0;
   list-style: none;
 }
-.mk-footer li {
-  font-size: 0.68rem;
-}
+
 .mk-footer li a {
   text-decoration: none;
 }
@@ -1920,17 +1875,15 @@ FORM: Wave-like breathing room with a QuickBooks-scale menu, alternating proof, 
 .mk-footer__secure strong {
   display: block;
   margin: 0.6rem 0;
-  font-size: 0.7rem;
+  font-size: 1rem;
   line-height: 1.4;
 }
 .mk-footer__secure p {
   color: hsl(var(--rb-primary-foreground) / 0.65);
-  font-size: 0.62rem;
-  line-height: 1.55;
 }
 .mk-footer__secure a {
   color: hsl(var(--rb-primary));
-  font-size: 0.62rem;
+  font-size: 0.9375rem;
   font-weight: 700;
   text-decoration: none;
 }
@@ -1943,7 +1896,7 @@ FORM: Wave-like breathing room with a QuickBooks-scale menu, alternating proof, 
   padding: 1.2rem 0;
   color: hsl(var(--rb-primary-foreground) / 0.5);
   border-top: 1px solid hsl(var(--rb-primary-foreground) / 0.15);
-  font-size: 0.58rem;
+  font-size: 0.875rem;
 }
 @media (max-width: 62rem) {
   .mk-header__inner {
@@ -2100,8 +2053,6 @@ FORM: Wave-like breathing room with a QuickBooks-scale menu, alternating proof, 
     columns: 2;
   }
   .mk-security-strip,
-  .mk-final-cta,
-  .mk-footer__cta,
   .mk-security-callout {
     align-items: flex-start;
     flex-direction: column;
@@ -2153,9 +2104,7 @@ FORM: Wave-like breathing room with a QuickBooks-scale menu, alternating proof, 
   }
   .mk-logo-strip,
   .mk-module-grid,
-  .mk-testimonial-section,
-  .mk-final-cta,
-  .mk-footer__cta {
+  .mk-testimonial-section {
     padding-left: 1rem;
     padding-right: 1rem;
   }
@@ -2220,9 +2169,17 @@ FORM: Wave-like breathing room with a QuickBooks-scale menu, alternating proof, 
 .mk-root .mk-personas__list p,
 .mk-root .mk-industry-card span,
 .mk-root .mk-testimonials figcaption small,
-.mk-root .mk-security-strip small,
-.mk-root .mk-final-cta > div > .mk-copy {
+.mk-root .mk-security-strip small {
   color: var(--mk-ink);
+  font-size: var(--mk-body-size);
+  line-height: var(--mk-body-leading);
+}
+
+/* The footer sits on the navy band, so it joins the same reading baseline but keeps its own
+   colours -- the ink above would make it invisible. */
+.mk-root .mk-footer li,
+.mk-root .mk-footer__brand > p,
+.mk-root .mk-footer__secure p {
   font-size: var(--mk-body-size);
   line-height: var(--mk-body-leading);
 }
@@ -2481,4 +2438,49 @@ FORM: Wave-like breathing room with a QuickBooks-scale menu, alternating proof, 
   .mk-home-hero--spotlight .mk-floating-note {
     display: none;
   }
+}
+
+/* Closing call to action: one saturated brand band, one headline, one button. Rendered by the
+   marketing layout so every public page closes the same way. */
+.mk-cta {
+  display: grid;
+  justify-items: center;
+  gap: 2rem;
+  padding: clamp(4rem, 9vw, 7rem) max(1.5rem, calc((100% - 72rem) / 2));
+  color: var(--mk-ink);
+  text-align: center;
+  background: hsl(var(--rb-primary));
+}
+.mk-cta h2 {
+  max-width: 22ch;
+  margin: 0;
+  font-size: clamp(1.7rem, 4.4vw, 3.4rem);
+  font-weight: 800;
+  line-height: 1.1;
+  letter-spacing: -0.045em;
+  text-wrap: balance;
+}
+.mk-root .mk-cta .mk-kicker {
+  margin: 0;
+  color: hsl(217 70% 22%);
+}
+
+/* `.mk-root a { color: inherit }` outranks the single-class button rules, so every button variant
+   restates its text colour at matching specificity. Without this the solid buttons inherit the
+   surrounding page colour and lose their contrast against their own fill. */
+.mk-root .mk-button,
+.mk-root .mk-button:hover,
+.mk-root .mk-button--light:hover,
+.mk-root .mk-button--outline:hover,
+.mk-root .mk-button--contrast,
+.mk-root .mk-button--contrast:hover {
+  color: #fff;
+}
+.mk-root .mk-button--light,
+.mk-root .mk-button--outline {
+  color: var(--mk-ink);
+}
+.mk-root .mk-button--hero,
+.mk-root .mk-button--hero:hover {
+  color: hsl(158 62% 8%);
 }

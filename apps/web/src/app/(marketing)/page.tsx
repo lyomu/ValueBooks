@@ -2,7 +2,6 @@ import { ArrowRight } from 'lucide-react';
 import Link from 'next/link';
 import {
   FeatureGrid,
-  FinalCta,
   IndustriesGrid,
   MarketingCopy,
   MarketingKicker,
@@ -224,7 +223,6 @@ export default function MarketingHomePage() {
         <SectionIntro centered title="Frequently asked questions" />
         <FaqAccordion items={faqItems} />
       </section>
-      <FinalCta title="A clearer view of the business starts today." />
     </>
   );
 }

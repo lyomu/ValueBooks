@@ -13,6 +13,7 @@ export default async function LoginPage({
   const { invitation } = await searchParams;
   return (
     <AuthShell
+      variant="split"
       title="Welcome back"
       description={
         invitation
