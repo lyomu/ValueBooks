@@ -203,6 +203,7 @@ export class PortalAccountsController {
     @Body() input: CreateCommentDto,
     @Req() request: PortalRequest,
   ) {
+    await this.limits.consume(`portal:comment:${request.portal.id}`, 20, 60);
     return { data: await this.collaboration.addCommentPortal(request.portal, type, id, input) };
   }
 
@@ -289,6 +290,7 @@ export class PortalAccountsController {
     @Param('quoteId', new ParseUUIDPipe()) quoteId: string,
     @Req() request: PortalRequest,
   ) {
+    await this.limits.consume(`portal:quote-decision:${request.portal.id}`, 20, 60);
     return { data: await this.portals.decideQuote(request.portal, quoteId, 'ACCEPTED') };
   }
 
@@ -298,6 +300,7 @@ export class PortalAccountsController {
     @Param('quoteId', new ParseUUIDPipe()) quoteId: string,
     @Req() request: PortalRequest,
   ) {
+    await this.limits.consume(`portal:quote-decision:${request.portal.id}`, 20, 60);
     return { data: await this.portals.decideQuote(request.portal, quoteId, 'DECLINED') };
   }
 

@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import type { ReportColumn, ReportKey, ReportRow } from '@valuebooks/contracts';
 import ExcelJS from 'exceljs';
 
+import { escapeCsvCell } from '../common/csv-cell.js';
 import { DocumentRenderingService } from '../sales/document-rendering.service.js';
 import type { ReportQueryDto } from './reporting.dto.js';
 import { ReportingService } from './reporting.service.js';
@@ -37,7 +38,7 @@ export class ReportArtifactService {
     if (format === 'csv') {
       return {
         buffer: Buffer.from(
-          `\uFEFF${first.definition.columns.map((column) => cell(column.label)).join(',')}\r\n${rows.map((row) => (row.cells ? first.definition.columns.map((column) => cell(row.cells[column.key])).join(',') : '')).join('\r\n')}\r\n`,
+          `\uFEFF${first.definition.columns.map((column) => escapeCsvCell(column.label)).join(',')}\r\n${rows.map((row) => (row.cells ? first.definition.columns.map((column) => escapeCsvCell(row.cells[column.key])).join(',') : '')).join('\r\n')}\r\n`,
         ),
         contentType: 'text/csv; charset=utf-8',
         extension: 'csv',
@@ -89,15 +90,12 @@ export class ReportArtifactService {
   }
 }
 
-function cell(value: unknown) {
-  const text = stringifyCell(value);
-  return /[",\r\n]/.test(text) ? `"${text.replaceAll('"', '""')}"` : text;
-}
-
 function stringifyCell(value: unknown): string {
   if (value === null || value === undefined) return '';
   if (typeof value === 'string') return value;
-  if (typeof value === 'number' || typeof value === 'boolean') return String(value);
+  if (typeof value === 'number' || typeof value === 'bigint' || typeof value === 'boolean') {
+    return value.toString();
+  }
   return JSON.stringify(value);
 }
 

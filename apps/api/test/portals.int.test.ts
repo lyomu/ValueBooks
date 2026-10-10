@@ -390,6 +390,29 @@ describe('customer portal against a real database', () => {
     });
   });
 
+  describe('comments', () => {
+    let grant: string;
+    let invoiceId: string;
+
+    beforeEach(async () => {
+      grant = await acceptInvitation(await inviteToken(acmeId, customer.email), customerCookie);
+      invoiceId = await issuedInvoice(acmeId, '1800');
+    });
+
+    it('rate limits repeated comment creation', async () => {
+      const post = (body: string) =>
+        harness
+          .http()
+          .post(`${API}/portal/accounts/${grant}/documents/INVOICE/${invoiceId}/comments`)
+          .set('Cookie', customerCookie)
+          .send({ body });
+
+      for (let attempt = 0; attempt < 20; attempt += 1)
+        await post(`Comment ${attempt}`).expect(201);
+      await post('One too many').expect(429);
+    });
+  });
+
   describe('quote decisions', () => {
     let grant: string;
     let quoteId: string;
@@ -457,6 +480,21 @@ describe('customer portal against a real database', () => {
         .post(`${API}/portal/accounts/${grant}/quotes/${foreign}/accept`)
         .set('Cookie', customerCookie)
         .expect(404);
+    });
+
+    it('rate limits repeated quote-decision attempts', async () => {
+      // The first decline resolves the quote; the remaining 19 hit the "no longer awaiting a
+      // decision" 404 path, but the limiter counts every attempt regardless of outcome, so the
+      // 21st call must still be throttled.
+      const decide = () =>
+        harness
+          .http()
+          .post(`${API}/portal/accounts/${grant}/quotes/${quoteId}/decline`)
+          .set('Cookie', customerCookie);
+
+      await decide().expect(201);
+      for (let attempt = 0; attempt < 19; attempt += 1) await decide().expect(404);
+      await decide().expect(429);
     });
   });
 

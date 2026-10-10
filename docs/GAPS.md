@@ -59,7 +59,11 @@ Nine tracks, run incrementally then fully before public V1. (`docs/BUILD_ROADMAP
 - [ ] 10. Tenant isolation: automated cross-org authorization tests across API, exports, portal,
       jobs
 - [ ] 11. Security: auth/session/MFA, rate limits, secret handling, dependency scanning, file
-      validation, admin controls
+      validation, admin controls. **Partial:** `docs/SECURITY_REVIEW.md` closes dependency
+      scanning (CI gate + triaged advisories), rate limits (plus 2 real gaps fixed), sessions,
+      secrets, and found and fixed a real CSV formula-injection gap. Stays open on MFA alone,
+      which is an explicit decision request to the security owner, not a technical gap — see
+      `docs/SECURITY_REVIEW.md` §7.
 - [ ] 12. Reliability: backup/restore drill, queue retry/idempotency, disaster procedures,
       observability
 - [ ] 13. Performance: large lists, imports, reports tested with production-like data volumes
