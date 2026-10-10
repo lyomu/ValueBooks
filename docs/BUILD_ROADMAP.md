@@ -115,8 +115,11 @@ Established once, must hold for every module added in every later phase (build s
       — verified across the posting surface; inventory adjustment posting, inventory transfers, and
       purchase-order receipts replay through dedicated idempotency namespaces and are covered by
       `apps/api/test/inventory.int.test.ts` and `apps/api/test/purchase-orders.int.test.ts`
-- [ ] Optimistic concurrency/version fields on high-risk financial records beyond the ledger (verify
-      current models; add `version`/`updatedAt`-guard pattern to Sales/Purchases documents as they ship)
+- [ ] Optimistic concurrency/version fields on high-risk financial records beyond the ledger.
+      **Partial:** `version` is enforced on Invoice, CreditNote, Quote, PurchaseOrder, Bill and
+      Expense (plus the two Phase 10 models). PaymentReceived, PaymentMade, Journal, VendorCredit
+      and SalesOrder still have none — tracked as `docs/PENDING_WORK.md` item 17 and
+      `docs/GAPS.md` #35.
 - [x] Domain event emission (`invoice.issued`, `invoice.voided`, `payment.recorded`, `bill.posted`,
       `journal.posted`, `stock.moved`, `reconciliation.completed`, approval events, and
       scheduled-job outcomes) — outbox-backed emission is wired and covered by registry plus
@@ -405,8 +408,12 @@ testing deferred to the end-of-phase pass).
 - [x] Bill posting → Dr Expense/Inventory/Asset + Recoverable Tax / Cr Accounts Payable
       (`bills.int.test.ts`)
 - [x] Vendor payment → Dr Accounts Payable / Cr Bank/Cash (`payments-made.int.test.ts`)
-- [ ] **BLOCKED on Phase 6 (Inventory)** — Inventory cost on sale → Dr Cost of Goods Sold / Cr
-      Inventory Asset: deliberately not faked; no inventory subsystem exists yet
+- [x] Inventory cost on sale → Dr Cost of Goods Sold / Cr Inventory Asset. Phase 6 shipped this;
+      the "BLOCKED on Phase 6" note above is stale. `InventoryService` posts
+      `INVENTORY_COGS_POST` (Dr `cogs` / Cr `inventory_asset`) on sale issue, and
+      `apps/api/test/inventory.int.test.ts` ("passes the retail scenario from purchase through
+      inventory valuation agreeing to GL") proves the full purchase→receipt→sale→COGS chain
+      reconciling to the ledger — this is cross-module scenario 2 (`docs/GAPS.md` section B).
 - [x] Credit note → Dr Revenue/Tax reversal / Cr Accounts Receivable/customer credit
       (`credit-notes.int.test.ts`)
 
@@ -939,11 +946,15 @@ Audit date: 2026-09-12. Result: 11 of 14 items satisfied across all shipped modu
 - [x] Automated unit/integration tests included
       — every module has dedicated test files; 57+ integration files across the suite
 - [ ] Accessibility and security checks complete
-      — deferred to Phase 14 tracks 11 (Security) and 14 (Accessibility); no code exists yet
+      — deferred to Phase 14 tracks 11 (Security) and 14 (Accessibility); tracked as
+      `docs/PENDING_WORK.md` items 15 (dependency scanning and security review) and 22
+      (WCAG 2.2 AA review)
 - [ ] Analytics events defined (feeds Phase 12 Product Analytics)
-      — deferred to Phase 12 Product Analytics; `apps/web/src/components/platform-overview.tsx` shows org-level adoption metrics only, not product event instrumentation
+      — deferred to Phase 12 Product Analytics; `apps/web/src/components/platform-overview.tsx` shows org-level adoption metrics only, not product event instrumentation. No `docs/PENDING_WORK.md`
+      entry exists yet for this — add one, or record it as post-V1.
 - [ ] Documentation and support notes complete
-      — deferred to Phase 14 track 16 Operations; each phase has a `PHASE<N>_TODO.md` as implementation reference but no runbooks/support notes exist
+      — deferred to Phase 14 track 16 Operations; each phase has a `PHASE<N>_TODO.md` as implementation reference but no runbooks/support notes exist. Tracked as `docs/PENDING_WORK.md`
+      item 24 (incident runbook and support runbook)
 - [x] Every accounting-impacting transaction has tested posting AND reversal rules
       — `apps/api/test/cross-module-scenarios.int.test.ts` tests both posting and reversal paths
 - [x] Every report has a source-of-truth definition and reconciliation test

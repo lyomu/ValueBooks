@@ -88,15 +88,20 @@ evidence ledger names a captured result.
       (`apps/api/test/portals.int.test.ts`, `apps/api/test/collaboration.int.test.ts`).
 - [x] Add the portal authorization-boundary matrix, and extend the internal matrix to the Phase 11
       organization-scoped routes.
-- [ ] Critical portal E2E/accessibility coverage — **written** (`apps/web/e2e/phase11-portal.spec.ts`)
-      but **never executed**; no browser has run it.
+- [x] Critical portal E2E/accessibility coverage —
+      `apps/web/e2e/phase11-portal.spec.ts` has now run and passes (P0 session, 2026-10-10;
+      see `docs/P0_HANDOVER.md`). Its `@visual` baseline is separate and stays open under
+      P0 item 6 / `docs/PENDING_WORK.md` item 6.
 
 ## Milestone 11I - Verification and close-out
 
 - [x] Apply the migration locally and replay it from scratch in the dedicated E2E database.
 - [x] Run format, lint, typecheck, unit/integration/E2E tests, API/web production builds, and design
       detector. **All automated gates captured green 2026-09-11 — see the evidence ledger below.**
-- [ ] Visually review desktop and mobile portal states.
+- [x] Visually review desktop and mobile portal states. Portal diffs reviewed during the P0
+      session (2026-10-10): the desktop overview diff is intended (rebrand, new sidebar, demo
+      user), and the mobile review found a 9px horizontal-scroll bug, which is now fixed
+      (`.rb-portal__table-wrap` in `apps/web/src/app/styles.css`). See `docs/P0_HANDOVER.md`.
 - [x] Roll verified status into roadmap, execution plan, and handover.
       Roadmap and execution plan updated; this GAPS batch closes the remaining doc drift.
 
