@@ -197,15 +197,15 @@ them.
 - [ ] Confirm production config validation rejects missing secrets (`@valuebooks/config`)
 - [ ] Write the findings up for the security owner (S1)
 
-### [ ] 16 · H2 · Backup and restore drill (M)
+### [x] 16 · H2 · Backup and restore drill (M)
 
-- [ ] Set up a non-production copy with seeded data
-- [ ] Write a backup script: `pg_dump` plus a MinIO bucket copy
-- [ ] Restore into a fresh environment
-- [ ] Compare trial balance and record counts before and after
-- [ ] Record how long it took (recovery time) and how much data could be lost (recovery point)
-- [ ] Write `docs/BACKUP_RESTORE_RUNBOOK.md`
-- [ ] Tick GAPS #12 and #33
+- [x] Set up a non-production copy with seeded data
+- [x] Write a backup script: `pg_dump` plus a MinIO bucket copy
+- [x] Restore into a fresh environment
+- [x] Compare trial balance and record counts before and after
+- [x] Record how long it took (recovery time) and how much data could be lost (recovery point)
+- [x] Write `docs/BACKUP_RESTORE_RUNBOOK.md`
+- [x] Tick GAPS #12 and #33
 
 ### [ ] 17 · T4 · Version checks on the remaining financial records (M)
 

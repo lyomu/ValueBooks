@@ -58,4 +58,13 @@ export default tseslint.config(
     files: ['apps/api/eval/**/*.ts'],
     extends: [tseslint.configs.disableTypeChecked],
   },
+  {
+    // Plain CommonJS ops scripts (backup/restore drill) run directly via `node`, outside any
+    // tsconfig project, so type-aware linting has nothing to attach to, and `require` is the
+    // deliberate module system rather than an oversight.
+    files: ['infrastructure/backup/**/*.js'],
+    languageOptions: { globals: { ...globals.node } },
+    extends: [tseslint.configs.disableTypeChecked],
+    rules: { '@typescript-eslint/no-require-imports': 'off' },
+  },
 );
