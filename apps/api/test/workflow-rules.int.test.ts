@@ -244,6 +244,53 @@ describe('workflow rule execution properties against a real database', () => {
     ).toBe(1);
   });
 
+  it('never updates a task in another organization, even when the event payload names its real id', async () => {
+    // The event's JSON payload is the one attacker-controlled surface in this pipeline (job
+    // payloads carry only an opaque eventId, never an organizationId -- see
+    // `automation-job.ts`). `taskIdField` pulls the target id straight out of that payload, so
+    // this proves the cross-tenant guard in `workflows.service.ts` (`findFirst({ id,
+    // organizationId: event.organizationId })`) actually holds against a real foreign row, not
+    // just a made-up one.
+    const foreignTask = await harness.prisma.automationTask.create({
+      data: { organizationId: orgB.id, title: 'Org B original', detail: 'Org B detail' },
+    });
+    const rule = await workflows.create(
+      orgA,
+      owner,
+      {
+        name: 'cross-tenant task update attempt',
+        trigger: 'invoice.issued',
+        conditions: [],
+        actions: [
+          {
+            type: 'UPDATE_AUTOMATION_TASK',
+            taskIdField: 'taskId',
+            title: 'Hijacked by org A',
+            detail: 'Should never land',
+          },
+        ],
+      },
+      metadata,
+    );
+    await workflows.setStatus(orgA, owner, rule.id, 'ACTIVE', metadata);
+    const eventId = await emitAndDispatch(orgA.id, { taskId: foreignTask.id });
+
+    await workflows.consumeEvent(eventId);
+
+    await expect(
+      harness.prisma.automationTask.findUniqueOrThrow({ where: { id: foreignTask.id } }),
+    ).resolves.toMatchObject({ title: 'Org B original', detail: 'Org B detail' });
+    expect(
+      await harness.prisma.auditEvent.count({
+        where: { entityId: foreignTask.id, eventKey: 'automation.task_updated_by_workflow' },
+      }),
+    ).toBe(0);
+    const run = await harness.prisma.workflowRun.findFirstOrThrow({
+      where: { ruleId: rule.id, eventId },
+    });
+    expect(run.status).toBe('SUCCEEDED');
+  });
+
   describe('worker retry resume', () => {
     it('resumes a FAILED workflow run on a BullMQ replay and applies the actions exactly once', async () => {
       const rule = await workflows.create(

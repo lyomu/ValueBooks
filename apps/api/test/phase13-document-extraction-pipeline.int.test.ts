@@ -13,6 +13,7 @@ import { OrganizationAccessService } from '../src/organizations/organization-acc
 import type { OrganizationContext } from '../src/organizations/organization-context.js';
 import { OrganizationService } from '../src/organizations/organization.service.js';
 import { ExpensesService } from '../src/purchases/expenses.service.js';
+import { VendorsService } from '../src/purchases/vendors.service.js';
 import { StorageService } from '../src/storage/storage.service.js';
 import { API, createTestHarness, type TestHarness } from './support/app.js';
 import { buildMinimalPdf } from './support/minimal-pdf.js';
@@ -64,6 +65,7 @@ describe('Document extraction pipeline against a real ClamAV and OCR backend', (
   let periods: FiscalPeriodsService;
   let ledger: LedgerService;
   let expenses: ExpensesService;
+  let vendors: VendorsService;
   let extraction: DocumentExtractionService;
   let owner: PublicUser;
   let context: OrganizationContext;
@@ -76,6 +78,7 @@ describe('Document extraction pipeline against a real ClamAV and OCR backend', (
     periods = harness.app.get(FiscalPeriodsService);
     ledger = harness.app.get(LedgerService);
     expenses = harness.app.get(ExpensesService);
+    vendors = harness.app.get(VendorsService);
 
     const config = harness.app.get(ConfigService);
     const storage = harness.app.get(StorageService, { strict: false });
@@ -144,6 +147,74 @@ describe('Document extraction pipeline against a real ClamAV and OCR backend', (
       .http()
       .post(`${API}/organizations/${context.id}/expenses/${expense.id}/attachments`)
       .set('Cookie', cookie)
+      .attach('file', content, { filename, contentType })
+      .expect(201);
+    const attachmentId = (uploadResponse.body as { data: { id: string } }).data.id;
+    return { attachmentId, expenseId: expense.id };
+  }
+
+  /** A second tenant, used only by the cross-tenant isolation tests below. */
+  async function createOtherOrganization(): Promise<{
+    owner: PublicUser;
+    context: OrganizationContext;
+    cookie: string;
+  }> {
+    const user = await harness.prisma.user.create({
+      data: {
+        email: 'other-extraction-owner@example.test',
+        displayName: 'Other Extraction Owner',
+        emailVerifiedAt: new Date(),
+        status: 'ACTIVE',
+      },
+    });
+    const otherOwner: PublicUser = {
+      id: user.id,
+      email: user.email,
+      displayName: user.displayName,
+      emailVerified: true,
+      status: user.status,
+    };
+    const created = await organizations.create(
+      otherOwner,
+      { legalName: 'Rival Extraction Ltd', businessType: 'LIMITED_COMPANY', countryCode: 'KE' },
+      metadata,
+    );
+    const draft = await access.requireMembership(otherOwner.id, created.id);
+    await organizations.finalize(draft, otherOwner, metadata);
+    const otherContext = await access.requireMembership(otherOwner.id, created.id);
+    await periods.generateFiscalYear(
+      otherContext,
+      otherOwner,
+      { startsOn: '2026-01-01' },
+      metadata,
+    );
+    return { owner: otherOwner, context: otherContext, cookie: await sessionCookieFor(user.id) };
+  }
+
+  async function uploadAttachmentIn(
+    targetContext: OrganizationContext,
+    targetOwner: PublicUser,
+    targetCookie: string,
+    filename: string,
+    content: Buffer,
+    contentType: string,
+  ): Promise<{ attachmentId: string; expenseId: string }> {
+    const bankAccount = await ledger.accountBySystemKey(targetContext.id, 'bank_default');
+    const expense = await expenses.createDraft(
+      targetContext,
+      targetOwner,
+      {
+        payeeName: 'Extraction pipeline vendor',
+        expenseDate: '2026-02-01',
+        paidThroughAccountId: bankAccount.id,
+        amountMinor: '500',
+      },
+      metadata,
+    );
+    const uploadResponse = await harness
+      .http()
+      .post(`${API}/organizations/${targetContext.id}/expenses/${expense.id}/attachments`)
+      .set('Cookie', targetCookie)
       .attach('file', content, { filename, contentType })
       .expect(201);
     const attachmentId = (uploadResponse.body as { data: { id: string } }).data.id;
@@ -225,6 +296,68 @@ describe('Document extraction pipeline against a real ClamAV and OCR backend', (
     expect(record.scanSignature).toBeNull();
     expect(record.scanEngineVersion).toMatch(/ClamAV/);
     expect(record.ocrText).toBeNull();
+  });
+
+  describe('cross-tenant isolation', () => {
+    it('never matches a candidate vendor against another organization, even with an identical name', async () => {
+      const otherOrg = await createOtherOrganization();
+      const sharedName = 'Shared Vendor Co';
+      const ownVendor = await vendors.create(context, owner, { displayName: sharedName }, metadata);
+      await vendors.create(otherOrg.context, otherOrg.owner, { displayName: sharedName }, metadata);
+
+      const receipt = buildMinimalPdf([
+        sharedName,
+        'Date: 2026-03-01',
+        'Subtotal 100.00',
+        'VAT 10.00',
+        'Total 110.00',
+      ]);
+      const { attachmentId } = await uploadAttachment('receipt.pdf', receipt, 'application/pdf');
+
+      await extraction.process(attachmentId);
+
+      const record = await harness.prisma.documentExtraction.findUniqueOrThrow({
+        where: { attachmentId },
+      });
+      expect(record.status).toBe('READY_FOR_REVIEW');
+      // Two organizations each have a vendor named identically. The candidate must resolve to
+      // this organization's own vendor row -- `document-extraction.service.ts` scopes the
+      // `vendor.findMany` lookup by `attachment.organizationId` before matching; this proves that
+      // scope actually holds against a real same-named row in another tenant, not just an absent
+      // one.
+      expect(record.candidateVendorId).toBe(ownVendor.id);
+    });
+
+    it('never flags a document as a duplicate of another organization’s byte-identical attachment', async () => {
+      const otherOrg = await createOtherOrganization();
+      const sharedContent = Buffer.from(
+        'Identical bytes uploaded independently by two different tenants.',
+        'ascii',
+      );
+      await uploadAttachmentIn(
+        otherOrg.context,
+        otherOrg.owner,
+        otherOrg.cookie,
+        'other-org-receipt.txt',
+        sharedContent,
+        'text/plain',
+      );
+      const { attachmentId } = await uploadAttachment(
+        'own-receipt.txt',
+        sharedContent,
+        'text/plain',
+      );
+
+      await extraction.process(attachmentId);
+
+      const record = await harness.prisma.documentExtraction.findUniqueOrThrow({
+        where: { attachmentId },
+      });
+      // `findDuplicate` scopes by `attachment.organizationId`. This organization has no other
+      // attachment with this content, so even though the other tenant's attachment has the exact
+      // same bytes (and therefore the same `contentHash`), it must never be named as the duplicate.
+      expect(record.duplicateOfAttachmentId).toBeNull();
+    });
   });
 
   async function sessionCookieFor(userId: string): Promise<string> {

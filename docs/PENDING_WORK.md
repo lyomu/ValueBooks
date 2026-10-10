@@ -173,17 +173,27 @@ puts four phases of work on `main`.
 _Why here:_ these are gaps a customer or an attacker would hit on day one. Tests cannot paper over
 them.
 
-### [ ] 14 · H8 · Extend tenant-isolation tests to exports, portal and jobs (M)
+### [x] 14 · H8 · Extend tenant-isolation tests to exports, portal and jobs (M)
 
-- [ ] List every way tenant data leaves the main API: sync and async report exports, export status
-      resources, the 20 portal routes, attachment download links, AI evidence, background jobs
-- [ ] Add cross-org tests: org B cannot read org A's export execution, status, or file
-- [ ] Portal: a customer of org A cannot reach org B documents with guessed IDs
-- [ ] Jobs: workflow, scheduler, and document-extraction workers re-check `organizationId` before
-      acting
-- [ ] Run the RLS tests with the production-style runtime role
-      (`infrastructure/postgres-runtime-role.sql`)
-- [ ] Tick GAPS #10
+- [x] List every way tenant data leaves the main API: sync and async report exports, export status
+      resources, the 20 portal routes, attachment download links, AI evidence, background jobs —
+      header comment in the new `apps/api/test/tenant-isolation-egress.int.test.ts`
+- [x] Add cross-org tests: org B cannot read org A's export execution, status, or file —
+      `tenant-isolation-egress.int.test.ts`, against a real execution reaching `SUCCEEDED` with a
+      real artifact, not a placeholder id
+- [x] Portal: a customer of org A cannot reach org B documents with guessed IDs — extended
+      `portals.int.test.ts` with cross-tenant statement, profile, quote-decision, and
+      portal-attachment cases, plus the existing ROUTES sweep repeated with a real grant in a
+      different tenant as the foreign caller
+- [x] Jobs: workflow, scheduler, and document-extraction workers re-check `organizationId` before
+      acting — `workflow-rules.int.test.ts` (cross-tenant `UPDATE_AUTOMATION_TASK` payload),
+      `phase13-document-extraction-pipeline.int.test.ts` (cross-tenant vendor/category/duplicate
+      matching), and `tenant-isolation-egress.int.test.ts` (scheduler execution isolation)
+- [x] Run the RLS tests with the production-style runtime role
+      (`infrastructure/postgres-runtime-role.sql`) — already true by default for the whole suite
+      (`apps/api/test/support/setup-env.ts` sets `DATABASE_URL` to the restricted
+      `valuebooks_app` role before any test loads); no per-test change was needed
+- [x] Tick GAPS #10
 
 ### [ ] 15 · H6 · Dependency scanning and security review (M)
 

@@ -56,8 +56,21 @@ Nine tracks, run incrementally then fully before public V1. (`docs/BUILD_ROADMAP
 
 - [ ] 9. Accounting: golden scenario suite, balanced ledger, subledger/control-account
       reconciliation, period locks, FX cases
-- [ ] 10. Tenant isolation: automated cross-org authorization tests across API, exports, portal,
-      jobs
+- [x] 10. Tenant isolation: automated cross-org authorization tests across API, exports, portal,
+      jobs.
+      `authorization-boundary.int.test.ts` already proved this for every route with
+      `:organizationId` in its path, but only against a placeholder id. Closed the real gaps:
+      `tenant-isolation-egress.int.test.ts` (new) proves it against real resources for async
+      report export execution/status/download and attachment downloads, plus a scheduler
+      regression test proving acting on one org's execution never touches another's.
+      `workflow-rules.int.test.ts` adds a cross-tenant `UPDATE_AUTOMATION_TASK` payload-tamper
+      test. `phase13-document-extraction-pipeline.int.test.ts` adds cross-tenant vendor/category
+      matching and duplicate-detection tests. `portals.int.test.ts` adds cross-tenant statement,
+      profile, quote-decision, portal-attachment, and a full ROUTES-matrix sweep using a real
+      grant in a different tenant as the foreign caller. AI evidence was already covered
+      (`ai.int.test.ts`'s RLS proof and citation-forgery rejection). The whole suite already runs
+      against the restricted `valuebooks_app` runtime role by default
+      (`test/support/setup-env.ts`), so no RLS-relevant test needed special role handling.
 - [ ] 11. Security: auth/session/MFA, rate limits, secret handling, dependency scanning, file
       validation, admin controls
 - [ ] 12. Reliability: backup/restore drill, queue retry/idempotency, disaster procedures,

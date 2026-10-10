@@ -221,6 +221,12 @@ describe('customer portal against a real database', () => {
     it('keeps one identity holding several grants strictly separated per customer and tenant', async () => {
       const otherOwner = await createUser('other-owner@example.test', 'Other Owner');
       const otherContext = await createActiveOrganization(otherOwner, 'Rival Books Ltd');
+      await periods.generateFiscalYear(
+        otherContext,
+        otherOwner,
+        { startsOn: '2026-01-01' },
+        metadata,
+      );
       const rivalId = (
         await customers.create(otherContext, otherOwner, { displayName: 'Rival Buyer' }, metadata)
       ).id;
@@ -258,6 +264,58 @@ describe('customer portal against a real database', () => {
         .get(`${API}/portal/accounts/${acmeGrant}/documents/INVOICE/${betaInvoice}`)
         .set('Cookie', customerCookie)
         .expect(404);
+
+      // Statement and profile must each stay scoped to the grant's own tenant too, not just
+      // `documents`: a rival-org invoice far larger than anything in this tenant must never
+      // appear in this identity's acme-grant statement, and the rival grant's own statement (an
+      // org with no invoices at all for this customer) must report a zero balance, not acme's.
+      const rivalInvoiceDraft = await invoices.createDraft(
+        otherContext,
+        otherOwner,
+        {
+          contactId: rivalId,
+          lines: [{ description: 'Rival consulting', quantity: '1', unitPriceMinor: '500000' }],
+        },
+        metadata,
+      );
+      await invoices.issueInvoice(otherContext, otherOwner, rivalInvoiceDraft.id, metadata);
+
+      const acmeStatement = await harness
+        .http()
+        .get(`${API}/portal/accounts/${acmeGrant}/statement`)
+        .set('Cookie', customerCookie)
+        .expect(200);
+      const acmeClosing = (
+        acmeStatement.body as { data: { summary: { closingBalanceMinor: string } } }
+      ).data.summary.closingBalanceMinor;
+      expect(acmeClosing).toBe('4000');
+
+      const rivalStatement = await harness
+        .http()
+        .get(`${API}/portal/accounts/${rivalGrant}/statement`)
+        .set('Cookie', customerCookie)
+        .expect(200);
+      const rivalClosing = (
+        rivalStatement.body as { data: { summary: { closingBalanceMinor: string } } }
+      ).data.summary.closingBalanceMinor;
+      expect(rivalClosing).toBe('500000');
+
+      const acmeProfile = await harness
+        .http()
+        .get(`${API}/portal/accounts/${acmeGrant}/profile`)
+        .set('Cookie', customerCookie)
+        .expect(200);
+      expect((acmeProfile.body as { data: { displayName: string } }).data.displayName).toBe(
+        'Acme Retail',
+      );
+      const rivalProfile = await harness
+        .http()
+        .get(`${API}/portal/accounts/${rivalGrant}/profile`)
+        .set('Cookie', customerCookie)
+        .expect(200);
+      expect((rivalProfile.body as { data: { displayName: string } }).data.displayName).toBe(
+        'Rival Buyer',
+      );
     });
   });
 
@@ -388,6 +446,60 @@ describe('customer portal against a real database', () => {
       expect(stored.status).toBe(200);
       expect(Number(stored.headers.get('content-length'))).toBeGreaterThan(0);
     });
+
+    it("never lets a grant in another organization reach this document's attachments, even with a real attachment id", async () => {
+      const invoiceId = await issuedInvoice(acmeId, '1500');
+      const uploadResponse = await harness
+        .http()
+        .post(`${API}/portal/accounts/${grant}/documents/INVOICE/${invoiceId}/attachments`)
+        .set('Cookie', customerCookie)
+        .attach('file', Buffer.from('customer-uploaded receipt bytes'), {
+          filename: 'receipt.txt',
+          contentType: 'text/plain',
+        })
+        .expect(201);
+      const attachmentId = (uploadResponse.body as { data: { id: string } }).data.id;
+
+      const otherOwner = await createUser(
+        'attachment-other-owner@example.test',
+        'Attachment Other Owner',
+      );
+      const otherContext = await createActiveOrganization(otherOwner, 'Attachment Rival Ltd');
+      const rivalCustomerId = (
+        await customers.create(otherContext, otherOwner, { displayName: 'Rival Buyer' }, metadata)
+      ).id;
+      const rivalCustomer = await createUser('attachment-rival-buyer@example.test', 'Rival Buyer');
+      const rivalCookie = await sessionCookieFor(rivalCustomer.id);
+      const rivalGrant = await acceptInvitation(
+        await inviteToken(rivalCustomerId, rivalCustomer.email, otherContext, otherOwner),
+        rivalCookie,
+      );
+
+      // Same real attachment id and the same real documentId (acme's invoice), but reached
+      // through a grant that belongs to a different organization entirely. The document-scoping
+      // check in `requirePortalTarget` must 404 before the attachment is ever looked up.
+      await harness
+        .http()
+        .get(
+          `${API}/portal/accounts/${rivalGrant}/documents/INVOICE/${invoiceId}/attachments/${attachmentId}/download`,
+        )
+        .set('Cookie', rivalCookie)
+        .expect(404);
+      await harness
+        .http()
+        .get(`${API}/portal/accounts/${rivalGrant}/documents/INVOICE/${invoiceId}/attachments`)
+        .set('Cookie', rivalCookie)
+        .expect(404);
+
+      // Sanity: the owning grant can still fetch it.
+      await harness
+        .http()
+        .get(
+          `${API}/portal/accounts/${grant}/documents/INVOICE/${invoiceId}/attachments/${attachmentId}/download`,
+        )
+        .set('Cookie', customerCookie)
+        .expect(200);
+    });
   });
 
   describe('quote decisions', () => {
@@ -457,6 +569,48 @@ describe('customer portal against a real database', () => {
         .post(`${API}/portal/accounts/${grant}/quotes/${foreign}/accept`)
         .set('Cookie', customerCookie)
         .expect(404);
+    });
+
+    it('refuses a decision on a quote from a different organization entirely', async () => {
+      const otherOwner = await createUser('quote-other-owner@example.test', 'Quote Other Owner');
+      const otherContext = await createActiveOrganization(otherOwner, 'Quote Rival Ltd');
+      await periods.generateFiscalYear(
+        otherContext,
+        otherOwner,
+        { startsOn: '2026-01-01' },
+        metadata,
+      );
+      const rivalCustomerId = (
+        await customers.create(
+          otherContext,
+          otherOwner,
+          { displayName: 'Rival Buyer', email: 'rival-buyer@example.test' },
+          metadata,
+        )
+      ).id;
+      const rivalQuote = await quotes.createDraft(
+        otherContext,
+        otherOwner,
+        {
+          contactId: rivalCustomerId,
+          lines: [{ description: 'Rival proposal', quantity: '1', unitPriceMinor: '3000' }],
+        },
+        metadata,
+      );
+      await quotes.submitForApproval(otherContext, otherOwner, rivalQuote.id, metadata);
+      await quotes.approve(otherContext, otherOwner, rivalQuote.id, metadata);
+      await quotes.send(otherContext, otherOwner, rivalQuote.id, metadata);
+
+      await harness
+        .http()
+        .post(`${API}/portal/accounts/${grant}/quotes/${rivalQuote.id}/accept`)
+        .set('Cookie', customerCookie)
+        .expect(404);
+
+      const unchanged = await harness.prisma.quote.findUniqueOrThrow({
+        where: { id: rivalQuote.id },
+      });
+      expect(unchanged.status).toBe('SENT');
     });
   });
 
@@ -681,6 +835,60 @@ describe('customer portal against a real database', () => {
         expect(unknown.status, `${route.method} ${route.path}`).toBe(404);
         expect(foreign.body).toEqual(unknown.body);
       }
+    });
+
+    it('answers every account route with an identical not-found when the caller holds a real grant in a different tenant', async () => {
+      // The "stranger" test above proves a caller with *no* grant at all can't reach one.
+      // Holding a real, valid grant somewhere else is a stronger caller than that -- this proves
+      // it still gets nowhere against a grant belonging to a different organization.
+      const otherOwner = await createUser('routes-other-owner@example.test', 'Routes Other Owner');
+      const otherContext = await createActiveOrganization(otherOwner, 'Routes Rival Ltd');
+      const rivalCustomerId = (
+        await customers.create(
+          otherContext,
+          otherOwner,
+          { displayName: 'Routes Rival Buyer' },
+          metadata,
+        )
+      ).id;
+      const rivalCustomer = await createUser(
+        'routes-rival-buyer@example.test',
+        'Routes Rival Buyer',
+      );
+      const rivalCookie = await sessionCookieFor(rivalCustomer.id);
+      const rivalGrant = await acceptInvitation(
+        await inviteToken(rivalCustomerId, rivalCustomer.email, otherContext, otherOwner),
+        rivalCookie,
+      );
+
+      const grant = await acceptInvitation(
+        await inviteToken(acmeId, customer.email),
+        customerCookie,
+      );
+
+      for (const route of ROUTES) {
+        const foreign = await harness
+          .http()
+          [route.method](`${API}/portal/accounts/${grant}/${route.path}`)
+          .set('Cookie', rivalCookie)
+          .send({});
+        const unknown = await harness
+          .http()
+          [route.method](`${API}/portal/accounts/${OTHER}/${route.path}`)
+          .set('Cookie', rivalCookie)
+          .send({});
+        expect(foreign.status, `${route.method} ${route.path}`).toBe(404);
+        expect(unknown.status, `${route.method} ${route.path}`).toBe(404);
+        expect(foreign.body).toEqual(unknown.body);
+      }
+
+      // Sanity: the rival's own grant still works, so the 404s above are isolation, not a
+      // broken session.
+      await harness
+        .http()
+        .get(`${API}/portal/accounts/${rivalGrant}/overview`)
+        .set('Cookie', rivalCookie)
+        .expect(200);
     });
 
     it('stops answering the moment the grant is revoked', async () => {
