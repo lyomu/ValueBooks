@@ -16,6 +16,8 @@ the release-sign-off section is independently recorded. This document replaces t
 | Performance                | CSV/XLSX export streams; large PDF work is queued to a durable worker once over 2,000 rows.                                                                                                                                                                                         | Production-volume benchmark still requires evidence        |
 | Accessibility              | Shared accessible primitives and end-to-end journeys are present.                                                                                                                                                                                                                   | Keyboard and WCAG 2.2 AA review still requires sign-off    |
 
+_Backup/restore drill evidence: see `docs/BACKUP_RESTORE_RUNBOOK.md`._
+
 ## Final execution order
 
 1. Run `npm run format:check`, `npm run lint`, `npm run typecheck`, unit tests, API and web builds.

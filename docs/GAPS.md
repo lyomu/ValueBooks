@@ -60,7 +60,7 @@ Nine tracks, run incrementally then fully before public V1. (`docs/BUILD_ROADMAP
       jobs
 - [ ] 11. Security: auth/session/MFA, rate limits, secret handling, dependency scanning, file
       validation, admin controls
-- [ ] 12. Reliability: backup/restore drill, queue retry/idempotency, disaster procedures,
+- [x] 12. Reliability: backup/restore drill, queue retry/idempotency, disaster procedures,
       observability
 - [ ] 13. Performance: large lists, imports, reports tested with production-like data volumes
 - [ ] 14. Accessibility: critical journeys keyboard-usable and WCAG 2.2 AA-oriented
@@ -161,7 +161,7 @@ All in `docs/PHASE10_TODO.md`, each honestly annotated "partial" or "not done":
 - [ ] 31. Visual regression at desktop/tablet/mobile breakpoints (deferred to Phase 14 — Stage 4.6)
 - [ ] 32. WCAG 2.2 AA keyboard/screen-reader/contrast/focus review across the full surface
       (deferred to Phase 14 — Stage 4.7)
-- [ ] 33. Backup/restore drill + operational runbooks (deferred to Phase 14 — Stage 4.8)
+- [x] 33. Backup/restore drill + operational runbooks (deferred to Phase 14 — Stage 4.8)
 
 Items 30-33 are deferred _by decision_, not drift (`docs/EXECUTION_PLAN.md:196-203`) — they overlap
 directly with Phase 14 tracks 13-16 above and should close together, not twice.
