@@ -1,5 +1,6 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 
+import { escapeCsvCell } from '../common/csv-cell.js';
 import { PrismaService } from '../database/prisma.service.js';
 import { decodeCursor, encodeCursor } from './audit-log-cursor.js';
 import type { AuditLogQueryDto } from './audit-log.dto.js';
@@ -83,7 +84,7 @@ export class AuditLogService {
       entry.after === null || entry.after === undefined ? '' : JSON.stringify(entry.after),
     ]);
 
-    return [header, ...rows].map((row) => row.map(csvCell).join(',')).join('\r\n');
+    return [header, ...rows].map((row) => row.map(escapeCsvCell).join(',')).join('\r\n');
   }
 
   private async read(
@@ -185,9 +186,4 @@ export class AuditLogService {
       throw new BadRequestException('Invalid audit-log cursor.');
     }
   }
-}
-
-/** RFC 4180 quoting. Guards against a value containing a delimiter, quote, or newline. */
-function csvCell(value: string): string {
-  return /[",\r\n]/.test(value) ? `"${value.replace(/"/g, '""')}"` : value;
 }

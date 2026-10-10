@@ -187,15 +187,25 @@ them.
 
 ### [ ] 15 · H6 · Dependency scanning and security review (M)
 
-- [ ] Add a dependency scan (`npm audit --audit-level=high`, Dependabot, or OSV) to
-      `.github/workflows/ci.yml` — there is none today
-- [ ] Triage and fix what it finds
+- [x] Add a dependency scan (`npm audit --audit-level=high`, Dependabot, or OSV) to
+      `.github/workflows/ci.yml` — there is none today. Added
+      `npm audit --audit-level=high --omit=dev` (scoped to production deps) with
+      `continue-on-error: true` (temporary — see `docs/SECURITY_REVIEW.md` §1 for why), plus
+      `.github/dependabot.yml`
+- [x] Triage and fix what it finds. 24 of 27 advisories fixed via `npm audit fix`; `nodemailer`
+      bumped deliberately across a major version (verified via the full integration suite); the
+      3 remaining (all build-time-only, not exploitable here) are documented with an owner in
+      `docs/SECURITY_REVIEW.md` §1. Also fixed a real CSV formula-injection gap found during the
+      review (§2), and 2 missing portal rate limits (§3)
 - [ ] **MFA decision:** only the `security.mfa.manage` permission key exists, with no TOTP code.
-      Either build TOTP MFA for V1 or record it as post-V1
-- [ ] Review rate limits on auth, portal and AI routes
-- [ ] Review session lifetime, cookie flags and CSRF protection
-- [ ] Confirm production config validation rejects missing secrets (`@valuebooks/config`)
-- [ ] Write the findings up for the security owner (S1)
+      Either build TOTP MFA for V1 or record it as post-V1. Options, effort and a recommendation
+      are written up in `docs/SECURITY_REVIEW.md` §7 — left open here until the owner decides
+- [x] Review rate limits on auth, portal and AI routes — `docs/SECURITY_REVIEW.md` §3
+- [x] Review session lifetime, cookie flags and CSRF protection — `docs/SECURITY_REVIEW.md` §4-5
+- [x] Confirm production config validation rejects missing secrets (`@valuebooks/config`) —
+      `docs/SECURITY_REVIEW.md` §6
+- [x] Write the findings up for the security owner (S1) — `docs/SECURITY_REVIEW.md`, linked from
+      `docs/PHASE14_RELEASE_GATE.md`'s Security row
 
 ### [ ] 16 · H2 · Backup and restore drill (M)
 

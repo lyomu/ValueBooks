@@ -3,6 +3,7 @@ import type { ReportColumn, ReportKey, ReportRow } from '@valuebooks/contracts';
 import ExcelJS from 'exceljs';
 import type { Response } from 'express';
 
+import { escapeCsvCell } from '../common/csv-cell.js';
 import { DocumentRenderingService } from '../sales/document-rendering.service.js';
 import { AsyncReportExportService } from './async-report-export.service.js';
 import type { ReportExportQueryDto } from './reporting.dto.js';
@@ -51,7 +52,7 @@ export class ReportExportService {
     setDownloadHeaders(response, key, 'csv', 'text/csv; charset=utf-8');
     response.write('\uFEFF');
     response.write(
-      `${first.definition.columns.map((column) => csvCell(column.label)).join(',')}\r\n`,
+      `${first.definition.columns.map((column) => escapeCsvCell(column.label)).join(',')}\r\n`,
     );
     let page = 1;
     let current = first;
@@ -162,21 +163,7 @@ function setDownloadHeaders(
 }
 
 function csvRow(row: ReportRow, columns: readonly ReportColumn[]): string {
-  return columns.map((column) => csvCell(row.cells[column.key])).join(',');
-}
-
-function csvCell(value: unknown): string {
-  const text = primitiveText(value);
-  return /[",\r\n]/.test(text) ? `"${text.replaceAll('"', '""')}"` : text;
-}
-
-function primitiveText(value: unknown): string {
-  if (value === null || value === undefined) return '';
-  if (typeof value === 'string') return value;
-  if (typeof value === 'number' || typeof value === 'bigint' || typeof value === 'boolean') {
-    return value.toString();
-  }
-  return JSON.stringify(value);
+  return columns.map((column) => escapeCsvCell(row.cells[column.key])).join(',');
 }
 
 function reportHtml(
