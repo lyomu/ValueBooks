@@ -2,7 +2,6 @@ import {
   ArrowRight,
   Bot,
   Check,
-  FileText,
   LockKeyhole,
   Quote,
   ShieldCheck,
@@ -36,7 +35,6 @@ export function PageHero({
   title,
   copy,
   action,
-  visual = 'insights',
 }: {
   eyebrow: string;
   title: string;
@@ -44,50 +42,15 @@ export function PageHero({
   action: { label: string; href: string };
   visual?: 'ai' | 'invoice' | 'insights' | 'people' | 'security';
 }) {
-  const VisualIcon =
-    visual === 'ai'
-      ? Bot
-      : visual === 'invoice'
-        ? FileText
-        : visual === 'security'
-          ? ShieldCheck
-          : visual === 'people'
-            ? Users
-            : Check;
   return (
-    <section
-      className={visual === 'security' ? 'mk-page-hero mk-page-hero--security' : 'mk-page-hero'}
-    >
-      <div>
+    <section className="mk-page-hero">
+      <div className="mk-page-hero__content">
         <MarketingKicker>{eyebrow}</MarketingKicker>
         <h1>{title}</h1>
         <MarketingCopy>{copy}</MarketingCopy>
         <Link className="mk-button" href={action.href}>
           {action.label} <ArrowRight />
         </Link>
-      </div>
-      <div className="mk-page-hero__visual">
-        {visual === 'security' ? (
-          <div className="mk-security-orbit">
-            <VisualIcon aria-hidden="true" />
-            <span>Protected access</span>
-            <span>Clear controls</span>
-            <span>Private by design</span>
-          </div>
-        ) : (
-          <div className="mk-page-hero__symbol">
-            <VisualIcon aria-hidden="true" />
-            <span>
-              {visual === 'ai'
-                ? 'AI-ready workflows'
-                : visual === 'invoice'
-                  ? 'Payments made simple'
-                  : visual === 'people'
-                    ? 'Made for real owners'
-                    : 'Clear financial insight'}
-            </span>
-          </div>
-        )}
       </div>
     </section>
   );

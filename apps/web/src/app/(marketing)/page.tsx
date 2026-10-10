@@ -110,16 +110,6 @@ export default function MarketingHomePage() {
           </div>
         </div>
       </section>
-      <section className="mk-logo-strip">
-        <span>Trusted workflows for teams who care about the details</span>
-        <div>
-          <b>STUDIO MAVUNO</b>
-          <b>NORTHLINE</b>
-          <b>THE DAILY TABLE</b>
-          <b>COMMON GROUND</b>
-          <b>VERDE</b>
-        </div>
-      </section>
       <StatBand
         items={[
           { number: '10 hrs', label: 'saved weekly on finance admin' },

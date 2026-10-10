@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 
+import 'cal-sans';
 import '@valuebooks/ui/tokens.css';
 import './marketing.css';
 import './marketing-additions.css';

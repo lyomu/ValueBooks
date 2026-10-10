@@ -1,6 +1,6 @@
 /*
 THESIS: A calm, intelligent financial home that refuses the generic SaaS hero-and-card treadmill.
-OWN-WORLD: Hanken Grotesk, ink navy, quiet white surfaces, crisp cyan action, real workplace photography,
+OWN-WORLD: Cal Sans, ink navy, quiet white surfaces, crisp cyan action, real workplace photography,
 and beautifully legible accounting miniatures—no gradients, gloss, or invented compliance theatre.
 STORY: A growing business sees a complete financial platform, trusts its clarity, then starts or asks for help.
 FIRST VIEWPORT: A spacious two-column promise: direct copy at left and a living dashboard at right.
@@ -19,7 +19,7 @@ FORM: Wave-like breathing room with a QuickBooks-scale menu, alternating proof, 
   --mk-muted: hsl(217 56% 25%);
   color: var(--mk-ink);
   background: #fff;
-  font-family: var(--font-outfit), ui-sans-serif, system-ui, sans-serif;
+  font-family: 'Cal Sans', ui-sans-serif, system-ui, sans-serif;
   font-size: var(--mk-body-size);
   line-height: var(--mk-body-leading);
 }
@@ -658,7 +658,7 @@ FORM: Wave-like breathing room with a QuickBooks-scale menu, alternating proof, 
 .mk-section-intro h2 {
   max-width: 15ch;
   margin-bottom: 0.9rem;
-  font-size: clamp(1.9rem, 3.2vw, 3.25rem);
+  font-size: clamp(1.9rem, 3.2vw, 3rem);
   line-height: 1.1;
   letter-spacing: -0.045em;
   text-wrap: balance;
@@ -1060,6 +1060,9 @@ FORM: Wave-like breathing room with a QuickBooks-scale menu, alternating proof, 
   margin: 0 auto;
   padding: clamp(4.5rem, 9vw, 8rem) 0;
 }
+.mk-industries-section > .mk-section-intro h2 {
+  max-width: none;
+}
 .mk-industries-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
@@ -1106,21 +1109,18 @@ FORM: Wave-like breathing room with a QuickBooks-scale menu, alternating proof, 
   background: hsl(40 28% 94%);
 }
 .mk-testimonials {
-  columns: 3;
-  column-gap: 1rem;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1rem;
   margin-top: 2.3rem;
 }
 .mk-testimonials figure {
-  display: inline-block;
-  width: 100%;
-  margin: 0 0 1rem;
+  display: flex;
+  flex-direction: column;
+  margin: 0;
   padding: 1.3rem;
   background: #fff;
   border-radius: 0.7rem;
-  break-inside: avoid;
-}
-.mk-testimonials figure:nth-child(2) {
-  margin-top: 2rem;
 }
 .mk-testimonials > figure > svg {
   width: 1.2rem;
@@ -1205,8 +1205,11 @@ FORM: Wave-like breathing room with a QuickBooks-scale menu, alternating proof, 
   margin: auto;
   padding: clamp(3rem, 6vw, 5rem) 0;
 }
+.mk-faq-section > .mk-section-intro h2 {
+  max-width: none;
+}
 .mk-faq {
-  width: min(100%, 48rem);
+  width: min(100%, 64rem);
   margin: 2rem auto 0;
 }
 .mk-faq__item {
@@ -1392,6 +1395,10 @@ FORM: Wave-like breathing room with a QuickBooks-scale menu, alternating proof, 
 }
 .mk-feature-grid > .mk-section-intro {
   margin-bottom: 2.5rem;
+}
+.mk-feature-grid > .mk-section-intro h2 {
+  /* Keep the intentional line break after “needs,” intact on wide screens. */
+  max-width: 22ch;
 }
 .mk-feature-grid__row {
   display: grid;
@@ -2050,7 +2057,7 @@ FORM: Wave-like breathing room with a QuickBooks-scale menu, alternating proof, 
     grid-template-columns: 1fr 1fr;
   }
   .mk-testimonials {
-    columns: 2;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
   .mk-security-strip,
   .mk-security-callout {
@@ -2125,10 +2132,7 @@ FORM: Wave-like breathing room with a QuickBooks-scale menu, alternating proof, 
     grid-template-columns: 1fr;
   }
   .mk-testimonials {
-    columns: 1;
-  }
-  .mk-testimonials figure:nth-child(2) {
-    margin-top: 0;
+    grid-template-columns: 1fr;
   }
   .mk-stat-band strong {
     font-size: 1.45rem;
@@ -2203,6 +2207,12 @@ FORM: Wave-like breathing room with a QuickBooks-scale menu, alternating proof, 
   letter-spacing: 0.06em;
 }
 
+/* Primary navigation stays compact without losing its readable hierarchy. */
+.mk-root .mk-nav a,
+.mk-root .mk-nav button {
+  font-size: 0.9375rem;
+}
+
 .mk-root .mk-personas__list a,
 .mk-root .mk-industry-card,
 .mk-root .mk-testimonials figure,
@@ -2257,7 +2267,8 @@ FORM: Wave-like breathing room with a QuickBooks-scale menu, alternating proof, 
   color: #fff;
   font-size: 70px;
   line-height: 0.98;
-  letter-spacing: -0.06em;
+  /* Cal Sans needs more breathing room at display scale than the previous face. */
+  letter-spacing: -0.03em;
 }
 .mk-home-hero--spotlight h1 em {
   color: #fff;
