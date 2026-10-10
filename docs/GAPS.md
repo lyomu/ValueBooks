@@ -13,10 +13,10 @@ checkable list of everything still open across the whole project, pulled from th
 `docs/EXECUTION_PLAN.md`, `docs/HANDOVER.md`, and the individual `docs/PHASE<N>_TODO.md` files,
 cross-checked against the code and the latest captured gate logs.
 
-**Snapshot:** 2026-10-10 (items 43–44 only; the rest of this file was last reconciled
-2026-10-06 — see `docs/PENDING_WORK.md` P1 item 7 for the remaining cleanup). **Branch note:**
-`chore/verification-closure` is 58 commits ahead of `main` with nothing behind — Phases 10–13 are
-not yet on `main`.
+**Snapshot:** 2026-10-10 — items 23, 25, 27, 28, 35 and section G renumbered/corrected during the
+P1 docs-reconciliation pass (`docs/PENDING_WORK.md` item 7); items 43–44 updated during P0. The
+rest of this file was last reconciled 2026-10-06. **Branch note:** `chore/verification-closure` is
+58 commits ahead of `main` with nothing behind — Phases 10–13 are not yet on `main`.
 
 Phase 13 implementation and the current UI work are also on this branch; merging remains the
 repository owner's decision.
@@ -135,18 +135,32 @@ All in `docs/PHASE10_TODO.md`, each honestly annotated "partial" or "not done":
       adapter: submit freezes a generic `QUOTE` approval request when a policy applies, and
       `sales.quotes.approve` refuses to finalize until that request is approved. Proven by
       `apps/api/test/approval-gates.int.test.ts`.
-- [ ] 23. **10D** (`:231`) — registered non-financial field-update action (partial)
+- [x] 23. **10D** (`:231`) — registered non-financial field-update action.
+      `UPDATE_AUTOMATION_TASK` is a full member of `workflowActionSchema` in
+      `packages/contracts/src/index.ts` and is executed in
+      `apps/api/src/automation/workflows.service.ts` (resolves the target task by
+      `taskIdField`, no-ops on a deleted or cross-tenant task). Covered by
+      `apps/api/test/automation-contracts.test.ts` and `apps/api/test/workflow-rules.int.test.ts`.
 - [ ] 24. **10F** (`:312`) — `ReportArtifactService#generate` still buffers the whole artifact; no
-      transport-neutral stream interface
-- [ ] 25. **10F** (`:334`) — oversized interactive PDF exports don't route through a worker with
-      `202 Accepted` + job-status resource
+      transport-neutral stream interface. **Partial:** interactive XLSX export streams
+      (`report-export.service.ts`), but the stored/async artifact path
+      (`report-artifact.service.ts`) still builds the whole buffer in memory (`Buffer.from`,
+      `writeBuffer`). Tracked as `docs/PENDING_WORK.md` item 33.
+- [x] 25. **10F** (`:334`) — oversized interactive PDF exports now route through a worker with
+      `202 Accepted` + job-status resource. `reporting.controller.ts#exportReport` returns
+      `202` with a `statusUrl` when `AsyncReportExportService#request` queues the job, and
+      `GET exports/:executionId` (`AsyncReportExportService#status`) is the scoped status
+      resource. That route is one of the 11 added to the authorization-boundary matrix in P0.
 - [ ] 26. **10H** (`:419`) — approval edge-case tests: multi-level ordering, criteria boundaries,
       concurrent decisions, policy edits mid-flight, revoked permissions (sections 1-7 of
       `docs/PHASE10_TEST_PLAN.md` landed; this is the remainder)
-- [ ] 27. **10I** (`:480`) — worker/environment ops documentation (queue names, concurrency,
-      lease, retry, retention, cleanup, recovery)
-- [ ] 28. **10I** (`:482`) — operator-facing runbook collecting the event catalog, approval target
-      matrix, action registry, misfire semantics, retry procedure
+- [x] 27. **10I** (`:480`) — worker/environment ops documentation (queue names, concurrency,
+      lease, retry, retention, cleanup, recovery). `docs/AUTOMATION_OPERATIONS_RUNBOOK.md`
+      "Runtime topology" and "Misfire and recovery rules" sections cover this.
+- [x] 28. **10I** (`:482`) — operator-facing runbook collecting the event catalog, approval target
+      matrix, action registry, misfire semantics, retry procedure.
+      `docs/AUTOMATION_OPERATIONS_RUNBOOK.md` covers the job catalog, approval target lifecycle,
+      misfire/recovery rules and retry procedure.
 
 ---
 
@@ -178,7 +192,10 @@ directly with Phase 14 tracks 13-16 above and should close together, not twice.
       purchase-order receipts now replay cleanly through dedicated idempotency namespaces and are
       covered by `apps/api/test/inventory.int.test.ts` and
       `apps/api/test/purchase-orders.int.test.ts`.
-- [ ] 35. Optimistic concurrency / version fields on high-risk financial records beyond the ledger
+- [ ] 35. Optimistic concurrency / version fields on high-risk financial records beyond the
+      ledger. **Partial:** `version` is enforced on Invoice, CreditNote, Quote, PurchaseOrder,
+      Bill and Expense (plus the two Phase 10 models). PaymentReceived, PaymentMade, Journal,
+      VendorCredit and SalesOrder have none yet. Tracked as `docs/PENDING_WORK.md` item 17.
 - [x] 36. Domain event emission for the full catalog (`invoice.issued`, `invoice.voided`,
       `payment.recorded`, `bill.posted`, …)
       Scheduled job completion/failure now emit catalog events transactionally and are covered by
@@ -250,16 +267,22 @@ _(Explicitly out of scope for V1 per spec §19, not a gap: public API/webhook co
 
 ## G. Documentation that contradicts captured evidence
 
-- [x] 43. `docs/PHASE11_TODO.md:91-100` — 4 boxes unchecked above evidence ledger.
-      All four boxes checked off in `docs/PHASE11_TODO.md` (E2E execution, gate run, visual review,
-      roll-up) after confirming the evidence ledger records all four green on 2026-09-11.
-- [x] 44. `docs/BUILD_ROADMAP.md:19-44` — stale snapshot.
+- [x] 47. `docs/PHASE11_TODO.md:91-100` — 4 boxes unchecked above evidence ledger.
+      **Correction (2026-10-10):** this entry previously claimed all four boxes were already
+      checked off against the 2026-09-11 evidence ledger. That wasn't true — lines 91 (portal
+      E2E execution) and 99 (visual review) were still unchecked. Both are now ticked, but on
+      evidence from the 2026-10-10 P0 session (`docs/P0_HANDOVER.md`), not the 2026-09-11 ledger:
+      `phase11-portal.spec.ts` has run and passes functionally (its `@visual` baseline stays open
+      under P0 item 6), and the portal was visually reviewed at desktop and mobile (finding and
+      fixing the 9px scroll bug). The other two boxes (gate run, roll-up) were already correctly
+      checked.
+- [x] 48. `docs/BUILD_ROADMAP.md:19-44` — stale snapshot.
       Already fixed: snapshot dated 2026-09-12, Phases 11–12 marked complete, test counts updated.
-- [x] 45. `docs/EXECUTION_PLAN.md` — ~43 unchecked items under "complete and verified" headers.
+- [x] 49. `docs/EXECUTION_PLAN.md` — ~43 unchecked items under "complete and verified" headers.
       Audit found this claim inaccurate. All four "complete and verified" headers (Phases 9, 10, 11, 12)
       have every item either checked or correctly tracked as debt. The Phase 7 items are NOT under a
       "complete and verified" header. No drift exists — the GAPS entry itself was the stale item.
-- [x] 46. `docs/PHASE1_TODO.md:376` — attachment content-type allowlist still shown open.
+- [x] 50. `docs/PHASE1_TODO.md:376` — attachment content-type allowlist still shown open.
       Checked off in `docs/PHASE1_TODO.md`. Implementation confirmed in
       `apps/api/src/attachments/attachments.service.ts` (allowlist + forced download).
 
@@ -267,7 +290,7 @@ _(Explicitly out of scope for V1 per spec §19, not a gap: public API/webhook co
 
 ## Totals
 
-**33 unchecked boxes remain.** Category labels above intentionally overlap where release tracks,
+**26 unchecked boxes remain.** Category labels above intentionally overlap where release tracks,
 cross-module scenarios, and source-phase follow-ups refer to the same public-V1 work.
 
 The current gate regressions in items 43-44 are release blockers. The other unchecked items are
