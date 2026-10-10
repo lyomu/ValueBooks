@@ -3,6 +3,10 @@ import { expect, test, type Page } from '@playwright/test';
 async function openAuth(page: Page, path: string) {
   await page.goto(path, { waitUntil: 'domcontentloaded' });
   await page.locator('#main-content').waitFor();
+  // #main-content is server-rendered, so it appears before React has hydrated the form. A click
+  // in that gap reaches a button with no handler and is silently lost -- the Show password
+  // toggle failed 3/3 this way. Waiting for the client bundle to settle covers hydration.
+  await page.waitForLoadState('networkidle');
 }
 
 test.describe('authentication journeys', () => {

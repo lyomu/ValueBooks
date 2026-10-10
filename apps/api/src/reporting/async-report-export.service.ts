@@ -1,5 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import {
+  Prisma,
   ScheduledJobExecutionStatus,
   ScheduledJobMisfirePolicy,
   ScheduledJobStatus,
@@ -52,7 +53,9 @@ export class AsyncReportExportService {
           sourceId: executionId,
           payload: {
             reportKey: key,
-            query: JSON.parse(JSON.stringify(query)),
+            // `query` is a validated DTO; round-tripping through JSON strips methods/undefined
+            // so the stored payload is plain, replayable data, same as workflows.service.ts.
+            query: JSON.parse(JSON.stringify(query)) as Prisma.InputJsonValue,
             requestedByUserId: userId,
           },
           // This job is enqueued directly and remains paused so the calendar scheduler can never

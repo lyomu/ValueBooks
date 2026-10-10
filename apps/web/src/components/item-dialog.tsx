@@ -12,6 +12,7 @@ import {
   Textarea,
 } from '@valuebooks/ui';
 import { ImagePlus, Save } from 'lucide-react';
+import Image from 'next/image';
 import { useEffect, useMemo, useState, type ChangeEvent, type FormEvent } from 'react';
 
 import { ApiError, apiRequest } from '../lib/api';
@@ -285,7 +286,16 @@ export function ItemDialog({
             </div>
             <label className="rb-item-form__image-picker">
               {imageDataUrl ? (
-                <img src={imageDataUrl} alt="Selected product" />
+                // User-selected local file preview (data URL), not a remote/static asset --
+                // unoptimized because Next's image optimizer can't fetch a data: URI, and the
+                // existing CSS (width/height/object-fit) already controls the rendered size.
+                <Image
+                  src={imageDataUrl}
+                  alt="Selected product"
+                  width={800}
+                  height={384}
+                  unoptimized
+                />
               ) : (
                 <ImagePlus aria-hidden="true" />
               )}

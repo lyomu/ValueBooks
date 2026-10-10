@@ -59,7 +59,10 @@ export default defineConfig({
             API_PORT: '3401',
             DATABASE_URL: 'postgresql://valuebooks:valuebooks@127.0.0.1:55432/valuebooks_e2e',
             REDIS_URL: 'redis://127.0.0.1:56780',
-            S3_ENDPOINT: process.env.E2E_S3_ENDPOINT ?? 'http://127.0.0.1:59000',
+            // Must match e2e/prepare.mjs: MinIO is remapped to 59300 because Windows reserves the
+            // 58957-59056 range docker-compose's 59000 default falls in. With 59000 here every
+            // attachment upload 500s, which is what the receipt/discrepancy specs tripped on.
+            S3_ENDPOINT: process.env.E2E_S3_ENDPOINT ?? 'http://127.0.0.1:59300',
             SMTP_HOST: '127.0.0.1',
             NODE_ENV: 'test',
             QUEUE_PREFIX: 'valuebooks-e2e',

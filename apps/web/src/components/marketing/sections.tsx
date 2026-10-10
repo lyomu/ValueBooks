@@ -1,12 +1,4 @@
-import {
-  ArrowRight,
-  Bot,
-  Check,
-  LockKeyhole,
-  Quote,
-  ShieldCheck,
-  Users,
-} from 'lucide-react';
+import { ArrowRight, Bot, Check, LockKeyhole, Quote, ShieldCheck } from 'lucide-react';
 import Link from 'next/link';
 import type { ReactNode } from 'react';
 import { DashboardMockup, InvoiceMockup } from './mockups';

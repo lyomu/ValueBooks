@@ -1,34 +1,17 @@
 import { expect, test, type Page } from '@playwright/test';
-import { createClient } from 'redis';
+
+import { clearAuthRateLimits } from './lib/rate-limits';
 
 const DEMO_PASSWORD = 'DemoValueBooks1!';
 const PORTAL_CUSTOMER = 'demo.customer@valuebooks.local';
 
 async function signIn(page: Page, email: string, destination: RegExp): Promise<void> {
+  await clearAuthRateLimits();
   await page.goto(email === PORTAL_CUSTOMER ? '/portal/login' : '/login');
   await page.getByLabel('Email address').fill(email);
   await page.getByLabel('Password', { exact: true }).fill(DEMO_PASSWORD);
-  await page.getByRole('button', { name: 'Sign in' }).click();
+  await page.getByRole('button', { name: 'Sign in', exact: true }).click();
   await expect(page).toHaveURL(destination);
-}
-
-const E2E_REDIS_URL = 'redis://127.0.0.1:56780';
-
-/**
- * The API rate-limits logins per account (8/15 min); the portal describe signs the demo
- * customer in eight times, so reset counters before collaboration needs a ninth.
- */
-async function clearAuthRateLimits(): Promise<void> {
-  const client = createClient({ url: E2E_REDIS_URL });
-  await client.connect();
-  try {
-    for await (const keys of client.scanIterator({ MATCH: 'auth:*', COUNT: 200 })) {
-      const batch = Array.isArray(keys) ? keys : [keys];
-      if (batch.length > 0) await client.del(batch);
-    }
-  } finally {
-    await client.quit();
-  }
 }
 
 function collectBrowserErrors(page: Page) {
@@ -210,7 +193,7 @@ test.describe('Phase 11 internal collaboration', () => {
 
   test('offers comments, files, and activity on a transaction detail surface', async ({ page }) => {
     const browserErrors = collectBrowserErrors(page);
-    await signIn(page, 'demo.owner@valuebooks.local', /\/$/);
+    await signIn(page, 'demo.owner@valuebooks.local', /\/dashboard$/);
 
     await page.goto('/invoices');
     // 'Open' must match exactly: the sidebar also has an 'Opening balances' link, and
@@ -239,11 +222,16 @@ test.describe('Phase 11 internal collaboration', () => {
   });
 
   test('shares a comment with the customer and shows it in their portal', async ({ page }) => {
-    await signIn(page, 'demo.owner@valuebooks.local', /\/$/);
+    await signIn(page, 'demo.owner@valuebooks.local', /\/dashboard$/);
     await page.goto('/invoices');
-    // 'Open' must match exactly: the sidebar also has an 'Opening balances' link, and
-    // Playwright's name match is a case-insensitive substring by default.
-    await page.getByRole('link', { name: 'Open', exact: true }).first().click();
+    // Open the portal customer's (Karibu Wholesale Ltd) invoice specifically. The demo-week seed
+    // added invoices for other customers, so "the first invoice" is no longer one this customer
+    // can see. 'Open' must match exactly: the sidebar also has an 'Opening balances' link.
+    await page
+      .getByRole('row')
+      .filter({ hasText: /INV-FY2026-00001(?!\d)/ })
+      .getByRole('link', { name: 'Open', exact: true })
+      .click();
     await page.waitForURL(/\/invoices\/[0-9a-f-]{36}/);
 
     const collaboration = page.getByRole('region', { name: 'Collaboration' });

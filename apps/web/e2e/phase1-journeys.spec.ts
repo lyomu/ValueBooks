@@ -1,12 +1,15 @@
 import { expect, test, type Page } from '@playwright/test';
 
+import { clearAuthRateLimits } from './lib/rate-limits';
+
 const DEMO_PASSWORD = 'DemoValueBooks1!';
 
 async function login(page: Page, email = 'demo.owner@valuebooks.local'): Promise<void> {
+  await clearAuthRateLimits();
   await page.goto('/login');
   await page.getByLabel('Email address').fill(email);
   await page.getByLabel('Password', { exact: true }).fill(DEMO_PASSWORD);
-  await page.getByRole('button', { name: 'Sign in' }).click();
+  await page.getByRole('button', { name: 'Sign in', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Dashboard', exact: true })).toBeVisible();
 }
 
@@ -26,7 +29,7 @@ test.describe('Phase 1 end-to-end journeys', () => {
     await page.getByRole('button', { name: 'Open profile menu for Amina Kamau' }).click();
     await page.getByText('Sign out', { exact: true }).click();
     await expect(page).toHaveURL(/\/login$/);
-    await expect(page.getByRole('button', { name: 'Sign in' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Sign in', exact: true })).toBeVisible();
   });
 
   test('onboarding: creates and finalizes a complete organization', async ({ page }) => {
@@ -114,12 +117,16 @@ test.describe('Phase 1 end-to-end journeys', () => {
     await expect(page.getByText('Balanced', { exact: true })).toBeVisible();
 
     await page.getByRole('button', { name: 'Save draft' }).click();
-    await expect(page.getByRole('status')).toContainText('Draft saved.');
-    await page.getByRole('button', { name: 'Post' }).click();
-    await expect(page.getByRole('status')).toContainText(/Posted as DEMO-/);
+    // The journal page also carries the collaboration panel's own (empty) status live region,
+    // so match the notice by its text rather than assuming it is the only status on the page.
+    await expect(page.getByRole('status').filter({ hasText: 'Draft saved.' })).toBeVisible();
+    await page.getByRole('button', { name: 'Post', exact: true }).click();
+    await expect(page.getByRole('status').filter({ hasText: /Posted as DEMO-/ })).toBeVisible();
 
-    await page.getByRole('button', { name: 'Reverse' }).click();
-    await expect(page.getByRole('status')).toContainText(/Reversal posted as DEMO-/);
+    await page.getByRole('button', { name: 'Reverse', exact: true }).click();
+    await expect(
+      page.getByRole('status').filter({ hasText: /Reversal posted as DEMO-/ }),
+    ).toBeVisible();
     await expect(
       page.getByText('Posted journals are immutable. Use reversal for corrections.'),
     ).toBeVisible();

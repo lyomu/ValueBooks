@@ -171,7 +171,9 @@ export function OnboardingWizard() {
     setFieldErrors([]);
     try {
       await apiRequest(`/organizations/${organization.id}/finalize`, { method: 'POST' });
-      router.push('/');
+      // Not `/`: that is the marketing homepage now, which left a newly finalized user on the
+      // public site instead of their workspace.
+      router.push('/dashboard');
       router.refresh();
     } catch (caught) {
       reportError(caught);

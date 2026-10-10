@@ -13,8 +13,10 @@ checkable list of everything still open across the whole project, pulled from th
 `docs/EXECUTION_PLAN.md`, `docs/HANDOVER.md`, and the individual `docs/PHASE<N>_TODO.md` files,
 cross-checked against the code and the latest captured gate logs.
 
-**Snapshot:** 2026-10-06. **Branch note:** `chore/verification-closure` is 45 commits ahead of
-`main` with nothing behind — Phases 10, 11, and 12 are not yet on `main`.
+**Snapshot:** 2026-10-10 (items 43–44 only; the rest of this file was last reconciled
+2026-10-06 — see `docs/PENDING_WORK.md` P1 item 7 for the remaining cleanup). **Branch note:**
+`chore/verification-closure` is 58 commits ahead of `main` with nothing behind — Phases 10–13 are
+not yet on `main`.
 
 Phase 13 implementation and the current UI work are also on this branch; merging remains the
 repository owner's decision.
@@ -231,10 +233,18 @@ _(Explicitly out of scope for V1 per spec §19, not a gap: public API/webhook co
       the chart now exposes 17 keys; and the web production build failed with 35 lint/type-rule
       errors across 16 components. Historical green-gate records remain useful evidence for their
       commits, but do not describe the current branch.
-- [ ] 44. **Make Prisma client generation reproducible.** A fresh API typecheck failed until
+      **Update 2026-10-10 (uncommitted, mostly closed):** format, lint (0 warnings), typecheck,
+      unit (260/260), both production builds and the integration suite (458/458, run with
+      `AI_MODE=off`) are green. Playwright is at 38 passed / 10 failed: 7 stale visual baselines
+      and 3 functional failures, 2 of them already fixed but not re-run. Stays open until E2E is
+      green. Full detail in `docs/P0_HANDOVER.md`; task list in `docs/PENDING_WORK.md` items 5–6.
+- [x] 44. **Make Prisma client generation reproducible.** A fresh API typecheck failed until
       `npm run db:generate --workspace @valuebooks/api` regenerated the client from the committed
       schema. Add generation to the install/CI build path or otherwise make this prerequisite
       explicit and enforced.
+      **Closed (verified 2026-10-10):** `apps/api/package.json` runs `db:generate` as
+      `pretypecheck`, `pretest`, `pretest:integration` and `prebuild`, so every gate regenerates
+      the client before it runs.
 
 ---
 

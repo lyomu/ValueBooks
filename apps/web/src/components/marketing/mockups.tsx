@@ -1,12 +1,4 @@
-import {
-  Bot,
-  Check,
-  CreditCard,
-  FileText,
-  MoreHorizontal,
-  Send,
-  TrendingUp,
-} from 'lucide-react';
+import { Bot, Check, CreditCard, FileText, MoreHorizontal, Send, TrendingUp } from 'lucide-react';
 
 export function DashboardMockup() {
   return (

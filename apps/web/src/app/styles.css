@@ -1477,6 +1477,10 @@ a.rb-nav-item:hover {
   padding: 2rem 0;
 }
 .rb-portal__table-wrap {
+  /* position: relative makes this the containing block for the header's absolutely positioned
+     screen-reader label; without it that label escaped the scroller and widened the whole page
+     by 9px on phones. */
+  position: relative;
   overflow-x: auto;
 }
 .rb-portal__table {

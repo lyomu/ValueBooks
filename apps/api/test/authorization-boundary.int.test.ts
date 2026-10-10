@@ -364,6 +364,11 @@ const ENDPOINTS: readonly EndpointCase[] = [
   },
   {
     method: 'get',
+    path: 'organizations/:organizationId/reports/exports/:executionId',
+    permission: 'reports.view',
+  },
+  {
+    method: 'get',
     path: 'organizations/:organizationId/reports/:reportKey',
     permission: 'reports.view',
   },
@@ -622,6 +627,26 @@ const ENDPOINTS: readonly EndpointCase[] = [
     permission: 'customers.view',
   },
   {
+    method: 'get',
+    path: 'organizations/:organizationId/customers/:contactId/transactions',
+    permission: 'customers.view',
+  },
+  {
+    method: 'get',
+    path: 'organizations/:organizationId/customers/:contactId/summary',
+    permission: 'customers.view',
+  },
+  {
+    method: 'get',
+    path: 'organizations/:organizationId/customers/:contactId/activity',
+    permission: 'customers.view',
+  },
+  {
+    method: 'get',
+    path: 'organizations/:organizationId/customers/:contactId/mails',
+    permission: 'customers.view',
+  },
+  {
     method: 'post',
     path: 'organizations/:organizationId/customers',
     permission: 'customers.manage',
@@ -737,6 +762,17 @@ const ENDPOINTS: readonly EndpointCase[] = [
     body: {},
   },
   {
+    method: 'delete',
+    path: 'organizations/:organizationId/invoices/:invoiceId',
+    permission: 'sales.invoices.manage',
+  },
+  {
+    method: 'patch',
+    path: 'organizations/:organizationId/invoices/:invoiceId/expected-payment-date',
+    permission: 'sales.invoices.manage',
+    body: {},
+  },
+  {
     method: 'post',
     path: 'organizations/:organizationId/invoices/:invoiceId/issue',
     permission: 'sales.invoices.issue',
@@ -748,12 +784,33 @@ const ENDPOINTS: readonly EndpointCase[] = [
   },
   {
     method: 'post',
+    path: 'organizations/:organizationId/invoices/:invoiceId/write-off',
+    permission: 'sales.invoices.void',
+    body: {},
+  },
+  {
+    method: 'post',
     path: 'organizations/:organizationId/invoices/:invoiceId/send',
+    permission: 'sales.documents.send',
+  },
+  {
+    method: 'post',
+    path: 'organizations/:organizationId/invoices/:invoiceId/reminders/stop',
+    permission: 'sales.documents.send',
+  },
+  {
+    method: 'post',
+    path: 'organizations/:organizationId/invoices/:invoiceId/reminders/resume',
     permission: 'sales.documents.send',
   },
   {
     method: 'get',
     path: 'organizations/:organizationId/payments',
+    permission: 'sales.payments.view',
+  },
+  {
+    method: 'get',
+    path: 'organizations/:organizationId/payments/open-invoices',
     permission: 'sales.payments.view',
   },
   {

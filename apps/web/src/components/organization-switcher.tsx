@@ -54,8 +54,9 @@ export function OrganizationSwitcher({
         router.push('/onboarding');
       } else {
         // A hard destination prevents a just-switched workspace from retaining a resource route
-        // or stale client view that belonged to the prior organization.
-        router.push('/');
+        // or stale client view that belonged to the prior organization. `/` is the marketing
+        // site now, so the in-app home is /dashboard.
+        router.push('/dashboard');
         router.refresh();
       }
     } finally {

@@ -46,7 +46,7 @@ const faqItems: FaqItem[] = [
   },
   {
     q: 'Can I move my existing records into ValueBooks?',
-    a: "Yes. You can set opening balances and bring your current financial position into ValueBooks as you get started.",
+    a: 'Yes. You can set opening balances and bring your current financial position into ValueBooks as you get started.',
   },
 ];
 

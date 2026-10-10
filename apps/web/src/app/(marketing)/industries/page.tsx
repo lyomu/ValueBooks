@@ -74,7 +74,6 @@ export default function IndustriesPage() {
           </div>
         </div>
       </section>
-
     </>
   );
 }

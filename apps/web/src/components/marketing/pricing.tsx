@@ -49,7 +49,10 @@ export function BillingToggle({
   );
 }
 
-function priceForInterval(plan: Plan, interval: BillingInterval): { amountUsd: number; unit: string } {
+function priceForInterval(
+  plan: Plan,
+  interval: BillingInterval,
+): { amountUsd: number; unit: string } {
   return interval === 'monthly'
     ? { amountUsd: plan.monthlyPriceUsd, unit: '/month' }
     : { amountUsd: plan.yearlyPriceUsd, unit: '/year' };
@@ -138,7 +141,13 @@ export function PlanCardRow({
   return (
     <div className="mk-pricing-row">
       {PLANS.map((plan) => (
-        <PlanCard key={plan.id} plan={plan} interval={interval} currencyCode={currencyCode} variant={variant} />
+        <PlanCard
+          key={plan.id}
+          plan={plan}
+          interval={interval}
+          currencyCode={currencyCode}
+          variant={variant}
+        />
       ))}
     </div>
   );
@@ -190,7 +199,11 @@ export function ComparisonTable() {
               className={isOpen ? 'mk-pricing-group is-open' : 'mk-pricing-group'}
             >
               <tr>
-                <th scope="colgroup" colSpan={PLANS.length + 1} className="mk-pricing-group__header-cell">
+                <th
+                  scope="colgroup"
+                  colSpan={PLANS.length + 1}
+                  className="mk-pricing-group__header-cell"
+                >
                   <button
                     type="button"
                     className="mk-pricing-group__header"

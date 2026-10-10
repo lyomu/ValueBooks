@@ -122,7 +122,6 @@ export default async function IndustryDetail({ params }: { params: Promise<{ slu
           <p>Keep financial activity documented, reviewable, and ready for the next decision.</p>
         </div>
       </section>
-
     </>
   );
 }

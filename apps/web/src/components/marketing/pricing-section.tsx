@@ -52,8 +52,8 @@ export function PricingPageContent() {
           <p className="mk-kicker">Pricing</p>
           <h1>A plan for every stage of growth.</h1>
           <p>
-            Start free, then upgrade as your team and transaction volume grow. No contracts,
-            cancel anytime.
+            Start free, then upgrade as your team and transaction volume grow. No contracts, cancel
+            anytime.
           </p>
           <ul className="mk-pricing-hero__benefits" aria-label="ValueBooks plan benefits">
             <li>

@@ -128,7 +128,12 @@ export const FEATURE_GROUPS: FeatureGroup[] = [
     rows: [
       {
         label: 'Invoices & quotes',
-        values: { starter: 'Unlimited', growth: 'Unlimited', professional: 'Unlimited', advanced: 'Unlimited' },
+        values: {
+          starter: 'Unlimited',
+          growth: 'Unlimited',
+          professional: 'Unlimited',
+          advanced: 'Unlimited',
+        },
       },
       {
         label: 'Recurring invoices',

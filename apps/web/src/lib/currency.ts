@@ -46,7 +46,9 @@ export function detectLikelyCurrency(): string {
     if (LOCALE_CURRENCY_MAP[locale]) return LOCALE_CURRENCY_MAP[locale];
     const region = locale.split('-')[1];
     if (region) {
-      const byRegion = Object.entries(LOCALE_CURRENCY_MAP).find(([key]) => key.endsWith(`-${region}`));
+      const byRegion = Object.entries(LOCALE_CURRENCY_MAP).find(([key]) =>
+        key.endsWith(`-${region}`),
+      );
       if (byRegion) return byRegion[1];
     }
     return 'USD';

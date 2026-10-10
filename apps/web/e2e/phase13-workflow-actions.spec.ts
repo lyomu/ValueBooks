@@ -10,15 +10,17 @@ import {
   getActiveOrganizationId,
 } from './lib/api-fixtures';
 import { renderReceiptPng } from './lib/receipt-image';
+import { clearAuthRateLimits } from './lib/rate-limits';
 
 const DEMO_PASSWORD = 'DemoValueBooks1!';
 const DEMO_OWNER = 'demo.owner@valuebooks.local';
 
 async function signIn(page: Page, email = DEMO_OWNER): Promise<void> {
+  await clearAuthRateLimits();
   await page.goto('/login');
   await page.getByLabel('Email address').fill(email);
   await page.getByLabel('Password', { exact: true }).fill(DEMO_PASSWORD);
-  await page.getByRole('button', { name: 'Sign in' }).click();
+  await page.getByRole('button', { name: 'Sign in', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Dashboard', exact: true })).toBeVisible();
 }
 
@@ -251,12 +253,21 @@ test.describe('Phase 13 bank match proposals', () => {
     );
 
     await page.goto('/bank-transactions');
-    await page.getByRole('button', { name: 'Match' }).first().click();
+    // The demo-week seed now has its own bank transactions, so the first Match button belongs to
+    // one of those; open the row this test imported.
+    await page
+      .getByRole('row')
+      .filter({ hasText: 'MATCH PROPOSAL VENDOR PAYMENT' })
+      .getByRole('button', { name: 'Match' })
+      .click();
     await expect(page.getByText('Suggested matches')).toBeVisible({ timeout: 15_000 });
 
-    const proposalButton = page.getByRole('button').filter({ hasText: 'Match Proposal Vendor' });
+    // The ranking reason renders beside the proposal button, not inside it, so check the list
+    // item that holds both.
+    const proposal = page.getByRole('listitem').filter({ hasText: 'Match Proposal Vendor' });
+    await expect(proposal).toContainText('exact amount match');
+    const proposalButton = proposal.getByRole('button');
     await expect(proposalButton).toBeVisible();
-    await expect(proposalButton).toContainText('exact amount match');
     await proposalButton.click();
     await expect(page.getByLabel('Target id')).toHaveValue(expense.data.id);
   });
@@ -294,6 +305,9 @@ test.describe('Phase 13 approval briefing', () => {
       {
         name: 'E2E bill review policy',
         targetType: 'BILL',
+        // The demo-week seed activates its own "Bill sign-off" policy at priority 10; without a
+        // higher priority here the request resolves to that one and its (empty) criteria.
+        priority: 100,
         conditions: { minimumAmountMinor: '1' },
         steps: [{ requiredPermission: 'purchases.bills.manage', label: 'Finance review' }],
       },

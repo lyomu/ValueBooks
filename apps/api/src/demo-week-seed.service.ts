@@ -17,7 +17,6 @@ import { LedgerService } from './organizations/ledger.service.js';
 import { TaxService } from './organizations/tax.service.js';
 import { BillsService } from './purchases/bills.service.js';
 import { ExpenseCategoriesService } from './purchases/expense-categories.service.js';
-import type { CreateExpenseDto } from './purchases/expenses.dto.js';
 import { ExpensesService } from './purchases/expenses.service.js';
 import { PaymentsMadeService } from './purchases/payments-made.service.js';
 import { PurchaseOrdersService } from './purchases/purchase-orders.service.js';
@@ -735,8 +734,23 @@ export class DemoWeekSeedService {
       );
       if (definition.target !== 'CONVERTED') continue;
 
-      const converted = await this.step(context, `quote:${definition.key}:convert`, 'INVOICE', () =>
-        this.quotes.convertToInvoice(context, owner, quote.id, metadata),
+      // convertToInvoice() returns the now-CONVERTED quote, not the invoice -- its own id
+      // never changes, so step()'s idempotency bookkeeping (which remembers run()'s `.id`)
+      // would otherwise record the quote's id instead of the invoice this step actually
+      // creates. Re-shape the result so `.id` is the invoice id, same as every other step.
+      const converted = await this.step(
+        context,
+        `quote:${definition.key}:convert`,
+        'INVOICE',
+        async () => {
+          const result = await this.quotes.convertToInvoice(context, owner, quote.id, metadata);
+          if (!result.convertedInvoiceId) {
+            throw new Error(
+              `convertToInvoice did not set convertedInvoiceId for quote ${quote.id}`,
+            );
+          }
+          return { id: result.convertedInvoiceId };
+        },
       );
       await this.step(context, `quote:${definition.key}:issue`, 'INVOICE', () =>
         this.invoices.issueInvoice(context, owner, converted.id, metadata, undefined, week.day(-3)),
@@ -776,11 +790,28 @@ export class DemoWeekSeedService {
       }
       if (definition.target === 'CONFIRMED') {
         // The plan's chain: a confirmed order invoiced through the real conversion path.
+        // convertToInvoice() returns the now-converted order, not the invoice -- its own id
+        // never changes, so step()'s idempotency bookkeeping (which remembers run()'s `.id`)
+        // would otherwise record the order's id instead of the invoice this step actually
+        // creates. Re-shape the result so `.id` is the invoice id, same as every other step.
         const converted = await this.step(
           context,
           `order:${definition.key}:convert`,
           'INVOICE',
-          () => this.salesOrders.convertToInvoice(context, owner, order.id, metadata),
+          async () => {
+            const result = await this.salesOrders.convertToInvoice(
+              context,
+              owner,
+              order.id,
+              metadata,
+            );
+            if (!result.convertedInvoiceId) {
+              throw new Error(
+                `convertToInvoice did not set convertedInvoiceId for order ${order.id}`,
+              );
+            }
+            return { id: result.convertedInvoiceId };
+          },
         );
         await this.step(context, `order:${definition.key}:issue`, 'INVOICE', () =>
           this.invoices.issueInvoice(
@@ -2862,7 +2893,11 @@ const WEEK_QUOTES: readonly WeekQuoteDefinition[] = [
   },
   {
     key: 'accepted',
-    customer: 'no-email',
+    // Not 'no-email': reaching ACCEPTED falls through the loop below to quotes.send(), which
+    // requires an email on file. 'no-email' demonstrates that missing-email state elsewhere
+    // (the fulfilled sales order and the dedicated 'no-email' invoice below), neither of which
+    // sends anything.
+    customer: 'credit',
     target: 'ACCEPTED',
     expiryOn: 27,
     lines: [{ item: 'consumables', quantity: '20', unitPriceMinor: '45000' }],

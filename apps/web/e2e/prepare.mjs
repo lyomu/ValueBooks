@@ -11,7 +11,12 @@ const DATABASE_NAME = 'valuebooks_e2e';
 const DATABASE_URL = `postgresql://valuebooks:valuebooks@127.0.0.1:55432/${DATABASE_NAME}`;
 const MAINTENANCE_URL = 'postgresql://valuebooks:valuebooks@127.0.0.1:55432/postgres';
 const QUEUE_PREFIX = 'valuebooks-e2e';
-const S3_ENDPOINT = process.env.E2E_S3_ENDPOINT ?? 'http://127.0.0.1:59000';
+// 59300, not MinIO's conventional 59000 -- docker-compose.yml's own default collides with
+// Windows's reserved 58957-59056 ephemeral-port range, so this repo's .env remaps
+// MINIO_API_PORT to 59300 (see the comment there). This fallback has to match that remap, the
+// same way the DATABASE_URL/REDIS_URL constants above already match docker-compose's real,
+// currently-effective ports instead of its own un-remapped defaults.
+const S3_ENDPOINT = process.env.E2E_S3_ENDPOINT ?? 'http://127.0.0.1:59300';
 const PLATFORM_ADMIN_EMAIL = 'demo.admin@valuebooks.local';
 const repoRoot = resolve(process.cwd(), '../..');
 

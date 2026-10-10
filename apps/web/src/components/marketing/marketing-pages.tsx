@@ -129,7 +129,6 @@ export function ProductDetailPage({ page }: { page: ProductPageKey }) {
           </div>
         </div>
       </section>
-
     </>
   );
 }
@@ -216,7 +215,6 @@ export function CustomersPage() {
           </div>
         </div>
       </section>
-
     </>
   );
 }
@@ -291,7 +289,6 @@ export function SecurityPage() {
           </div>
         </div>
       </section>
-
     </>
   );
 }

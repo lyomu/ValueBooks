@@ -1,13 +1,16 @@
 import { expect, test, type Page } from '@playwright/test';
 
+import { clearAuthRateLimits } from './lib/rate-limits';
+
 const DEMO_PASSWORD = 'DemoValueBooks1!';
 const DEMO_OWNER = 'demo.owner@valuebooks.local';
 
 async function signIn(page: Page, email = DEMO_OWNER): Promise<void> {
+  await clearAuthRateLimits();
   await page.goto('/login');
   await page.getByLabel('Email address').fill(email);
   await page.getByLabel('Password', { exact: true }).fill(DEMO_PASSWORD);
-  await page.getByRole('button', { name: 'Sign in' }).click();
+  await page.getByRole('button', { name: 'Sign in', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Dashboard', exact: true })).toBeVisible();
 }
 

@@ -338,7 +338,9 @@
   font-size: 0.82rem;
   font-weight: 700;
   cursor: pointer;
-  transition: background var(--rb-duration-fast), color var(--rb-duration-fast);
+  transition:
+    background var(--rb-duration-fast),
+    color var(--rb-duration-fast);
 }
 .mk-pricing-toggle button.is-active {
   color: #fff;

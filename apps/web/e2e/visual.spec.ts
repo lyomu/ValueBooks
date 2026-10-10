@@ -1,5 +1,16 @@
 import { expect, test, type Page } from '@playwright/test';
 
+import { clearAuthRateLimits } from './lib/rate-limits';
+
+async function signIn(page: Page): Promise<void> {
+  await clearAuthRateLimits();
+  await page.goto('/login');
+  await page.getByLabel('Email address').fill('demo.owner@valuebooks.local');
+  await page.getByLabel('Password', { exact: true }).fill('DemoValueBooks1!');
+  await page.getByRole('button', { name: 'Sign in', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'Dashboard', exact: true })).toBeVisible();
+}
+
 async function openStable(page: Page, path: string) {
   await page.goto(path, { waitUntil: 'domcontentloaded' });
   await page.locator('#main-content').waitFor();
@@ -58,16 +69,20 @@ test.describe('ValueBooks design foundation', () => {
   });
 
   test('@visual dashboard baseline and shell interactions', async ({ page }, testInfo) => {
+    // The dashboard is a signed-in, data-backed page now -- not the Phase 1 static reference this
+    // test was written against (which named a developer's own account). Sign in as the seeded
+    // demo owner so the run is reproducible on any machine.
+    await signIn(page);
     const browserErrors = collectBrowserErrors(page);
     await openStable(page, '/dashboard');
     expect(browserErrors, 'dashboard should hydrate without browser errors').toEqual([]);
 
     await expect(page.getByRole('heading', { name: 'Dashboard', exact: true })).toBeVisible();
     await expect(
-      page.getByRole('button', { name: 'Switch organization: ValueBooks Demo' }),
+      page.getByRole('button', { name: 'Switch organization. Current: Karibu Retail Demo' }),
     ).toBeVisible();
     await expect(
-      page.getByRole('button', { name: 'Open profile menu for Gideon Lyomu' }),
+      page.getByRole('button', { name: 'Open profile menu for Amina Kamau' }),
     ).toBeVisible();
     await expect(page).toHaveScreenshot('dashboard.png', { fullPage: true });
 
@@ -86,16 +101,14 @@ test.describe('ValueBooks design foundation', () => {
       await page.keyboard.press('Control+K');
       await expect(page.getByPlaceholder('Search accounts, journals, reports...')).toBeFocused();
     }
-
-    await page.getByRole('button', { name: /Preview journal/ }).click();
-    await expect(page.getByRole('dialog', { name: 'New journal preview' })).toBeVisible();
-    await page.getByLabel('Description').fill('Opening balance review');
-    await page.getByRole('button', { name: 'Check form state' }).click();
-    await expect(page.getByText('Journal form checked', { exact: true })).toBeVisible();
+    // The old "Preview journal" / "Check form state" demo controls left the dashboard when it
+    // became data-backed; journal entry is covered by the ledger journeys instead.
     expect(browserErrors).toEqual([]);
   });
 
   test('@visual component catalog baseline and states', async ({ page }) => {
+    // The catalog renders inside the signed-in app shell, which loads /me on mount.
+    await signIn(page);
     const browserErrors = collectBrowserErrors(page);
     await openStable(page, '/design-system');
     expect(browserErrors, 'component catalog should hydrate without browser errors').toEqual([]);
