@@ -300,13 +300,23 @@ off. Finish these before turning AI on for real tenants (GAPS A1 #1–8).
 
 ### [ ] 26 · A1 · Independent review of the AI threat model (M)
 
-- [ ] Choose a reviewer other than the author
-- [ ] Review `docs/PHASE13_AI_THREAT_MODEL.md` against the current code
+- [x] Choose a reviewer other than the author — Codex performed an independent technical code
+      review on 2026-10-11; human security-owner sign-off is still pending
+- [x] Review `docs/PHASE13_AI_THREAT_MODEL.md` against the current code — findings, severity,
+      evidence and status are in its "Independent code review" section
 - [ ] Record the sign-off and how each named gap was resolved
+- [ ] Close the hosted-egress organization-only approval gap and the missing `ai/ask` capability
+      flag, with tests, before any real-tenant hosted rollout
+- [ ] Close the `explainNumber` failure-path authorization gap, with a mid-flight revocation test
+- [ ] Bound and isolate PDF rendering; test malformed/large PDFs and the deployed worker lifecycle
+- [ ] Set model payload/output and cost limits; test log/error sinks and emergency key revocation
 
 ### [ ] 27 · A2 · Answer the 5 privacy-review questions (M)
 
 In `docs/PHASE13_AI_PRIVACY_REVIEW.md`. Hosted mode stays off until all five are answered.
+Proposed answers and current-provider-source links are ready in that document (2026-10-11),
+awaiting owner/legal decisions. Its §3.5 log/retention question is also proposed and remains open.
+The outcome must feed item 19's draft legal pages and item 40's legal sign-off.
 
 - [ ] §3.1 — legal review of DeepSeek's hosted-API terms
 - [ ] §3.2 — process for each tenant's jurisdiction and data residency

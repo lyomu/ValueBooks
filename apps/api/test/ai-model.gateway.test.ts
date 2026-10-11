@@ -2,14 +2,14 @@ import { ConfigService } from '@nestjs/config';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { AiModelGateway, type AiGatewayException } from '../src/ai/ai-model.gateway';
-import type { EntitlementsService } from '../src/platform/entitlements.service';
+import type { HostedAiEgressApprovalService } from '../src/platform/hosted-ai-egress-approval.service';
 
 const ORGANIZATION_ID = 'org-1';
 
-function fakeEntitlements(isFlagEnabled = false): EntitlementsService {
+function fakeHostedEgressApprovals(isEnabled = false): HostedAiEgressApprovalService {
   return {
-    isFlagEnabled: vi.fn().mockResolvedValue(isFlagEnabled),
-  } as unknown as EntitlementsService;
+    isEnabled: vi.fn().mockResolvedValue(isEnabled),
+  } as unknown as HostedAiEgressApprovalService;
 }
 
 const evidence = {
@@ -32,7 +32,10 @@ describe('AiModelGateway', () => {
   it('is disabled by default and does not make a provider request', async () => {
     const fetchMock = vi.fn();
     vi.stubGlobal('fetch', fetchMock);
-    const gateway = new AiModelGateway(new ConfigService({ AI_MODE: 'off' }), fakeEntitlements());
+    const gateway = new AiModelGateway(
+      new ConfigService({ AI_MODE: 'off' }),
+      fakeHostedEgressApprovals(),
+    );
 
     await expect(
       gateway.explain('Explain this report.', evidence, ORGANIZATION_ID),
@@ -52,7 +55,7 @@ describe('AiModelGateway', () => {
         AI_HOSTED_API_KEY: 'hosted-api-key',
         AI_REQUEST_TIMEOUT_MS: 1_000,
       }),
-      fakeEntitlements(false),
+      fakeHostedEgressApprovals(false),
     );
 
     await expect(
@@ -83,7 +86,7 @@ describe('AiModelGateway', () => {
         AI_HOSTED_API_KEY: 'hosted-api-key',
         AI_REQUEST_TIMEOUT_MS: 1_000,
       }),
-      fakeEntitlements(true),
+      fakeHostedEgressApprovals(true),
     );
 
     const result = await gateway.explain('Explain this report.', evidence, ORGANIZATION_ID);
@@ -126,7 +129,7 @@ describe('AiModelGateway', () => {
         AI_REQUEST_TIMEOUT_MS: 1_000,
         AI_MAX_CONTEXT_ROWS: 25,
       }),
-      fakeEntitlements(),
+      fakeHostedEgressApprovals(),
     );
 
     const result = await gateway.explain('Explain this report.', evidence, ORGANIZATION_ID);
@@ -163,7 +166,7 @@ describe('AiModelGateway', () => {
         AI_PRIVATE_MODEL: 'deepseek-local',
         AI_REQUEST_TIMEOUT_MS: 1_000,
       }),
-      fakeEntitlements(),
+      fakeHostedEgressApprovals(),
     );
 
     await expect(
@@ -231,6 +234,6 @@ function privateGateway(overrides: Record<string, unknown> = {}): AiModelGateway
       AI_CIRCUIT_OPEN_MS: 1_000,
       ...overrides,
     }),
-    fakeEntitlements(),
+    fakeHostedEgressApprovals(),
   );
 }

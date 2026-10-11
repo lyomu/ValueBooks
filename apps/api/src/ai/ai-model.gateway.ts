@@ -2,8 +2,7 @@ import { ServiceUnavailableException, Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { aiModelExplanationSchema } from '@valuebooks/contracts';
 
-import { EntitlementsService } from '../platform/entitlements.service.js';
-import { PHASE13_FEATURE_FLAGS } from '../platform/phase13-feature-flags.js';
+import { HostedAiEgressApprovalService } from '../platform/hosted-ai-egress-approval.service.js';
 
 /** The only host `AI_MODE=hosted_limited` may ever call. Not configurable via env var, so no
  * misconfiguration can redirect hosted egress to an arbitrary host. */
@@ -44,7 +43,7 @@ export class AiModelGateway {
 
   constructor(
     private readonly config: ConfigService,
-    private readonly entitlements: EntitlementsService,
+    private readonly hostedEgressApprovals: HostedAiEgressApprovalService,
   ) {}
 
   /**
@@ -83,7 +82,7 @@ export class AiModelGateway {
    */
   async isHostedEgressEnabled(organizationId: string): Promise<boolean> {
     if (this.config.get<string>('AI_MODE') !== 'hosted_limited') return false;
-    return this.entitlements.isFlagEnabled(organizationId, PHASE13_FEATURE_FLAGS.HOSTED_AI_EGRESS);
+    return this.hostedEgressApprovals.isEnabled(organizationId);
   }
 
   async explain(

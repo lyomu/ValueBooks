@@ -103,3 +103,97 @@ Worth stating plainly so the review isn't mistaken for the only thing standing b
 
 None of these are started. This document's job was to make them concrete and answerable, not to
 answer them.
+
+## Proposed answers — 2026-10-11; awaiting owner/legal decision
+
+These are technical and contractual proposals, **not approval to enable hosted AI**. DeepSeek's
+[Open Platform Terms](https://cdn.deepseek.com/policies/en-US/deepseek-open-platform-terms-of-service.html)
+(effective 2026-04-29), [Privacy Policy](https://cdn.deepseek.com/policies/en-US/deepseek-privacy-policy.html)
+(updated 2026-02-10), and [API documentation](https://api-docs.deepseek.com/api/create-chat-completion/)
+were read on 2026-10-11. The Open Platform Terms are the more specific developer/API agreement;
+legal must confirm which other documents and negotiated terms govern this account.
+
+### §3.1 Hosted API terms — Proposed — awaiting owner/legal decision
+
+The Open Platform Terms §§3.3 and 5.5 put end-user disclosure and lawful-basis obligations on the
+developer and say DeepSeek's public privacy policy does not govern end-user processing in a
+downstream app. The public Privacy Policy describes inputs being collected, model improvement and
+training as possible uses, retention for service/legal/business purposes without a fixed API-input
+deletion period, and direct processing/storage in the People's Republic of China. It names service
+provider _categories_ and corporate-group processing, but supplies no complete named API
+subprocessor list or specific API breach-notification commitment. The terms also assign developers
+responsibility for inputs/outputs and require end-user disclosure that AI output may be wrong,
+including in financial contexts (§§4 and 8). These public documents do **not** establish an
+API-specific no-training guarantee, retention schedule, or residency option. A stateless chat
+endpoint should not be mistaken for a promise that request content is never retained or cached.
+
+**Decision needed:** legal obtains the applicable agreement/DPA and written answers on API input
+and output training use, cache/log retention and deletion, processing regions, named
+subprocessors, breach notice, and international transfer terms. If those terms do not meet
+ValueBooks' customer commitments, keep hosted inference unavailable and use an approved private
+deployment. Item 19's [draft privacy page](<../apps/web/src/app/(marketing)/privacy/page.tsx>)
+and item 40's legal sign-off must reflect the final provider terms and actual data flow.
+
+### §3.2 Jurisdiction and residency — Proposed — awaiting owner/legal decision
+
+For each organization, record its legal entity, operating and customer jurisdictions, data
+classes, contractual residency promises, and any sector restrictions. Legal evaluates transfer
+law and required safeguards against the provider's written processing-location evidence. The
+privacy policy says processing/storage occurs in China; do not infer an alternate API region from
+the request hostname. Record the reviewer, source documents/versions, decision, expiration or
+reassessment date, and permitted data classes per tenant. A prohibited or unknown transfer means
+hosted mode remains off for that tenant. Private mode needs a separate location assessment of the
+operator-provisioned endpoint.
+
+### §3.3 Consent or other lawful basis — Proposed — awaiting owner/legal decision
+
+Capture a versioned organization-level hosted-AI agreement or explicit administrator opt-in that
+states the provider, data categories, destination, purpose, retention/training terms, withdrawal
+method, and whether affected individuals need a separate notice or lawful basis. Store the signer,
+their organization role, timestamp, document version/hash, scope and decision in an auditable
+record. Legal decides the applicable lawful basis and who may sign. Only after that record and the
+residency assessment are approved should an operator add a tenant-scoped flag rule. The current
+`FeatureFlagRule` has `note` and timestamps but no consent artifact or legal-decision relation; a
+flag flip alone is insufficient. Revocation must be recorded and must disable the rule promptly.
+
+### §3.4 Data minimization — Proposed — awaiting owner/legal decision
+
+`AiOrchestrator` passes report totals and row cells, source IDs, filters, base currency, and up to
+`AI_MAX_CONTEXT_ROWS` rows to `AiModelGateway`; it also passes the user's free-text question.
+`AiModelGateway` serializes that full envelope in the hosted request. Report cells may contain
+free-text descriptions, names, references, or personal/financial details. A 50-row default is a
+size bound, **not** a data-class filter or token bound. The same envelope is used in private and
+hosted modes. Recommend a hosted-specific allowlist of report keys and cell fields, removal or
+redaction of free text and unnecessary source IDs, a strict payload/token budget, and tests that
+inspect the exact outbound request. Legal and the owner must approve the allowed data classes;
+until then, no real tenant's report data should be sent to hosted inference.
+
+### §3.5 Logs and retention — Proposed — awaiting owner/legal decision
+
+`AiRun`/`AiEvidence` omit prompt and response content and default to a 90-day metadata retention
+period. Ordinary HTTP logging serializes method, URL and status, not request bodies; exception
+and worker error logging still need targeted sink tests. DeepSeek's public documents do not give
+an API-specific fixed retention or cache-deletion guarantee. Legal should decide whether the
+metadata period is appropriate and obtain provider-side retention, deletion and log terms before
+approval. This question appears in §3 but was omitted from the five item-27 boxes; keep it open
+alongside §3.1.
+
+### §3.6 Approval, revocation, and local-key history — Proposed — awaiting owner/legal decision
+
+Proposed authority: the tenant's authorized administrator requests hosted processing; the
+ValueBooks owner and legal/privacy owner approve the tenant/data-class assessment; a separate
+platform operator enables the organization-specific rule and records the approval reference.
+Either the tenant's authorized administrator or the owner/privacy owner can request revocation;
+the operator disables the rule immediately, records the event, and rotates/revokes the provider
+key if account-wide exposure is suspected. New gateway calls check the flag each time. Requests
+already in flight and provider-retained data require a separate incident/deletion process.
+
+The owner's ignored local `apps/api/.env` is described in `docs/P0_HANDOVER.md` as containing
+`AI_MODE=hosted_limited` and a live key for manual testing; this review did not read, change, or
+copy the key. A read-only query of the currently running local development database on
+2026-10-11 returned **no `AiRun` rows and no hosted-egress flag rules**. This supports only the
+current local database state. It cannot establish whether that key was used from another
+environment, whether the database was reset, or whether any earlier request contained real
+tenant data. The owner needs to check the DeepSeek account's usage/request records and any
+retained outbound-network logs against the manual-test dates and source organizations, then
+record a signed finding here. Until then, the answer is **unknown**, not "demo data only."

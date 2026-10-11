@@ -84,7 +84,8 @@ describe('Document extraction pipeline against a real ClamAV and OCR backend', (
       storage,
       new MalwareScannerService(config),
       new OcrService(config),
-      new PdfRasterizerService(),
+      new PdfRasterizerService(config),
+      config,
     );
   });
 
@@ -178,6 +179,51 @@ describe('Document extraction pipeline against a real ClamAV and OCR backend', (
         },
       }),
     ).toBeGreaterThan(0);
+  });
+
+  it('binds extraction review to the expense in the route', async () => {
+    const { attachmentId, expenseId } = await uploadAttachment(
+      'receipt.png',
+      VALID_PNG,
+      'image/png',
+    );
+    await extraction.process(attachmentId);
+    const otherExpense = await createExpense();
+
+    await harness
+      .http()
+      .get(
+        `${API}/organizations/${context.id}/expenses/${otherExpense.id}/attachments/${attachmentId}/extraction`,
+      )
+      .set('Cookie', cookie)
+      .expect(200)
+      .expect(({ body }: { body: unknown }) => expect(body).toMatchObject({ data: null }));
+    await harness
+      .http()
+      .post(
+        `${API}/organizations/${context.id}/expenses/${otherExpense.id}/attachments/${attachmentId}/extraction/accept`,
+      )
+      .set('Cookie', cookie)
+      .expect(404);
+    await harness
+      .http()
+      .get(
+        `${API}/organizations/${context.id}/bills/${expenseId}/attachments/${attachmentId}/extraction`,
+      )
+      .set('Cookie', cookie)
+      .expect(200)
+      .expect(({ body }: { body: unknown }) => expect(body).toMatchObject({ data: null }));
+
+    await harness
+      .http()
+      .get(
+        `${API}/organizations/${context.id}/expenses/${expenseId}/attachments/${attachmentId}/extraction`,
+      )
+      .set('Cookie', cookie)
+      .expect(200)
+      .expect(({ body }: { body: unknown }) =>
+        expect(body).toMatchObject({ data: { status: 'READY_FOR_REVIEW' } }),
+      );
   });
 
   it('rasterizes a real PDF page and OCRs the rendered image', async () => {

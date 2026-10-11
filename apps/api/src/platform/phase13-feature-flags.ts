@@ -6,6 +6,8 @@
  * a code change. See `RequireFeatureFlag`/`FeatureFlagGuard` for how a route is gated.
  */
 export const PHASE13_FEATURE_FLAGS = {
+  /** 13A: overarching kill switch for both AI assistant request paths. */
+  AI_ASSISTANT: 'phase13.ai_assistant',
   /** 13C: report drill-down and "explain a number". */
   REPORT_DRILLDOWN: 'phase13.report_drilldown',
   /** 13D: secure attachment scanning, OCR, receipt/bill extraction, and keyword search over it. */

@@ -87,6 +87,20 @@ describe('validateApiEnvironment', () => {
     );
   });
 
+  it('uses bounded document-extraction defaults and rejects unsafe worker concurrency', () => {
+    expect(validateApiEnvironment({ NODE_ENV: 'test' })).toMatchObject({
+      DOCUMENT_EXTRACTION_TIMEOUT_MS: 90_000,
+      DOCUMENT_EXTRACTION_MAX_BYTES: 15 * 1024 * 1024,
+      DOCUMENT_EXTRACTION_MAX_PAGES: 5,
+      DOCUMENT_EXTRACTION_MAX_PAGE_PIXELS: 16_000_000,
+      DOCUMENT_EXTRACTION_MAX_TOTAL_PIXELS: 40_000_000,
+      DOCUMENT_EXTRACTION_WORKER_CONCURRENCY: 2,
+    });
+    expect(() =>
+      validateApiEnvironment({ NODE_ENV: 'test', DOCUMENT_EXTRACTION_WORKER_CONCURRENCY: '3' }),
+    ).toThrow(/DOCUMENT_EXTRACTION_WORKER_CONCURRENCY/);
+  });
+
   it('requires an allowlisted HTTPS private endpoint in production', () => {
     expect(() =>
       validateApiEnvironment({

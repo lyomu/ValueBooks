@@ -478,6 +478,7 @@ model Organization {
   platformAuditEvents           PlatformAuditEvent[]
   subscription                  OrganizationSubscription?
   featureFlagRules              FeatureFlagRule[]
+  hostedAiEgressApprovals       HostedAiEgressApproval[]
   roles                         Role[]
   fiscalYears                   FiscalYear[]
   fiscalPeriods                 FiscalPeriod[]
@@ -3964,6 +3965,11 @@ enum FeatureFlagScope {
   ORGANIZATION
 }
 
+enum HostedAiEgressApprovalStatus {
+  ACTIVE
+  REVOKED
+}
+
 enum AiRunStatus {
   RUNNING
   SUCCEEDED
@@ -4117,4 +4123,34 @@ model FeatureFlagRule {
   @@index([flagId, scope])
   @@index([organizationId])
   @@map("feature_flag_rules")
+}
+
+/// A legal/owner authorization for one tenant's narrowly-scoped hosted AI egress. The consent
+/// artifact itself remains in the legal system; this record holds only auditable metadata and its
+/// SHA-256 integrity hash. A partial unique index permits historical revoked records while allowing
+/// at most one live approval per organization.
+model HostedAiEgressApproval {
+  id                       String                       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organizationId           String                       @map("organization_id") @db.Uuid
+  status                   HostedAiEgressApprovalStatus @default(ACTIVE)
+  provider                 String                       @db.VarChar(40)
+  dataScope                String                       @map("data_scope") @db.VarChar(80)
+  jurisdictionCountryCode  String                       @map("jurisdiction_country_code") @db.Char(2)
+  signerName               String                       @map("signer_name") @db.VarChar(180)
+  signerEmail              String                       @map("signer_email") @db.Citext
+  signerAuthority          String                       @map("signer_authority") @db.VarChar(180)
+  disclosureVersion        String                       @map("disclosure_version") @db.VarChar(120)
+  legalDecisionReference   String                       @map("legal_decision_reference") @db.VarChar(500)
+  consentDocumentReference String                       @map("consent_document_reference") @db.VarChar(500)
+  consentDocumentHash      String                       @map("consent_document_hash") @db.Char(64)
+  approvedByPlatformAdminId String                      @map("approved_by_platform_admin_id") @db.Uuid
+  approvedAt               DateTime                     @default(now()) @map("approved_at") @db.Timestamptz(6)
+  revokedByPlatformAdminId String?                      @map("revoked_by_platform_admin_id") @db.Uuid
+  revokedAt                DateTime?                    @map("revoked_at") @db.Timestamptz(6)
+  revocationReason         String?                      @map("revocation_reason") @db.VarChar(500)
+  organization             Organization                 @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, approvedAt])
+  @@index([status])
+  @@map("hosted_ai_egress_approvals")
 }

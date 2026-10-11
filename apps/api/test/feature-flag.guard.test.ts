@@ -5,7 +5,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { FeatureFlagGuard } from '../src/platform/feature-flag.guard';
 
 function contextWith(
-  key: string | undefined,
+  key: string | string[] | undefined,
   organizationId: string | undefined,
 ): {
   context: ExecutionContext;
@@ -46,6 +46,24 @@ describe('FeatureFlagGuard', () => {
     const guard = new FeatureFlagGuard(entitlements as never, reflector as never);
 
     await expect(guard.canActivate(context)).rejects.toThrow(ForbiddenException);
+  });
+
+  it('requires every declared feature flag', async () => {
+    const { context, reflector } = contextWith(
+      ['phase13.ai_assistant', 'phase13.report_drilldown'],
+      'org-1',
+    );
+    const entitlements = {
+      isFlagEnabled: vi
+        .fn()
+        .mockImplementation((_organizationId: string, key: string) =>
+          Promise.resolve(key === 'phase13.ai_assistant'),
+        ),
+    };
+    const guard = new FeatureFlagGuard(entitlements as never, reflector as never);
+
+    await expect(guard.canActivate(context)).rejects.toThrow(ForbiddenException);
+    expect(entitlements.isFlagEnabled).toHaveBeenCalledTimes(2);
   });
 
   it('fails closed when the request has no organization context yet', async () => {

@@ -42,6 +42,12 @@ const COMMON_DEFAULTS = {
   CLAMAV_TIMEOUT_MS: '15000',
   OCR_TIMEOUT_MS: '20000',
   OCR_MAX_TEXT_CHARS: '20000',
+  DOCUMENT_EXTRACTION_TIMEOUT_MS: '90000',
+  DOCUMENT_EXTRACTION_MAX_BYTES: '15728640',
+  DOCUMENT_EXTRACTION_MAX_PAGES: '5',
+  DOCUMENT_EXTRACTION_MAX_PAGE_PIXELS: '16000000',
+  DOCUMENT_EXTRACTION_MAX_TOTAL_PIXELS: '40000000',
+  DOCUMENT_EXTRACTION_MAX_TEXT_CHARS: '40000',
   DOCUMENT_EXTRACTION_WORKER_CONCURRENCY: '2',
   DOCUMENT_EXTRACTION_RETRY_DELAY_MS: '2000',
 } as const;
@@ -136,7 +142,35 @@ const apiEnvironmentSchema = z
     CLAMAV_TIMEOUT_MS: z.preprocess(stringToNumber, z.number().int().min(1_000).max(60_000)),
     OCR_TIMEOUT_MS: z.preprocess(stringToNumber, z.number().int().min(1_000).max(120_000)),
     OCR_MAX_TEXT_CHARS: z.preprocess(stringToNumber, z.number().int().min(500).max(200_000)),
-    DOCUMENT_EXTRACTION_WORKER_CONCURRENCY: positiveInteger,
+    DOCUMENT_EXTRACTION_TIMEOUT_MS: z.preprocess(
+      stringToNumber,
+      z.number().int().min(10_000).max(300_000),
+    ),
+    DOCUMENT_EXTRACTION_MAX_BYTES: z.preprocess(
+      stringToNumber,
+      z
+        .number()
+        .int()
+        .min(1_024)
+        .max(15 * 1024 * 1024),
+    ),
+    DOCUMENT_EXTRACTION_MAX_PAGES: z.preprocess(stringToNumber, z.number().int().min(1).max(10)),
+    DOCUMENT_EXTRACTION_MAX_PAGE_PIXELS: z.preprocess(
+      stringToNumber,
+      z.number().int().min(1_000_000).max(64_000_000),
+    ),
+    DOCUMENT_EXTRACTION_MAX_TOTAL_PIXELS: z.preprocess(
+      stringToNumber,
+      z.number().int().min(1_000_000).max(128_000_000),
+    ),
+    DOCUMENT_EXTRACTION_MAX_TEXT_CHARS: z.preprocess(
+      stringToNumber,
+      z.number().int().min(500).max(200_000),
+    ),
+    DOCUMENT_EXTRACTION_WORKER_CONCURRENCY: z.preprocess(
+      stringToNumber,
+      z.number().int().min(1).max(2),
+    ),
     DOCUMENT_EXTRACTION_RETRY_DELAY_MS: positiveInteger,
   })
   .superRefine((value, context) => {
