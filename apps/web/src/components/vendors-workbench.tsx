@@ -20,6 +20,7 @@ import { ApiError, apiRequest } from '../lib/api';
 import { formValue } from '../lib/forms';
 import { hasPermission, useWorkspace } from '../lib/workspace';
 import { OperationalListing } from './operational-listing';
+import { MasterDataImportWizard } from './master-data-import-wizard';
 
 type VendorResponse = { data: Vendor };
 type VendorListResponse = { data: Vendor[] };
@@ -31,6 +32,8 @@ export function VendorsPage() {
   const organizationId = organization?.id ?? null;
   const canView = hasPermission(organization, 'vendors.view');
   const canManage = hasPermission(organization, 'vendors.manage');
+  const canImport = hasPermission(organization, 'vendors.import');
+  const [importFile, setImportFile] = useState<File | null>(null);
   const canOverrideCurrency = hasPermission(organization, 'vendors.currency_override');
 
   const [vendors, setVendors] = useState<Vendor[] | null>(null);
@@ -231,6 +234,19 @@ export function VendorsPage() {
 
   return (
     <>
+      {organizationId ? (
+        <MasterDataImportWizard
+          kind="vendors"
+          organizationId={organizationId}
+          file={importFile}
+          onClose={() => setImportFile(null)}
+          onCommitted={(result) => {
+            setNotice(`${result.createCount} vendors imported.`);
+            setImportFile(null);
+            void load();
+          }}
+        />
+      ) : null}
       <div className="rb-ledger-stack">
         {error ? (
           <div className="rb-auth-error" role="alert">
@@ -406,7 +422,8 @@ export function VendorsPage() {
               ) : null
             }
             onRefresh={() => void load()}
-            importEnabled={false}
+            importEnabled={canImport}
+            onImport={canImport ? (file) => setImportFile(file) : undefined}
             onResetFilters={() => setStatusFilter('')}
             emptyState={{
               title: 'Every purchase starts with a vendor',

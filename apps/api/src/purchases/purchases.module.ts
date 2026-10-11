@@ -31,6 +31,7 @@ import { VendorCreditsController } from './vendor-credits.controller.js';
 import { VendorCreditsService } from './vendor-credits.service.js';
 import { VendorsController } from './vendors.controller.js';
 import { VendorsService } from './vendors.service.js';
+import { MasterDataImportService } from '../master-data-import/master-data-import.service.js';
 
 @Module({
   imports: [
@@ -69,6 +70,7 @@ import { VendorsService } from './vendors.service.js';
     RecurringExpensesService,
     CategorizationSuggestionService,
     DraftNoteService,
+    MasterDataImportService,
   ],
   exports: [
     RecurringBillsService,

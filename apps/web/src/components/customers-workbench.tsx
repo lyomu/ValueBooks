@@ -19,6 +19,7 @@ import { CustomerDialog } from './customer-dialog';
 import { OperationalListing } from './operational-listing';
 import { CustomerDetailPane, CustomerToolbar } from './customer-detail-pane';
 import { RecordDetailWorkspace } from './record-detail-workspace';
+import { MasterDataImportWizard } from './master-data-import-wizard';
 
 type ContactResponse = { data: Contact };
 type ContactListResponse = { data: Contact[] };
@@ -29,6 +30,8 @@ export function CustomersPage() {
   const organizationId = organization?.id ?? null;
   const canView = hasPermission(organization, 'customers.view');
   const canManage = hasPermission(organization, 'customers.manage');
+  const canImport = hasPermission(organization, 'customers.import');
+  const [importFile, setImportFile] = useState<File | null>(null);
   const canOverrideCurrency = hasPermission(organization, 'customers.currency_override');
   const canViewStatements = hasPermission(organization, 'sales.statements.view');
   const canViewInvoices = hasPermission(organization, 'sales.invoices.view');
@@ -192,6 +195,19 @@ export function CustomersPage() {
           void load();
         }}
       />
+      {organizationId ? (
+        <MasterDataImportWizard
+          kind="customers"
+          organizationId={organizationId}
+          file={importFile}
+          onClose={() => setImportFile(null)}
+          onCommitted={(result) => {
+            setNotice(`${result.createCount + result.updateCount} customers imported.`);
+            setImportFile(null);
+            void load();
+          }}
+        />
+      ) : null}
       {error ? (
         <div className="rb-auth-error" role="alert">
           {error}
@@ -300,9 +316,8 @@ export function CustomersPage() {
             ) : null
           }
           onRefresh={() => void load()}
-          onImport={(file, sourceNamespace) => {
-            setNotice(`${file.name} is ready to map under ${sourceNamespace}.`);
-          }}
+          importEnabled={canImport}
+          onImport={canImport ? (file) => setImportFile(file) : undefined}
           emptyState={{
             title: 'Every sale starts with a customer',
             description:

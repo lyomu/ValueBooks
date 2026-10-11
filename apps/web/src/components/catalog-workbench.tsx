@@ -16,6 +16,7 @@ import { ApiError, apiRequest } from '../lib/api';
 import { hasPermission, useWorkspace } from '../lib/workspace';
 import { ItemDialog } from './item-dialog';
 import { OperationalListing } from './operational-listing';
+import { MasterDataImportWizard } from './master-data-import-wizard';
 
 type ItemListResponse = { data: Item[] };
 
@@ -25,6 +26,8 @@ export function ItemsPage() {
   const organizationId = organization?.id ?? null;
   const canView = hasPermission(organization, 'catalog.view');
   const canManage = hasPermission(organization, 'catalog.manage');
+  const canImport = hasPermission(organization, 'catalog.import');
+  const [importFile, setImportFile] = useState<File | null>(null);
   const currency = organization?.baseCurrency ?? 'KES';
 
   const [items, setItems] = useState<Item[] | null>(null);
@@ -166,6 +169,19 @@ export function ItemsPage() {
           void load();
         }}
       />
+      {organizationId ? (
+        <MasterDataImportWizard
+          kind="items"
+          organizationId={organizationId}
+          file={importFile}
+          onClose={() => setImportFile(null)}
+          onCommitted={(result) => {
+            setNotice(`${result.createCount + result.updateCount} items imported.`);
+            setImportFile(null);
+            void load();
+          }}
+        />
+      ) : null}
       {error ? (
         <div className="rb-auth-error" role="alert">
           {error}
@@ -214,9 +230,8 @@ export function ItemsPage() {
             ) : null
           }
           onRefresh={() => void load()}
-          onImport={(file, sourceNamespace) => {
-            setNotice(`${file.name} is ready to map under ${sourceNamespace}.`);
-          }}
+          importEnabled={canImport}
+          onImport={canImport ? (file) => setImportFile(file) : undefined}
           emptyState={{
             title: 'Build your product and service catalog',
             description:
