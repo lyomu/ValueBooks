@@ -1,10 +1,11 @@
 import { Bot, Check, CreditCard, FileText, MoreHorizontal, Send, TrendingUp } from 'lucide-react';
+import Image from 'next/image';
 
 export function DashboardMockup() {
   return (
     <div className="mk-mockup mk-dashboard-mockup" aria-label="Illustrative ValueBooks dashboard">
       <div className="mk-mockup__bar">
-        <span className="mk-mockup__logo">RB</span>
+        <span className="mk-mockup__logo"><Image src="/logo-mark.png" alt="ValueBooks" width={14} height={14} /></span>
         <span>Good morning, Maya</span>
         <MoreHorizontal />
       </div>
@@ -70,7 +71,7 @@ export function InvoiceMockup() {
   return (
     <div className="mk-mockup mk-invoice-mockup" aria-label="Illustrative invoice screen">
       <header>
-        <span className="mk-mockup__logo">RB</span>
+        <span className="mk-mockup__logo"><Image src="/logo-mark.png" alt="ValueBooks" width={14} height={14} /></span>
         <small>Invoice #1084</small>
         <b>Sent</b>
       </header>

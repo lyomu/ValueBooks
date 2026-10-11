@@ -60,26 +60,15 @@ FORM: Wave-like breathing room with a QuickBooks-scale menu, alternating proof, 
 .mk-brand {
   display: inline-flex;
   align-items: center;
-  gap: 0.6rem;
   flex: 0 0 auto;
-  color: var(--mk-ink);
   text-decoration: none;
-  letter-spacing: -0.04em;
-  font-size: 1.12rem;
 }
-.mk-brand > span {
-  display: grid;
-  width: 2rem;
-  height: 2rem;
-  place-items: center;
-  color: white;
-  background: var(--mk-blue);
-  border-radius: 0.55rem;
+.mk-brand img {
+  display: block;
+  height: 28px;
+  width: auto;
 }
-.mk-brand svg {
-  width: 1.2rem;
-  height: 1.2rem;
-}
+
 .mk-nav {
   display: flex;
   align-items: center;
@@ -1821,8 +1810,8 @@ FORM: Wave-like breathing room with a QuickBooks-scale menu, alternating proof, 
   margin: auto;
   padding: 3.5rem 0;
 }
-.mk-brand--footer {
-  color: #fff;
+.mk-brand--footer img {
+  filter: brightness(0) invert(1);
 }
 .mk-brand--footer > span {
   color: var(--mk-ink);
