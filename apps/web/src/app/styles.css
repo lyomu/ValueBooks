@@ -1,3 +1,67 @@
+@import url('https://fonts.googleapis.com/css2?family=Google+Sans:wght@400;500;600;700&family=Google+Sans+Text:wght@400;500;600;700&display=swap');
+
+@font-face {
+  font-family: 'Google Sans';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url(https://fonts.gstatic.com/s/googlesans/v71/4Ua_rENHsxJlGDuGo1OIlJfC6l_24rlCK1Yo_Iqcsih3SAyH6cAwhX9RFD48TE63OOYKtrwEIKli.ttf) format('truetype');
+}
+@font-face {
+  font-family: 'Google Sans';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url(https://fonts.gstatic.com/s/googlesans/v71/4Ua_rENHsxJlGDuGo1OIlJfC6l_24rlCK1Yo_Iqcsih3SAyH6cAwhX9RFD48TE63OOYKtrw2IKli.ttf) format('truetype');
+}
+@font-face {
+  font-family: 'Google Sans';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url(https://fonts.gstatic.com/s/googlesans/v71/4Ua_rENHsxJlGDuGo1OIlJfC6l_24rlCK1Yo_Iqcsih3SAyH6cAwhX9RFD48TE63OOYKtrzaJ6li.ttf) format('truetype');
+}
+@font-face {
+  font-family: 'Google Sans';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url(https://fonts.gstatic.com/s/googlesans/v71/4Ua_rENHsxJlGDuGo1OIlJfC6l_24rlCK1Yo_Iqcsih3SAyH6cAwhX9RFD48TE63OOYKtrzjJ6li.ttf) format('truetype');
+}
+@font-face {
+  font-family: 'Google Sans Text';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url(https://fonts.gstatic.com/s/googlesanstext/v29/5aUu9-KzpRiLCAt4Unrc-xIKmCU5mE0.ttf) format('truetype');
+}
+@font-face {
+  font-family: 'Google Sans Text';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url(https://fonts.gstatic.com/s/googlesanstext/v29/5aUp9-KzpRiLCAt4Unrc-xIKmCU5oLlVrm8.ttf) format('truetype');
+}
+@font-face {
+  font-family: 'Google Sans Text';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url(https://fonts.gstatic.com/s/googlesanstext/v29/5aUp9-KzpRiLCAt4Unrc-xIKmCU5oLlVrm8.ttf) format('truetype');
+}
+@font-face {
+  font-family: 'Google Sans Text';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url(https://fonts.gstatic.com/s/googlesanstext/v29/5aUp9-KzpRiLCAt4Unrc-xIKmCU5oLlVrm8.ttf) format('truetype');
+}
+
+:root {
+  --font-google-sans: 'Google Sans', 'Google Sans Text', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  --rb-muted-foreground: 217 56% 25%;
+}
+
 *,
 *::before,
 *::after {
@@ -910,13 +974,91 @@ body {
   color: hsl(var(--rb-foreground));
   background: hsl(var(--rb-background));
   font-family:
-    var(--font-outfit),
+    var(--font-google-sans),
+    'Google Sans',
+    'Google Sans Text',
     ui-sans-serif,
     system-ui,
     -apple-system,
     'Segoe UI',
     sans-serif;
   -webkit-font-smoothing: antialiased;
+}
+
+/* User Dashboard & Admin (Platform) Dashboard - Google Sans typeface */
+.rb-app-shell,
+.rb-dashboard,
+.rb-page-container,
+.rb-main-scroll,
+.rb-app-sidebar,
+.rb-topbar,
+.rb-platform,
+.rb-platform-shell,
+.rb-platform-notice,
+.rb-platform__bar,
+.rb-platform__nav,
+.rb-platform__main,
+.rb-platform__heading,
+.rb-platform__stats,
+.rb-platform__grid,
+.rb-platform__card {
+  font-family: var(--font-google-sans);
+}
+
+.rb-app-shell h1,
+.rb-app-shell h2,
+.rb-app-shell h3,
+.rb-app-shell h4,
+.rb-app-shell p,
+.rb-app-shell span,
+.rb-app-shell label,
+.rb-app-shell button,
+.rb-app-shell input,
+.rb-app-shell select,
+.rb-app-shell textarea,
+.rb-app-shell table,
+.rb-dashboard h1,
+.rb-dashboard h2,
+.rb-dashboard h3,
+.rb-dashboard p,
+.rb-dashboard span,
+.rb-platform h1,
+.rb-platform h2,
+.rb-platform h3,
+.rb-platform p,
+.rb-platform span,
+.rb-platform label,
+.rb-platform button,
+.rb-platform input,
+.rb-platform select,
+.rb-platform textarea,
+.rb-platform table {
+  font-family: var(--font-google-sans);
+}
+
+/* Eliminate washed-out grey font color in major places across body, user dashboard, and admin dashboard */
+body,
+.rb-app-shell,
+.rb-platform,
+.rb-page-container {
+  color: hsl(var(--rb-foreground));
+}
+
+p,
+.rb-card-description,
+.rb-panel-subheading,
+.rb-page-header-description,
+.rb-stat-label,
+.rb-stat-helper,
+.rb-section-heading p,
+.rb-platform__heading p,
+.rb-platform__stat span,
+.rb-platform__muted,
+.rb-table-secondary,
+.rb-form-hint,
+.rb-input-helper,
+.rb-field-hint {
+  color: hsl(var(--rb-muted-foreground)); /* Dark ink tone, avoiding low-contrast grey */
 }
 
 button,
