@@ -351,7 +351,7 @@ export function PaymentEditorPage({ paymentId }: { paymentId: string }) {
         `/organizations/${organizationId}/payments/${payment.id}/allocate`,
         {
           method: 'POST',
-          body: JSON.stringify({ allocations }),
+          body: JSON.stringify({ allocations, version: payment.version }),
           headers: { 'Idempotency-Key': crypto.randomUUID() },
         },
       );

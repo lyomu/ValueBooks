@@ -334,11 +334,15 @@ export class PaymentsMadeService {
       const newAllocatedMinor = payment.allocatedMinor + totalRequestedMinor;
       const newUnappliedMinor = payment.unappliedMinor - totalRequestedMinor;
       const updatedPayment = await tx.paymentMade.update({
-        where: { id: paymentId },
+        where: {
+          id: paymentId,
+          ...(input.version !== undefined ? { version: input.version } : {}),
+        },
         data: {
           allocatedMinor: newAllocatedMinor,
           unappliedMinor: newUnappliedMinor,
           status: newUnappliedMinor === 0n ? 'FULLY_ALLOCATED' : 'PARTIALLY_ALLOCATED',
+          version: { increment: 1 },
         },
         include: paymentDetailInclude,
       });
@@ -474,6 +478,7 @@ function summarizePayment(payment: PaymentMadeWithAllocations) {
     })),
     createdAt: payment.createdAt.toISOString(),
     updatedAt: payment.updatedAt.toISOString(),
+    version: payment.version,
   };
 }
 

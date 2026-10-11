@@ -382,6 +382,7 @@ export function VendorCreditEditorPage({ vendorCreditId }: { vendorCreditId?: st
             taxCodeId: line.taxCodeId || undefined,
           };
         }),
+        ...(vendorCreditId && vendorCredit ? { version: vendorCredit.version } : {}),
       };
       const response = await apiRequest<VendorCreditResponse>(
         vendorCreditId
@@ -460,7 +461,7 @@ export function VendorCreditEditorPage({ vendorCreditId }: { vendorCreditId?: st
         `/organizations/${organizationId}/vendor-credits/${vendorCredit.id}/allocate`,
         {
           method: 'POST',
-          body: JSON.stringify({ allocations }),
+          body: JSON.stringify({ allocations, version: vendorCredit.version }),
           headers: { 'Idempotency-Key': crypto.randomUUID() },
         },
       );

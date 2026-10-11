@@ -356,6 +356,7 @@ export function SalesOrderEditorPage({ orderId }: { orderId?: string }) {
             taxCodeId: line.taxCodeId || undefined,
           };
         }),
+        ...(orderId && order ? { version: order.version } : {}),
       };
       const response = await apiRequest<SalesOrderResponse>(
         orderId
@@ -384,9 +385,15 @@ export function SalesOrderEditorPage({ orderId }: { orderId?: string }) {
     setBusy(action);
     setError(null);
     try {
+      // Only confirm and convert check the version; the others (approve, fulfillment
+      // steps, cancel) aren't optimistic-concurrency gated.
+      const versioned = action === 'confirm' || action === 'convert';
       const response = await apiRequest<SalesOrderResponse>(
         `/organizations/${organizationId}/sales-orders/${order.id}/${action}`,
-        { method: 'POST' },
+        {
+          method: 'POST',
+          ...(versioned ? { body: JSON.stringify({ version: order.version }) } : {}),
+        },
       );
       setOrder(response.data);
       setNotice(noticeText);

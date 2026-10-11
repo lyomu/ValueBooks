@@ -207,16 +207,16 @@ them.
 - [ ] Write `docs/BACKUP_RESTORE_RUNBOOK.md`
 - [ ] Tick GAPS #12 and #33
 
-### [ ] 17 · T4 · Version checks on the remaining financial records (M)
+### [x] 17 · T4 · Version checks on the remaining financial records (M)
 
-- [ ] Add `version Int @default(0)` to `PaymentReceived`, `PaymentMade`, `Journal`,
+- [x] Add `version Int @default(0)` to `PaymentReceived`, `PaymentMade`, `Journal`,
       `VendorCredit` and `SalesOrder` in one new migration (shadow-db `migrate diff`, never edit an
       applied migration)
-- [ ] Enforce it in `payments.service.ts`, `payments-made.service.ts`, `ledger.service.ts`,
+- [x] Enforce it in `payments.service.ts`, `payments-made.service.ts`, `ledger.service.ts`,
       `vendor-credits.service.ts` and `sales-orders.service.ts`, following `invoices.service.ts`
-- [ ] Add `version` to the DTOs and Zod contracts, and send it from the web forms
-- [ ] Integration test per type: a stale version returns 409 and changes nothing
-- [ ] Tick GAPS #35 and `BUILD_ROADMAP.md:118`
+- [x] Add `version` to the DTOs and Zod contracts, and send it from the web forms
+- [x] Integration test per type: a stale version returns 409 and changes nothing
+- [x] Tick GAPS #35 and `BUILD_ROADMAP.md:118`
 
 ### [ ] 18 · H1 · Build customer, vendor and item import (L)
 
