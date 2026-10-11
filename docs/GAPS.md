@@ -67,7 +67,7 @@ Nine tracks, run incrementally then fully before public V1. (`docs/BUILD_ROADMAP
 - [ ] 15. Migration/import: customers, vendors, items, opening balances, core transaction import
       paths
 - [ ] 16. Operations: monitoring, alerts, runbooks, support/admin tools ready
-- [ ] 17. Launch: terms/privacy/compliance claims reviewed, selected country packs signed off
+- [x] 17. Launch: terms/privacy/compliance claims reviewed, selected country packs signed off
 
 ---
 

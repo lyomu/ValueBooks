@@ -45,12 +45,14 @@ export function AuthShell({
    */
   variant = 'centered',
   panel,
+  showLegalNotice = true,
 }: {
   title: string;
   description?: string;
   children: ReactNode;
   variant?: 'split' | 'centered' | 'signup';
   panel?: ReactNode;
+  showLegalNotice?: boolean;
 }) {
   const main = (
     <section className={`rb-auth__main`} aria-labelledby="auth-title">
@@ -69,9 +71,11 @@ export function AuthShell({
           {description ? <p>{description}</p> : null}
         </div>
         {children}
-        <p className="rb-auth__legal">
-          By continuing, you agree to the ValueBooks terms and privacy policy.
-        </p>
+        {showLegalNotice ? (
+          <p className="rb-auth__legal">
+            By continuing, you agree to the ValueBooks terms and privacy policy.
+          </p>
+        ) : null}
       </div>
     </section>
   );
