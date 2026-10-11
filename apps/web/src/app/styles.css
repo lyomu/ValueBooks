@@ -97,7 +97,7 @@ body {
   margin: 0 auto;
   place-items: center;
   color: hsl(var(--rb-primary-foreground));
-  background: linear-gradient(115deg, hsl(194 82% 50%), hsl(207 82% 48%) 58%, hsl(228 73% 48%));
+  background: #0274dc;
   border-radius: var(--rb-radius);
 }
 
@@ -4358,7 +4358,7 @@ a.rb-nav-item:hover {
   height: 2.5rem;
   place-items: center;
   color: hsl(var(--rb-primary-foreground));
-  background: linear-gradient(135deg, hsl(var(--rb-primary)), hsl(var(--rb-primary-glow)));
+  background: #0274dc;
   border-radius: var(--rb-radius);
   box-shadow: var(--rb-shadow-action);
 }
@@ -4445,7 +4445,7 @@ a.rb-nav-item:hover {
 
 .rb-onboarding__steps li.is-current .rb-onboarding__step-icon {
   color: hsl(var(--rb-primary-foreground));
-  background: linear-gradient(135deg, hsl(var(--rb-primary)), hsl(var(--rb-primary-glow)));
+  background: #0274dc;
 }
 
 .rb-onboarding__steps li.is-done .rb-onboarding__step-icon {

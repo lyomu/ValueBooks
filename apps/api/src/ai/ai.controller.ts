@@ -50,7 +50,7 @@ export class AiController {
     const descriptor = this.gateway.descriptor();
     const enabled =
       descriptor.provider === 'PRIVATE' ||
-      (descriptor.provider === 'HOSTED_LIMITED' &&
+      (descriptor.provider.startsWith('HOSTED_') &&
         (await this.gateway.isHostedEgressEnabled(request.organization.id)));
     return {
       data: {

@@ -143,7 +143,9 @@ privacy policy says processing/storage occurs in China; do not infer an alternat
 the request hostname. Record the reviewer, source documents/versions, decision, expiration or
 reassessment date, and permitted data classes per tenant. A prohibited or unknown transfer means
 hosted mode remains off for that tenant. Private mode needs a separate location assessment of the
-operator-provisioned endpoint.
+operator-provisioned endpoint. Use `docs/HOSTED_AI_PRIVACY_ASSESSMENT_TEMPLATE.md` as the
+per-organization decision record. The existing approval record is evidence of a completed decision;
+it does not replace the underlying assessment, governing agreement, or DPA.
 
 ### §3.3 Consent or other lawful basis — Proposed — awaiting owner/legal decision
 
@@ -158,15 +160,17 @@ flag flip alone is insufficient. Revocation must be recorded and must disable th
 
 ### §3.4 Data minimization — Proposed — awaiting owner/legal decision
 
-`AiOrchestrator` passes report totals and row cells, source IDs, filters, base currency, and up to
-`AI_MAX_CONTEXT_ROWS` rows to `AiModelGateway`; it also passes the user's free-text question.
-`AiModelGateway` serializes that full envelope in the hosted request. Report cells may contain
-free-text descriptions, names, references, or personal/financial details. A 50-row default is a
-size bound, **not** a data-class filter or token bound. The same envelope is used in private and
-hosted modes. Recommend a hosted-specific allowlist of report keys and cell fields, removal or
-redaction of free text and unnecessary source IDs, a strict payload/token budget, and tests that
-inspect the exact outbound request. Legal and the owner must approve the allowed data classes;
-until then, no real tenant's report data should be sent to hosted inference.
+The raw `AiOrchestrator` envelope contains report totals and row cells, source IDs, filters, base
+currency, and up to `AI_MAX_CONTEXT_ROWS` rows; it also contains the user's free-text question.
+Private mode retains that envelope. Hosted mode now applies a separate technical minimization
+policy in `AiModelGateway`: only four approved financial report keys are accepted; only numeric
+or boolean cells and numeric-string totals are sent; text descriptions, account/customer names,
+references, source IDs, and project/tag IDs are removed; row IDs are replaced by opaque handles;
+and the question is capped at 500 characters. The outbound serialized payload and output tokens
+are independently capped. `ai-model.gateway.test.ts` asserts that the actual hosted request omits
+free text and IDs. This is a conservative baseline, not a legal decision that numeric financial
+data may leave a tenant. Legal and the owner must approve the allowed data classes for each
+tenant; until then, no real tenant's report data should be sent to hosted inference.
 
 ### §3.5 Logs and retention — Proposed — awaiting owner/legal decision
 
@@ -190,10 +194,11 @@ already in flight and provider-retained data require a separate incident/deletio
 
 The owner's ignored local `apps/api/.env` is described in `docs/P0_HANDOVER.md` as containing
 `AI_MODE=hosted_limited` and a live key for manual testing; this review did not read, change, or
-copy the key. A read-only query of the currently running local development database on
-2026-10-11 returned **no `AiRun` rows and no hosted-egress flag rules**. This supports only the
-current local database state. It cannot establish whether that key was used from another
-environment, whether the database was reset, or whether any earlier request contained real
-tenant data. The owner needs to check the DeepSeek account's usage/request records and any
-retained outbound-network logs against the manual-test dates and source organizations, then
-record a signed finding here. Until then, the answer is **unknown**, not "demo data only."
+copy the key. **Owner record — 2026-10-11:** the owner attests that the key never made a provider
+request, so no data left ValueBooks through it. The owner approves a 90-day ValueBooks `AiRun`
+metadata retention period and identifies a Superadmin as the technical enabler. This does not
+identify the required privacy/legal approver, and does not authorize hosted egress. The governing
+agreement is dated 2026-10-01; training use is unclear, subprocessors are not listed, and breach
+notification is pending. Its asserted Nairobi processing location and 90-day/deletion-on-request
+provider retention require legal confirmation because they conflict with or are not established by
+the public provider material reviewed above.

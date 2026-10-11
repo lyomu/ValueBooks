@@ -5,7 +5,7 @@
   justify-content: center;
   gap: var(--rb-space-2);
   border: 1px solid transparent;
-  border-radius: var(--rb-radius);
+  border-radius: 6px;
   font-weight: 600;
   line-height: 1;
   text-decoration: none;
@@ -37,18 +37,21 @@
 
 .rb-button--sm {
   min-height: 2.25rem;
+  min-width: 7rem;
   padding: 0 var(--rb-space-3);
   font-size: 0.875rem;
 }
 
 .rb-button--md {
   min-height: 2.5rem;
+  min-width: 9rem;
   padding: 0 var(--rb-space-4);
   font-size: 0.875rem;
 }
 
 .rb-button--lg {
   min-height: 2.875rem;
+  min-width: 11rem;
   padding: 0 var(--rb-space-5);
   font-size: 0.9375rem;
 }
@@ -66,17 +69,13 @@
 
 .rb-button--primary {
   color: hsl(var(--rb-primary-foreground));
-  background: linear-gradient(
-    115deg,
-    hsl(var(--rb-primary)),
-    hsl(var(--rb-primary-mid)) 58%,
-    hsl(var(--rb-primary-glow))
-  );
+  background: #0274dc;
   box-shadow: var(--rb-shadow-action);
 }
 
 .rb-button--primary:hover:not(:disabled) {
-  filter: brightness(0.97);
+  background: #0265c4;
+  filter: none;
 }
 
 .rb-button--secondary {
@@ -1260,7 +1259,7 @@
   width: 3.25rem;
   height: 3.25rem;
   color: hsl(var(--rb-primary-foreground));
-  background: linear-gradient(135deg, hsl(var(--rb-primary)), hsl(var(--rb-primary-glow)));
+  background: hsl(var(--rb-primary));
   border: 0;
   border-radius: var(--rb-radius-full);
   box-shadow: var(--rb-shadow-action);

@@ -174,6 +174,8 @@ const navigationGroups: NavigationGroup[] = [
     ],
   },
 ];
+import { BrandLogo } from './brand-logo';
+
 function ValueBooksMark({ onExpand }: { onExpand?: () => void }) {
   if (onExpand) {
     return (
@@ -183,14 +185,14 @@ function ValueBooksMark({ onExpand }: { onExpand?: () => void }) {
         onClick={onExpand}
         aria-label="Expand sidebar"
       >
-        <BookOpenText aria-hidden="true" />
+        <BrandLogo variant="mark" height={28} alt="ValueBooks" priority />
       </button>
     );
   }
 
   return (
     <span className="rb-brand-mark" aria-hidden="true">
-      <BookOpenText />
+      <BrandLogo variant="mark" height={28} alt="ValueBooks" priority />
     </span>
   );
 }
@@ -237,8 +239,7 @@ function Sidebar({
         <ValueBooksMark onExpand={collapsed ? onToggle : undefined} />
         {!collapsed ? (
           <div className="rb-app-sidebar__brand-copy">
-            <strong>ValueBooks</strong>
-            <span>Accounting, clearly</span>
+            <BrandLogo variant="full" height={26} alt="ValueBooks" priority />
           </div>
         ) : null}
         <button

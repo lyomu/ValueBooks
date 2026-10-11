@@ -70,13 +70,15 @@ proven in CI/deployment.
 
 ## Priority 4 — Add provider-use and operational controls
 
-- [ ] Enforce outbound request payload and output-token limits.
-- [ ] Add per-organization cost/spend limits and alerts.
-- [ ] Decide whether a process-local circuit breaker is sufficient; otherwise implement a shared
+- [x] Enforce outbound request payload and output-token limits.
+- [x] Add per-organization token-budget limits and content-free alerts. Currency-price conversion
+      requires an approved provider price card and finance/legal decision.
+- [x] Decide whether a process-local circuit breaker is sufficient; otherwise implement a shared
       breaker or a central provider-health mechanism.
-- [ ] Test logging, tracing, error reporting, and worker failures to confirm they never retain or
+- [ ] Complete end-to-end logging, tracing, error-reporting, and worker-failure tests to confirm
+      they never retain or
       emit prompts, report cells, OCR text, or provider authorization headers.
-- [ ] Document and rehearse emergency key revocation, flag revocation, and provider outage
+- [x] Document and rehearse emergency key revocation, flag revocation, and provider outage
       response.
 
 **Acceptance:** One organization cannot use unbounded provider capacity, and operations can disable
@@ -93,16 +95,24 @@ AI quickly without exposing sensitive content through telemetry.
       contractual commitments, legal reviewer, evidence, decision, and reassessment date.
 - [x] Build a durable, auditable organization consent/approval record with signer, authority,
       disclosure version, document hash, scope, decision, and withdrawal state.
-- [ ] Restrict hosted payloads to approved report keys and fields. Redact free-text descriptions
+- [x] Restrict hosted payloads to approved report keys and fields. Redact free-text descriptions
       and unnecessary source identifiers; cap the payload and tokens.
-- [ ] Decide whether the default 90-day `AiRun` metadata retention period is appropriate for
+- [x] Decide whether the default 90-day `AiRun` metadata retention period is appropriate for
       hosted-mode activity.
-- [ ] Have the owner inspect DeepSeek account usage and outbound-network records to determine
+- [x] Have the owner inspect DeepSeek account usage and outbound-network records to determine
       whether the local hosted key ever sent data beyond demo/manual fixtures. Record the outcome.
 
 **Current provider concern:** DeepSeek's public policy describes processing/storage in the People's
 Republic of China and possible model improvement/training use. Do not rely on public documentation
 as an API-specific no-training, fixed-retention, or subprocessor commitment.
+
+**Owner record — 2026-10-11:** The owner attests that the local hosted key never made a DeepSeek
+request; no data left ValueBooks through that key. ValueBooks retains `AiRun` metadata for 90 days.
+The governing agreement is dated 2026-10-01, but its training term is unclear, its subprocessors
+are not listed, and breach-notification terms remain outstanding. The stated 90-day retention and
+deletion-on-request term needs legal confirmation against the governing agreement. Hosted egress
+therefore remains off. A Superadmin performs technical enablement only after the outstanding
+privacy decision is recorded.
 
 **Acceptance:** Legal and the owner record decisions for every open privacy question before any
 organization can use hosted AI. The final terms and data flow are reflected in the public privacy

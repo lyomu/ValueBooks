@@ -25,9 +25,9 @@ export class HostedAiEgressApprovalService {
     private readonly entitlements: EntitlementsService,
   ) {}
 
-  async isEnabled(organizationId: string): Promise<boolean> {
+  async isEnabled(organizationId: string, provider = PROVIDER): Promise<boolean> {
     const approval = await this.prisma.hostedAiEgressApproval.findFirst({
-      where: { organizationId, status: 'ACTIVE', provider: PROVIDER, dataScope: DATA_SCOPE },
+      where: { organizationId, status: 'ACTIVE', provider, dataScope: DATA_SCOPE },
       select: { id: true },
     });
     if (!approval) return false;
