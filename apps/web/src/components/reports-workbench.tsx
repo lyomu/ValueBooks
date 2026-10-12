@@ -30,7 +30,7 @@ import {
   Select,
   Skeleton,
 } from '@valuebooks/ui';
-import { ArrowUpRight, Bookmark, Download, FileBarChart, Search, Save, Trash2 } from 'lucide-react';
+import { ArrowUpRight, Bookmark, Download, Search, Save, Trash2 } from 'lucide-react';
 import Link from 'next/link';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
@@ -168,9 +168,6 @@ export function ReportLibraryPage() {
           >
             <div className="rb-report-section-heading">
               <div>
-                <span className="rb-report-section-heading__eyebrow">
-                  <FileBarChart aria-hidden="true" /> Report category
-                </span>
                 <h2 id={`report-family-${family}`}>{family}</h2>
               </div>
               <Badge tone="neutral">{reports.length} reports</Badge>
@@ -207,10 +204,6 @@ function ReportLibraryCard({
       href={`/reports/${report.key}`}
       data-compact={compact || undefined}
     >
-      <span className="rb-report-library-card__meta">
-        <FileBarChart aria-hidden="true" />
-        <span>{report.family}</span>
-      </span>
       <strong>{report.name}</strong>
       <span className="rb-report-library-card__description">{report.description}</span>
       <span className="rb-report-library-card__action">

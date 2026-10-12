@@ -1050,7 +1050,11 @@ svg.lucide {
 /* Phase 9 reporting: one responsive library and one shared report workbench. */
 .rb-report-family {
   display: grid;
-  gap: var(--rb-space-3);
+  gap: var(--rb-space-2);
+}
+
+.rb-report-family + .rb-report-family {
+  padding-top: var(--rb-space-5);
 }
 
 .rb-report-family__heading,
@@ -1076,6 +1080,7 @@ svg.lucide {
 .rb-report-library__controls {
   display: grid;
   gap: var(--rb-space-3);
+  margin-bottom: var(--rb-space-4);
 }
 
 .rb-report-library__search {
@@ -1108,6 +1113,12 @@ svg.lucide {
 .rb-report-library__filters .rb-button {
   min-width: auto;
   flex: 0 0 auto;
+  font-size: 0.8125rem;
+  font-weight: 400;
+}
+
+.rb-report-library__filters .rb-button--outline {
+  color: hsl(var(--rb-muted-foreground));
 }
 
 .rb-report-section-heading {
@@ -1189,19 +1200,12 @@ svg.lucide {
   outline-offset: 2px;
 }
 
-.rb-report-library-card__meta,
 .rb-report-library-card__action {
   display: inline-flex;
   align-items: center;
   gap: var(--rb-space-1);
   color: hsl(var(--rb-muted-foreground));
   font-size: 0.75rem;
-}
-
-.rb-report-library-card__meta svg {
-  width: 0.9375rem;
-  height: 0.9375rem;
-  color: hsl(var(--rb-primary));
 }
 
 .rb-report-library-card__description {
