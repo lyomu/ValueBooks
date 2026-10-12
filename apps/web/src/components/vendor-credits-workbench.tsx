@@ -309,7 +309,7 @@ export function VendorCreditEditorPage({ vendorCreditId }: { vendorCreditId?: st
 
   const vendor = vendors.find((candidate) => candidate.id === vendorId) ?? null;
   const currency =
-    vendor?.currency ?? vendorCredit?.currency ?? organization?.baseCurrency ?? 'KES';
+    vendor?.currency ?? vendorCredit?.currency ?? organization?.baseCurrency ?? 'USD';
 
   const subtotalPreviewMinor = useMemo(
     () =>

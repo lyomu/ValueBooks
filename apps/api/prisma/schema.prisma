@@ -30,6 +30,12 @@ enum ActionTokenPurpose {
   RESET_PASSWORD
 }
 
+enum MfaChallengePurpose {
+  LOGIN
+  ENROLL
+  STEP_UP
+}
+
 enum OrganizationStatus {
   DRAFT
   ACTIVE
@@ -276,12 +282,14 @@ model User {
   displayName                      String                     @map("display_name") @db.VarChar(120)
   profileCompletedAt               DateTime?                  @map("profile_completed_at") @db.Timestamptz(6)
   emailVerifiedAt                  DateTime?                  @map("email_verified_at") @db.Timestamptz(6)
+  emailMfaEnabledAt                DateTime?                  @map("email_mfa_enabled_at") @db.Timestamptz(6)
   status                           UserStatus                 @default(PENDING_VERIFICATION)
   createdAt                        DateTime                   @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt                        DateTime                   @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
   authMethods                      AuthMethod[]
   sessions                         Session[]
   actionTokens                     ActionToken[]
+  mfaChallenges                    MfaChallenge[]
   securityEvents                   SecurityEvent[]
   auditEvents                      AuditEvent[]
   platformAdmin                    PlatformAdmin?             @relation("PlatformAdminUser")
@@ -368,6 +376,7 @@ model Session {
   userAgent  String?       @map("user_agent") @db.VarChar(512)
   ipHash     String?       @map("ip_hash") @db.Char(64)
   lastSeenAt DateTime      @default(now()) @map("last_seen_at") @db.Timestamptz(6)
+  mfaVerifiedAt DateTime?  @map("mfa_verified_at") @db.Timestamptz(6)
   expiresAt  DateTime      @map("expires_at") @db.Timestamptz(6)
   revokedAt  DateTime?     @map("revoked_at") @db.Timestamptz(6)
   createdAt  DateTime      @default(now()) @map("created_at") @db.Timestamptz(6)
@@ -376,6 +385,25 @@ model Session {
   @@index([userId, status])
   @@index([expiresAt])
   @@map("sessions")
+}
+
+model MfaChallenge {
+  id           String              @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId       String              @map("user_id") @db.Uuid
+  sessionId    String?             @map("session_id") @db.Uuid
+  purpose      MfaChallengePurpose
+  tokenHash    String              @unique @map("token_hash") @db.Char(64)
+  codeHash     String              @map("code_hash") @db.Char(64)
+  failedAttempts Int               @default(0) @map("failed_attempts")
+  resendCount  Int                 @default(0) @map("resend_count")
+  expiresAt    DateTime            @map("expires_at") @db.Timestamptz(6)
+  consumedAt   DateTime?           @map("consumed_at") @db.Timestamptz(6)
+  createdAt    DateTime            @default(now()) @map("created_at") @db.Timestamptz(6)
+  user         User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, purpose, consumedAt])
+  @@index([expiresAt])
+  @@map("mfa_challenges")
 }
 
 model ActionToken {

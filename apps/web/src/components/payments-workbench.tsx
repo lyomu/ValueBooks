@@ -202,7 +202,7 @@ export function PaymentsPage() {
         open={recording}
         onOpenChange={setRecording}
         organizationId={organizationId}
-        baseCurrency={organization?.baseCurrency ?? 'KES'}
+        baseCurrency={organization?.baseCurrency ?? 'USD'}
         canAllocate={canAllocate}
         onRecorded={() => void load()}
       />
@@ -261,7 +261,7 @@ export function NewPaymentPage() {
           if (!open) router.push('/payments');
         }}
         organizationId={organizationId}
-        baseCurrency={organization?.baseCurrency ?? 'KES'}
+        baseCurrency={organization?.baseCurrency ?? 'USD'}
         canAllocate={canAllocate}
         seed={seed}
         onRecorded={(payment) => router.replace(`/payments/${payment.id}`)}
@@ -324,7 +324,7 @@ export function PaymentEditorPage({ paymentId }: { paymentId: string }) {
     setNotice(flash);
   }, [paymentId]);
 
-  const currency = payment?.currency ?? organization?.baseCurrency ?? 'KES';
+  const currency = payment?.currency ?? organization?.baseCurrency ?? 'USD';
 
   const totalToApplyMinor = useMemo(
     () =>

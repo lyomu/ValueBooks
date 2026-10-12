@@ -284,7 +284,7 @@ export function PurchaseOrderEditorPage({ orderId }: { orderId?: string }) {
   }, [orderId]);
 
   const vendor = vendors.find((candidate) => candidate.id === vendorId) ?? null;
-  const currency = vendor?.currency ?? order?.currency ?? organization?.baseCurrency ?? 'KES';
+  const currency = vendor?.currency ?? order?.currency ?? organization?.baseCurrency ?? 'USD';
 
   const subtotalPreviewMinor = useMemo(
     () =>

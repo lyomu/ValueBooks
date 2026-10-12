@@ -336,7 +336,7 @@ export function CreditNoteEditorPage({ creditNoteId }: { creditNoteId?: string }
   }, [creditNoteId]);
 
   const contact = customers.find((candidate) => candidate.id === contactId) ?? null;
-  const currency = contact?.currency ?? creditNote?.currency ?? organization?.baseCurrency ?? 'KES';
+  const currency = contact?.currency ?? creditNote?.currency ?? organization?.baseCurrency ?? 'USD';
 
   const subtotalPreviewMinor = useMemo(
     () =>

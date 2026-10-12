@@ -192,7 +192,7 @@ export function ReportRunnerPage({
     return <ForbiddenState description="Ask for report access to run this report." />;
   }
 
-  const currency = report?.baseCurrency ?? organization?.baseCurrency ?? 'KES';
+  const currency = report?.baseCurrency ?? organization?.baseCurrency ?? 'USD';
   return (
     <>
       <PageHeader

@@ -127,7 +127,7 @@ export function InsightsPage() {
   const workspace = useWorkspace({ requireOrganization: true });
   const organization = workspace.activeOrganization;
   const organizationId = organization?.id ?? null;
-  const currency = organization?.baseCurrency ?? 'KES';
+  const currency = organization?.baseCurrency ?? 'USD';
 
   const [insights, setInsights] = useState<VarianceInsight[] | null>(null);
   const [checklist, setChecklist] = useState<CloseChecklist | null>(null);

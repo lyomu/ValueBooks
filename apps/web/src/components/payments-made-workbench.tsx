@@ -247,7 +247,7 @@ export function PaymentMadeEditorPage({ paymentId }: { paymentId?: string }) {
   }, [paymentId]);
 
   const vendor = vendors.find((candidate) => candidate.id === vendorId) ?? null;
-  const currency = vendor?.currency ?? payment?.currency ?? organization?.baseCurrency ?? 'KES';
+  const currency = vendor?.currency ?? payment?.currency ?? organization?.baseCurrency ?? 'USD';
 
   const totalToApplyMinor = useMemo(
     () =>

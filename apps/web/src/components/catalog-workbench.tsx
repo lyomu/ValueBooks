@@ -25,7 +25,7 @@ export function ItemsPage() {
   const organizationId = organization?.id ?? null;
   const canView = hasPermission(organization, 'catalog.view');
   const canManage = hasPermission(organization, 'catalog.manage');
-  const currency = organization?.baseCurrency ?? 'KES';
+  const currency = organization?.baseCurrency ?? 'USD';
 
   const [items, setItems] = useState<Item[] | null>(null);
   const [statusFilter, setStatusFilter] = useState<'' | 'ACTIVE' | 'INACTIVE'>('');

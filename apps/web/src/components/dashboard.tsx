@@ -81,7 +81,7 @@ export function Dashboard() {
   const workspace = useWorkspace({ requireOrganization: true });
   const organization = workspace.activeOrganization;
   const organizationId = organization?.id ?? null;
-  const currency = organization?.baseCurrency ?? 'KES';
+  const currency = organization?.baseCurrency ?? 'USD';
 
   const [accounts, setAccounts] = useState<LedgerAccount[] | null>(null);
   const [journals, setJournals] = useState<JournalSummary[] | null>(null);

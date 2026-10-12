@@ -101,7 +101,7 @@ export function ChartOfAccountsPage() {
   const workspace = useWorkspace({ requireOrganization: true });
   const organization = workspace.activeOrganization;
   const organizationId = organization?.id ?? null;
-  const currency = organization?.baseCurrency ?? 'KES';
+  const currency = organization?.baseCurrency ?? 'USD';
   const canCreate = hasPermission(organization, 'accounts.create');
   const canUpdate = hasPermission(organization, 'accounts.update');
   const canDeactivate = hasPermission(organization, 'accounts.deactivate');
@@ -410,7 +410,7 @@ export function JournalsPage() {
   const workspace = useWorkspace({ requireOrganization: true });
   const organization = workspace.activeOrganization;
   const organizationId = organization?.id ?? null;
-  const currency = organization?.baseCurrency ?? 'KES';
+  const currency = organization?.baseCurrency ?? 'USD';
   const canCreate = hasPermission(organization, 'journals.create');
   const [journals, setJournals] = useState<JournalSummary[] | null>(null);
   const [status, setStatus] = useState('');
@@ -517,7 +517,7 @@ export function JournalEditorPage({ journalId }: { journalId?: string }) {
   const workspace = useWorkspace({ requireOrganization: true });
   const organization = workspace.activeOrganization;
   const organizationId = organization?.id ?? null;
-  const currency = organization?.baseCurrency ?? 'KES';
+  const currency = organization?.baseCurrency ?? 'USD';
   const canCreate = hasPermission(organization, 'journals.create');
   const canPost = hasPermission(organization, 'journals.post');
   const canReverse = hasPermission(organization, 'journals.reverse');
@@ -890,7 +890,7 @@ export function JournalEditorPage({ journalId }: { journalId?: string }) {
 export function TrialBalancePage() {
   const workspace = useWorkspace({ requireOrganization: true });
   const organizationId = workspace.activeOrganization?.id ?? null;
-  const currency = workspace.activeOrganization?.baseCurrency ?? 'KES';
+  const currency = workspace.activeOrganization?.baseCurrency ?? 'USD';
   const [asOf, setAsOf] = useState(today());
   const [report, setReport] = useState<TrialBalanceResponse['data'] | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -990,7 +990,7 @@ export function TrialBalancePage() {
 export function AccountLedgerPage({ accountId }: { accountId: string }) {
   const workspace = useWorkspace({ requireOrganization: true });
   const organizationId = workspace.activeOrganization?.id ?? null;
-  const currency = workspace.activeOrganization?.baseCurrency ?? 'KES';
+  const currency = workspace.activeOrganization?.baseCurrency ?? 'USD';
   const [from, setFrom] = useState('');
   const [to, setTo] = useState(today());
   const [ledger, setLedger] = useState<AccountLedgerResponse['data'] | null>(null);

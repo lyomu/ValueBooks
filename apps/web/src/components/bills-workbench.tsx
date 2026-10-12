@@ -331,7 +331,7 @@ export function BillEditorPage({ billId }: { billId?: string }) {
   }, [billId]);
 
   const vendor = vendors.find((candidate) => candidate.id === vendorId) ?? null;
-  const currency = vendor?.currency ?? bill?.currency ?? organization?.baseCurrency ?? 'KES';
+  const currency = vendor?.currency ?? bill?.currency ?? organization?.baseCurrency ?? 'USD';
 
   const subtotalPreviewMinor = useMemo(
     () =>

@@ -209,7 +209,7 @@ export function ProjectsPage() {
           <ProjectForm
             project={editing}
             organizationId={organizationId}
-            baseCurrency={organization?.baseCurrency ?? 'KES'}
+            baseCurrency={organization?.baseCurrency ?? 'USD'}
             customers={customers}
             members={members}
             onCancel={() => {
@@ -1729,7 +1729,7 @@ export function TimesheetPage() {
           />
         ) : null,
     },
-    ...timeColumns(organization?.baseCurrency ?? 'KES'),
+    ...timeColumns(organization?.baseCurrency ?? 'USD'),
     {
       key: 'actions',
       header: '',
@@ -2220,7 +2220,7 @@ export function TimeApprovalPage() {
         ) : null,
     },
     { key: 'person', header: 'Person', cell: (entry) => <strong>{entry.userName}</strong> },
-    ...timeColumns(organization?.baseCurrency ?? 'KES'),
+    ...timeColumns(organization?.baseCurrency ?? 'USD'),
     {
       key: 'comment',
       header: 'Decision note',

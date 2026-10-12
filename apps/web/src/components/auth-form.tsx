@@ -53,6 +53,7 @@ export function AuthForm({
   const [submittedEmail, setSubmittedEmail] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [complete, setComplete] = useState(false);
+  const [mfaRequired, setMfaRequired] = useState(false);
   const errorSummaryRef = useRef<HTMLDivElement>(null);
   const config = modeConfig[mode];
   const emailInvalid = fieldErrors.some((item) => /email/i.test(item));
@@ -79,11 +80,15 @@ export function AuthForm({
             : { email, password: data.get('password') };
 
     try {
-      const response = await apiRequest<{ data?: { user?: { profileComplete?: boolean } } }>(
+      const response = await apiRequest<{ data?: { user?: { profileComplete?: boolean }; mfaRequired?: boolean } }>(
         config.endpoint,
         { method: 'POST', body: JSON.stringify(body) },
       );
       if (mode === 'login') {
+        if (response.data?.mfaRequired) {
+          setMfaRequired(true);
+          return;
+        }
         const destination = invitation
           ? `/accept-invitation?token=${encodeURIComponent(invitation)}`
           : redirectTo;
@@ -113,6 +118,37 @@ export function AuthForm({
     }
   }
 
+  async function verifyEmailCode(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setLoading(true);
+    setError(null);
+    try {
+      const code = formValue(new FormData(event.currentTarget), 'code');
+      const response = await apiRequest<{ data: { user?: { profileComplete?: boolean } } }>('/auth/mfa/verify', {
+        method: 'POST', body: JSON.stringify({ code }),
+      });
+      const destination = invitation ? `/accept-invitation?token=${encodeURIComponent(invitation)}` : redirectTo;
+      router.push(response.data.user?.profileComplete === false ? `/complete-profile?next=${encodeURIComponent(destination)}` : destination);
+      router.refresh();
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : 'The verification code could not be checked.');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function resendEmailCode() {
+    setLoading(true);
+    setError(null);
+    try {
+      await apiRequest('/auth/mfa/resend', { method: 'POST' });
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : 'A new code could not be sent.');
+    } finally {
+      setLoading(false);
+    }
+  }
+
   if (complete) {
     return (
       <div className="rb-auth-success" role="status">
@@ -131,6 +167,20 @@ export function AuthForm({
           <Link href="/login">Back to sign in</Link>
         </Button>
       </div>
+    );
+  }
+
+  if (mfaRequired) {
+    return (
+      <form className="rb-auth-form" onSubmit={(event) => void verifyEmailCode(event)} noValidate>
+        <div className="rb-auth-field">
+          <Label htmlFor="email-code">Email verification code</Label>
+          <Input id="email-code" name="code" inputMode="numeric" autoComplete="one-time-code" pattern="[0-9]{8}" minLength={8} maxLength={8} required />
+          <div className="rb-auth-field__hint-row"><span>Enter the 8-digit code we sent to your email.</span><button type="button" onClick={() => void resendEmailCode()} disabled={loading}>Resend code</button></div>
+        </div>
+        {error ? <div className="rb-auth-error" ref={errorSummaryRef} role="alert" tabIndex={-1}>{error}</div> : null}
+        <Button className="rb-auth-form__submit" size="lg" type="submit" loading={loading}>{loading ? 'Verifying' : 'Verify and sign in'}</Button>
+      </form>
     );
   }
 

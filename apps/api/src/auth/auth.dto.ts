@@ -36,6 +36,12 @@ export class LoginDto {
   password!: string;
 }
 
+export class MfaCodeDto {
+  @IsString()
+  @Matches(/^\d{8}$/, { message: 'code must be an 8-digit number' })
+  code!: string;
+}
+
 export class EmailDto {
   @IsEmail()
   @MaxLength(254)

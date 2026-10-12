@@ -284,7 +284,7 @@ export function SalesOrderEditorPage({ orderId }: { orderId?: string }) {
   }, [orderId]);
 
   const contact = customers.find((candidate) => candidate.id === contactId) ?? null;
-  const currency = contact?.currency ?? order?.currency ?? organization?.baseCurrency ?? 'KES';
+  const currency = contact?.currency ?? order?.currency ?? organization?.baseCurrency ?? 'USD';
 
   const subtotalPreviewMinor = useMemo(
     () =>

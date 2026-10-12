@@ -9,6 +9,7 @@ import { ApiError, apiRequest } from '../lib/api';
 import { formValue } from '../lib/forms';
 import { complianceStringKeys, complianceTone, uiStrings } from '../lib/i18n';
 import { hasPermission, useWorkspace } from '../lib/workspace';
+import { SearchableCombobox } from './searchable-combobox';
 
 type DetailResponse = { data: OrganizationDetail };
 type ReferenceResponse = { data: OrganizationReferenceData };
@@ -237,63 +238,19 @@ function JurisdictionSection({ detail, reference, canUpdate, onSave }: SectionPr
         <div className="rb-field-grid">
           <div className="rb-field">
             <Label htmlFor="org-country">Country</Label>
-            <Select
-              id="org-country"
-              name="countryCode"
-              defaultValue={detail.countryCode}
-              disabled={!canUpdate}
-            >
-              {reference.countries.map((entry) => (
-                <option key={entry.code} value={entry.code}>
-                  {entry.name}
-                </option>
-              ))}
-            </Select>
+            <SearchableCombobox id="org-country" name="countryCode" defaultValue={detail.countryCode} disabled={!canUpdate} options={reference.countries.map((entry) => ({ value: entry.code, label: entry.name }))} />
           </div>
           <div className="rb-field">
             <Label htmlFor="org-currency">Base currency</Label>
-            <Select
-              id="org-currency"
-              name="baseCurrency"
-              defaultValue={detail.baseCurrency}
-              disabled={!canUpdate}
-            >
-              {reference.currencies.map((entry) => (
-                <option key={entry.code} value={entry.code}>
-                  {entry.code} — {entry.name}
-                </option>
-              ))}
-            </Select>
+            <SearchableCombobox id="org-currency" name="baseCurrency" defaultValue={detail.baseCurrency} disabled={!canUpdate} options={reference.currencies.map((entry) => ({ value: entry.code, label: `${entry.code} — ${entry.name}` }))} />
           </div>
           <div className="rb-field">
             <Label htmlFor="org-timezone">Time zone</Label>
-            <Select
-              id="org-timezone"
-              name="timeZone"
-              defaultValue={detail.timeZone}
-              disabled={!canUpdate}
-            >
-              {reference.timeZones.map((zone) => (
-                <option key={zone} value={zone}>
-                  {zone}
-                </option>
-              ))}
-            </Select>
+            <SearchableCombobox id="org-timezone" name="timeZone" defaultValue={detail.timeZone} disabled={!canUpdate} options={reference.timeZones.map((zone) => ({ value: zone, label: zone.replace(/_/g, ' ') }))} />
           </div>
           <div className="rb-field">
             <Label htmlFor="org-locale">Language</Label>
-            <Select
-              id="org-locale"
-              name="locale"
-              defaultValue={detail.locale}
-              disabled={!canUpdate}
-            >
-              {reference.locales.map((entry) => (
-                <option key={entry.code} value={entry.code}>
-                  {entry.name}
-                </option>
-              ))}
-            </Select>
+            <SearchableCombobox id="org-locale" name="locale" defaultValue={detail.locale} disabled={!canUpdate} options={reference.locales.map((entry) => ({ value: entry.code, label: entry.name }))} />
           </div>
           <div className="rb-field">
             <Label htmlFor="org-fiscal-month">Fiscal year start month</Label>
