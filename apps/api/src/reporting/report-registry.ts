@@ -30,7 +30,7 @@ type DefinitionInput = Omit<
 
 function definition(input: DefinitionInput): ReportDefinition {
   return {
-    description: `Traceable ${input.name.toLowerCase()} for the selected period.`,
+    description: reportDescription(input.key),
     supportedBasis: ['ACCRUAL'],
     supportedCurrencyModes: ['BASE'],
     supportsProject: false,
@@ -38,6 +38,68 @@ function definition(input: DefinitionInput): ReportDefinition {
     supportsDrillDown: false,
     ...input,
   };
+}
+
+/** Human-readable library copy. Definitions remain the single source of report capabilities. */
+function reportDescription(key: ReportKey): string {
+  const descriptions: Record<ReportKey, string> = {
+    'financial.profit-loss':
+      'Shows revenue, cost of sales, and operating expenses to explain profit for the period.',
+    'financial.balance-sheet':
+      'Summarizes what the business owns, owes, and retains at a chosen date.',
+    'financial.cash-flow':
+      'Tracks cash moving through operating, investing, and financing activity.',
+    'financial.trial-balance':
+      'Lists debit and credit balances by account to support period-end checks.',
+    'financial.general-ledger':
+      'Provides the complete account-by-account history behind posted balances.',
+    'financial.journal-report':
+      'Reviews posted journals with references, descriptions, and balanced totals.',
+    'receivables.aging-summary':
+      'Groups unpaid customer balances by how long they have been outstanding.',
+    'receivables.aging-detail':
+      'Lists each open invoice with its due date, customer, and overdue days.',
+    'receivables.customer-balances': 'Shows the current outstanding balance for every customer.',
+    'receivables.invoice-details':
+      'Reviews issued invoices, their totals, status, and remaining balance.',
+    'receivables.payments-received':
+      'Shows customer receipts and any amount still waiting to be allocated.',
+    'payables.aging-summary':
+      'Groups unpaid supplier balances by how long they have been outstanding.',
+    'payables.aging-detail': 'Lists each open bill with its due date, vendor, and overdue days.',
+    'payables.vendor-balances': 'Shows the current outstanding balance owed to every vendor.',
+    'payables.bill-details': 'Reviews posted bills, their totals, status, and remaining balance.',
+    'payables.payments-made': 'Shows payments to vendors and any amount not yet applied to a bill.',
+    'sales.by-customer': 'Compares invoiced sales across customers for the selected period.',
+    'sales.by-item': 'Shows which products and services generated the most invoiced sales.',
+    'sales.by-period': 'Tracks invoiced sales over time to reveal trends and seasonality.',
+    'sales.by-tag': 'Compares invoiced sales across salespeople or other report tags.',
+    'purchases.by-vendor': 'Shows spending by supplier across posted bills and expenses.',
+    'purchases.by-category': 'Breaks down spending by the expense and purchase categories used.',
+    'purchases.by-period': 'Tracks purchases and expenses over time for cost monitoring.',
+    'tax.summary': 'Summarizes taxable amounts and tax due by tax code.',
+    'tax.detail': 'Lists the tax treatment applied to each posted source transaction.',
+    'tax.taxable-exempt-bases': 'Separates taxable and exempt transaction bases for the period.',
+    'tax.liability-recoverable': 'Compares tax collected with recoverable tax on purchases.',
+    'inventory.stock-on-hand': 'Shows the available quantity of each item at every warehouse.',
+    'inventory.valuation': 'Values remaining inventory by item and warehouse using current layers.',
+    'inventory.movements':
+      'Traces stock receipts, issues, transfers, and other quantity movements.',
+    'inventory.adjustments': 'Reviews inventory corrections with their quantity and value impact.',
+    'inventory.reorder':
+      'Highlights items below their reorder point and the suggested replenishment.',
+    'projects.time': 'Summarizes approved hours and their cost across active projects.',
+    'projects.unbilled': 'Shows project time and expenses that have not yet been invoiced.',
+    'projects.revenue-cost': 'Compares posted project revenue with its associated costs.',
+    'projects.profitability': 'Shows each project’s revenue, cost, margin, and margin percentage.',
+    'audit.transaction-history':
+      'Provides a chronological record of financial and operational changes.',
+    'audit.user-activity': 'Shows who performed each recorded action in the workspace.',
+    'audit.approvals': 'Reviews approval activity, decisions, and their linked records.',
+    'audit.void-reversal-history':
+      'Tracks voided and reversed activity for audit and reconciliation review.',
+  };
+  return descriptions[key];
 }
 
 const ledgerReconciliation =
