@@ -78,7 +78,7 @@ export function PaymentsMadePage() {
       value: (payment) => `${payment.paymentNumber ?? ''} ${payment.vendorName}`,
       cell: (payment) => (
         <div>
-          <span>{payment.paymentNumber ?? 'Payment'}</span>
+          <Link href={`/payments-made/${payment.id}`}>{payment.paymentNumber ?? 'Payment'}</Link>
           <span className="rb-table-secondary">{payment.vendorName}</span>
         </div>
       ),
@@ -103,16 +103,6 @@ export function PaymentsMadePage() {
       value: (payment) => payment.unappliedMinor,
       cell: (payment) => formatMinor(payment.unappliedMinor, payment.currency),
       hideBelow: 'tablet',
-    },
-    {
-      key: 'open',
-      header: '',
-      align: 'right',
-      cell: (payment) => (
-        <Button asChild variant="ghost" size="sm">
-          <Link href={`/payments-made/${payment.id}`}>Open</Link>
-        </Button>
-      ),
     },
   ];
 

@@ -116,7 +116,7 @@ export function ExpensesPage() {
       header: 'Expense',
       cell: (expense) => (
         <div>
-          <strong>{expense.expenseNumber ?? 'Draft'}</strong>
+          <Link href={`/expenses/${expense.id}`}>{expense.expenseNumber ?? 'Draft'}</Link>
           <span className="rb-table-secondary">
             {expense.payeeVendorName ?? expense.payeeName ?? '—'}
           </span>
@@ -129,16 +129,6 @@ export function ExpensesPage() {
       header: 'Total',
       align: 'right',
       cell: (expense) => formatMinor(expense.totalMinor, expense.currency),
-    },
-    {
-      key: 'open',
-      header: '',
-      align: 'right',
-      cell: (expense) => (
-        <Button asChild variant="ghost" size="sm">
-          <Link href={`/expenses/${expense.id}`}>Open</Link>
-        </Button>
-      ),
     },
   ];
 

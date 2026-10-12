@@ -311,8 +311,7 @@ function ComplianceSection({ detail }: { detail: OrganizationDetail }) {
           <h2 id="org-compliance-title">{strings['settings.compliance.heading']}</h2>
           <p>Taken from the country pack version pinned to this organization.</p>
         </div>
-        <Badge tone={tone}>
-          <span className="rb-badge__dot" aria-hidden="true" />
+        <Badge tone={tone} className="rb-status-badge">
           {strings[keys.title]}
         </Badge>
       </div>

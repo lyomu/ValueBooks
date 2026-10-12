@@ -346,7 +346,7 @@ export function OperationalListing<T extends { id: string }>({
         )
       ) : (
         <div className="rb-operational-listing__table-wrap">
-          <table className="rb-operational-listing__table">
+          <table className="rb-table rb-table--listing rb-operational-listing__table">
             <thead>
               <tr>
                 <th className="rb-operational-listing__select">

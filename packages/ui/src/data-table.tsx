@@ -1,8 +1,11 @@
-import { SearchX } from 'lucide-react';
-import type { HTMLAttributes, ReactNode } from 'react';
+import { Filter, MoreHorizontal, Search, SearchX } from 'lucide-react';
+import type { HTMLAttributes, InputHTMLAttributes, ReactNode } from 'react';
 
+import { Button } from './button';
 import { Card } from './card';
+import { Dropdown, DropdownContent, DropdownTrigger } from './dropdown';
 import { EmptyState, type EmptyStateConfig } from './empty-state';
+import { Input } from './form';
 import { Spinner } from './loading';
 import { cn } from './utils';
 
@@ -33,6 +36,70 @@ export function DataTableToolbar({
       <div className="rb-data-table-toolbar__controls">{children}</div>
       {resultLabel ? <span className="rb-data-table-toolbar__count">{resultLabel}</span> : null}
     </div>
+  );
+}
+
+/** Standard search control for listing and report toolbars. */
+export function DataTableSearch({
+  label,
+  className,
+  ...props
+}: InputHTMLAttributes<HTMLInputElement> & { label: string }) {
+  return (
+    <label className="rb-data-table-toolbar__search">
+      <Search aria-hidden="true" />
+      <span className="rb-visually-hidden">{label}</span>
+      <Input className={className} {...props} />
+    </label>
+  );
+}
+
+/** Standard filter group for listing and report toolbars. */
+export function DataTableFilters({
+  children,
+  className,
+  ...props
+}: HTMLAttributes<HTMLDivElement>) {
+  return (
+    <div className={cn('rb-data-table-toolbar__filter', className)} {...props}>
+      <Filter aria-hidden="true" />
+      {children}
+    </div>
+  );
+}
+
+/**
+ * A shared, keyboard-accessible entry point for valid secondary record actions.
+ * Keep the primary route as a real reference link in its own column; use this
+ * menu only for contextual actions such as edit, duplicate, archive, or void.
+ */
+export function RowActionMenu({
+  children,
+  label = 'More actions',
+  disabled = false,
+}: {
+  children: ReactNode;
+  label?: string;
+  disabled?: boolean;
+}) {
+  return (
+    <Dropdown>
+      <DropdownTrigger asChild>
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          className="rb-row-action-menu__trigger"
+          aria-label={label}
+          disabled={disabled}
+        >
+          <MoreHorizontal aria-hidden="true" />
+        </Button>
+      </DropdownTrigger>
+      <DropdownContent align="end" className="rb-row-action-menu__content">
+        {children}
+      </DropdownContent>
+    </Dropdown>
   );
 }
 
@@ -73,7 +140,7 @@ export function DataTable<T extends { id: string }>({
     <Card className="rb-table-card">
       {toolbar}
       <div className="rb-table-scroll">
-        <table className="rb-table">
+        <table className="rb-table rb-table--listing">
           <caption className="rb-visually-hidden">{caption}</caption>
           <thead>
             <tr>
@@ -113,7 +180,10 @@ export function DataTable<T extends { id: string }>({
               ? rows.map((row) => (
                   <tr
                     key={row.id}
-                    className={cn(onRowClick && 'rb-table__row--interactive')}
+                    className={cn(
+                      'rb-table__row--listing',
+                      onRowClick && 'rb-table__row--interactive',
+                    )}
                     onClick={() => onRowClick?.(row)}
                   >
                     {columns.map((column) => (

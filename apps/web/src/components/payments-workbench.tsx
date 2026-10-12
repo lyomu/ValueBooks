@@ -81,7 +81,7 @@ export function PaymentsPage() {
       value: (payment) => payment.paymentNumber ?? '',
       cell: (payment) => (
         <div>
-          <span>{payment.paymentNumber ?? 'Payment'}</span>
+          <Link href={`/payments/${payment.id}`}>{payment.paymentNumber ?? 'Payment'}</Link>
           <span className="rb-table-secondary">{payment.contactName}</span>
         </div>
       ),
@@ -106,16 +106,6 @@ export function PaymentsPage() {
       value: (payment) => payment.unappliedMinor,
       cell: (payment) => formatMinor(payment.unappliedMinor, payment.currency),
       hideBelow: 'tablet',
-    },
-    {
-      key: 'open',
-      header: '',
-      align: 'right',
-      cell: (payment) => (
-        <Button asChild variant="ghost" size="sm">
-          <Link href={`/payments/${payment.id}`}>Open</Link>
-        </Button>
-      ),
     },
   ];
 

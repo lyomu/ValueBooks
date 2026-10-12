@@ -3845,18 +3845,18 @@ a.rb-nav-item:hover {
   width: 100%;
   min-width: min-content;
   border-collapse: collapse;
-  font-size: 0.875rem;
+  font-size: 0.75rem;
 }
 .rb-operational-listing__table thead {
   background: hsl(var(--rb-card));
 }
-.rb-operational-listing__table th {
+.rb-table--listing.rb-operational-listing__table th {
   position: relative;
   padding: 0;
   color: hsl(var(--rb-muted-foreground));
   border-bottom: 1px solid hsl(var(--rb-border));
-  font-size: 0.8125rem;
-  font-weight: 700;
+  font-size: 0.75rem;
+  font-weight: 600;
   letter-spacing: 0.025em;
   text-align: left;
   text-transform: uppercase;
@@ -3867,7 +3867,7 @@ a.rb-nav-item:hover {
   width: 100%;
   align-items: center;
   gap: 0.35rem;
-  padding: 1rem;
+  padding: var(--rb-space-3) var(--rb-space-4);
   color: inherit;
   background: none;
   border: 0;
@@ -3875,6 +3875,13 @@ a.rb-nav-item:hover {
   text-align: inherit;
   text-transform: inherit;
   cursor: pointer;
+}
+
+/* The table header's button owns the shared cell inset. This prevents the
+ * table primitive and the operational header from applying it twice. */
+.rb-table--listing.rb-operational-listing__table th.rb-table--right,
+.rb-table--listing.rb-operational-listing__table td.rb-table--right {
+  text-align: left !important;
 }
 .rb-operational-listing__table th > button:disabled {
   cursor: default;
@@ -3897,7 +3904,8 @@ a.rb-nav-item:hover {
   background: hsl(var(--rb-primary) / 0.16);
 }
 .rb-operational-listing__table td {
-  padding: 1.125rem 1rem;
+  height: 3.75rem;
+  padding: var(--rb-space-3) var(--rb-space-4);
   border-bottom: 1px solid hsl(var(--rb-border));
   vertical-align: middle;
 }
@@ -3908,6 +3916,7 @@ a.rb-nav-item:hover {
   width: 2.75rem;
   padding-right: 0 !important;
   padding-left: 1rem !important;
+  text-align: center;
 }
 .rb-operational-listing__select input {
   width: 1rem;
@@ -7700,6 +7709,9 @@ button.rb-customer-facts__heading {
 .rb-dash-kpi-top { display:flex; align-items:center; justify-content:space-between; gap:.75rem; color:hsl(var(--rb-muted-foreground)); font-size:.8rem; font-weight:600; }
 .rb-dash-kpi-top svg { width:1.15rem; height:1.15rem; color:hsl(var(--rb-primary)); }
 .rb-dash-kpi > strong { display:block; margin-top:.45rem; color:hsl(var(--rb-foreground)); font-size:clamp(1.35rem,2vw,1.75rem); font-variant-numeric:tabular-nums; letter-spacing:-.035em; overflow-wrap:anywhere; }
+.rb-dash-kpi.is-income > strong { color:hsl(var(--rb-primary)); }
+.rb-dash-kpi.is-expense > strong { color:hsl(var(--rb-danger)); }
+.rb-dash-kpi.is-profit > strong { color:hsl(var(--rb-success)); }
 .rb-dash-kpi > small { display:block; min-height:1rem; margin-top:.2rem; color:hsl(var(--rb-muted-foreground)); font-size:.7rem; }
 .rb-dash-panel-heading { display:flex; align-items:flex-start; justify-content:space-between; gap:.8rem; }
 .rb-dash-panel-heading h2 { margin:0; font-size:1rem; font-weight:700; letter-spacing:-.01em; }

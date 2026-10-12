@@ -98,7 +98,7 @@ export function QuotesPage() {
       value: (quote) => quote.quoteNumber ?? '',
       cell: (quote) => (
         <div>
-          <span>{quote.quoteNumber ?? 'Draft'}</span>
+          <Link href={`/quotes/${quote.id}`}>{quote.quoteNumber ?? 'Draft'}</Link>
           <span className="rb-table-secondary">{quote.contactName}</span>
         </div>
       ),
@@ -115,16 +115,6 @@ export function QuotesPage() {
       align: 'right',
       value: (quote) => quote.totalMinor,
       cell: (quote) => formatMinor(quote.totalMinor, quote.currency),
-    },
-    {
-      key: 'open',
-      header: '',
-      align: 'right',
-      cell: (quote) => (
-        <Button asChild variant="ghost" size="sm">
-          <Link href={`/quotes/${quote.id}`}>Open</Link>
-        </Button>
-      ),
     },
   ];
 

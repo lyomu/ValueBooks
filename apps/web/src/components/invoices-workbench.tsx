@@ -192,18 +192,6 @@ export function InvoicesPage() {
       cell: (invoice) => formatMinor(invoice.balanceMinor, invoice.currency),
       hideBelow: 'tablet',
     },
-    {
-      key: 'open',
-      header: <span className="rb-visually-hidden">Open</span>,
-      align: 'right',
-      cell: (invoice) => (
-        <Button asChild variant="ghost" size="sm">
-          <Link href={`/invoices/${invoice.id}`}>
-            Open <ArrowUpRight aria-hidden="true" />
-          </Link>
-        </Button>
-      ),
-    },
   ];
 
   if (!workspace.loading && organization && !canView) {

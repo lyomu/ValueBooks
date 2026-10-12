@@ -96,7 +96,7 @@ export function SalesOrdersPage() {
       value: (order) => order.orderNumber ?? '',
       cell: (order) => (
         <div>
-          <span>{order.orderNumber ?? 'Draft'}</span>
+          <Link href={`/sales-orders/${order.id}`}>{order.orderNumber ?? 'Draft'}</Link>
           <span className="rb-table-secondary">{order.contactName}</span>
         </div>
       ),
@@ -113,16 +113,6 @@ export function SalesOrdersPage() {
       align: 'right',
       value: (order) => order.totalMinor,
       cell: (order) => formatMinor(order.totalMinor, order.currency),
-    },
-    {
-      key: 'open',
-      header: '',
-      align: 'right',
-      cell: (order) => (
-        <Button asChild variant="ghost" size="sm">
-          <Link href={`/sales-orders/${order.id}`}>Open</Link>
-        </Button>
-      ),
     },
   ];
 

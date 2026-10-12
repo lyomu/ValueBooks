@@ -16,11 +16,13 @@ import {
   Button,
   Card,
   DataTable,
+  DropdownItem,
   EmptyState,
   FieldMessage,
   Input,
   Label,
   PageHeader,
+  RowActionMenu,
   Select,
   Skeleton,
   StatusBadge,
@@ -30,7 +32,6 @@ import {
 import {
   Archive,
   CheckCircle2,
-  FileClock,
   FilePlus2,
   ListChecks,
   Plus,
@@ -157,9 +158,9 @@ export function ChartOfAccountsPage() {
       header: 'Account',
       cell: (account) => (
         <div>
-          <strong>
+          <Link href={`/accounts/${account.id}/ledger`}>
             {account.code} {account.name}
-          </strong>
+          </Link>
           <span className="rb-table-secondary">{labelForAccountType(account.type)}</span>
         </div>
       ),
@@ -177,39 +178,28 @@ export function ChartOfAccountsPage() {
       align: 'right',
       cell: (account) => formatMinor(account.balanceMinor, currency),
     },
-    {
-      key: 'actions',
-      header: '',
-      align: 'right',
-      cell: (account) => (
-        <div className="rb-ledger-row-actions">
-          <Button asChild variant="ghost" size="sm">
-            <Link href={`/accounts/${account.id}/ledger`}>
-              <FileClock aria-hidden="true" /> Ledger
-            </Link>
-          </Button>
-          {account.status === 'ACTIVE' ? (
-            <>
-              {canUpdate ? (
-                <Button variant="ghost" size="sm" type="button" onClick={() => setEditing(account)}>
-                  Edit
-                </Button>
-              ) : null}
-              {canDeactivate ? (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  type="button"
-                  onClick={() => void archive(account)}
-                >
-                  <Archive aria-hidden="true" /> Archive
-                </Button>
-              ) : null}
-            </>
-          ) : null}
-        </div>
-      ),
-    },
+    ...(canUpdate || canDeactivate
+      ? [
+          {
+            key: 'actions',
+            header: <span className="rb-visually-hidden">Actions</span>,
+            align: 'right' as const,
+            cell: (account: LedgerAccount) =>
+              account.status === 'ACTIVE' ? (
+                <RowActionMenu label={`Actions for ${account.code} ${account.name}`}>
+                  {canUpdate ? (
+                    <DropdownItem onSelect={() => setEditing(account)}>Edit account</DropdownItem>
+                  ) : null}
+                  {canDeactivate ? (
+                    <DropdownItem onSelect={() => void archive(account)}>
+                      Archive account
+                    </DropdownItem>
+                  ) : null}
+                </RowActionMenu>
+              ) : null,
+          },
+        ]
+      : []),
   ];
 
   return (
@@ -435,7 +425,7 @@ export function JournalsPage() {
       header: 'Journal',
       cell: (journal) => (
         <div>
-          <strong>{journal.reference ?? 'Draft'}</strong>
+          <Link href={`/journals/${journal.id}`}>{journal.reference ?? 'Draft'}</Link>
           <span className="rb-table-secondary">{journal.description}</span>
         </div>
       ),
@@ -447,16 +437,6 @@ export function JournalsPage() {
       header: 'Debit',
       align: 'right',
       cell: (journal) => formatMinor(journal.debitMinor, currency),
-    },
-    {
-      key: 'open',
-      header: '',
-      align: 'right',
-      cell: (journal) => (
-        <Button asChild variant="ghost" size="sm">
-          <Link href={`/journals/${journal.id}`}>Open</Link>
-        </Button>
-      ),
     },
   ];
 

@@ -105,7 +105,9 @@ export function CreditNotesPage() {
       value: (creditNote) => creditNote.creditNoteNumber ?? '',
       cell: (creditNote) => (
         <div>
-          <span>{creditNote.creditNoteNumber ?? 'Draft'}</span>
+          <Link href={`/credit-notes/${creditNote.id}`}>
+            {creditNote.creditNoteNumber ?? 'Draft'}
+          </Link>
           <span className="rb-table-secondary">{creditNote.contactName}</span>
         </div>
       ),
@@ -130,16 +132,6 @@ export function CreditNotesPage() {
       value: (creditNote) => creditNote.remainingMinor,
       cell: (creditNote) => formatMinor(creditNote.remainingMinor, creditNote.currency),
       hideBelow: 'tablet',
-    },
-    {
-      key: 'open',
-      header: '',
-      align: 'right',
-      cell: (creditNote) => (
-        <Button asChild variant="ghost" size="sm">
-          <Link href={`/credit-notes/${creditNote.id}`}>Open</Link>
-        </Button>
-      ),
     },
   ];
 
