@@ -1,3 +1,8 @@
+/* Keep the shared Lucide outline icon set visually consistent and lightweight. */
+svg.lucide {
+  stroke-width: 1.5;
+}
+
 .rb-button {
   display: inline-flex;
   flex: 0 0 auto;
@@ -207,7 +212,7 @@
 
 .rb-page-header h1 {
   margin: 0;
-  font-size: clamp(1.75rem, 2.25vw, 2rem);
+  font-size: 1.625rem;
   font-weight: 700;
   line-height: 1.15;
   letter-spacing: -0.02em;
@@ -218,7 +223,7 @@
   max-width: 72ch;
   margin: var(--rb-space-2) 0 0;
   color: hsl(var(--rb-muted-foreground));
-  font-size: 0.9375rem;
+  font-size: 0.8125rem;
   line-height: 1.5;
 }
 

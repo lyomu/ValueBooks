@@ -1191,6 +1191,7 @@ button.rb-brand-mark:focus-visible {
   min-width: 0;
   flex: 1;
   flex-direction: column;
+  align-items: flex-start;
   line-height: 1.1;
 }
 
@@ -1283,7 +1284,7 @@ button.rb-brand-mark:focus-visible {
   border: 0;
   border-radius: var(--rb-radius-sm);
   font-size: 13px;
-  font-weight: 500;
+  font-weight: 400;
   text-align: left;
   cursor: pointer;
 }
@@ -2931,7 +2932,7 @@ a.rb-nav-item:hover {
   min-width: 9.5rem;
   padding-right: 2.5rem;
   appearance: none;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none'%3E%3Cpath d='m4 6 4 4 4-4' stroke='%23081f46' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.8'/%3E%3C/svg%3E");
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none'%3E%3Cpath d='m4 6 4 4 4-4' stroke='%23081f46' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5'/%3E%3C/svg%3E");
   background-position: right 1rem center;
   background-repeat: no-repeat;
   background-size: 1rem;
@@ -6519,7 +6520,7 @@ a.rb-nav-item:hover {
 :is(select, .rb-select):not([multiple]):not([size]) {
   padding-right: 2.5rem;
   appearance: none;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none'%3E%3Cpath d='m4 6 4 4 4-4' stroke='%23081f46' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.8'/%3E%3C/svg%3E");
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none'%3E%3Cpath d='m4 6 4 4 4-4' stroke='%23081f46' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5'/%3E%3C/svg%3E");
   background-repeat: no-repeat;
   background-position: right 0.85rem center;
   background-size: 1rem;
@@ -7308,6 +7309,9 @@ button.rb-customer-facts__heading {
 }
 
 .rb-settings__header {
+  position: sticky;
+  z-index: 10;
+  top: 0;
   display: flex;
   align-items: center;
   gap: 1rem;
@@ -7355,26 +7359,27 @@ button.rb-customer-facts__heading {
 }
 
 .rb-settings__close {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.4rem;
-  min-height: 2.25rem;
-  padding: 0 0.75rem;
-  color: hsl(var(--rb-foreground));
+  display: grid;
+  width: 2.25rem;
+  height: 2.25rem;
+  place-items: center;
+  color: hsl(var(--rb-danger));
   border: 1px solid hsl(var(--rb-border));
   border-radius: var(--rb-radius-sm);
-  font-size: 0.875rem;
-  font-weight: 600;
 }
 
 .rb-settings__close:hover {
-  background: hsl(var(--rb-muted));
+  background: hsl(var(--rb-danger-surface));
 }
 
 .rb-settings__close svg {
-  width: 0.9rem;
-  height: 0.9rem;
-  color: hsl(var(--rb-danger));
+  width: 1rem;
+  height: 1rem;
+}
+
+.rb-settings__close:focus-visible {
+  outline: 3px solid hsl(var(--rb-ring) / 0.35);
+  outline-offset: 2px;
 }
 
 .rb-settings__body {
@@ -7386,49 +7391,51 @@ button.rb-customer-facts__heading {
 
 .rb-settings__nav {
   overflow-y: auto;
-  padding: 1.25rem 0.75rem 2rem;
+  padding: var(--rb-space-5) var(--rb-space-3) var(--rb-space-8);
   background: hsl(var(--rb-card));
   border-right: 1px solid hsl(var(--rb-border));
 }
 
-.rb-settings__nav-group + .rb-settings__nav-group {
-  margin-top: 1.5rem;
-}
-
-.rb-settings__nav-group h2 {
-  margin: 0 0 0.5rem 0.75rem;
-  color: hsl(var(--rb-muted-foreground));
-  font-size: 0.625rem;
-  font-weight: 700;
-  letter-spacing: 0.045em;
-  text-transform: uppercase;
-}
-
-.rb-settings__nav-group ul {
+.rb-settings__nav-list {
   display: grid;
-  gap: 0.125rem;
+  gap: var(--rb-space-2);
   margin: 0;
   padding: 0;
   list-style: none;
 }
 
-.rb-settings__nav-group a {
-  display: block;
+.rb-settings__nav-list a {
+  display: flex;
+  align-items: center;
+  gap: var(--rb-space-3);
+  min-height: 2.5rem;
   padding: 0.5rem 0.75rem;
   color: hsl(var(--rb-foreground));
   border-radius: var(--rb-radius-sm);
-  font-size: 0.875rem;
+  font-size: 0.8125rem;
+  font-weight: 500;
   text-decoration: none;
 }
 
-.rb-settings__nav-group a:hover {
+.rb-settings__nav-list a svg {
+  width: 1rem;
+  height: 1rem;
+  flex: 0 0 auto;
+  color: hsl(var(--rb-muted-foreground));
+}
+
+.rb-settings__nav-list a:hover {
   background: hsl(var(--rb-muted));
 }
 
-.rb-settings__nav-group a.is-active {
+.rb-settings__nav-list a.is-active {
   color: #fff;
   background: hsl(var(--rb-primary-mid));
   font-weight: 600;
+}
+
+.rb-settings__nav-list a.is-active svg {
+  color: currentColor;
 }
 
 .rb-settings__main {
@@ -7436,47 +7443,84 @@ button.rb-customer-facts__heading {
 }
 
 .rb-settings__content {
-  width: min(100%, 64rem);
+  width: min(100%, 78rem);
   margin: 0 auto;
-  padding: 1.75rem 1.5rem 4rem;
+  padding: var(--rb-space-8) var(--rb-space-6) 4rem;
 }
 
 /* All Settings index */
 .rb-settings-index {
   display: grid;
-  gap: 2rem;
+  gap: var(--rb-space-8);
+}
+
+.rb-settings-index__search {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.rb-settings-index__search > svg {
+  position: absolute;
+  z-index: 1;
+  left: var(--rb-space-4);
+  width: 1.125rem;
+  height: 1.125rem;
+  color: hsl(var(--rb-muted-foreground));
+  pointer-events: none;
+}
+
+.rb-settings-index__search .rb-input {
+  width: 100%;
+  height: 2.75rem;
+  padding-left: 2.75rem;
 }
 
 .rb-settings-index__group h2 {
-  margin: 0 0 0.75rem;
+  margin: 0 0 var(--rb-space-3);
   font-size: 1rem;
   letter-spacing: -0.01em;
+  scroll-margin-top: var(--rb-space-6);
 }
 
 .rb-settings-index__grid {
   display: grid;
-  gap: var(--rb-space-3);
-  /* Capped rather than 1fr, so a section holding a single card does not stretch it across the
-     whole page and read as a different kind of thing from its neighbours. */
-  grid-template-columns: repeat(auto-fill, minmax(15rem, 20rem));
+  gap: var(--rb-space-4);
+  grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
 .rb-settings-index__card {
   display: grid;
-  gap: 0.35rem;
+  gap: var(--rb-space-1);
   align-content: start;
-  min-height: 8rem;
-  padding: var(--rb-space-4);
+  min-height: 7.5rem;
+  padding: var(--rb-space-5);
   color: inherit;
   background: hsl(var(--rb-card));
   border: 1px solid hsl(var(--rb-border));
   border-radius: var(--rb-radius);
   text-decoration: none;
+  transition:
+    border-color var(--rb-duration-fast) var(--rb-ease-out),
+    box-shadow var(--rb-duration-fast) var(--rb-ease-out),
+    transform var(--rb-duration-fast) var(--rb-ease-out);
 }
 
 .rb-settings-index__card:hover {
   border-color: hsl(var(--rb-primary-mid));
   box-shadow: var(--rb-shadow-sm);
+  transform: translateY(-1px);
+}
+
+.rb-settings-index__card:active {
+  transform: translateY(0);
+  box-shadow: none;
+}
+
+.rb-settings-index__card:focus-visible,
+.rb-settings__nav-list a:focus-visible {
+  outline: 3px solid hsl(var(--rb-ring) / 0.35);
+  outline-offset: 2px;
 }
 
 .rb-settings-index__card strong {
@@ -7484,25 +7528,30 @@ button.rb-customer-facts__heading {
 }
 
 .rb-settings-index__card > span:last-child {
+  display: -webkit-box;
+  overflow: hidden;
   color: hsl(var(--rb-muted-foreground));
   font-size: 0.8125rem;
   line-height: 1.5;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
 }
 
 .rb-settings-index__icon {
-  display: grid;
-  width: 2rem;
-  height: 2rem;
-  place-items: center;
-  margin-bottom: 0.35rem;
+  display: flex;
+  align-items: center;
+  height: 1.25rem;
+  margin-bottom: var(--rb-space-2);
   color: hsl(var(--rb-primary-mid));
-  background: hsl(var(--rb-accent));
-  border-radius: var(--rb-radius-sm);
 }
 
 .rb-settings-index__icon svg {
-  width: 1.05rem;
-  height: 1.05rem;
+  width: 1.25rem;
+  height: 1.25rem;
+}
+
+.rb-settings-index__empty {
+  min-height: 15rem;
 }
 
 @media (max-width: 56rem) {
@@ -7511,8 +7560,43 @@ button.rb-customer-facts__heading {
   }
 
   .rb-settings__nav {
+    overflow-x: auto;
+    overflow-y: visible;
+    padding: var(--rb-space-3) var(--rb-space-4);
     border-right: 0;
     border-bottom: 1px solid hsl(var(--rb-border));
+  }
+
+  .rb-settings__nav-list {
+    display: flex;
+    width: max-content;
+  }
+
+  .rb-settings__nav-list a {
+    white-space: nowrap;
+  }
+
+  .rb-settings-index__grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 40rem) {
+  .rb-settings__content {
+    padding: var(--rb-space-6) var(--rb-space-4) var(--rb-space-8);
+  }
+
+  .rb-settings-index {
+    gap: var(--rb-space-6);
+  }
+
+  .rb-settings-index__grid {
+    grid-template-columns: 1fr;
+  }
+
+  .rb-settings-index__card {
+    min-height: 0;
+    padding: var(--rb-space-4);
   }
 }
 
