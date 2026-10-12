@@ -176,24 +176,17 @@ const navigationGroups: NavigationGroup[] = [
 ];
 import { BrandLogo } from './brand-logo';
 
-function ValueBooksMark({ onExpand }: { onExpand?: () => void }) {
-  if (onExpand) {
-    return (
-      <button
-        className="rb-brand-mark"
-        type="button"
-        onClick={onExpand}
-        aria-label="Expand sidebar"
-      >
-        <BrandLogo variant="mark" height={28} alt="ValueBooks" priority />
-      </button>
-    );
-  }
-
+function CollapsedSidebarMark({ onExpand }: { onExpand: () => void }) {
   return (
-    <span className="rb-brand-mark" aria-hidden="true">
+    <button
+      className="rb-brand-mark"
+      type="button"
+      onClick={onExpand}
+      aria-label="Expand sidebar"
+      style={{ background: 'transparent' }}
+    >
       <BrandLogo variant="mark" height={28} alt="ValueBooks" priority />
-    </span>
+    </button>
   );
 }
 
@@ -236,12 +229,13 @@ function Sidebar({
   return (
     <aside className={collapsed ? 'rb-app-sidebar is-collapsed' : 'rb-app-sidebar'}>
       <div className="rb-app-sidebar__brand">
-        <ValueBooksMark onExpand={collapsed ? onToggle : undefined} />
-        {!collapsed ? (
+        {collapsed ? (
+          <CollapsedSidebarMark onExpand={onToggle} />
+        ) : (
           <div className="rb-app-sidebar__brand-copy">
-            <BrandLogo variant="full" height={26} alt="ValueBooks" priority />
+            <BrandLogo variant="full" tone="inverse" height={26} alt="ValueBooks" priority />
           </div>
-        ) : null}
+        )}
         <button
           className="rb-app-sidebar__toggle"
           type="button"
