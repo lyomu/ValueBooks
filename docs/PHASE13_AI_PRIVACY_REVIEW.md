@@ -194,7 +194,7 @@ already in flight and provider-retained data require a separate incident/deletio
 
 The owner's ignored local `apps/api/.env` is described in `docs/P0_HANDOVER.md` as containing
 `AI_MODE=hosted_limited` and a live key for manual testing; this review did not read, change, or
-copy the key. **Owner record — 2026-10-11:** the owner attests that the key never made a provider
+copy the key. **Owner record — 2026-10-12:** the owner attests that the key never made a provider
 request, so no data left ValueBooks through it. The owner approves a 90-day ValueBooks `AiRun`
 metadata retention period and identifies a Superadmin as the technical enabler. This does not
 identify the required privacy/legal approver, and does not authorize hosted egress. The governing

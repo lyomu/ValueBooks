@@ -2,6 +2,7 @@
 
 import {
   Bot,
+  BookOpen,
   BriefcaseBusiness,
   Building2,
   ChevronDown,

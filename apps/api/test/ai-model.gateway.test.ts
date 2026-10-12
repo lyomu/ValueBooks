@@ -134,8 +134,10 @@ describe('AiModelGateway', () => {
       messages?: { content?: string }[];
     };
     const sentEvidence = (
-      JSON.parse(payload.messages?.[1]?.content ?? '{}') as unknown as { evidence?: unknown }
-    ).evidence;
+      JSON.parse(payload.messages?.[1]?.content ?? '{}') as unknown as {
+        evidence?: { rows: unknown; filters: unknown };
+      }
+    ).evidence as { rows: unknown; filters: unknown };
     expect(sentEvidence.rows).toEqual([
       { id: 'row-1', cells: { amountMinor: '12500' }, source: null },
     ]);

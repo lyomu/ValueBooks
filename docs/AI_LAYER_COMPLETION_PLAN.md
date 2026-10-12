@@ -106,7 +106,7 @@ AI quickly without exposing sensitive content through telemetry.
 Republic of China and possible model improvement/training use. Do not rely on public documentation
 as an API-specific no-training, fixed-retention, or subprocessor commitment.
 
-**Owner record — 2026-10-11:** The owner attests that the local hosted key never made a DeepSeek
+**Owner record — 2026-10-12:** The owner attests that the local hosted key never made a DeepSeek
 request; no data left ValueBooks through that key. ValueBooks retains `AiRun` metadata for 90 days.
 The governing agreement is dated 2026-10-01, but its training term is unclear, its subprocessors
 are not listed, and breach-notification terms remain outstanding. The stated 90-day retention and
@@ -122,7 +122,7 @@ materials and release sign-off.
 
 - [ ] Human-review the 110 document cases and 115 question cases in `apps/api/eval/`.
 - [ ] Add anonymized real documents and questions where authorized.
-- [ ] Define thresholds for field precision, false positives, citation validity, abstention,
+- [x] Define thresholds for field precision, false positives, citation validity, abstention,
       latency, and cost.
 - [ ] Compare local OCR alternatives with `tesseract.js` on the frozen holdout.
 - [ ] Compare private inference models on the frozen holdout and record chosen versions.

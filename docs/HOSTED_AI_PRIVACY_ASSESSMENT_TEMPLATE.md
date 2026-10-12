@@ -1,7 +1,9 @@
 # Hosted AI Privacy Assessment — Per Organization
 
 **Status:** Proposed — awaiting owner/legal decision. Complete this assessment before creating an
-active hosted-egress approval or enabling an organization-scoped egress rule.
+active hosted-egress approval or enabling an organization-scoped egress rule. Every new provider
+requires a separately reviewed provider profile and a new assessment; supplying an API key alone
+never authorizes egress.
 
 ## Organization and scope
 

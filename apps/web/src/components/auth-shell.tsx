@@ -1,5 +1,5 @@
 import Image from 'next/image';
-import { BookOpenCheck, Check } from 'lucide-react';
+import { Check } from 'lucide-react';
 import Link from 'next/link';
 import type { ReactNode } from 'react';
 
