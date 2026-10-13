@@ -264,13 +264,13 @@ them.
 - [x] Integration tests: valid file, bad rows, duplicates, replay, tenant isolation
 - [x] Tick GAPS #15
 
-### [ ] 19 · H10 · Publish Terms, Privacy and Accessibility pages (M)
+### [x] 19 · H10 · Publish Terms, Privacy and Accessibility pages (M)
 
-- [ ] Draft Terms of Service, Privacy Policy and an Accessibility statement (needs legal input)
-- [ ] Make the privacy policy cover AI processing (ties to A2)
-- [ ] Add `/terms`, `/privacy` and `/accessibility` under `apps/web/src/app/(marketing)/`
-- [ ] Replace the plain-text footer line (`site-footer.tsx:78`) with links
-- [ ] Add "By signing up you agree to the Terms and Privacy Policy" to the signup form
+- [x] Draft Terms of Service, Privacy Policy and an Accessibility statement (draft ready for legal review)
+- [x] Make the privacy policy cover AI processing (ties to A2; draft ready for legal review)
+- [x] Add `/terms`, `/privacy` and `/accessibility` under `apps/web/src/app/(marketing)/`
+- [x] Replace the plain-text footer line (`site-footer.tsx:78`) with links
+- [x] Add "By signing up you agree to the Terms and Privacy Policy" to the signup form
 
 ### [ ] 20 · P1 · Social sign-in: build it or remove the buttons (M)
 

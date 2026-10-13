@@ -73,11 +73,11 @@ export function SiteFooter() {
       </div>
       <div className="mk-footer__legal">
         <span>© {new Date().getFullYear()} ValueBooks</span>
-        <span>
-          <Link href="/privacy">Privacy Policy</Link> ·{' '}
-          <Link href="/terms">Terms and Conditions</Link> ·{' '}
-          <Link href="/data-privacy-deletion">Data Privacy &amp; Deletion</Link>
-        </span>
+        <nav aria-label="Legal">
+          <Link href="/privacy">Privacy</Link>
+          <Link href="/terms">Terms</Link>
+          <Link href="/accessibility">Accessibility</Link>
+        </nav>
       </div>
     </footer>
   );
