@@ -41,6 +41,24 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      # Attachment storage (uploads, OCR, exports, generated documents) needs a real S3-compatible
+      # endpoint. GitHub Actions `services:` containers can't override `command`, and the official
+      # minio image needs an explicit `server /data` command to start, so it's launched by hand
+      # here instead -- the same image and startup command as docker-compose.yml's `minio` service.
+      - name: Start MinIO
+        run: |
+          docker run -d --name minio -p 59000:9000 \
+            -e MINIO_ROOT_USER=valuebooks \
+            -e MINIO_ROOT_PASSWORD=valuebooks-local \
+            quay.io/minio/minio:RELEASE.2025-07-23T15-54-02Z server /data --console-address ':9001'
+          for _ in $(seq 1 20); do
+            curl -sf http://localhost:59000/minio/health/live && exit 0
+            sleep 2
+          done
+          echo "MinIO did not become healthy in time" >&2
+          docker logs minio
+          exit 1
+
       - name: Generate Prisma client
         run: npm run db:generate --workspace @valuebooks/api
 
@@ -69,6 +87,15 @@ jobs:
         working-directory: apps/api
         env:
           DATABASE_URL: postgresql://valuebooks:valuebooks@localhost:5432/valuebooks
+          # The CI postgres service has no separate restricted runtime role, so the migration-owner
+          # connection the integration harness provisions the test database with (see
+          # apps/api/test/support/database.ts) is the same superuser as DATABASE_URL.
+          DATABASE_MIGRATION_URL: postgresql://valuebooks:valuebooks@localhost:5432/valuebooks
+          S3_ENDPOINT: http://localhost:59000
+          S3_REGION: us-east-1
+          S3_ACCESS_KEY: valuebooks
+          S3_SECRET_KEY: valuebooks-local
+          S3_BUCKET: valuebooks-local
         run: npm run test:integration
 
       - name: Build
