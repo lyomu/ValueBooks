@@ -40,8 +40,11 @@ test.describe('Phase 13 document extraction review panel', () => {
     test.skip(test.info().project.name !== 'desktop', 'Functional journey runs once on desktop.');
   });
 
-  test('accepts a ready candidate and copies its values into the draft', async ({ page }) => {
+  test('accepts a ready candidate and copies its values into the draft', async ({
+    page,
+  }, testInfo) => {
     test.setTimeout(120_000);
+    const runId = `run-${Date.now()}-${testInfo.workerIndex}`;
     await signIn(page);
     const organizationId = await getActiveOrganizationId(page);
     const bankAccountId = await findAccountIdByName(
@@ -69,6 +72,7 @@ test.describe('Phase 13 document extraction review panel', () => {
       'Subtotal 1000.00',
       'VAT 100.00',
       'Total 1100.00',
+      `Reference: ${runId}`,
     ]);
     await page
       .locator('input[type="file"]')
@@ -89,8 +93,9 @@ test.describe('Phase 13 document extraction review panel', () => {
     ).toBeVisible();
   });
 
-  test('dismisses a ready candidate without touching the draft', async ({ page }) => {
+  test('dismisses a ready candidate without touching the draft', async ({ page }, testInfo) => {
     test.setTimeout(120_000);
+    const runId = `run-${Date.now()}-${testInfo.workerIndex}`;
     await signIn(page);
     const organizationId = await getActiveOrganizationId(page);
     const bankAccountId = await findAccountIdByName(
@@ -118,6 +123,7 @@ test.describe('Phase 13 document extraction review panel', () => {
       'Subtotal 500.00',
       'VAT 50.00',
       'Total 550.00',
+      `Reference: ${runId}`,
     ]);
     await page
       .locator('input[type="file"]')
@@ -202,8 +208,11 @@ test.describe('Phase 13 bank match proposals', () => {
     test.skip(test.info().project.name !== 'desktop', 'Functional journey runs once on desktop.');
   });
 
-  test('ranks a real match candidate and fills the match form when selected', async ({ page }) => {
+  test('ranks a real match candidate and fills the match form when selected', async ({
+    page,
+  }, testInfo) => {
     test.setTimeout(90_000);
+    const runId = `run-${Date.now()}-${testInfo.workerIndex}`;
     await signIn(page);
     const organization = await getActiveOrganization(page);
     const organizationId = organization.id;
@@ -217,7 +226,7 @@ test.describe('Phase 13 bank match proposals', () => {
       page,
       `/organizations/${organizationId}/financial-accounts`,
       {
-        name: 'E2E Operating Checking',
+        name: `E2E Operating Checking ${runId}`,
         type: 'BANK',
         currency: organization.baseCurrency,
         glAccountId: bankGlAccountId,
@@ -227,7 +236,7 @@ test.describe('Phase 13 bank match proposals', () => {
     const vendor = await apiPost<{ data: { id: string } }>(
       page,
       `/organizations/${organizationId}/vendors`,
-      { displayName: 'Match Proposal Vendor' },
+      { displayName: `Match Proposal Vendor ${runId}` },
     );
 
     const expense = await apiPost<{ data: { id: string } }>(
@@ -264,7 +273,9 @@ test.describe('Phase 13 bank match proposals', () => {
 
     // The ranking reason renders beside the proposal button, not inside it, so check the list
     // item that holds both.
-    const proposal = page.getByRole('listitem').filter({ hasText: 'Match Proposal Vendor' });
+    const proposal = page
+      .getByRole('listitem')
+      .filter({ hasText: `Match Proposal Vendor ${runId}` });
     await expect(proposal).toContainText('exact amount match');
     const proposalButton = proposal.getByRole('button');
     await expect(proposalButton).toBeVisible();
@@ -278,8 +289,11 @@ test.describe('Phase 13 approval briefing', () => {
     test.skip(test.info().project.name !== 'desktop', 'Functional journey runs once on desktop.');
   });
 
-  test('shows what changed on a Bill since it was submitted for approval', async ({ page }) => {
+  test('shows what changed on a Bill since it was submitted for approval', async ({
+    page,
+  }, testInfo) => {
     test.setTimeout(90_000);
+    const runId = `run-${Date.now()}-${testInfo.workerIndex}`;
     await signIn(page);
     const organizationId = await getActiveOrganizationId(page);
     const expenseAccountId = await findAccountIdByName(
@@ -291,19 +305,19 @@ test.describe('Phase 13 approval briefing', () => {
     const vendorA = await apiPost<{ data: { id: string } }>(
       page,
       `/organizations/${organizationId}/vendors`,
-      { displayName: 'Briefing Vendor A' },
+      { displayName: `Briefing Vendor A ${runId}` },
     );
     const vendorB = await apiPost<{ data: { id: string } }>(
       page,
       `/organizations/${organizationId}/vendors`,
-      { displayName: 'Briefing Vendor B' },
+      { displayName: `Briefing Vendor B ${runId}` },
     );
 
     const policy = await apiPost<{ data: { id: string } }>(
       page,
       `/organizations/${organizationId}/automation/approval-policies`,
       {
-        name: 'E2E bill review policy',
+        name: `E2E bill review policy ${runId}`,
         targetType: 'BILL',
         // The demo-week seed activates its own "Bill sign-off" policy at priority 10; without a
         // higher priority here the request resolves to that one and its (empty) criteria.
@@ -349,7 +363,10 @@ test.describe('Phase 13 approval briefing', () => {
     await page.getByRole('tab', { name: 'Submitted by me' }).click();
     // The row's own label is frozen from the submission-time snapshot, so it still reads
     // "Briefing Vendor A" even after the PATCH above -- that's the point being tested.
-    await page.getByRole('button').filter({ hasText: 'Briefing Vendor A' }).click();
+    await page
+      .getByRole('button')
+      .filter({ hasText: `Briefing Vendor A ${runId}` })
+      .click();
 
     await expect(page.getByText('Briefing')).toBeVisible({ timeout: 15_000 });
     await expect(page.getByText('Changed since submission: vendorName')).toBeVisible();
@@ -362,8 +379,11 @@ test.describe('Phase 13 categorization suggestion', () => {
     test.skip(test.info().project.name !== 'desktop', 'Functional journey runs once on desktop.');
   });
 
-  test("offers a category suggestion from the vendor's prior posted expense", async ({ page }) => {
+  test("offers a category suggestion from the vendor's prior posted expense", async ({
+    page,
+  }, testInfo) => {
     test.setTimeout(90_000);
+    const runId = `run-${Date.now()}-${testInfo.workerIndex}`;
     await signIn(page);
     const organizationId = await getActiveOrganizationId(page);
     const bankAccountId = await findAccountIdByName(
@@ -380,12 +400,12 @@ test.describe('Phase 13 categorization suggestion', () => {
     const vendor = await apiPost<{ data: { id: string } }>(
       page,
       `/organizations/${organizationId}/vendors`,
-      { displayName: 'Suggestion Vendor' },
+      { displayName: `Suggestion Vendor ${runId}` },
     );
     const category = await apiPost<{ data: { id: string } }>(
       page,
       `/organizations/${organizationId}/expense-categories`,
-      { name: 'Office Supplies E2E', accountId: expenseAccountId },
+      { name: `Office Supplies E2E ${runId}`, accountId: expenseAccountId },
     );
 
     const priorExpense = await apiPost<{ data: { id: string } }>(
@@ -406,9 +426,9 @@ test.describe('Phase 13 categorization suggestion', () => {
     );
 
     await page.goto('/expenses/new');
-    await page.getByLabel('Vendor').selectOption({ label: 'Suggestion Vendor' });
+    await page.getByLabel('Vendor').selectOption({ label: `Suggestion Vendor ${runId}` });
 
-    await expect(page.getByText('Suggested: Office Supplies E2E')).toBeVisible({
+    await expect(page.getByText(`Suggested: Office Supplies E2E ${runId}`)).toBeVisible({
       timeout: 15_000,
     });
     await page.getByRole('button', { name: 'Use this category' }).click();

@@ -20,33 +20,60 @@ import { writeAuditEvent } from '../organizations/audit-event.js';
 export class DocumentExtractionReviewService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async get(organizationId: string, attachmentId: string) {
+  async get(
+    organizationId: string,
+    entityType: 'EXPENSE' | 'BILL',
+    entityId: string,
+    attachmentId: string,
+  ) {
     const extraction = await this.prisma.documentExtraction.findFirst({
-      where: { organizationId, attachmentId },
+      where: { organizationId, entityType, entityId, attachmentId },
     });
     return extraction ? serialize(extraction) : null;
   }
 
   async accept(
     organizationId: string,
+    entityType: 'EXPENSE' | 'BILL',
+    entityId: string,
     attachmentId: string,
     actor: PublicUser,
     metadata: RequestMetadata,
   ) {
-    return this.setDisposition(organizationId, attachmentId, 'ACCEPTED', actor, metadata);
+    return this.setDisposition(
+      organizationId,
+      entityType,
+      entityId,
+      attachmentId,
+      'ACCEPTED',
+      actor,
+      metadata,
+    );
   }
 
   async reject(
     organizationId: string,
+    entityType: 'EXPENSE' | 'BILL',
+    entityId: string,
     attachmentId: string,
     actor: PublicUser,
     metadata: RequestMetadata,
   ) {
-    return this.setDisposition(organizationId, attachmentId, 'REJECTED', actor, metadata);
+    return this.setDisposition(
+      organizationId,
+      entityType,
+      entityId,
+      attachmentId,
+      'REJECTED',
+      actor,
+      metadata,
+    );
   }
 
   private async setDisposition(
     organizationId: string,
+    entityType: 'EXPENSE' | 'BILL',
+    entityId: string,
     attachmentId: string,
     disposition: DocumentExtractionDisposition,
     actor: PublicUser,
@@ -54,7 +81,7 @@ export class DocumentExtractionReviewService {
   ) {
     return this.prisma.$transaction(async (tx) => {
       const existing = await tx.documentExtraction.findFirst({
-        where: { organizationId, attachmentId },
+        where: { organizationId, entityType, entityId, attachmentId },
       });
       if (!existing) throw new NotFoundException('No extraction found for this attachment.');
       if (existing.status !== 'READY_FOR_REVIEW') {

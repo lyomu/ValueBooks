@@ -3,6 +3,8 @@
 import { Check, Plus, X } from 'lucide-react';
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { apiRequest } from '../../lib/api';
 import { convertUsd, detectLikelyCurrency, formatCurrency } from '../../lib/currency';
 import { FEATURE_GROUPS, PLANS, type Plan } from './pricing-data';
 
@@ -98,6 +100,7 @@ function PlanCard({
   currencyCode: string;
   variant: 'compact' | 'full';
 }) {
+  const router = useRouter();
   const cardClasses = [
     'mk-pricing-card',
     plan.highlighted && 'mk-pricing-card--highlighted',
@@ -111,12 +114,7 @@ function PlanCard({
       <h3>{plan.name}</h3>
       <p className="mk-pricing-card__tagline">{plan.tagline}</p>
       <PriceTag plan={plan} interval={interval} currencyCode={currencyCode} />
-      <Link
-        className={plan.highlighted ? 'mk-button' : 'mk-button mk-button--outline'}
-        href={plan.ctaHref ?? '/signup'}
-      >
-        {plan.ctaLabel ?? 'Start free trial'}
-      </Link>
+      {plan.ctaHref ? <Link className={plan.highlighted ? 'mk-button' : 'mk-button mk-button--outline'} href={plan.ctaHref}>{plan.ctaLabel ?? 'Talk to sales'}</Link> : <button className={plan.highlighted ? 'mk-button' : 'mk-button mk-button--outline'} type="button" onClick={() => { void apiRequest<{ data: { id: string } }>('/billing/registration-intents', { method: 'POST', body: JSON.stringify({ planKey: plan.id }) }).then((response) => router.push(`/signup?intent=${encodeURIComponent(response.data.id)}`)).catch(() => router.push('/signup')); }}>{plan.ctaLabel ?? 'Start free trial'}</button>}
       <ul className="mk-pricing-card__features">
         {plan.topFeatures.map((feature) => (
           <li key={feature}>

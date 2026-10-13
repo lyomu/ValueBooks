@@ -1,4 +1,5 @@
-import { BookOpen, Linkedin, Mail, ShieldCheck } from 'lucide-react';
+import { Linkedin, Mail, ShieldCheck } from 'lucide-react';
+import Image from 'next/image';
 import Link from 'next/link';
 
 const columns: ReadonlyArray<{ title: string; links: ReadonlyArray<readonly [string, string]> }> = [
@@ -37,10 +38,7 @@ export function SiteFooter() {
       <div className="mk-footer__grid">
         <div className="mk-footer__brand">
           <Link className="mk-brand mk-brand--footer" href="/">
-            <span>
-              <BookOpen aria-hidden="true" />
-            </span>
-            <strong>ValueBooks</strong>
+            <Image src="/logo-full.png" alt="ValueBooks" height={26} width={132} />
           </Link>
           <p>Clearer books, calmer decisions, and a capable AI partner when you need one.</p>
           <div>
@@ -75,7 +73,7 @@ export function SiteFooter() {
       </div>
       <div className="mk-footer__legal">
         <span>© {new Date().getFullYear()} ValueBooks</span>
-        <span>Privacy · Terms · Accessibility</span>
+        <span><Link href="/privacy">Privacy Policy</Link> · <Link href="/terms">Terms and Conditions</Link> · <Link href="/data-privacy-deletion">Data Privacy &amp; Deletion</Link></span>
       </div>
     </footer>
   );

@@ -179,7 +179,7 @@ function reportHtml(
     )
     .join('');
   return `<!doctype html><html><head><meta charset="utf-8"><style>
-    body{font-family:Arial,sans-serif;color:#17211b;padding:24px}h1{font-size:20px;margin:0 0 16px}
+    body{font-family:'Google Sans','Google Sans Text',Arial,sans-serif;color:#17211b;padding:24px}h1{font-size:20px;margin:0 0 16px}
     table{border-collapse:collapse;width:100%;font-size:9px}th,td{border-bottom:1px solid #dfe5e1;padding:5px;text-align:left}
     th{background:#eef3ef;font-weight:700}tr{break-inside:avoid}
   </style></head><body><h1>${escapeHtml(title)}</h1><table><thead><tr>${header}</tr></thead><tbody>${body}</tbody></table></body></html>`;

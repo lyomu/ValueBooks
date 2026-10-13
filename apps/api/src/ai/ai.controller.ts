@@ -21,7 +21,11 @@ import {
   type OrganizationRequest,
 } from '../organizations/organization-context.js';
 import { OrganizationGuard } from '../organizations/organization.guard.js';
-import { FeatureFlagGuard, RequireFeatureFlag } from '../platform/feature-flag.guard.js';
+import {
+  FeatureFlagGuard,
+  RequireFeatureFlag,
+  RequireFeatureFlags,
+} from '../platform/feature-flag.guard.js';
 import { PHASE13_FEATURE_FLAGS } from '../platform/phase13-feature-flags.js';
 import { AiSuggestionsStore } from './ai-suggestions.store.js';
 import { AskReportDto, ExplainNumberDto, SuggestionFeedbackDto } from './ai.dto.js';
@@ -46,7 +50,7 @@ export class AiController {
     const descriptor = this.gateway.descriptor();
     const enabled =
       descriptor.provider === 'PRIVATE' ||
-      (descriptor.provider === 'HOSTED_LIMITED' &&
+      (descriptor.provider.startsWith('HOSTED_') &&
         (await this.gateway.isHostedEgressEnabled(request.organization.id)));
     return {
       data: {
@@ -59,6 +63,7 @@ export class AiController {
 
   @Post('ask')
   @RequirePermission('ai.assistant.ask')
+  @RequireFeatureFlag(PHASE13_FEATURE_FLAGS.AI_ASSISTANT)
   async ask(@Body() input: AskReportDto, @Req() request: OrganizationRequest) {
     // AI permission allows the assistant surface; financial evidence still requires the report
     // permission that would be required to view the same report directly.
@@ -91,7 +96,7 @@ export class AiController {
 
   @Post('explain-number')
   @RequirePermission('ai.assistant.ask')
-  @RequireFeatureFlag(PHASE13_FEATURE_FLAGS.REPORT_DRILLDOWN)
+  @RequireFeatureFlags(PHASE13_FEATURE_FLAGS.AI_ASSISTANT, PHASE13_FEATURE_FLAGS.REPORT_DRILLDOWN)
   async explainNumber(@Body() input: ExplainNumberDto, @Req() request: OrganizationRequest) {
     // Same double-gate as ask: the AI permission unlocks the assistant surface, but the
     // deterministic drill-down (and any evidence it can produce) still requires reports.view.

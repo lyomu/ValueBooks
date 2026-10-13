@@ -25,6 +25,11 @@ export const FEATURE_FLAG_KEY = 'platform:feature-flag';
 export const RequireFeatureFlag = (key: string): MethodDecorator =>
   SetMetadata(FEATURE_FLAG_KEY, key);
 
+/** Requires every listed capability. Kept separate from the single-key decorator so existing
+ * controllers retain their metadata shape and behavior. */
+export const RequireFeatureFlags = (...keys: string[]): MethodDecorator =>
+  SetMetadata(FEATURE_FLAG_KEY, keys);
+
 @Injectable()
 export class FeatureFlagGuard implements CanActivate {
   constructor(
@@ -33,11 +38,12 @@ export class FeatureFlagGuard implements CanActivate {
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
-    const key = this.reflector.getAllAndOverride<string | undefined>(FEATURE_FLAG_KEY, [
-      context.getHandler(),
-      context.getClass(),
-    ]);
-    if (!key) return true;
+    const metadata = this.reflector.getAllAndOverride<string | string[] | undefined>(
+      FEATURE_FLAG_KEY,
+      [context.getHandler(), context.getClass()],
+    );
+    const keys = metadata === undefined ? [] : Array.isArray(metadata) ? metadata : [metadata];
+    if (keys.length === 0) return true;
 
     const request = context.switchToHttp().getRequest<OrganizationRequest>();
     const organizationId = request.organization?.id;
@@ -48,8 +54,10 @@ export class FeatureFlagGuard implements CanActivate {
       throw new ForbiddenException('This feature is not enabled for your organization.');
     }
 
-    const enabled = await this.entitlements.isFlagEnabled(organizationId, key);
-    if (!enabled) {
+    const enabled = await Promise.all(
+      keys.map((key) => this.entitlements.isFlagEnabled(organizationId, key)),
+    );
+    if (enabled.some((value) => !value)) {
       throw new ForbiddenException('This feature is not enabled for your organization.');
     }
     return true;

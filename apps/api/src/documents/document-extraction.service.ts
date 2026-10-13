@@ -1,6 +1,7 @@
 import { createHash } from 'node:crypto';
 
 import { Injectable, Logger } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import {
   AuditAction,
   type Attachment,
@@ -12,8 +13,9 @@ import { PrismaService } from '../database/prisma.service.js';
 import { writeAuditEvent } from '../organizations/audit-event.js';
 import { StorageService } from '../storage/storage.service.js';
 import { MalwareScannerService } from './malware-scanner.service.js';
+import { DocumentExtractionLimitError } from './document-extraction-limits.js';
 import { OcrService, type OcrLine } from './ocr.service.js';
-import { PdfRasterizerService } from './pdf-rasterizer.service.js';
+import { PdfRasterizeError, PdfRasterizerService } from './pdf-rasterizer.service.js';
 import { extractReceiptCandidate } from './receipt-extractor.js';
 
 const TERMINAL_STATUSES = new Set<DocumentExtractionStatus>([
@@ -49,6 +51,7 @@ export class DocumentExtractionService {
     private readonly scanner: MalwareScannerService,
     private readonly ocr: OcrService,
     private readonly pdfRasterizer: PdfRasterizerService,
+    private readonly config: ConfigService,
   ) {}
 
   async process(attachmentId: string): Promise<void> {
@@ -70,10 +73,17 @@ export class DocumentExtractionService {
     if (TERMINAL_STATUSES.has(extraction.status)) return;
 
     let scanEngineVersion: string | null = null;
+    const deadline = new ExtractionDeadline(
+      this.config.getOrThrow<number>('DOCUMENT_EXTRACTION_TIMEOUT_MS'),
+    );
 
     try {
       await this.setStatus(extraction.id, 'SCANNING');
       const bytes = await this.storage.download(attachment.storageKey);
+      const maxBytes = this.config.getOrThrow<number>('DOCUMENT_EXTRACTION_MAX_BYTES');
+      if (attachment.sizeBytes > maxBytes || bytes.byteLength > maxBytes) {
+        throw new DocumentExtractionLimitError('DOCUMENT_BYTES_EXCEEDED');
+      }
       const actualHash = createHash('sha256').update(bytes).digest('hex');
       if (actualHash !== attachment.contentHash) {
         throw new ExtractionStepError(
@@ -115,23 +125,31 @@ export class DocumentExtractionService {
       let text: string;
       try {
         if (attachment.contentType === 'application/pdf') {
-          const pageImages = await this.pdfRasterizer.rasterize(bytes);
+          const pageImages = await this.pdfRasterizer.rasterize(bytes, deadline.remainingMs());
           lines = [];
           const texts: string[] = [];
           for (let index = 0; index < pageImages.length; index += 1) {
             const pageImage = pageImages[index];
             if (!pageImage) continue;
-            const result = await this.ocr.recognize(pageImage, index + 1);
+            const result = await this.ocr.recognize(pageImage, index + 1, deadline.remainingMs());
             lines.push(...result.lines);
             texts.push(result.text);
           }
-          text = texts.join('\n');
+          ({ lines, text } = limitOcrOutput(
+            lines,
+            texts.join('\n'),
+            this.maxExtractionTextChars(),
+          ));
         } else {
-          const result = await this.ocr.recognize(bytes, 1);
-          lines = [...result.lines];
-          text = result.text;
+          const result = await this.ocr.recognize(bytes, 1, deadline.remainingMs());
+          ({ lines, text } = limitOcrOutput(
+            [...result.lines],
+            result.text,
+            this.maxExtractionTextChars(),
+          ));
         }
       } catch (error) {
+        if (isPermanentDocumentFailure(error)) throw error;
         throw new ExtractionStepError('OCR_FAILED', error);
       }
 
@@ -186,12 +204,23 @@ export class DocumentExtractionService {
     } catch (error) {
       const reason = error instanceof ExtractionStepError ? error.reason : 'FAILED';
       this.logger.warn({ message: 'Document extraction failed', attachmentId, reason, error });
+      if (isPermanentDocumentFailure(error)) {
+        await this.finish(extraction.id, attachment, 'UNSUPPORTED_FOR_EXTRACTION', {
+          failureReason: permanentFailureReason(error),
+          scanEngineVersion,
+        });
+        return;
+      }
       await this.finish(extraction.id, attachment, 'FAILED', {
         failureReason: reason,
         scanEngineVersion,
       });
       throw error;
     }
+  }
+
+  private maxExtractionTextChars(): number {
+    return this.config.getOrThrow<number>('DOCUMENT_EXTRACTION_MAX_TEXT_CHARS');
   }
 
   /** An Expense's "category" is an ExpenseCategory; a Bill has no such concept and posts lines
@@ -272,5 +301,43 @@ export class DocumentExtractionService {
         after: { attachmentId: attachment.id, status, ...extra },
       });
     });
+  }
+}
+
+function limitOcrOutput(
+  lines: readonly OcrLine[],
+  text: string,
+  maxChars: number,
+): { lines: OcrLine[]; text: string } {
+  const boundedLines: OcrLine[] = [];
+  let usedChars = 0;
+  for (const line of lines) {
+    if (usedChars + line.text.length > maxChars) break;
+    usedChars += line.text.length;
+    boundedLines.push(line);
+  }
+  return { lines: boundedLines, text: text.slice(0, maxChars) };
+}
+
+function isPermanentDocumentFailure(error: unknown): boolean {
+  return error instanceof DocumentExtractionLimitError || error instanceof PdfRasterizeError;
+}
+
+function permanentFailureReason(error: unknown): string {
+  if (error instanceof DocumentExtractionLimitError) return error.reason;
+  return 'PDF_MALFORMED_OR_UNSUPPORTED';
+}
+
+class ExtractionDeadline {
+  private readonly deadline: number;
+
+  constructor(timeoutMs: number) {
+    this.deadline = Date.now() + timeoutMs;
+  }
+
+  remainingMs(): number {
+    const remaining = this.deadline - Date.now();
+    if (remaining <= 0) throw new DocumentExtractionLimitError('DOCUMENT_WALL_CLOCK_EXCEEDED');
+    return remaining;
   }
 }

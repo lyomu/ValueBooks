@@ -91,7 +91,7 @@ export function RecurringExpensesPage() {
     void load();
   }, [load]);
 
-  const currency = organization?.baseCurrency ?? 'KES';
+  const currency = organization?.baseCurrency ?? 'USD';
 
   function resetForm() {
     setPayeeVendorId('');

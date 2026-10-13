@@ -81,6 +81,7 @@ const navigationGroups: NavigationGroup[] = [
     alwaysOpen: true,
     items: [
       { label: 'Dashboard', icon: LayoutDashboard, href: '/dashboard' },
+      { label: 'Getting Started', icon: ListChecks, href: '/getting-started' },
       { label: 'Notifications', icon: Bell, href: '/notifications' },
     ],
   },
@@ -174,24 +175,19 @@ const navigationGroups: NavigationGroup[] = [
     ],
   },
 ];
-function ValueBooksMark({ onExpand }: { onExpand?: () => void }) {
-  if (onExpand) {
-    return (
-      <button
-        className="rb-brand-mark"
-        type="button"
-        onClick={onExpand}
-        aria-label="Expand sidebar"
-      >
-        <BookOpenText aria-hidden="true" />
-      </button>
-    );
-  }
+import { BrandLogo } from './brand-logo';
 
+function CollapsedSidebarMark({ onExpand }: { onExpand: () => void }) {
   return (
-    <span className="rb-brand-mark" aria-hidden="true">
-      <BookOpenText />
-    </span>
+    <button
+      className="rb-brand-mark"
+      type="button"
+      onClick={onExpand}
+      aria-label="Expand sidebar"
+      style={{ background: 'transparent' }}
+    >
+      <BrandLogo variant="mark" height={28} alt="ValueBooks" priority />
+    </button>
   );
 }
 
@@ -234,13 +230,13 @@ function Sidebar({
   return (
     <aside className={collapsed ? 'rb-app-sidebar is-collapsed' : 'rb-app-sidebar'}>
       <div className="rb-app-sidebar__brand">
-        <ValueBooksMark onExpand={collapsed ? onToggle : undefined} />
-        {!collapsed ? (
+        {collapsed ? (
+          <CollapsedSidebarMark onExpand={onToggle} />
+        ) : (
           <div className="rb-app-sidebar__brand-copy">
-            <strong>ValueBooks</strong>
-            <span>Accounting, clearly</span>
+            <BrandLogo variant="full" tone="inverse" height={26} alt="ValueBooks" priority />
           </div>
-        ) : null}
+        )}
         <button
           className="rb-app-sidebar__toggle"
           type="button"

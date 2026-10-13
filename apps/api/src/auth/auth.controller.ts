@@ -1,7 +1,9 @@
 import {
+  BadRequestException,
   Body,
   Controller,
   Delete,
+  ForbiddenException,
   Get,
   HttpCode,
   Patch,
@@ -21,13 +23,14 @@ import { AuthService } from './auth.service.js';
 import {
   EmailDto,
   LoginDto,
+  MfaCodeDto,
   ResetPasswordDto,
   SignupDto,
   TokenDto,
   UpdateProfileDto,
 } from './auth.dto.js';
 import { getCookie, requestMetadata } from './request-context.js';
-import { clearSessionCookie, SESSION_COOKIE, setSessionCookie } from './session-cookie.js';
+import { clearMfaChallengeCookie, clearSessionCookie, MFA_CHALLENGE_COOKIE, SESSION_COOKIE, setMfaChallengeCookie, setSessionCookie } from './session-cookie.js';
 import { SessionGuard, type AuthenticatedRequest } from './session.guard.js';
 
 @Controller('auth')
@@ -39,7 +42,7 @@ export class AuthController {
 
   @Post('signup')
   @HttpCode(202)
-  async signup(@Body() input: SignupDto, @Req() request: Request) {
+  async signup(@Body() input: SignupDto, @Req() request: Request, @Res({ passthrough: true }) response: Response) {
     const metadata = requestMetadata(request, this.auth.pepper);
     await this.rateLimit.consume(`auth:signup:ip:${metadata.ipHash}`, 25, 60 * 60);
     await this.rateLimit.consume(
@@ -47,7 +50,9 @@ export class AuthController {
       5,
       60 * 60,
     );
-    return { data: await this.auth.signup(input, metadata) };
+    const result = await this.auth.signup(input, metadata);
+    if (result.challengeToken) setMfaChallengeCookie(response, result.challengeToken);
+    return { data: { message: result.message } };
   }
 
   @Post('resend-verification')
@@ -81,8 +86,73 @@ export class AuthController {
       15 * 60,
     );
     const result = await this.auth.login(input, metadata);
+    if (result.mfaRequired && result.mfaChallengeToken) {
+      setMfaChallengeCookie(response, result.mfaChallengeToken);
+      return { data: { user: result.user, mfaRequired: true } };
+    }
+    if (!result.token) throw new Error('Login did not create a session.');
     setSessionCookie(response, result.token);
-    return { data: { user: result.user } };
+    return { data: { user: result.user, mfaRequired: false } };
+  }
+
+  @Get('mfa')
+  @UseGuards(SessionGuard)
+  async mfaStatus(@Req() request: AuthenticatedRequest) {
+    return { data: await this.auth.mfaStatus(request.auth.user.id) };
+  }
+
+  @Post('mfa/enroll')
+  @UseGuards(SessionGuard)
+  async enrollMfa(@Req() request: AuthenticatedRequest, @Res({ passthrough: true }) response: Response) {
+    const metadata = requestMetadata(request, this.auth.pepper);
+    await this.rateLimit.consume(`auth:mfa-enroll:${request.auth.user.id}`, 3, 60 * 60);
+    await this.rateLimit.consume(`auth:mfa-issue:${metadata.ipHash}`, 12, 60 * 60);
+    const token = await this.auth.beginMfaEnrollment(request.auth.user);
+    setMfaChallengeCookie(response, token);
+    return { data: { message: 'Verification code sent.' } };
+  }
+
+  @Post('mfa/verify')
+  async verifyMfa(@Body() input: MfaCodeDto, @Req() request: Request, @Res({ passthrough: true }) response: Response) {
+    const rawToken = getCookie(request, MFA_CHALLENGE_COOKIE);
+    if (!rawToken) throw new BadRequestException('No verification challenge is active.');
+    const result = await this.auth.verifyMfaChallenge(rawToken, input.code, requestMetadata(request, this.auth.pepper));
+    clearMfaChallengeCookie(response);
+    if (result.kind === 'login' || result.kind === 'signup') setSessionCookie(response, result.token);
+    return { data: result.kind === 'login' || result.kind === 'signup' ? { user: result.user, mfaRequired: false, signupVerified: result.kind === 'signup' } : result.kind === 'enrolled' ? { enabled: true } : { verified: true } };
+  }
+
+  @Post('mfa/resend')
+  @HttpCode(202)
+  async resendMfa(@Req() request: Request) {
+    const metadata = requestMetadata(request, this.auth.pepper);
+    await this.rateLimit.consume(`auth:mfa-resend:${metadata.ipHash}`, 6, 60 * 60);
+    const rawToken = getCookie(request, MFA_CHALLENGE_COOKIE);
+    if (!rawToken) throw new BadRequestException('No verification challenge is active.');
+    await this.auth.resendMfaChallenge(rawToken);
+    return { data: { message: 'A new code has been sent.' } };
+  }
+
+  @Post('mfa/step-up')
+  @UseGuards(SessionGuard)
+  async stepUpMfa(@Req() request: AuthenticatedRequest, @Res({ passthrough: true }) response: Response) {
+    const metadata = requestMetadata(request, this.auth.pepper);
+    await this.rateLimit.consume(`auth:mfa-step-up:${request.auth.user.id}`, 6, 60 * 60);
+    await this.rateLimit.consume(`auth:mfa-issue:${metadata.ipHash}`, 12, 60 * 60);
+    const token = await this.auth.beginMfaStepUp(request.auth);
+    setMfaChallengeCookie(response, token);
+    return { data: { message: 'Verification code sent.' } };
+  }
+
+  @Delete('mfa')
+  @HttpCode(204)
+  @UseGuards(SessionGuard)
+  async disableMfa(@Req() request: AuthenticatedRequest, @Res({ passthrough: true }) response: Response) {
+    if (request.auth.user.emailMfaEnabled && (!request.auth.mfaVerifiedAt || Date.now() - request.auth.mfaVerifiedAt.getTime() > 15 * 60 * 1000)) {
+      throw new ForbiddenException('Verify your email code again before disabling email verification.');
+    }
+    await this.auth.disableMfa(request.auth.user.id, requestMetadata(request, this.auth.pepper));
+    clearSessionCookie(response);
   }
 
   @Post('logout')
@@ -132,6 +202,9 @@ export class AuthController {
   @HttpCode(204)
   @UseGuards(SessionGuard)
   async revokeOthers(@Req() request: AuthenticatedRequest) {
+    if (request.auth.user.emailMfaEnabled && (!request.auth.mfaVerifiedAt || Date.now() - request.auth.mfaVerifiedAt.getTime() > 15 * 60 * 1000)) {
+      throw new ForbiddenException('Verify your email code again before signing out other sessions.');
+    }
     await this.auth.revokeOtherSessions(request.auth.user.id, request.auth.sessionId);
   }
 

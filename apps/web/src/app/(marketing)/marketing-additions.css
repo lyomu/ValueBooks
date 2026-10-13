@@ -190,9 +190,6 @@
   margin: 0 auto;
   padding: clamp(3rem, 6vw, 5rem) 0;
 }
-.mk-pricing-section > .mk-section-intro h2 {
-  max-width: 30ch;
-}
 .mk-pricing-page-section {
   width: min(100% - 3rem, 72rem);
   margin: 0 auto;

@@ -5,7 +5,6 @@
  */
 const APPROX_USD_RATES: Record<string, number> = {
   USD: 1,
-  KES: 129,
   NGN: 1550,
   GHS: 15.5,
   UGX: 3750,
@@ -13,19 +12,6 @@ const APPROX_USD_RATES: Record<string, number> = {
   ZAR: 18,
   EUR: 0.92,
   GBP: 0.78,
-};
-
-/** Minimal locale -> currency guesses for the markets ValueBooks' marketing copy already targets. */
-const LOCALE_CURRENCY_MAP: Record<string, string> = {
-  'en-KE': 'KES',
-  'sw-KE': 'KES',
-  'en-NG': 'NGN',
-  'en-GH': 'GHS',
-  'en-UG': 'UGX',
-  'sw-TZ': 'TZS',
-  'en-TZ': 'TZS',
-  'en-ZA': 'ZAR',
-  'en-GB': 'GBP',
 };
 
 export type CurrencyDisplay = {
@@ -41,20 +27,7 @@ export type CurrencyDisplay = {
  * both default to USD and avoid a hydration mismatch.
  */
 export function detectLikelyCurrency(): string {
-  try {
-    const locale = Intl.NumberFormat().resolvedOptions().locale;
-    if (LOCALE_CURRENCY_MAP[locale]) return LOCALE_CURRENCY_MAP[locale];
-    const region = locale.split('-')[1];
-    if (region) {
-      const byRegion = Object.entries(LOCALE_CURRENCY_MAP).find(([key]) =>
-        key.endsWith(`-${region}`),
-      );
-      if (byRegion) return byRegion[1];
-    }
-    return 'USD';
-  } catch {
-    return 'USD';
-  }
+  return 'USD';
 }
 
 export function convertUsd(amountUsd: number, currencyCode: string): CurrencyDisplay {

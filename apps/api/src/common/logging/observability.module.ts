@@ -10,6 +10,31 @@ import { redactUrl } from './redact.js';
 
 const CORRELATION_HEADER = 'x-request-id';
 
+export const LOG_REDACTION_PATHS: string[] = [
+  'req.headers.authorization',
+  'req.headers.cookie',
+  'res.headers["set-cookie"]',
+  'req.body.password',
+  'req.body.token',
+  'req.body.prompt',
+  'req.body.question',
+  'req.body.evidence',
+  'req.body.ocrText',
+  'req.body.apiKey',
+  'authorization',
+  'apiKey',
+  'prompt',
+  'question',
+  'evidence',
+  'ocrText',
+  '*.authorization',
+  '*.apiKey',
+  '*.prompt',
+  '*.question',
+  '*.evidence',
+  '*.ocrText',
+];
+
 /**
  * Structured logging, request correlation, and the error-reporting seam.
  *
@@ -48,13 +73,7 @@ const CORRELATION_HEADER = 'x-request-id';
           res: (response: { statusCode: number }) => ({ statusCode: response.statusCode }),
         },
         redact: {
-          paths: [
-            'req.headers.authorization',
-            'req.headers.cookie',
-            'res.headers["set-cookie"]',
-            'req.body.password',
-            'req.body.token',
-          ],
+          paths: LOG_REDACTION_PATHS,
           censor: '[redacted]',
         },
         transport:

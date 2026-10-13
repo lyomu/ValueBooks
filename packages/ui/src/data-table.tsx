@@ -1,9 +1,12 @@
-import { SearchX } from 'lucide-react';
-import type { HTMLAttributes, ReactNode } from 'react';
+import { Filter, MoreHorizontal, Search, SearchX } from 'lucide-react';
+import type { HTMLAttributes, InputHTMLAttributes, ReactNode } from 'react';
 
+import { Button } from './button';
 import { Card } from './card';
+import { Dropdown, DropdownContent, DropdownTrigger } from './dropdown';
 import { EmptyState, type EmptyStateConfig } from './empty-state';
-import { Spinner } from './loading';
+import { Input } from './form';
+import { Spinner, TableSkeleton } from './loading';
 import { cn } from './utils';
 
 export type DataTableColumn<T> = {
@@ -36,12 +39,77 @@ export function DataTableToolbar({
   );
 }
 
+/** Standard search control for listing and report toolbars. */
+export function DataTableSearch({
+  label,
+  className,
+  ...props
+}: InputHTMLAttributes<HTMLInputElement> & { label: string }) {
+  return (
+    <label className="rb-data-table-toolbar__search">
+      <Search aria-hidden="true" />
+      <span className="rb-visually-hidden">{label}</span>
+      <Input className={className} {...props} />
+    </label>
+  );
+}
+
+/** Standard filter group for listing and report toolbars. */
+export function DataTableFilters({
+  children,
+  className,
+  ...props
+}: HTMLAttributes<HTMLDivElement>) {
+  return (
+    <div className={cn('rb-data-table-toolbar__filter', className)} {...props}>
+      <Filter aria-hidden="true" />
+      {children}
+    </div>
+  );
+}
+
+/**
+ * A shared, keyboard-accessible entry point for valid secondary record actions.
+ * Keep the primary route as a real reference link in its own column; use this
+ * menu only for contextual actions such as edit, duplicate, archive, or void.
+ */
+export function RowActionMenu({
+  children,
+  label = 'More actions',
+  disabled = false,
+}: {
+  children: ReactNode;
+  label?: string;
+  disabled?: boolean;
+}) {
+  return (
+    <Dropdown>
+      <DropdownTrigger asChild>
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          className="rb-row-action-menu__trigger"
+          aria-label={label}
+          disabled={disabled}
+        >
+          <MoreHorizontal aria-hidden="true" />
+        </Button>
+      </DropdownTrigger>
+      <DropdownContent align="end" className="rb-row-action-menu__content">
+        {children}
+      </DropdownContent>
+    </Dropdown>
+  );
+}
+
 export function DataTable<T extends { id: string }>({
   caption,
   columns,
   rows,
   onRowClick,
   loading = false,
+  skeletonRows = 6,
   emptyTitle = 'No records yet',
   emptyDescription,
   emptyState,
@@ -52,6 +120,7 @@ export function DataTable<T extends { id: string }>({
   rows: readonly T[];
   onRowClick?: (row: T) => void;
   loading?: boolean;
+  skeletonRows?: number;
   emptyTitle?: string;
   emptyDescription?: string;
   emptyState?: Omit<EmptyStateConfig, 'title' | 'description'> &
@@ -70,10 +139,10 @@ export function DataTable<T extends { id: string }>({
   };
 
   return (
-    <Card className="rb-table-card">
+    <Card className="rb-table-card" aria-busy={loading || undefined}>
       {toolbar}
       <div className="rb-table-scroll">
-        <table className="rb-table">
+        <table className="rb-table rb-table--listing">
           <caption className="rb-visually-hidden">{caption}</caption>
           <thead>
             <tr>
@@ -93,7 +162,8 @@ export function DataTable<T extends { id: string }>({
             </tr>
           </thead>
           <tbody>
-            {loading ? (
+            {loading ? <TableSkeleton columns={columns.length} rows={skeletonRows} /> : null}
+            {loading && false ? (
               <tr>
                 <td colSpan={columns.length} className="rb-table__state">
                   <span className="rb-table__loading">
@@ -113,7 +183,10 @@ export function DataTable<T extends { id: string }>({
               ? rows.map((row) => (
                   <tr
                     key={row.id}
-                    className={cn(onRowClick && 'rb-table__row--interactive')}
+                    className={cn(
+                      'rb-table__row--listing',
+                      onRowClick && 'rb-table__row--interactive',
+                    )}
                     onClick={() => onRowClick?.(row)}
                   >
                     {columns.map((column) => (

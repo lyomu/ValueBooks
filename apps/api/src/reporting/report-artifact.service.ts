@@ -106,5 +106,5 @@ function reportHtml(title: string, columns: readonly ReportColumn[], rows: reado
       .replaceAll('<', '&lt;')
       .replaceAll('>', '&gt;')
       .replaceAll('"', '&quot;');
-  return `<!doctype html><html><head><meta charset="utf-8"><style>body{font-family:Arial,sans-serif;padding:24px;color:#17211b}table{border-collapse:collapse;width:100%;font-size:9px}th,td{border-bottom:1px solid #dfe5e1;padding:5px;text-align:left}th{background:#eef3ef}</style></head><body><h1>${escape(title)}</h1><table><thead><tr>${columns.map((column) => `<th>${escape(column.label)}</th>`).join('')}</tr></thead><tbody>${rows.map((row) => `<tr>${columns.map((column) => `<td>${escape(row.cells[column.key])}</td>`).join('')}</tr>`).join('')}</tbody></table></body></html>`;
+  return `<!doctype html><html><head><meta charset="utf-8"><style>body{font-family:'Google Sans','Google Sans Text',Arial,sans-serif;padding:24px;color:#17211b}table{border-collapse:collapse;width:100%;font-size:9px}th,td{border-bottom:1px solid #dfe5e1;padding:5px;text-align:left}th{background:#eef3ef}</style></head><body><h1>${escape(title)}</h1><table><thead><tr>${columns.map((column) => `<th>${escape(column.label)}</th>`).join('')}</tr></thead><tbody>${rows.map((row) => `<tr>${columns.map((column) => `<td>${escape(row.cells[column.key])}</td>`).join('')}</tr>`).join('')}</tbody></table></body></html>`;
 }

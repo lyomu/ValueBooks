@@ -6,6 +6,7 @@ import {
   HttpCode,
   Param,
   ParseUUIDPipe,
+  Query,
   Patch,
   Post,
   Req,
@@ -39,6 +40,7 @@ import {
 } from './organization.dto.js';
 import { OrganizationGuard } from './organization.guard.js';
 import { OrganizationService } from './organization.service.js';
+import { DashboardService } from './dashboard.service.js';
 import { PERMISSION_CATALOG } from './permission-catalog.js';
 import { RolesService } from './roles.service.js';
 
@@ -53,12 +55,31 @@ export class OrganizationsController {
     private readonly numbering: DocumentNumberingService,
     private readonly auth: AuthService,
     private readonly rateLimit: AuthRateLimitService,
+    private readonly dashboard: DashboardService,
   ) {}
 
   /** Declared before `:organizationId` so the static route is not captured as an identifier. */
   @Get('reference-data')
   referenceData() {
     return { data: referenceData };
+  }
+
+  @Get(':organizationId/dashboard')
+  @UseGuards(OrganizationGuard)
+  @RequirePermission('reports.view')
+  async dashboardSummary(
+    @Req() request: OrganizationRequest,
+    @Query('from') from?: string,
+    @Query('to') to?: string,
+  ) {
+    return {
+      data: await this.dashboard.get(
+        request.organization.id,
+        from,
+        to,
+        request.organization.permissions,
+      ),
+    };
   }
 
   @Get()

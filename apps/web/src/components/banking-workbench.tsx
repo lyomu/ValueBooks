@@ -268,7 +268,7 @@ export function FinancialAccountsPage() {
             account={editing}
             organizationId={organizationId}
             ledgerAccounts={ledgerAccounts}
-            fallbackCurrency={organization?.baseCurrency ?? 'KES'}
+            fallbackCurrency={organization?.baseCurrency ?? 'USD'}
             onCancel={() => {
               setShowCreate(false);
               setEditing(null);
@@ -1989,7 +1989,7 @@ export function ReconciliationsPage() {
   const accountNames = useMemo(() => financialAccountLabelMap(accounts), [accounts]);
   const activeAccount =
     accounts.find((account) => account.id === selected?.financialAccountId) ?? null;
-  const activeCurrency = activeAccount?.currency ?? organization?.baseCurrency ?? 'KES';
+  const activeCurrency = activeAccount?.currency ?? organization?.baseCurrency ?? 'USD';
   const selectedDifference = selected ? BigInt(selected.difference) : 0n;
   const canComplete = canManage && selected?.status === 'IN_PROGRESS' && selectedDifference === 0n;
 
