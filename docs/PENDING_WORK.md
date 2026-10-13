@@ -110,38 +110,44 @@ _Why first:_ the web app does not build, and nothing else can be verified or mer
 _Why next:_ cheap, and it stops the next session from working off wrong information. The merge
 puts four phases of work on `main`.
 
-### [ ] 7 · D1 · Update `docs/GAPS.md` (S)
+### [x] 7 · D1 · Update `docs/GAPS.md` (S)
 
-- [ ] Tick #23, #25, #27, #28 (closed per the file's own 2026-10-06 note)
+- [x] Tick #23, #25, #27, #28 (closed per the file's own 2026-10-06 note) — re-verified against
+      the code (2026-10-10): `UPDATE_AUTOMATION_TASK` action, async-export `202` + status route,
+      and `AUTOMATION_OPERATIONS_RUNBOOK.md` content
 - [x] Tick #44 — `prisma generate` now runs before typecheck, test and build in
       `apps/api/package.json` (done 2026-10-10)
-- [ ] Renumber section G's items 43–46 so they no longer clash with section F's 43/44
-- [ ] Note that #35 is partial (6 document types have version checks) and #24 is partial
+- [x] Renumber section G's items 43–46 so they no longer clash with section F's 43/44 — now 47–50
+- [x] Note that #35 is partial (6 document types have version checks) and #24 is partial
       (interactive XLSX streams)
 - [ ] Update #43 with today's gate status, and close it once P0 is green — status note added
-      2026-10-10; close it when E2E is green
-- [ ] Update the totals and snapshot date
+      2026-10-10; close it when E2E is green (left open, as instructed — E2E is not green yet)
+- [x] Update the totals and snapshot date
 
-### [ ] 8 · D2 · Reconcile `docs/PHASE11_TODO.md` lines 91 and 99 (S)
+### [x] 8 · D2 · Reconcile `docs/PHASE11_TODO.md` lines 91 and 99 (S)
 
-- [ ] Check the evidence ledger in that file for the 2026-09-11 portal E2E run
-- [ ] If `phase11-portal.spec.ts` ran green, tick line 91 with a reference; otherwise run it as
-      part of G5
-- [ ] Review the portal at desktop and mobile, then tick line 99
-- [ ] Correct GAPS G43, which claims all four boxes are already checked
+- [x] Check the evidence ledger in that file for the 2026-09-11 portal E2E run
+- [x] `phase11-portal.spec.ts` ran green in the P0 session (2026-10-10); ticked line 91 citing
+      `docs/P0_HANDOVER.md` (its `@visual` baseline stays open under P0 item 6)
+- [x] Portal reviewed at desktop and mobile during the P0 session (found and fixed the 9px
+      mobile scroll bug); ticked line 99
+- [x] Corrected GAPS #47 (formerly G43), which wrongly claimed all four boxes were already
+      checked against the 2026-09-11 ledger
 
-### [ ] 9 · D3 · Correct `docs/PHASE14_RELEASE_GATE.md` (S)
+### [x] 9 · D3 · Correct `docs/PHASE14_RELEASE_GATE.md` (S)
 
-- [ ] Performance row: only interactive XLSX export streams; CSV and stored artifacts still buffer
-      (link to T2)
-- [ ] Security row: add that MFA is not implemented (only the `security.mfa.manage` permission key
+- [x] Performance row: only interactive XLSX export streams; CSV and stored artifacts still buffer
+      (linked to item 33)
+- [x] Security row: add that MFA is not implemented (only the `security.mfa.manage` permission key
       exists)
+- [x] Reliability row: added that the background worker couldn't boot until 2026-10-10 (missing
+      `DatabaseModule`, fixed in P0); flagged earlier "worker verified" claims as suspect
 
-### [ ] 10 · D4 · Update `docs/HANDOVER.md` (S)
+### [x] 10 · D4 · Update `docs/HANDOVER.md` (S)
 
-- [ ] Phase table: 13 = implemented, acceptance open; 14 = in progress
-- [ ] Replace the "What is genuinely open" list with a pointer to this file
-- [ ] Refresh the "Last refreshed" date
+- [x] Phase table: 13 = implemented, acceptance open; 14 = in progress
+- [x] Replace the "What is genuinely open" list with a pointer to this file
+- [x] Refresh the "Last refreshed" date
 
 ### [ ] 11 · M1 · Merge `chore/verification-closure` into `main` (S)
 
@@ -152,21 +158,27 @@ puts four phases of work on `main`.
       `chore/verification-closure`)
 - [ ] Decide whether to keep or delete the old branch
 
-### [ ] 12 · D5 · Clean stale boxes in the roadmap and execution plan (S)
+### [x] 12 · D5 · Clean stale boxes in the roadmap and execution plan (S)
 
-- [ ] `docs/EXECUTION_PLAN.md:283-343` — the Phase 7 build list is done; tick it with references to
-      `PHASE7_TODO.md`
-- [ ] `docs/EXECUTION_PLAN.md:511-559` — tick the Phase 10 items or point them at the named debt
-- [ ] `docs/BUILD_ROADMAP.md:397` and `:408` — resolve the Phase 4 deferred item and the line
-      "blocked on Phase 6" (Phase 6 is done)
-- [ ] `docs/BUILD_ROADMAP.md:118` and the Definition-of-Done boxes at `:941-945` — link them to
-      the matching items here
+- [x] `docs/EXECUTION_PLAN.md:283-343` — the Phase 7 build list is done; ticked with a reference
+      to `PHASE7_TODO.md` (43/43 checked there)
+- [x] `docs/EXECUTION_PLAN.md:511-559` — ticked the Phase 10 items that are actually done
+      (10A contract schemas, submitter-role condition, oversized-PDF `202` export, operator
+      runbooks) and pointed the rest (10H edge-case tests, 10E recurring unification) at the
+      named debt
+- [x] `docs/BUILD_ROADMAP.md:397` and `:408` — left the Phase 4 deferred item open as instructed;
+      fixed the stale "blocked on Phase 6" line (Phase 6 shipped COGS posting;
+      `inventory.int.test.ts` proves it)
+- [x] `docs/BUILD_ROADMAP.md:118` and the Definition-of-Done boxes — linked them to
+      `docs/PENDING_WORK.md` items 15, 17, 22 and 24; the analytics-events DoD box has no tracker
+      entry, noted inline rather than inventing one
 
-### [ ] 13 · D6 · Clear out the log clutter (S)
+### [x] 13 · D6 · Clear out the log clutter (S)
 
-- [ ] Delete the ~20 `*.log` files in the repository root
-- [ ] Empty `.dev-logs/`
-- [ ] Optional: send future logs to one ignored `logs/` folder
+- [x] Deleted the 24 `*.log` files in the repository root
+- [x] Emptied `.dev-logs/` (14 files removed)
+- [ ] Optional: send future logs to one ignored `logs/` folder — not done (would need code
+      changes, out of scope for a docs-only pass)
 
 ## P2 — Launch blockers: missing features and data safety
 
