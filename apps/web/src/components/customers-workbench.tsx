@@ -4,6 +4,7 @@ import type { Contact } from '@valuebooks/contracts';
 import {
   Button,
   ForbiddenState,
+  PageHeader,
   Select,
   Skeleton,
   StatusBadge,
@@ -11,11 +12,13 @@ import {
 } from '@valuebooks/ui';
 import { FileClock, Plus } from 'lucide-react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useState } from 'react';
 
 import { ApiError, apiRequest } from '../lib/api';
 import { hasPermission, useWorkspace } from '../lib/workspace';
 import { CustomerDialog } from './customer-dialog';
+import { EntityDetailView } from './master-detail/entity-detail-view';
 import { OperationalListing } from './operational-listing';
 import { CustomerDetailPane, CustomerToolbar } from './customer-detail-pane';
 import { RecordDetailWorkspace } from './record-detail-workspace';
@@ -23,7 +26,12 @@ import { RecordDetailWorkspace } from './record-detail-workspace';
 type ContactResponse = { data: Contact };
 type ContactListResponse = { data: Contact[] };
 
-export function CustomersPage() {
+export function CustomersPage({
+  initialSelectedCustomerId,
+}: {
+  initialSelectedCustomerId?: string;
+}) {
+  const router = useRouter();
   const workspace = useWorkspace({ requireOrganization: true });
   const organization = workspace.activeOrganization;
   const organizationId = organization?.id ?? null;
@@ -40,7 +48,9 @@ export function CustomersPage() {
   const [statusFilter, setStatusFilter] = useState<'' | 'ACTIVE' | 'INACTIVE'>('');
   const [editing, setEditing] = useState<Contact | null>(null);
   const [showCreate, setShowCreate] = useState(false);
-  const [selectedCustomerId, setSelectedCustomerId] = useState<string | null>(null);
+  const [selectedCustomerId, setSelectedCustomerId] = useState<string | null>(
+    initialSelectedCustomerId ?? null,
+  );
   const [recordingPayment, setRecordingPayment] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
@@ -62,6 +72,10 @@ export function CustomersPage() {
   useEffect(() => {
     void load();
   }, [load]);
+
+  useEffect(() => {
+    setSelectedCustomerId(initialSelectedCustomerId ?? null);
+  }, [initialSelectedCustomerId]);
 
   async function setStatus(customer: Contact, status: 'ACTIVE' | 'INACTIVE') {
     if (!organizationId) return;
@@ -88,7 +102,9 @@ export function CustomersPage() {
       key: 'name',
       header: 'Customer',
       value: (customer) => customer.displayName,
-      cell: (customer) => customer.displayName,
+      cell: (customer) => (
+        <Link href={`/dashboard/customers/${customer.id}`}>{customer.displayName}</Link>
+      ),
     },
     {
       key: 'email',
@@ -125,8 +141,8 @@ export function CustomersPage() {
             ) : null}
             {canManage ? (
               <>
-                <Button variant="ghost" size="sm" onClick={() => setEditing(customer)}>
-                  Edit
+                <Button asChild variant="ghost" size="sm">
+                  <Link href={`/dashboard/customers/${customer.id}/edit`}>Edit</Link>
                 </Button>
                 {customer.status === 'ACTIVE' ? (
                   <Button
@@ -208,8 +224,15 @@ export function CustomersPage() {
           title="Customers"
           records={customers ?? []}
           selectedId={selectedCustomer.id}
-          onSelect={(customer) => setSelectedCustomerId(customer.id)}
-          onClose={() => setSelectedCustomerId(null)}
+          onSelect={(customer) => {
+            setSelectedCustomerId(customer.id);
+            router.push(`/dashboard/customers/${customer.id}`);
+          }}
+          onClose={() => {
+            setSelectedCustomerId(null);
+            router.push('/dashboard/customers');
+          }}
+          recordHref={(customer) => `/dashboard/customers/${customer.id}`}
           searchText={(customer) =>
             `${customer.displayName} ${customer.legalName ?? ''} ${customer.email ?? ''} ${customer.phone ?? ''}`
           }
@@ -245,19 +268,21 @@ export function CustomersPage() {
             <CustomerToolbar
               customer={customer}
               permissions={permissionsFor()}
-              onEdit={() => setEditing(customer)}
+              onEdit={() => router.push(`/dashboard/customers/${customer.id}/edit`)}
               onSetStatus={(status) => void setStatus(customer, status)}
               onRecordPayment={() => setRecordingPayment(true)}
             />
           )}
           renderDetail={(customer) => (
-            <CustomerDetailPane
-              customer={customer}
-              organizationId={organizationId ?? ''}
-              permissions={permissionsFor()}
-              recordingPayment={recordingPayment}
-              onRecordingPaymentChange={setRecordingPayment}
-            />
+            <EntityDetailView>
+              <CustomerDetailPane
+                customer={customer}
+                organizationId={organizationId ?? ''}
+                permissions={permissionsFor()}
+                recordingPayment={recordingPayment}
+                onRecordingPaymentChange={setRecordingPayment}
+              />
+            </EntityDetailView>
           )}
         />
       ) : !customers && !error ? (
@@ -327,9 +352,66 @@ export function CustomersPage() {
           }}
           onResetFilters={() => setStatusFilter('')}
           empty="No customers match this view."
-          onRowClick={(customer) => setSelectedCustomerId(customer.id)}
+          onRowClick={(customer) => {
+            setSelectedCustomerId(customer.id);
+            router.push(`/dashboard/customers/${customer.id}`);
+          }}
         />
       )}
+    </>
+  );
+}
+
+export function CustomerEditorPage({ customerId }: { customerId: string }) {
+  const router = useRouter();
+  const workspace = useWorkspace({ requireOrganization: true });
+  const organization = workspace.activeOrganization;
+  const organizationId = organization?.id ?? null;
+  const canManage = hasPermission(organization, 'customers.manage');
+  const canOverrideCurrency = hasPermission(organization, 'customers.currency_override');
+  const [customer, setCustomer] = useState<Contact | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!organizationId) return;
+    void apiRequest<ContactResponse>(`/organizations/${organizationId}/customers/${customerId}`)
+      .then((response) => setCustomer(response.data))
+      .catch((caught) =>
+        setError(caught instanceof Error ? caught.message : 'Customer could not be loaded.'),
+      );
+  }, [customerId, organizationId]);
+
+  if (!workspace.loading && organization && !canManage) {
+    return (
+      <ForbiddenState description="Ask an organization owner or administrator to grant customer management access." />
+    );
+  }
+
+  return (
+    <>
+      <PageHeader
+        title={customer ? `Edit ${customer.displayName}` : 'Edit customer'}
+        description="Update customer details and return to the read-only record."
+      />
+      {error ? (
+        <div className="rb-auth-error" role="alert">
+          {error}
+        </div>
+      ) : null}
+      {customer ? (
+        <CustomerDialog
+          open
+          onOpenChange={() => router.push(`/dashboard/customers/${customerId}`)}
+          organizationId={organizationId}
+          baseCurrency={organization?.baseCurrency ?? 'USD'}
+          canOverrideCurrency={canOverrideCurrency}
+          customer={customer}
+          embedded
+          onSaved={(saved) => router.replace(`/dashboard/customers/${saved.id}`)}
+        />
+      ) : !error ? (
+        <Skeleton />
+      ) : null}
     </>
   );
 }

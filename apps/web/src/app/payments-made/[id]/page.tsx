@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 
 import { AppShell } from '../../../components/app-shell';
-import { PaymentMadeEditorPage } from '../../../components/payments-made-workbench';
+import { PaymentsMadePage } from '../../../components/payments-made-workbench';
 
 export const metadata: Metadata = { title: 'Payment made | ValueBooks' };
 
@@ -10,7 +10,7 @@ export default async function PaymentMadeRoute({ params }: { params: Promise<{ i
 
   return (
     <AppShell>
-      <PaymentMadeEditorPage paymentId={id} />
+      <PaymentsMadePage initialSelectedPaymentId={id} />
     </AppShell>
   );
 }

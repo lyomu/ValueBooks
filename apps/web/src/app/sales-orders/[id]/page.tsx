@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 
 import { AppShell } from '../../../components/app-shell';
-import { SalesOrderEditorPage } from '../../../components/sales-orders-workbench';
+import { SalesOrdersPage } from '../../../components/sales-orders-workbench';
 
 export const metadata: Metadata = { title: 'Sales order | ValueBooks' };
 
@@ -10,7 +10,7 @@ export default async function SalesOrderRoute({ params }: { params: Promise<{ id
 
   return (
     <AppShell>
-      <SalesOrderEditorPage orderId={id} />
+      <SalesOrdersPage initialSelectedOrderId={id} />
     </AppShell>
   );
 }

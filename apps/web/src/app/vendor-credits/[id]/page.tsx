@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 
 import { AppShell } from '../../../components/app-shell';
-import { VendorCreditEditorPage } from '../../../components/vendor-credits-workbench';
+import { VendorCreditsPage } from '../../../components/vendor-credits-workbench';
 
 export const metadata: Metadata = { title: 'Vendor credit | ValueBooks' };
 
@@ -10,7 +10,7 @@ export default async function VendorCreditRoute({ params }: { params: Promise<{ 
 
   return (
     <AppShell>
-      <VendorCreditEditorPage vendorCreditId={id} />
+      <VendorCreditsPage initialSelectedVendorCreditId={id} />
     </AppShell>
   );
 }

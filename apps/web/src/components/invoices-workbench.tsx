@@ -79,7 +79,8 @@ const blankLine = (): DraftLine => ({
   taxCodeId: '',
 });
 
-export function InvoicesPage() {
+export function InvoicesPage({ initialSelectedInvoiceId }: { initialSelectedInvoiceId?: string }) {
+  const router = useRouter();
   const workspace = useWorkspace({ requireOrganization: true });
   const organization = workspace.activeOrganization;
   const organizationId = organization?.id ?? null;
@@ -89,7 +90,9 @@ export function InvoicesPage() {
   const [invoices, setInvoices] = useState<Invoice[] | null>(null);
   const [statusFilter, setStatusFilter] = useState<'' | InvoiceStatus>('');
   const [query, setQuery] = useState('');
-  const [selectedInvoiceId, setSelectedInvoiceId] = useState<string | null>(null);
+  const [selectedInvoiceId, setSelectedInvoiceId] = useState<string | null>(
+    initialSelectedInvoiceId ?? null,
+  );
   const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
@@ -109,6 +112,10 @@ export function InvoicesPage() {
   useEffect(() => {
     void load();
   }, [load]);
+
+  useEffect(() => {
+    setSelectedInvoiceId(initialSelectedInvoiceId ?? null);
+  }, [initialSelectedInvoiceId]);
 
   const filtered = useMemo(() => {
     const needle = query.trim().toLowerCase();
@@ -159,14 +166,7 @@ export function InvoicesPage() {
       key: 'invoice',
       header: 'Invoice #',
       cell: (invoice) => (
-        <Link
-          className="rb-invoice-number"
-          href={`/invoices/${invoice.id}`}
-          onClick={(event) => {
-            event.preventDefault();
-            setSelectedInvoiceId(invoice.id);
-          }}
-        >
+        <Link className="rb-invoice-number" href={`/invoices/${invoice.id}`}>
           {invoice.invoiceNumber ?? 'Draft'}
         </Link>
       ),
@@ -208,8 +208,15 @@ export function InvoicesPage() {
         title="Invoices"
         records={invoices ?? []}
         selectedId={selectedInvoice.id}
-        onSelect={(invoice) => setSelectedInvoiceId(invoice.id)}
-        onClose={() => setSelectedInvoiceId(null)}
+        onSelect={(invoice) => {
+          setSelectedInvoiceId(invoice.id);
+          router.push(`/invoices/${invoice.id}`);
+        }}
+        onClose={() => {
+          setSelectedInvoiceId(null);
+          router.push('/invoices');
+        }}
+        recordHref={(invoice) => `/invoices/${invoice.id}`}
         searchText={(invoice) =>
           `${invoice.invoiceNumber ?? ''} ${invoice.contactName} ${invoice.status}`
         }
@@ -653,7 +660,7 @@ export function InvoiceEditorPage({ invoiceId }: { invoiceId?: string }) {
         }
         actions={
           <Button asChild variant="outline">
-            <Link href="/invoices">Back to invoices</Link>
+            <Link href={invoiceId ? `/invoices/${invoiceId}` : '/invoices'}>Back to invoice</Link>
           </Button>
         }
       />

@@ -44,6 +44,33 @@ function collectBrowserErrors(page: Page) {
 }
 
 test.describe('ValueBooks design foundation', () => {
+  test('@visual migrated master-detail routes retain a real record link', async ({
+    page,
+  }, testInfo) => {
+    await signIn(page);
+    const routes = [
+      ['/invoices', 'invoices-master-detail.png'],
+      ['/bills', 'bills-master-detail.png'],
+      ['/quotes', 'quotes-master-detail.png'],
+      ['/purchase-orders', 'purchase-orders-master-detail.png'],
+      ['/sales-orders', 'sales-orders-master-detail.png'],
+      ['/dashboard/customers', 'customers-master-detail.png'],
+    ] as const;
+
+    for (const [route, snapshot] of routes) {
+      await openStable(page, route);
+      const recordLink = page.locator('main .rb-table a').first();
+      await expect(recordLink).toBeVisible();
+      await recordLink.click();
+      await expect(page.locator('.rb-master-detail')).toBeVisible();
+      await expect(page.locator('.rb-master-detail__detail')).toBeVisible();
+      if (testInfo.project.name === 'mobile') {
+        await expect(page.getByRole('button', { name: /Back to .* list/ })).toBeVisible();
+      }
+      await expect(page).toHaveScreenshot(snapshot, { fullPage: true });
+    }
+  });
+
   test('@visual authentication references', async ({ page }, testInfo) => {
     if (testInfo.project.name === 'desktop') {
       await page.setViewportSize({ width: 2560, height: 1356 });

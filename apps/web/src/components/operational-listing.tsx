@@ -2,6 +2,7 @@
 
 import type { MouseEvent as ReactMouseEvent, ReactNode } from 'react';
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import {
   Button,
   Dialog,
@@ -152,11 +153,15 @@ export function OperationalListing<T extends { id: string }>({
   onRowClick,
   empty,
 }: OperationalListingConfig<T>) {
-  const [query, setQuery] = useState('');
-  const [sortKey, setSortKey] = useState(
-    columns.find((column) => column.value)?.key ?? columns[0]?.key ?? '',
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const defaultSortKey = columns.find((column) => column.value)?.key ?? columns[0]?.key ?? '';
+  const [query, setQuery] = useState(() => searchParams.get('q') ?? '');
+  const [sortKey, setSortKey] = useState(() => searchParams.get('sort') ?? defaultSortKey);
+  const [direction, setDirection] = useState<SortDirection>(() =>
+    searchParams.get('dir') === 'desc' ? 'desc' : 'asc',
   );
-  const [direction, setDirection] = useState<SortDirection>('asc');
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [showFilters, setShowFilters] = useState(false);
   const [showImport, setShowImport] = useState(false);
@@ -165,6 +170,27 @@ export function OperationalListing<T extends { id: string }>({
   const [columnWidths, setColumnWidths] = useState<Record<string, number>>({});
   const fileInput = useRef<HTMLInputElement>(null);
   const layoutKey = `valuebooks:list-layout:${title.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`;
+
+  useEffect(() => {
+    setQuery(searchParams.get('q') ?? '');
+    setSortKey(searchParams.get('sort') ?? defaultSortKey);
+    setDirection(searchParams.get('dir') === 'desc' ? 'desc' : 'asc');
+  }, [defaultSortKey, searchParams]);
+
+  function persistListState(next: { q?: string; sort?: string; dir?: SortDirection }) {
+    const params = new URLSearchParams(searchParams.toString());
+    const nextQuery = next.q ?? query;
+    const nextSort = next.sort ?? sortKey;
+    const nextDirection = next.dir ?? direction;
+    if (nextQuery) params.set('q', nextQuery);
+    else params.delete('q');
+    if (nextSort && nextSort !== defaultSortKey) params.set('sort', nextSort);
+    else params.delete('sort');
+    if (nextDirection === 'desc') params.set('dir', 'desc');
+    else params.delete('dir');
+    const serialized = params.toString();
+    router.replace(serialized ? `${pathname}?${serialized}` : pathname, { scroll: false });
+  }
 
   useEffect(() => {
     try {
@@ -209,6 +235,7 @@ export function OperationalListing<T extends { id: string }>({
     setDirection('asc');
     setColumnWidths({});
     window.localStorage.removeItem(layoutKey);
+    persistListState({ q: '', sort: defaultSortKey, dir: 'asc' });
     onResetFilters?.();
   }
 
@@ -316,7 +343,10 @@ export function OperationalListing<T extends { id: string }>({
           <span className="rb-visually-hidden">Search {title}</span>
           <Input
             value={query}
-            onChange={(event) => setQuery(event.target.value)}
+            onChange={(event) => {
+              setQuery(event.target.value);
+              persistListState({ q: event.target.value });
+            }}
             placeholder={`Search in ${title}`}
           />
         </label>
@@ -367,10 +397,11 @@ export function OperationalListing<T extends { id: string }>({
                       type="button"
                       onClick={() => {
                         if (!column.value) return;
-                        setDirection(
-                          sortKey === column.key && direction === 'asc' ? 'desc' : 'asc',
-                        );
+                        const nextDirection =
+                          sortKey === column.key && direction === 'asc' ? 'desc' : 'asc';
+                        setDirection(nextDirection);
                         setSortKey(column.key);
+                        persistListState({ sort: column.key, dir: nextDirection });
                       }}
                       disabled={!column.value}
                     >

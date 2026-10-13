@@ -26,11 +26,15 @@ import {
   type DataTableColumn,
 } from '@valuebooks/ui';
 import { ArrowRightLeft, Plus, Save, Search } from 'lucide-react';
+import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useMemo, useState, type FormEvent } from 'react';
 
 import { ApiError, apiRequest } from '../lib/api';
 import { formValue } from '../lib/forms';
 import { hasPermission, useWorkspace } from '../lib/workspace';
+import { EntityDetailView } from './master-detail/entity-detail-view';
+import { RecordDetailWorkspace } from './record-detail-workspace';
 
 type ItemListResponse = { data: Item[] };
 type AccountListResponse = { data: LedgerAccount[] };
@@ -42,7 +46,12 @@ type InventoryAdjustmentResponse = { data: InventoryAdjustment };
 type ReorderAdviceResponse = { data: ReorderAdvice[] };
 type InventoryValuationResponse = { data: InventoryValuation };
 
-export function WarehousesPage() {
+export function WarehousesPage({
+  initialSelectedWarehouseId,
+}: {
+  initialSelectedWarehouseId?: string;
+}) {
+  const router = useRouter();
   const workspace = useWorkspace({ requireOrganization: true });
   const organization = workspace.activeOrganization;
   const organizationId = organization?.id ?? null;
@@ -53,6 +62,9 @@ export function WarehousesPage() {
   const [showCreate, setShowCreate] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const [selectedWarehouseId, setSelectedWarehouseId] = useState<string | null>(
+    initialSelectedWarehouseId ?? null,
+  );
 
   const load = useCallback(async () => {
     if (!organizationId) return;
@@ -70,6 +82,10 @@ export function WarehousesPage() {
   useEffect(() => {
     void load();
   }, [load]);
+  useEffect(
+    () => setSelectedWarehouseId(initialSelectedWarehouseId ?? null),
+    [initialSelectedWarehouseId],
+  );
 
   const columns: readonly DataTableColumn<Warehouse>[] = [
     {
@@ -77,7 +93,7 @@ export function WarehousesPage() {
       header: 'Warehouse',
       cell: (warehouse) => (
         <div>
-          <strong>{warehouse.code}</strong>
+          <Link href={`/warehouses/${warehouse.id}`}>{warehouse.code}</Link>
           <span className="rb-table-secondary">{warehouse.name}</span>
         </div>
       ),
@@ -104,6 +120,55 @@ export function WarehousesPage() {
   if (!workspace.loading && organization && !canView) {
     return <ForbiddenState description="Ask for inventory warehouse access to manage locations." />;
   }
+  const selectedWarehouse = warehouses?.find((warehouse) => warehouse.id === selectedWarehouseId);
+  if (selectedWarehouse)
+    return (
+      <RecordDetailWorkspace
+        variant="compact"
+        title="Warehouses"
+        records={warehouses ?? []}
+        selectedId={selectedWarehouse.id}
+        onSelect={(warehouse) => {
+          setSelectedWarehouseId(warehouse.id);
+          router.push(`/warehouses/${warehouse.id}`);
+        }}
+        onClose={() => {
+          setSelectedWarehouseId(null);
+          router.push('/warehouses');
+        }}
+        recordHref={(warehouse) => `/warehouses/${warehouse.id}`}
+        searchText={(warehouse) => `${warehouse.code} ${warehouse.name} ${warehouse.address ?? ''}`}
+        railHeader={<h1>All warehouses</h1>}
+        renderRailRecord={(warehouse) => (
+          <>
+            <span className="rb-customer-rail__line">
+              <strong>{warehouse.code}</strong>
+            </span>
+            <span className="rb-customer-rail__meta">{warehouse.name}</span>
+          </>
+        )}
+        detailTitle={(warehouse) => <h1>{warehouse.name}</h1>}
+        renderDetail={(warehouse) => (
+          <EntityDetailView>
+            <Card className="rb-bill-detail">
+              <header className="rb-bill-detail__head">
+                <div>
+                  <p className="rb-bill-detail__eyebrow">Warehouse</p>
+                  <h2>{warehouse.code}</h2>
+                </div>
+                <StatusBadge status={warehouse.status} />
+              </header>
+              <dl className="rb-bill-detail__totals">
+                <div>
+                  <dt>Address</dt>
+                  <dd>{warehouse.address ?? 'Not set'}</dd>
+                </div>
+              </dl>
+            </Card>
+          </EntityDetailView>
+        )}
+      />
+    );
 
   return (
     <>
@@ -252,7 +317,12 @@ function WarehouseForm({
   );
 }
 
-export function StockMovementsPage() {
+export function StockMovementsPage({
+  initialSelectedMovementId,
+}: {
+  initialSelectedMovementId?: string;
+}) {
+  const router = useRouter();
   const workspace = useWorkspace({ requireOrganization: true });
   const organization = workspace.activeOrganization;
   const organizationId = organization?.id ?? null;
@@ -264,6 +334,9 @@ export function StockMovementsPage() {
   const [warehouseId, setWarehouseId] = useState('');
   const [query, setQuery] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const [selectedMovementId, setSelectedMovementId] = useState<string | null>(
+    initialSelectedMovementId ?? null,
+  );
   const currency = organization?.baseCurrency ?? 'USD';
 
   const load = useCallback(async () => {
@@ -294,6 +367,10 @@ export function StockMovementsPage() {
   useEffect(() => {
     void load();
   }, [load]);
+  useEffect(
+    () => setSelectedMovementId(initialSelectedMovementId ?? null),
+    [initialSelectedMovementId],
+  );
 
   const filtered = useMemo(() => {
     const needle = query.trim().toLowerCase();
@@ -311,7 +388,7 @@ export function StockMovementsPage() {
       header: 'Item',
       cell: (movement) => (
         <div>
-          <strong>{movement.itemName}</strong>
+          <Link href={`/stock-movements/${movement.id}`}>{movement.itemName}</Link>
           <span className="rb-table-secondary">{movement.sku ?? 'No SKU'}</span>
         </div>
       ),
@@ -343,6 +420,77 @@ export function StockMovementsPage() {
       <ForbiddenState description="Ask for stock movement access to inspect inventory history." />
     );
   }
+  const selectedMovement = movements?.find((movement) => movement.id === selectedMovementId);
+  if (selectedMovement)
+    return (
+      <RecordDetailWorkspace
+        variant="compact"
+        title="Stock movements"
+        records={movements ?? []}
+        selectedId={selectedMovement.id}
+        onSelect={(movement) => {
+          setSelectedMovementId(movement.id);
+          router.push(`/stock-movements/${movement.id}`);
+        }}
+        onClose={() => {
+          setSelectedMovementId(null);
+          router.push('/stock-movements');
+        }}
+        recordHref={(movement) => `/stock-movements/${movement.id}`}
+        searchText={(movement) =>
+          `${movement.itemName} ${movement.sku ?? ''} ${movement.warehouseName} ${movement.sourceType}`
+        }
+        railHeader={<h1>Stock movements</h1>}
+        renderRailRecord={(movement) => (
+          <>
+            <span className="rb-customer-rail__line">
+              <strong>{movement.itemName}</strong>
+              <span className="rb-invoice-rail__amount">{movement.quantity}</span>
+            </span>
+            <span className="rb-customer-rail__meta">
+              {movement.warehouseName} · {movement.movementDate}
+            </span>
+            <span className="rb-invoice-rail__status">{movement.direction}</span>
+          </>
+        )}
+        detailTitle={(movement) => <h1>{movement.itemName}</h1>}
+        renderDetail={(movement) => (
+          <EntityDetailView>
+            <Card className="rb-bill-detail">
+              <header className="rb-bill-detail__head">
+                <div>
+                  <p className="rb-bill-detail__eyebrow">Stock movement</p>
+                  <h2>{movement.warehouseName}</h2>
+                </div>
+                <StatusBadge status={movement.direction} />
+              </header>
+              <dl className="rb-bill-detail__totals">
+                <div>
+                  <dt>Date</dt>
+                  <dd>{movement.movementDate}</dd>
+                </div>
+                <div>
+                  <dt>Quantity</dt>
+                  <dd className="rb-num">{movement.quantity}</dd>
+                </div>
+                <div>
+                  <dt>Unit cost</dt>
+                  <dd className="rb-num">{formatMinor(movement.unitCostMinor, currency)}</dd>
+                </div>
+                <div className="is-total">
+                  <dt>Total cost</dt>
+                  <dd className="rb-num">{formatMinor(movement.totalCostMinor, currency)}</dd>
+                </div>
+                <div>
+                  <dt>Source</dt>
+                  <dd>{label(movement.sourceType)}</dd>
+                </div>
+              </dl>
+            </Card>
+          </EntityDetailView>
+        )}
+      />
+    );
 
   return (
     <>
@@ -395,7 +543,12 @@ export function StockMovementsPage() {
   );
 }
 
-export function InventoryAdjustmentsPage() {
+export function InventoryAdjustmentsPage({
+  initialSelectedAdjustmentId,
+}: {
+  initialSelectedAdjustmentId?: string;
+}) {
+  const router = useRouter();
   const workspace = useWorkspace({ requireOrganization: true });
   const organization = workspace.activeOrganization;
   const organizationId = organization?.id ?? null;
@@ -412,6 +565,9 @@ export function InventoryAdjustmentsPage() {
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const [selectedAdjustmentId, setSelectedAdjustmentId] = useState<string | null>(
+    initialSelectedAdjustmentId ?? null,
+  );
   const currency = organization?.baseCurrency ?? 'USD';
 
   const load = useCallback(async () => {
@@ -446,6 +602,10 @@ export function InventoryAdjustmentsPage() {
   useEffect(() => {
     void load();
   }, [load]);
+  useEffect(
+    () => setSelectedAdjustmentId(initialSelectedAdjustmentId ?? null),
+    [initialSelectedAdjustmentId],
+  );
 
   async function transition(
     adjustment: InventoryAdjustment,
@@ -476,7 +636,7 @@ export function InventoryAdjustmentsPage() {
       header: 'Item',
       cell: (adjustment) => (
         <div>
-          <strong>{adjustment.itemName}</strong>
+          <Link href={`/inventory-adjustments/${adjustment.id}`}>{adjustment.itemName}</Link>
           <span className="rb-table-secondary">{adjustment.warehouseName}</span>
         </div>
       ),
@@ -559,6 +719,77 @@ export function InventoryAdjustmentsPage() {
       <ForbiddenState description="Ask for inventory adjustment access to review stock corrections." />
     );
   }
+  const selectedAdjustment = adjustments?.find(
+    (adjustment) => adjustment.id === selectedAdjustmentId,
+  );
+  if (selectedAdjustment)
+    return (
+      <RecordDetailWorkspace
+        variant="compact"
+        title="Inventory adjustments"
+        records={adjustments ?? []}
+        selectedId={selectedAdjustment.id}
+        onSelect={(adjustment) => {
+          setSelectedAdjustmentId(adjustment.id);
+          router.push(`/inventory-adjustments/${adjustment.id}`);
+        }}
+        onClose={() => {
+          setSelectedAdjustmentId(null);
+          router.push('/inventory-adjustments');
+        }}
+        recordHref={(adjustment) => `/inventory-adjustments/${adjustment.id}`}
+        searchText={(adjustment) =>
+          `${adjustment.itemName} ${adjustment.sku ?? ''} ${adjustment.warehouseName} ${adjustment.reason}`
+        }
+        railHeader={<h1>Inventory adjustments</h1>}
+        renderRailRecord={(adjustment) => (
+          <>
+            <span className="rb-customer-rail__line">
+              <strong>{adjustment.itemName}</strong>
+              <span className="rb-invoice-rail__amount">{adjustment.quantityDelta}</span>
+            </span>
+            <span className="rb-customer-rail__meta">
+              {adjustment.warehouseName} · {adjustment.adjustmentDate}
+            </span>
+            <span className="rb-invoice-rail__status">
+              {adjustment.status.replaceAll('_', ' ')}
+            </span>
+          </>
+        )}
+        detailTitle={(adjustment) => <h1>{adjustment.itemName}</h1>}
+        renderDetail={(adjustment) => (
+          <EntityDetailView>
+            <Card className="rb-bill-detail">
+              <header className="rb-bill-detail__head">
+                <div>
+                  <p className="rb-bill-detail__eyebrow">Inventory adjustment</p>
+                  <h2>{adjustment.warehouseName}</h2>
+                </div>
+                <StatusBadge status={adjustment.status} />
+              </header>
+              <dl className="rb-bill-detail__totals">
+                <div>
+                  <dt>Date</dt>
+                  <dd>{adjustment.adjustmentDate}</dd>
+                </div>
+                <div>
+                  <dt>Quantity delta</dt>
+                  <dd className="rb-num">{adjustment.quantityDelta}</dd>
+                </div>
+                <div>
+                  <dt>Value delta</dt>
+                  <dd className="rb-num">{formatMinor(adjustment.valueDeltaMinor, currency)}</dd>
+                </div>
+                <div>
+                  <dt>Reason</dt>
+                  <dd>{adjustment.reason}</dd>
+                </div>
+              </dl>
+            </Card>
+          </EntityDetailView>
+        )}
+      />
+    );
 
   return (
     <>

@@ -15,7 +15,7 @@ import {
   Button,
   Card,
   DataTable,
-  EmptyState,
+  DataTableToolbar,
   FieldMessage,
   ForbiddenState,
   Input,
@@ -26,7 +26,16 @@ import {
   StatusBadge,
   type DataTableColumn,
 } from '@valuebooks/ui';
-import { CheckCircle2, FilePlus2, Paperclip, Save, Search, Upload, XCircle } from 'lucide-react';
+import {
+  CheckCircle2,
+  FilePlus2,
+  Filter,
+  Paperclip,
+  Save,
+  Search,
+  Upload,
+  XCircle,
+} from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -34,6 +43,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ApiError, apiRequest, apiUpload } from '../lib/api';
 import { hasPermission, useWorkspace } from '../lib/workspace';
 import { DocumentExtractionPanel } from './document-extraction-panel';
+import { BillDetailPane } from './bill-detail-pane';
+import { RecordDetailWorkspace } from './record-detail-workspace';
 import { TransactionCollaboration } from './transaction-collaboration';
 
 type BillListResponse = { data: Bill[] };
@@ -71,7 +82,8 @@ const blankLine = (): DraftLine => ({
   accountId: '',
 });
 
-export function BillsPage() {
+export function BillsPage({ initialSelectedBillId }: { initialSelectedBillId?: string }) {
+  const router = useRouter();
   const workspace = useWorkspace({ requireOrganization: true });
   const organization = workspace.activeOrganization;
   const organizationId = organization?.id ?? null;
@@ -81,7 +93,11 @@ export function BillsPage() {
   const [bills, setBills] = useState<Bill[] | null>(null);
   const [statusFilter, setStatusFilter] = useState<'' | BillStatus>('');
   const [query, setQuery] = useState('');
+  const [selectedBillId, setSelectedBillId] = useState<string | null>(
+    initialSelectedBillId ?? null,
+  );
   const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState<'issue' | 'void' | null>(null);
 
   const load = useCallback(async () => {
     if (!organizationId) return;
@@ -100,6 +116,10 @@ export function BillsPage() {
   useEffect(() => {
     void load();
   }, [load]);
+
+  useEffect(() => {
+    setSelectedBillId(initialSelectedBillId ?? null);
+  }, [initialSelectedBillId]);
 
   const filtered = useMemo(() => {
     const needle = query.trim().toLowerCase();
@@ -144,6 +164,110 @@ export function BillsPage() {
     );
   }
 
+  const selectedBill = bills?.find((bill) => bill.id === selectedBillId);
+
+  async function issueSelectedBill() {
+    if (!organizationId || !selectedBill) return;
+    setBusy('issue');
+    setError(null);
+    try {
+      await apiRequest<BillResponse>(
+        `/organizations/${organizationId}/bills/${selectedBill.id}/issue`,
+        {
+          method: 'POST',
+          headers: { 'Idempotency-Key': crypto.randomUUID() },
+        },
+      );
+      await load();
+    } catch (caught) {
+      setError(caught instanceof ApiError ? caught.message : 'The bill could not be issued.');
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  async function voidSelectedBill() {
+    if (!organizationId || !selectedBill) return;
+    if (!window.confirm('Void this bill? Its journal entry will be reversed.')) return;
+    setBusy('void');
+    setError(null);
+    try {
+      await apiRequest<BillResponse>(
+        `/organizations/${organizationId}/bills/${selectedBill.id}/void`,
+        { method: 'POST' },
+      );
+      await load();
+    } catch (caught) {
+      setError(caught instanceof ApiError ? caught.message : 'The bill could not be voided.');
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  if (selectedBill) {
+    return (
+      <RecordDetailWorkspace
+        variant="compact"
+        title="Bills"
+        records={bills ?? []}
+        selectedId={selectedBill.id}
+        onSelect={(bill) => {
+          setSelectedBillId(bill.id);
+          router.push(`/bills/${bill.id}`);
+        }}
+        onClose={() => {
+          setSelectedBillId(null);
+          router.push('/bills');
+        }}
+        recordHref={(bill) => `/bills/${bill.id}`}
+        searchText={(bill) =>
+          `${bill.billNumber ?? ''} ${bill.vendorName} ${bill.vendorReference ?? ''}`
+        }
+        railHeader={
+          <>
+            <button
+              type="button"
+              className="rb-record-workspace__title-button"
+              onClick={() => setSelectedBillId(null)}
+            >
+              All bills
+            </button>
+            {canManage ? (
+              <Link className="rb-record-workspace__new" href="/bills/new" aria-label="New bill">
+                <FilePlus2 aria-hidden="true" />
+              </Link>
+            ) : null}
+          </>
+        }
+        renderRailRecord={(bill) => (
+          <>
+            <span className="rb-invoice-rail__top">
+              <strong>{bill.vendorName}</strong>
+              <span className="rb-invoice-rail__amount">
+                {formatMinor(bill.totalMinor, bill.currency)}
+              </span>
+            </span>
+            <span className="rb-invoice-rail__meta">
+              {bill.billNumber ?? 'Draft'} · {formatDate(bill.issueDate)}
+            </span>
+            <span className="rb-invoice-rail__status">{bill.status.replaceAll('_', ' ')}</span>
+          </>
+        )}
+        detailTitle={(bill) => <h1>{bill.billNumber ?? 'Draft bill'}</h1>}
+        renderDetail={(bill) => (
+          <BillDetailPane
+            bill={bill}
+            canManage={canManage}
+            canVoid={hasPermission(organization, 'purchases.bills.void')}
+            onIssue={() => void issueSelectedBill()}
+            onVoid={() => void voidSelectedBill()}
+            busy={busy}
+          />
+        )}
+      />
+    );
+  }
+
   return (
     <>
       <PageHeader
@@ -166,43 +290,48 @@ export function BillsPage() {
           </div>
         ) : null}
 
-        <Card className="rb-ledger-toolbar">
-          <div className="rb-field">
-            <Label htmlFor="bill-search">
-              <Search aria-hidden="true" /> Search bills
-            </Label>
-            <Input
-              id="bill-search"
-              value={query}
-              onChange={(event) => setQuery(event.target.value)}
-              placeholder="Search by bill number, vendor reference, or vendor..."
-            />
-          </div>
-          <div className="rb-field">
-            <Label htmlFor="bill-status">Status</Label>
-            <Select
-              id="bill-status"
-              value={statusFilter}
-              onChange={(event) => setStatusFilter(event.target.value as typeof statusFilter)}
-            >
-              <option value="">All bills</option>
-              {statusOptions.map((status) => (
-                <option key={status} value={status}>
-                  {status}
-                </option>
-              ))}
-            </Select>
-          </div>
-          <Badge>{bills?.length ?? 0} bills</Badge>
-        </Card>
-
-        {!bills && !error ? (
-          <Skeleton />
-        ) : filtered.length === 0 ? (
-          <EmptyState title="No bills yet" description="Record your first vendor bill." />
-        ) : (
-          <DataTable caption="Bills" columns={columns} rows={filtered} />
-        )}
+        <DataTable
+          caption="Bills"
+          columns={columns}
+          rows={filtered}
+          loading={!bills && !error}
+          emptyTitle={bills?.length ? 'No bills match this view' : 'No bills yet'}
+          emptyDescription={
+            bills?.length
+              ? 'Try changing the search or status filter.'
+              : 'Record your first vendor bill.'
+          }
+          toolbar={
+            <DataTableToolbar resultLabel={`${filtered.length} shown`}>
+              <div className="rb-data-table-toolbar__search">
+                <Search aria-hidden="true" />
+                <Input
+                  id="bill-search"
+                  value={query}
+                  onChange={(event) => setQuery(event.target.value)}
+                  placeholder="Search bills"
+                  aria-label="Search bills"
+                />
+              </div>
+              <div className="rb-data-table-toolbar__filter">
+                <Filter aria-hidden="true" />
+                <Label htmlFor="bill-status">Status</Label>
+                <Select
+                  id="bill-status"
+                  value={statusFilter}
+                  onChange={(event) => setStatusFilter(event.target.value as typeof statusFilter)}
+                >
+                  <option value="">All statuses</option>
+                  {statusOptions.map((status) => (
+                    <option key={status} value={status}>
+                      {status.replaceAll('_', ' ')}
+                    </option>
+                  ))}
+                </Select>
+              </div>
+            </DataTableToolbar>
+          }
+        />
       </div>
     </>
   );
@@ -494,7 +623,7 @@ export function BillEditorPage({ billId }: { billId?: string }) {
         }
         actions={
           <Button asChild variant="outline">
-            <Link href="/bills">Back to bills</Link>
+            <Link href={billId ? `/bills/${billId}` : '/bills'}>Back to bill</Link>
           </Button>
         }
       />
@@ -851,4 +980,10 @@ function formatMinor(value: string, currency: string): string {
   const cents = absolute % 100n;
   const formattedWhole = new Intl.NumberFormat('en-KE').format(Number(whole));
   return `${negative ? '-' : ''}${currency} ${formattedWhole}.${cents.toString().padStart(2, '0')}`;
+}
+
+function formatDate(value: string | null): string {
+  return value
+    ? new Intl.DateTimeFormat('en-KE', { dateStyle: 'medium' }).format(new Date(value))
+    : '—';
 }

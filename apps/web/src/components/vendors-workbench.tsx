@@ -14,18 +14,23 @@ import {
   type DataTableColumn,
 } from '@valuebooks/ui';
 import { Plus, Save } from 'lucide-react';
+import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useState, type FormEvent } from 'react';
 
 import { ApiError, apiRequest } from '../lib/api';
 import { formValue } from '../lib/forms';
 import { hasPermission, useWorkspace } from '../lib/workspace';
 import { OperationalListing } from './operational-listing';
+import { EntityDetailView } from './master-detail/entity-detail-view';
+import { RecordDetailWorkspace } from './record-detail-workspace';
 
 type VendorResponse = { data: Vendor };
 type VendorListResponse = { data: Vendor[] };
 type DuplicateMatch = { id: string; displayName: string; matchedOn: 'displayName' | 'taxId' };
 
-export function VendorsPage() {
+export function VendorsPage({ initialSelectedVendorId }: { initialSelectedVendorId?: string }) {
+  const router = useRouter();
   const workspace = useWorkspace({ requireOrganization: true });
   const organization = workspace.activeOrganization;
   const organizationId = organization?.id ?? null;
@@ -42,6 +47,9 @@ export function VendorsPage() {
   const [notice, setNotice] = useState<string | null>(null);
   const [duplicateMatches, setDuplicateMatches] = useState<DuplicateMatch[] | null>(null);
   const [pendingBody, setPendingBody] = useState<Record<string, unknown> | null>(null);
+  const [selectedVendorId, setSelectedVendorId] = useState<string | null>(
+    initialSelectedVendorId ?? null,
+  );
 
   const load = useCallback(async () => {
     if (!organizationId) return;
@@ -60,6 +68,8 @@ export function VendorsPage() {
   useEffect(() => {
     void load();
   }, [load]);
+
+  useEffect(() => setSelectedVendorId(initialSelectedVendorId ?? null), [initialSelectedVendorId]);
 
   async function saveVendor(body: Record<string, unknown>) {
     if (!organizationId) return;
@@ -167,7 +177,7 @@ export function VendorsPage() {
       key: 'name',
       header: 'Vendor',
       value: (vendor) => vendor.displayName,
-      cell: (vendor) => vendor.displayName,
+      cell: (vendor) => <Link href={`/vendors/${vendor.id}`}>{vendor.displayName}</Link>,
     },
     {
       key: 'email',
@@ -225,6 +235,72 @@ export function VendorsPage() {
       <ForbiddenState description="Ask an organization owner, administrator, or accountant to grant vendor access." />
     );
   }
+
+  const selectedVendor = vendors?.find((vendor) => vendor.id === selectedVendorId);
+  if (selectedVendor)
+    return (
+      <RecordDetailWorkspace
+        variant="compact"
+        title="Vendors"
+        records={vendors ?? []}
+        selectedId={selectedVendor.id}
+        onSelect={(vendor) => {
+          setSelectedVendorId(vendor.id);
+          router.push(`/vendors/${vendor.id}`);
+        }}
+        onClose={() => {
+          setSelectedVendorId(null);
+          router.push('/vendors');
+        }}
+        recordHref={(vendor) => `/vendors/${vendor.id}`}
+        searchText={(vendor) =>
+          `${vendor.displayName} ${vendor.legalName ?? ''} ${vendor.email ?? ''} ${vendor.phone ?? ''}`
+        }
+        railHeader={<h1>All vendors</h1>}
+        renderRailRecord={(vendor) => (
+          <>
+            <span className="rb-customer-rail__line">
+              <strong>{vendor.displayName}</strong>
+            </span>
+            <span className="rb-customer-rail__meta">
+              {vendor.email ?? vendor.phone ?? vendor.currency}
+            </span>
+          </>
+        )}
+        detailTitle={(vendor) => <h1>{vendor.displayName}</h1>}
+        renderDetail={(vendor) => (
+          <EntityDetailView>
+            <Card className="rb-bill-detail">
+              <header className="rb-bill-detail__head">
+                <div>
+                  <p className="rb-bill-detail__eyebrow">Vendor</p>
+                  <h2>{vendor.legalName ?? vendor.displayName}</h2>
+                </div>
+                <StatusBadge status={vendor.status} />
+              </header>
+              <dl className="rb-bill-detail__totals">
+                <div>
+                  <dt>Email</dt>
+                  <dd>{vendor.email ?? '—'}</dd>
+                </div>
+                <div>
+                  <dt>Phone</dt>
+                  <dd>{vendor.phone ?? '—'}</dd>
+                </div>
+                <div>
+                  <dt>Currency</dt>
+                  <dd>{vendor.currency}</dd>
+                </div>
+                <div>
+                  <dt>Payment terms</dt>
+                  <dd>{vendor.paymentTermsDays ?? 0} days</dd>
+                </div>
+              </dl>
+            </Card>
+          </EntityDetailView>
+        )}
+      />
+    );
 
   const formTarget = editing;
   const formOpen = showCreate || Boolean(editing);

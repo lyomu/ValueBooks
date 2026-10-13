@@ -8,8 +8,12 @@ import { createClient } from 'redis';
 
 const { Client } = pg;
 const DATABASE_NAME = 'valuebooks_e2e';
-const DATABASE_URL = `postgresql://valuebooks:valuebooks@127.0.0.1:55432/${DATABASE_NAME}`;
-const MAINTENANCE_URL = 'postgresql://valuebooks:valuebooks@127.0.0.1:55432/postgres';
+const DATABASE_URL =
+  process.env.E2E_DATABASE_URL ??
+  `postgresql://valuebooks:valuebooks@127.0.0.1:55432/${DATABASE_NAME}`;
+const MAINTENANCE_URL =
+  process.env.E2E_MAINTENANCE_URL ??
+  DATABASE_URL.replace(`/${DATABASE_NAME}`, '/postgres');
 const QUEUE_PREFIX = 'valuebooks-e2e';
 // 59300, not MinIO's conventional 59000 -- docker-compose.yml's own default collides with
 // Windows's reserved 58957-59056 ephemeral-port range, so this repo's .env remaps

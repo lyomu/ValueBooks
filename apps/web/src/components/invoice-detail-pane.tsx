@@ -395,7 +395,7 @@ export function InvoiceDetailPane({
     <div className="rb-invoice-pane">
       <div className="rb-invoice-toolbar" role="toolbar" aria-label="Invoice actions">
         {permissions.canManage ? (
-          <Link className="rb-invoice-toolbar__button" href={`/invoices/${invoice.id}`}>
+          <Link className="rb-invoice-toolbar__button" href={`/invoices/${invoice.id}/edit`}>
             <Pencil aria-hidden="true" />
             <span>Edit</span>
           </Link>

@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 
 import { AppShell } from '../../../components/app-shell';
-import { QuoteEditorPage } from '../../../components/quotes-workbench';
+import { QuotesPage } from '../../../components/quotes-workbench';
 
 export const metadata: Metadata = { title: 'Quote | ValueBooks' };
 
@@ -10,7 +10,7 @@ export default async function QuoteRoute({ params }: { params: Promise<{ id: str
 
   return (
     <AppShell>
-      <QuoteEditorPage quoteId={id} />
+      <QuotesPage initialSelectedQuoteId={id} />
     </AppShell>
   );
 }
