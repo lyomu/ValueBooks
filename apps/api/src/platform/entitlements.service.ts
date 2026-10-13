@@ -155,6 +155,25 @@ export class EntitlementsService {
   }
 
   /**
+   * Returns true only for a currently-active, explicitly enabled organization rule. This deliberately
+   * does not consult defaults or broader scopes and is reserved for controls where data egress must
+   * never be activated by a rollout rule.
+   */
+  async isOrganizationFlagExplicitlyEnabled(organizationId: string, key: string): Promise<boolean> {
+    const flag = await this.prisma.featureFlag.findUnique({
+      where: { key },
+      select: {
+        status: true,
+        rules: {
+          where: { scope: 'ORGANIZATION', organizationId },
+          select: { enabled: true },
+        },
+      },
+    });
+    return flag?.status === 'ACTIVE' && flag.rules[0]?.enabled === true;
+  }
+
+  /**
    * Explains one flag across every organization-shaped input, for the console's preview control.
    * Takes the country and plan directly rather than an organization id so an operator can ask
    * "what would a Kenyan tenant on Growth see?" before any such tenant exists.

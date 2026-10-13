@@ -81,7 +81,7 @@ export function PaymentsPage() {
       value: (payment) => payment.paymentNumber ?? '',
       cell: (payment) => (
         <div>
-          <span>{payment.paymentNumber ?? 'Payment'}</span>
+          <Link href={`/payments/${payment.id}`}>{payment.paymentNumber ?? 'Payment'}</Link>
           <span className="rb-table-secondary">{payment.contactName}</span>
         </div>
       ),
@@ -106,16 +106,6 @@ export function PaymentsPage() {
       value: (payment) => payment.unappliedMinor,
       cell: (payment) => formatMinor(payment.unappliedMinor, payment.currency),
       hideBelow: 'tablet',
-    },
-    {
-      key: 'open',
-      header: '',
-      align: 'right',
-      cell: (payment) => (
-        <Button asChild variant="ghost" size="sm">
-          <Link href={`/payments/${payment.id}`}>Open</Link>
-        </Button>
-      ),
     },
   ];
 
@@ -202,7 +192,7 @@ export function PaymentsPage() {
         open={recording}
         onOpenChange={setRecording}
         organizationId={organizationId}
-        baseCurrency={organization?.baseCurrency ?? 'KES'}
+        baseCurrency={organization?.baseCurrency ?? 'USD'}
         canAllocate={canAllocate}
         onRecorded={() => void load()}
       />
@@ -261,7 +251,7 @@ export function NewPaymentPage() {
           if (!open) router.push('/payments');
         }}
         organizationId={organizationId}
-        baseCurrency={organization?.baseCurrency ?? 'KES'}
+        baseCurrency={organization?.baseCurrency ?? 'USD'}
         canAllocate={canAllocate}
         seed={seed}
         onRecorded={(payment) => router.replace(`/payments/${payment.id}`)}
@@ -324,7 +314,7 @@ export function PaymentEditorPage({ paymentId }: { paymentId: string }) {
     setNotice(flash);
   }, [paymentId]);
 
-  const currency = payment?.currency ?? organization?.baseCurrency ?? 'KES';
+  const currency = payment?.currency ?? organization?.baseCurrency ?? 'USD';
 
   const totalToApplyMinor = useMemo(
     () =>

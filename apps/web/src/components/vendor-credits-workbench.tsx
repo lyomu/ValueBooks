@@ -108,7 +108,9 @@ export function VendorCreditsPage() {
       header: 'Vendor credit',
       cell: (vendorCredit) => (
         <div>
-          <strong>{vendorCredit.vendorCreditNumber ?? 'Draft'}</strong>
+          <Link href={`/vendor-credits/${vendorCredit.id}`}>
+            {vendorCredit.vendorCreditNumber ?? 'Draft'}
+          </Link>
           <span className="rb-table-secondary">{vendorCredit.vendorName}</span>
         </div>
       ),
@@ -130,16 +132,6 @@ export function VendorCreditsPage() {
       align: 'right',
       cell: (vendorCredit) => formatMinor(vendorCredit.remainingMinor, vendorCredit.currency),
       hideBelow: 'tablet',
-    },
-    {
-      key: 'open',
-      header: '',
-      align: 'right',
-      cell: (vendorCredit) => (
-        <Button asChild variant="ghost" size="sm">
-          <Link href={`/vendor-credits/${vendorCredit.id}`}>Open</Link>
-        </Button>
-      ),
     },
   ];
 
@@ -309,7 +301,7 @@ export function VendorCreditEditorPage({ vendorCreditId }: { vendorCreditId?: st
 
   const vendor = vendors.find((candidate) => candidate.id === vendorId) ?? null;
   const currency =
-    vendor?.currency ?? vendorCredit?.currency ?? organization?.baseCurrency ?? 'KES';
+    vendor?.currency ?? vendorCredit?.currency ?? organization?.baseCurrency ?? 'USD';
 
   const subtotalPreviewMinor = useMemo(
     () =>

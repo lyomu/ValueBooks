@@ -3,6 +3,7 @@ export const EMAIL_QUEUE_NAME = 'email-delivery';
 export const EMAIL_JOB_NAMES = {
   verification: 'verification',
   passwordReset: 'password-reset',
+  mfaCode: 'mfa-code',
   organizationInvitation: 'organization-invitation',
   portalInvitation: 'portal-invitation',
   invoiceSend: 'invoice.send',

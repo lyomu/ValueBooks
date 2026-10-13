@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 
 import { EntitlementsService } from './entitlements.service.js';
+import { HostedAiEgressApprovalService } from './hosted-ai-egress-approval.service.js';
 
 /**
  * `EntitlementsService` only depends on the globally-registered `PrismaService`, so this module has
@@ -9,7 +10,7 @@ import { EntitlementsService } from './entitlements.service.js';
  * or risking a circular import with them.
  */
 @Module({
-  providers: [EntitlementsService],
-  exports: [EntitlementsService],
+  providers: [EntitlementsService, HostedAiEgressApprovalService],
+  exports: [EntitlementsService, HostedAiEgressApprovalService],
 })
 export class EntitlementsModule {}

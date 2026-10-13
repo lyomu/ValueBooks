@@ -314,6 +314,54 @@ export class UpdateFeatureFlagDto {
   status?: 'ACTIVE' | 'ARCHIVED';
 }
 
+export class CreateHostedAiEgressApprovalDto {
+  @IsString()
+  @Length(2, 2)
+  @Transform(upper)
+  jurisdictionCountryCode!: string;
+
+  @IsString()
+  @Length(1, 180)
+  @Transform(trim)
+  signerName!: string;
+
+  @IsEmail()
+  @MaxLength(320)
+  @Transform(lower)
+  signerEmail!: string;
+
+  @IsString()
+  @Length(1, 180)
+  @Transform(trim)
+  signerAuthority!: string;
+
+  @IsString()
+  @Length(1, 120)
+  @Transform(trim)
+  disclosureVersion!: string;
+
+  @IsString()
+  @Length(1, 500)
+  @Transform(trim)
+  legalDecisionReference!: string;
+
+  @IsString()
+  @Length(1, 500)
+  @Transform(trim)
+  consentDocumentReference!: string;
+
+  @IsString()
+  @Matches(/^[a-fA-F0-9]{64}$/)
+  consentDocumentHash!: string;
+}
+
+export class RevokeHostedAiEgressApprovalDto {
+  @IsString()
+  @Length(1, 500)
+  @Transform(trim)
+  reason!: string;
+}
+
 /**
  * Exactly one target must match the scope. The database enforces this too, with a check constraint;
  * validating it here means the caller gets a 400 that names the problem instead of a 500 from a

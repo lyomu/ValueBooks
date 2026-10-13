@@ -8,6 +8,10 @@ gone through it.
 
 ## What's here
 
+The release thresholds, reviewer procedure, and comparison-record format are in
+[`EVALUATION_PROTOCOL.md`](./EVALUATION_PROTOCOL.md). The protocol is a gate; it does not turn the
+synthetic labels into human review evidence.
+
 - `lib/document-fixtures.ts` — generates synthetic receipt/document cases (OCR-line shape,
   ground truth computed by construction, not by running the extractor — see the file's own
   comment for why that distinction matters).

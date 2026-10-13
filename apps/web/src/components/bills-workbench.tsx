@@ -117,7 +117,7 @@ export function BillsPage() {
       header: 'Bill',
       cell: (bill) => (
         <div>
-          <strong>{bill.billNumber ?? 'Draft'}</strong>
+          <Link href={`/bills/${bill.id}`}>{bill.billNumber ?? 'Draft'}</Link>
           <span className="rb-table-secondary">{bill.vendorName}</span>
         </div>
       ),
@@ -135,16 +135,6 @@ export function BillsPage() {
       align: 'right',
       cell: (bill) => formatMinor(bill.balanceMinor, bill.currency),
       hideBelow: 'tablet',
-    },
-    {
-      key: 'open',
-      header: '',
-      align: 'right',
-      cell: (bill) => (
-        <Button asChild variant="ghost" size="sm">
-          <Link href={`/bills/${bill.id}`}>Open</Link>
-        </Button>
-      ),
     },
   ];
 
@@ -331,7 +321,7 @@ export function BillEditorPage({ billId }: { billId?: string }) {
   }, [billId]);
 
   const vendor = vendors.find((candidate) => candidate.id === vendorId) ?? null;
-  const currency = vendor?.currency ?? bill?.currency ?? organization?.baseCurrency ?? 'KES';
+  const currency = vendor?.currency ?? bill?.currency ?? organization?.baseCurrency ?? 'USD';
 
   const subtotalPreviewMinor = useMemo(
     () =>

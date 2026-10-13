@@ -1,7 +1,9 @@
 import Image from 'next/image';
-import { BookOpenCheck, Check } from 'lucide-react';
+import { Check } from 'lucide-react';
 import Link from 'next/link';
 import type { ReactNode } from 'react';
+
+import { BrandLogo } from './brand-logo';
 
 const assurances: ReadonlyArray<string> = [
   'Create and send professional invoices from one workspace.',
@@ -56,13 +58,7 @@ export function AuthShell({
     <section className={`rb-auth__main`} aria-labelledby="auth-title">
       <div className="rb-auth__content">
         <Link className="rb-auth__brand" href="/dashboard" aria-label="ValueBooks home">
-          <span className="rb-auth__brand-mark">
-            <BookOpenCheck aria-hidden="true" />
-          </span>
-          <span>
-            <strong>ValueBooks</strong>
-            <small>Accounting, made operational</small>
-          </span>
+          <BrandLogo variant="full" height={36} alt="ValueBooks" priority />
         </Link>
         <div className="rb-auth__heading">
           <h1 id="auth-title">{title}</h1>
@@ -70,7 +66,7 @@ export function AuthShell({
         </div>
         {children}
         <p className="rb-auth__legal">
-          By continuing, you agree to the ValueBooks terms and privacy policy.
+          By creating an account, you agree to the <Link href="/terms">Terms and Conditions</Link> and acknowledge the <Link href="/privacy">Privacy Policy</Link>.
         </p>
       </div>
     </section>

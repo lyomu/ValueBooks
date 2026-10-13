@@ -244,7 +244,7 @@ export function TaxCodesPage() {
             organizationId={organizationId}
             code={selectedCode}
             canManage={canManage}
-            currency={organization?.baseCurrency ?? 'KES'}
+            currency={organization?.baseCurrency ?? 'USD'}
             onRateAdded={() => void load()}
           />
         ) : null}

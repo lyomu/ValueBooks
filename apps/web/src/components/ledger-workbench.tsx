@@ -16,11 +16,13 @@ import {
   Button,
   Card,
   DataTable,
+  DropdownItem,
   EmptyState,
   FieldMessage,
   Input,
   Label,
   PageHeader,
+  RowActionMenu,
   Select,
   Skeleton,
   StatusBadge,
@@ -30,7 +32,6 @@ import {
 import {
   Archive,
   CheckCircle2,
-  FileClock,
   FilePlus2,
   ListChecks,
   Plus,
@@ -101,7 +102,7 @@ export function ChartOfAccountsPage() {
   const workspace = useWorkspace({ requireOrganization: true });
   const organization = workspace.activeOrganization;
   const organizationId = organization?.id ?? null;
-  const currency = organization?.baseCurrency ?? 'KES';
+  const currency = organization?.baseCurrency ?? 'USD';
   const canCreate = hasPermission(organization, 'accounts.create');
   const canUpdate = hasPermission(organization, 'accounts.update');
   const canDeactivate = hasPermission(organization, 'accounts.deactivate');
@@ -157,9 +158,9 @@ export function ChartOfAccountsPage() {
       header: 'Account',
       cell: (account) => (
         <div>
-          <strong>
+          <Link href={`/accounts/${account.id}/ledger`}>
             {account.code} {account.name}
-          </strong>
+          </Link>
           <span className="rb-table-secondary">{labelForAccountType(account.type)}</span>
         </div>
       ),
@@ -177,39 +178,28 @@ export function ChartOfAccountsPage() {
       align: 'right',
       cell: (account) => formatMinor(account.balanceMinor, currency),
     },
-    {
-      key: 'actions',
-      header: '',
-      align: 'right',
-      cell: (account) => (
-        <div className="rb-ledger-row-actions">
-          <Button asChild variant="ghost" size="sm">
-            <Link href={`/accounts/${account.id}/ledger`}>
-              <FileClock aria-hidden="true" /> Ledger
-            </Link>
-          </Button>
-          {account.status === 'ACTIVE' ? (
-            <>
-              {canUpdate ? (
-                <Button variant="ghost" size="sm" type="button" onClick={() => setEditing(account)}>
-                  Edit
-                </Button>
-              ) : null}
-              {canDeactivate ? (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  type="button"
-                  onClick={() => void archive(account)}
-                >
-                  <Archive aria-hidden="true" /> Archive
-                </Button>
-              ) : null}
-            </>
-          ) : null}
-        </div>
-      ),
-    },
+    ...(canUpdate || canDeactivate
+      ? [
+          {
+            key: 'actions',
+            header: <span className="rb-visually-hidden">Actions</span>,
+            align: 'right' as const,
+            cell: (account: LedgerAccount) =>
+              account.status === 'ACTIVE' ? (
+                <RowActionMenu label={`Actions for ${account.code} ${account.name}`}>
+                  {canUpdate ? (
+                    <DropdownItem onSelect={() => setEditing(account)}>Edit account</DropdownItem>
+                  ) : null}
+                  {canDeactivate ? (
+                    <DropdownItem onSelect={() => void archive(account)}>
+                      Archive account
+                    </DropdownItem>
+                  ) : null}
+                </RowActionMenu>
+              ) : null,
+          },
+        ]
+      : []),
   ];
 
   return (
@@ -410,7 +400,7 @@ export function JournalsPage() {
   const workspace = useWorkspace({ requireOrganization: true });
   const organization = workspace.activeOrganization;
   const organizationId = organization?.id ?? null;
-  const currency = organization?.baseCurrency ?? 'KES';
+  const currency = organization?.baseCurrency ?? 'USD';
   const canCreate = hasPermission(organization, 'journals.create');
   const [journals, setJournals] = useState<JournalSummary[] | null>(null);
   const [status, setStatus] = useState('');
@@ -435,7 +425,7 @@ export function JournalsPage() {
       header: 'Journal',
       cell: (journal) => (
         <div>
-          <strong>{journal.reference ?? 'Draft'}</strong>
+          <Link href={`/journals/${journal.id}`}>{journal.reference ?? 'Draft'}</Link>
           <span className="rb-table-secondary">{journal.description}</span>
         </div>
       ),
@@ -447,16 +437,6 @@ export function JournalsPage() {
       header: 'Debit',
       align: 'right',
       cell: (journal) => formatMinor(journal.debitMinor, currency),
-    },
-    {
-      key: 'open',
-      header: '',
-      align: 'right',
-      cell: (journal) => (
-        <Button asChild variant="ghost" size="sm">
-          <Link href={`/journals/${journal.id}`}>Open</Link>
-        </Button>
-      ),
     },
   ];
 
@@ -517,7 +497,7 @@ export function JournalEditorPage({ journalId }: { journalId?: string }) {
   const workspace = useWorkspace({ requireOrganization: true });
   const organization = workspace.activeOrganization;
   const organizationId = organization?.id ?? null;
-  const currency = organization?.baseCurrency ?? 'KES';
+  const currency = organization?.baseCurrency ?? 'USD';
   const canCreate = hasPermission(organization, 'journals.create');
   const canPost = hasPermission(organization, 'journals.post');
   const canReverse = hasPermission(organization, 'journals.reverse');
@@ -903,7 +883,7 @@ export function JournalEditorPage({ journalId }: { journalId?: string }) {
 export function TrialBalancePage() {
   const workspace = useWorkspace({ requireOrganization: true });
   const organizationId = workspace.activeOrganization?.id ?? null;
-  const currency = workspace.activeOrganization?.baseCurrency ?? 'KES';
+  const currency = workspace.activeOrganization?.baseCurrency ?? 'USD';
   const [asOf, setAsOf] = useState(today());
   const [report, setReport] = useState<TrialBalanceResponse['data'] | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -1003,7 +983,7 @@ export function TrialBalancePage() {
 export function AccountLedgerPage({ accountId }: { accountId: string }) {
   const workspace = useWorkspace({ requireOrganization: true });
   const organizationId = workspace.activeOrganization?.id ?? null;
-  const currency = workspace.activeOrganization?.baseCurrency ?? 'KES';
+  const currency = workspace.activeOrganization?.baseCurrency ?? 'USD';
   const [from, setFrom] = useState('');
   const [to, setTo] = useState(today());
   const [ledger, setLedger] = useState<AccountLedgerResponse['data'] | null>(null);

@@ -18,10 +18,15 @@ import {
   Button,
   Card,
   DataTable,
+  DataTableFilters,
+  DataTableSearch,
+  DataTableToolbar,
+  DropdownItem,
   ForbiddenState,
   Input,
   Label,
   PageHeader,
+  RowActionMenu,
   Select,
   Skeleton,
   StatCard,
@@ -30,14 +35,12 @@ import {
   type DataTableColumn,
 } from '@valuebooks/ui';
 import {
-  Briefcase,
   CircleDollarSign,
   Clock,
   Play,
   Plus,
   Receipt,
   Save,
-  Search,
   Square,
   ThumbsDown,
   ThumbsUp,
@@ -167,23 +170,20 @@ export function ProjectsPage() {
           : 'Not set',
     },
     { key: 'status', header: 'Status', cell: (project) => <StatusBadge status={project.status} /> },
-    {
-      key: 'actions',
-      header: '',
-      align: 'right',
-      cell: (project) => (
-        <div className="rb-ledger-row-actions">
-          <Button variant="ghost" size="sm" asChild>
-            <Link href={`/projects/${project.id}`}>Open</Link>
-          </Button>
-          {canManage ? (
-            <Button variant="ghost" size="sm" type="button" onClick={() => setEditing(project)}>
-              Edit
-            </Button>
-          ) : null}
-        </div>
-      ),
-    },
+    ...(canManage
+      ? [
+          {
+            key: 'actions',
+            header: <span className="rb-visually-hidden">Actions</span>,
+            align: 'right' as const,
+            cell: (project: Project) => (
+              <RowActionMenu label={`Actions for ${project.name}`}>
+                <DropdownItem onSelect={() => setEditing(project)}>Edit project</DropdownItem>
+              </RowActionMenu>
+            ),
+          },
+        ]
+      : []),
   ];
 
   if (!workspace.loading && organization && !canView) {
@@ -209,7 +209,7 @@ export function ProjectsPage() {
           <ProjectForm
             project={editing}
             organizationId={organizationId}
-            baseCurrency={organization?.baseCurrency ?? 'KES'}
+            baseCurrency={organization?.baseCurrency ?? 'USD'}
             customers={customers}
             members={members}
             onCancel={() => {
@@ -224,34 +224,6 @@ export function ProjectsPage() {
             }}
           />
         ) : null}
-        <Card className="rb-ledger-toolbar">
-          <div className="rb-field">
-            <Label htmlFor="project-search">
-              <Search aria-hidden="true" /> Search projects
-            </Label>
-            <Input
-              id="project-search"
-              value={query}
-              onChange={(event) => setQuery(event.target.value)}
-            />
-          </div>
-          <div className="rb-field">
-            <Label htmlFor="project-status-filter">Status</Label>
-            <Select
-              id="project-status-filter"
-              value={status}
-              onChange={(event) => setStatus(event.target.value)}
-            >
-              <option value="">All statuses</option>
-              {PROJECT_STATUSES.map((value) => (
-                <option key={value} value={value}>
-                  {label(value)}
-                </option>
-              ))}
-            </Select>
-          </div>
-          <Badge>{filtered.length} projects</Badge>
-        </Card>
         {!projects && !error ? (
           <Skeleton />
         ) : (
@@ -261,6 +233,32 @@ export function ProjectsPage() {
             rows={filtered}
             emptyTitle="No projects"
             emptyDescription="Create a project to track its time, expenses, and margin."
+            toolbar={
+              <DataTableToolbar resultLabel={`${filtered.length} projects`}>
+                <DataTableSearch
+                  id="project-search"
+                  value={query}
+                  onChange={(event) => setQuery(event.target.value)}
+                  placeholder="Search projects..."
+                  label="Search projects"
+                />
+                <DataTableFilters>
+                  <Select
+                    id="project-status-filter"
+                    value={status}
+                    onChange={(event) => setStatus(event.target.value)}
+                    aria-label="Project status"
+                  >
+                    <option value="">All statuses</option>
+                    {PROJECT_STATUSES.map((value) => (
+                      <option key={value} value={value}>
+                        {label(value)}
+                      </option>
+                    ))}
+                  </Select>
+                </DataTableFilters>
+              </DataTableToolbar>
+            }
           />
         )}
       </div>
@@ -1729,7 +1727,7 @@ export function TimesheetPage() {
           />
         ) : null,
     },
-    ...timeColumns(organization?.baseCurrency ?? 'KES'),
+    ...timeColumns(organization?.baseCurrency ?? 'USD'),
     {
       key: 'actions',
       header: '',
@@ -2220,7 +2218,7 @@ export function TimeApprovalPage() {
         ) : null,
     },
     { key: 'person', header: 'Person', cell: (entry) => <strong>{entry.userName}</strong> },
-    ...timeColumns(organization?.baseCurrency ?? 'KES'),
+    ...timeColumns(organization?.baseCurrency ?? 'USD'),
     {
       key: 'comment',
       header: 'Decision note',
@@ -2417,15 +2415,24 @@ export function ProjectProfitabilityPage() {
       />
       <div className="rb-ledger-stack">
         <Messages error={error} />
-        <Card className="rb-ledger-toolbar">
-          <div className="rb-field">
-            <Label htmlFor="profitability-project">
-              <Briefcase aria-hidden="true" /> Project
-            </Label>
+        <DataTableToolbar
+          resultLabel={
+            project ? (
+              <>
+                <StatusBadge status={project.status} />
+                <Button variant="ghost" size="sm" asChild>
+                  <Link href={`/projects/${project.id}`}>Open project</Link>
+                </Button>
+              </>
+            ) : null
+          }
+        >
+          <DataTableFilters>
             <Select
               id="profitability-project"
               value={projectId}
               onChange={(event) => setProjectId(event.target.value)}
+              aria-label="Project"
             >
               <option value="">Choose project</option>
               {projects.map((row) => (
@@ -2434,14 +2441,8 @@ export function ProjectProfitabilityPage() {
                 </option>
               ))}
             </Select>
-          </div>
-          {project ? <StatusBadge status={project.status} /> : null}
-          {project ? (
-            <Button variant="ghost" size="sm" asChild>
-              <Link href={`/projects/${project.id}`}>Open project</Link>
-            </Button>
-          ) : null}
-        </Card>
+          </DataTableFilters>
+        </DataTableToolbar>
         {project ? (
           <ProfitabilityPanel profitability={profitability} project={project} />
         ) : (

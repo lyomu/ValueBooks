@@ -47,7 +47,11 @@ describe('AiOrchestrator.explainNumber', () => {
       explain: vi.fn(),
     };
     const store = { createRun: vi.fn(), completeRun: vi.fn(), failRun: vi.fn() };
-    const access = { requireMembership: vi.fn() };
+    const access = {
+      requireMembership: vi
+        .fn()
+        .mockResolvedValue({ id: 'organization-1', permissions: new Set(['reports.view']) }),
+    };
     const ai = new AiOrchestrator(
       reports as never,
       gateway as never,
@@ -74,7 +78,11 @@ describe('AiOrchestrator.explainNumber', () => {
       completeRun: vi.fn(),
       failRun: vi.fn().mockResolvedValue(undefined),
     };
-    const access = { requireMembership: vi.fn() };
+    const access = {
+      requireMembership: vi
+        .fn()
+        .mockResolvedValue({ id: 'organization-1', permissions: new Set(['reports.view']) }),
+    };
     const ai = new AiOrchestrator(
       reports as never,
       gateway as never,
@@ -130,6 +138,38 @@ describe('AiOrchestrator.explainNumber', () => {
     expect(store.completeRun).not.toHaveBeenCalled();
     expect(store.failRun).toHaveBeenCalledWith(
       expect.objectContaining({ failureCode: 'MODEL_EVIDENCE_UNAUTHORIZED', runId: 'run-1' }),
+    );
+  });
+
+  it('fails closed with no data when access is revoked while the provider fails', async () => {
+    const reports = { drillDown: vi.fn().mockResolvedValue(drillDownResult()) };
+    const gateway = {
+      descriptor: () => ({ provider: 'PRIVATE', model: 'deepseek-local', modelVersion: null }),
+      explain: vi.fn().mockRejectedValue(new AiGatewayException('MODEL_NETWORK_FAILURE', true)),
+    };
+    const store = {
+      createRun: vi.fn().mockResolvedValue({ id: 'run-1' }),
+      completeRun: vi.fn(),
+      failRun: vi.fn().mockResolvedValue(undefined),
+    };
+    const access = {
+      requireMembership: vi
+        .fn()
+        .mockResolvedValue({ id: 'organization-1', permissions: new Set() }),
+    };
+    const ai = new AiOrchestrator(
+      reports as never,
+      gateway as never,
+      store as never,
+      access as never,
+    );
+
+    await expect(ai.explainNumber(organization, actor, input, metadata)).rejects.toMatchObject({
+      failureCode: 'MODEL_EVIDENCE_UNAUTHORIZED',
+    });
+    expect(reports.drillDown).toHaveBeenCalledTimes(1);
+    expect(store.failRun).toHaveBeenCalledWith(
+      expect.objectContaining({ failureCode: 'MODEL_NETWORK_FAILURE', runId: 'run-1' }),
     );
   });
 

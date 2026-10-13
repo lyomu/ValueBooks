@@ -109,7 +109,7 @@ export function RecurringBillsPage() {
     void load();
   }, [load]);
 
-  const currency = vendors.find((vendor) => vendor.id === vendorId)?.currency ?? 'KES';
+  const currency = vendors.find((vendor) => vendor.id === vendorId)?.currency ?? organization?.baseCurrency ?? 'USD';
 
   function resetForm() {
     setVendorId('');

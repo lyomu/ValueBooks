@@ -9,6 +9,7 @@
     "build": "nest build",
     "start": "node dist/src/main.js",
     "start:worker": "node dist/src/worker.js",
+    "start:document-extraction-worker": "node --max-old-space-size=384 dist/src/document-extraction-worker.js",
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate dev",
     "db:deploy": "prisma migrate deploy",
@@ -37,6 +38,8 @@
     "bullmq": "^6.0.9",
     "class-transformer": "^0.5.1",
     "class-validator": "^0.14.2",
+    "countries-and-timezones": "^3.7.2",
+    "currency-codes": "^2.2.0",
     "exceljs": "^4.4.0",
     "ioredis": "^5.7.0",
     "nestjs-pino": "^4.6.1",
@@ -50,7 +53,8 @@
     "redis": "^5.8.2",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.2",
-    "tesseract.js": "^7.0.0"
+    "tesseract.js": "^7.0.0",
+    "world-countries": "^5.0.0"
   },
   "devDependencies": {
     "@nestjs/cli": "^11.0.10",
