@@ -45,6 +45,8 @@ export default tseslint.config(
       ...nextPlugin.configs.recommended.rules,
       ...nextPlugin.configs['core-web-vitals'].rules,
       '@next/next/no-html-link-for-pages': 'off',
+      // App Router has no pages/_document.js; this rule only makes sense for the Pages Router.
+      '@next/next/no-page-custom-font': 'off',
     },
   },
   {

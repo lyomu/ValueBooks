@@ -31,7 +31,7 @@ export function withTimeout<T>(promise: Promise<T>, ms: number, reason: string):
       },
       (error: unknown) => {
         clearTimeout(timer);
-        reject(error);
+        reject(error instanceof Error ? error : new Error(String(error)));
       },
     );
   });
