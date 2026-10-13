@@ -574,7 +574,13 @@ export function JournalEditorPage({ journalId }: { journalId?: string }) {
     setBusy('save');
     setError(null);
     try {
-      const payload = journalPayload(date, currency, description, lines);
+      const payload = journalPayload(
+        date,
+        currency,
+        description,
+        lines,
+        journalId ? journal?.version : undefined,
+      );
       const response = await apiRequest<JournalResponse>(
         journalId
           ? `/organizations/${organizationId}/journals/${journalId}`
@@ -604,7 +610,11 @@ export function JournalEditorPage({ journalId }: { journalId?: string }) {
     try {
       const response = await apiRequest<JournalResponse>(
         `/organizations/${organizationId}/journals/${journal.id}/post`,
-        { method: 'POST', headers: { 'Idempotency-Key': crypto.randomUUID() } },
+        {
+          method: 'POST',
+          headers: { 'Idempotency-Key': crypto.randomUUID() },
+          body: JSON.stringify({ version: journal.version }),
+        },
       );
       setJournal(response.data);
       setNotice(`Posted as ${response.data.reference}.`);
@@ -626,7 +636,10 @@ export function JournalEditorPage({ journalId }: { journalId?: string }) {
         {
           method: 'POST',
           headers: { 'Idempotency-Key': crypto.randomUUID() },
-          body: JSON.stringify({ description: `Reversal of ${journal.reference ?? journal.id}` }),
+          body: JSON.stringify({
+            description: `Reversal of ${journal.reference ?? journal.id}`,
+            version: journal.version,
+          }),
         },
       );
       window.sessionStorage.setItem(
@@ -1092,6 +1105,7 @@ function journalPayload(
   currency: string,
   description: string,
   lines: readonly DraftLine[],
+  version?: number,
 ) {
   return {
     journalDate: date,
@@ -1104,6 +1118,7 @@ function journalPayload(
       creditMinor: decimalToMinor(line.credit || '0'),
       taxCodeId: line.taxCodeId || undefined,
     })),
+    ...(version !== undefined ? { version } : {}),
   };
 }
 

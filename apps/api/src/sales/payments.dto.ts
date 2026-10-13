@@ -4,6 +4,7 @@ import {
   ArrayMinSize,
   IsIn,
   IsISO8601,
+  IsInt,
   IsOptional,
   IsString,
   IsUUID,
@@ -122,6 +123,11 @@ export class AllocatePaymentDto {
   @ValidateNested({ each: true })
   @Type(() => PaymentAllocationLineDto)
   allocations!: PaymentAllocationLineDto[];
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  version?: number;
 }
 
 export class ListPaymentsQueryDto {

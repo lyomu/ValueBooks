@@ -961,6 +961,9 @@ model Journal {
   reversalOfJournalId    String?                 @unique @map("reversal_of_journal_id") @db.Uuid
   createdAt              DateTime                @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt              DateTime                @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  /// Optimistic concurrency counter. Incremented on every mutable update so a stale write
+  /// (based on a previously-read state) is rejected at the database level (GAPS #35).
+  version                Int                     @default(0)
   organization           Organization            @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   createdBy              User                    @relation("JournalCreatedBy", fields: [createdByUserId], references: [id], onDelete: Restrict)
   postedBy               User?                   @relation("JournalPostedBy", fields: [postedByUserId], references: [id], onDelete: Restrict)
@@ -1785,6 +1788,9 @@ model PaymentReceived {
   createdByUserId  String              @map("created_by_user_id") @db.Uuid
   createdAt        DateTime            @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt        DateTime            @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  /// Optimistic concurrency counter. Incremented on every mutable update so a stale write
+  /// (based on a previously-read state) is rejected at the database level (GAPS #35).
+  version          Int                 @default(0)
   organization     Organization        @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   contact          Contact             @relation(fields: [contactId], references: [id], onDelete: Restrict)
   depositAccount   LedgerAccount?      @relation("PaymentReceivedDepositAccount", fields: [depositAccountId], references: [id], onDelete: Restrict)
@@ -2047,6 +2053,9 @@ model SalesOrder {
   createdByUserId    String           @map("created_by_user_id") @db.Uuid
   createdAt          DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt          DateTime         @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  /// Optimistic concurrency counter. Incremented on every mutable update so a stale write
+  /// (based on a previously-read state) is rejected at the database level (GAPS #35).
+  version            Int              @default(0)
   organization       Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   contact            Contact          @relation(fields: [contactId], references: [id], onDelete: Restrict)
   convertedInvoice   Invoice?         @relation(fields: [convertedInvoiceId], references: [id], onDelete: SetNull)
@@ -2590,6 +2599,9 @@ model VendorCredit {
   createdByUserId    String                   @map("created_by_user_id") @db.Uuid
   createdAt          DateTime                 @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt          DateTime                 @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  /// Optimistic concurrency counter. Incremented on every mutable update so a stale write
+  /// (based on a previously-read state) is rejected at the database level (GAPS #35).
+  version            Int                      @default(0)
   organization       Organization             @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   vendor             Vendor                   @relation(fields: [vendorId], references: [id], onDelete: Restrict)
   sourceBill         Bill?                    @relation(fields: [sourceBillId], references: [id], onDelete: SetNull)
@@ -2676,6 +2688,9 @@ model PaymentMade {
   createdByUserId   String                  @map("created_by_user_id") @db.Uuid
   createdAt         DateTime                @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt         DateTime                @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  /// Optimistic concurrency counter. Incremented on every mutable update so a stale write
+  /// (based on a previously-read state) is rejected at the database level (GAPS #35).
+  version           Int                     @default(0)
   organization      Organization            @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   vendor            Vendor                  @relation(fields: [vendorId], references: [id], onDelete: Restrict)
   paidFromAccount   LedgerAccount?          @relation("PaymentMadePaidFromAccount", fields: [paidFromAccountId], references: [id], onDelete: Restrict)

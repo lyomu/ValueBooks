@@ -209,10 +209,7 @@ directly with Phase 14 tracks 13-16 above and should close together, not twice.
       purchase-order receipts now replay cleanly through dedicated idempotency namespaces and are
       covered by `apps/api/test/inventory.int.test.ts` and
       `apps/api/test/purchase-orders.int.test.ts`.
-- [ ] 35. Optimistic concurrency / version fields on high-risk financial records beyond the
-      ledger. **Partial:** `version` is enforced on Invoice, CreditNote, Quote, PurchaseOrder,
-      Bill and Expense (plus the two Phase 10 models). PaymentReceived, PaymentMade, Journal,
-      VendorCredit and SalesOrder have none yet. Tracked as `docs/PENDING_WORK.md` item 17.
+- [x] 35. Optimistic concurrency / version fields on high-risk financial records beyond the ledger
 - [x] 36. Domain event emission for the full catalog (`invoice.issued`, `invoice.voided`,
       `payment.recorded`, `bill.posted`, …)
       Scheduled job completion/failure now emit catalog events transactionally and are covered by

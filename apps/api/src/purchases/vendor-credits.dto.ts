@@ -4,6 +4,7 @@ import {
   ArrayMinSize,
   IsArray,
   IsIn,
+  IsInt,
   IsOptional,
   IsString,
   Length,
@@ -136,6 +137,11 @@ export class UpdateVendorCreditDto {
   @ValidateNested({ each: true })
   @Type(() => VendorCreditLineDto)
   lines?: VendorCreditLineDto[];
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  version?: number;
 }
 
 export class ListVendorCreditsQueryDto {
@@ -162,4 +168,9 @@ export class AllocateVendorCreditDto {
   @ValidateNested({ each: true })
   @Type(() => VendorCreditAllocationLineDto)
   allocations!: VendorCreditAllocationLineDto[];
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  version?: number;
 }
