@@ -1,8 +1,8 @@
-import { expect, test } from '@playwright/test';
+import { expect, test, type Page } from '@playwright/test';
 
 import { clearAuthRateLimits } from './lib/rate-limits';
 
-async function signIn(page: import('@playwright/test').Page) {
+async function signIn(page: Page) {
   await clearAuthRateLimits();
   await page.goto('/login');
   await page.getByLabel('Email address').fill('demo.owner@valuebooks.local');
