@@ -238,19 +238,52 @@ function JurisdictionSection({ detail, reference, canUpdate, onSave }: SectionPr
         <div className="rb-field-grid">
           <div className="rb-field">
             <Label htmlFor="org-country">Country</Label>
-            <SearchableCombobox id="org-country" name="countryCode" defaultValue={detail.countryCode} disabled={!canUpdate} options={reference.countries.map((entry) => ({ value: entry.code, label: entry.name }))} />
+            <SearchableCombobox
+              id="org-country"
+              name="countryCode"
+              defaultValue={detail.countryCode}
+              disabled={!canUpdate}
+              options={reference.countries.map((entry) => ({
+                value: entry.code,
+                label: entry.name,
+              }))}
+            />
           </div>
           <div className="rb-field">
             <Label htmlFor="org-currency">Base currency</Label>
-            <SearchableCombobox id="org-currency" name="baseCurrency" defaultValue={detail.baseCurrency} disabled={!canUpdate} options={reference.currencies.map((entry) => ({ value: entry.code, label: `${entry.code} — ${entry.name}` }))} />
+            <SearchableCombobox
+              id="org-currency"
+              name="baseCurrency"
+              defaultValue={detail.baseCurrency}
+              disabled={!canUpdate}
+              options={reference.currencies.map((entry) => ({
+                value: entry.code,
+                label: `${entry.code} — ${entry.name}`,
+              }))}
+            />
           </div>
           <div className="rb-field">
             <Label htmlFor="org-timezone">Time zone</Label>
-            <SearchableCombobox id="org-timezone" name="timeZone" defaultValue={detail.timeZone} disabled={!canUpdate} options={reference.timeZones.map((zone) => ({ value: zone, label: zone.replace(/_/g, ' ') }))} />
+            <SearchableCombobox
+              id="org-timezone"
+              name="timeZone"
+              defaultValue={detail.timeZone}
+              disabled={!canUpdate}
+              options={reference.timeZones.map((zone) => ({
+                value: zone,
+                label: zone.replace(/_/g, ' '),
+              }))}
+            />
           </div>
           <div className="rb-field">
             <Label htmlFor="org-locale">Language</Label>
-            <SearchableCombobox id="org-locale" name="locale" defaultValue={detail.locale} disabled={!canUpdate} options={reference.locales.map((entry) => ({ value: entry.code, label: entry.name }))} />
+            <SearchableCombobox
+              id="org-locale"
+              name="locale"
+              defaultValue={detail.locale}
+              disabled={!canUpdate}
+              options={reference.locales.map((entry) => ({ value: entry.code, label: entry.name }))}
+            />
           </div>
           <div className="rb-field">
             <Label htmlFor="org-fiscal-month">Fiscal year start month</Label>

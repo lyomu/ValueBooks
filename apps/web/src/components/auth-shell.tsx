@@ -66,7 +66,8 @@ export function AuthShell({
         </div>
         {children}
         <p className="rb-auth__legal">
-          By creating an account, you agree to the <Link href="/terms">Terms and Conditions</Link> and acknowledge the <Link href="/privacy">Privacy Policy</Link>.
+          By creating an account, you agree to the <Link href="/terms">Terms and Conditions</Link>{' '}
+          and acknowledge the <Link href="/privacy">Privacy Policy</Link>.
         </p>
       </div>
     </section>

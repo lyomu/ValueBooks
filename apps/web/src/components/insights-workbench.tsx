@@ -5,7 +5,6 @@ import {
   Button,
   Card,
   DataTable,
-  DataTableToolbar,
   EmptyState,
   Input,
   Label,
@@ -630,7 +629,7 @@ function CashFlowPanel({
                 axisLine={false}
                 tickLine={false}
                 width={76}
-                tickFormatter={(value) => compactCurrency(value, currency)}
+                tickFormatter={(value) => compactCurrency(Number(value), currency)}
                 tick={{ fontSize: 11, fill: 'hsl(215 16% 47%)' }}
               />
               <Tooltip formatter={(value) => formatMajor(Number(value), currency)} />
