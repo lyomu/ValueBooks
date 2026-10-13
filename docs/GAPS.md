@@ -81,7 +81,7 @@ Nine tracks, run incrementally then fully before public V1. (`docs/BUILD_ROADMAP
       observability
 - [ ] 13. Performance: large lists, imports, reports tested with production-like data volumes
 - [ ] 14. Accessibility: critical journeys keyboard-usable and WCAG 2.2 AA-oriented
-- [ ] 15. Migration/import: customers, vendors, items, opening balances, core transaction import
+- [x] 15. Migration/import: customers, vendors, items, opening balances, core transaction import
       paths
 - [ ] 16. Operations: monitoring, alerts, runbooks, support/admin tools ready
 - [ ] 17. Launch: terms/privacy/compliance claims reviewed, selected country packs signed off

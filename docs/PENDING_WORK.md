@@ -250,19 +250,19 @@ them.
 - [x] Integration test per type: a stale version returns 409 and changes nothing
 - [x] Tick GAPS #35 and `BUILD_ROADMAP.md:118`
 
-### [ ] 18 · H1 · Build customer, vendor and item import (L)
+### [x] 18 · H1 · Build customer, vendor and item import (L)
 
-- [ ] Design: a downloadable CSV template per type, column mapping, a preview with row errors,
+- [x] Design: a downloadable CSV template per type, column mapping, a preview with row errors,
       then commit
-- [ ] API: `POST .../customers/import`, `.../vendors/import` and `.../catalog/import`, reusing the
+- [x] API: `POST .../customers/import`, `.../vendors/import` and `.../catalog/import`, reusing the
       parser in `apps/api/src/banking/csv.ts` and the existing DTO validation
-- [ ] Dry-run preview mode, idempotency key on commit, and an audit event
-- [ ] Duplicate handling: match on name/email for contacts and SKU for items
-- [ ] Permission keys, in all four places (catalog keys, catalog entries, `roles-catalog.ts`,
+- [x] Dry-run preview mode, idempotency key on commit, and an audit event
+- [x] Duplicate handling: match on name/email for contacts and SKU for items
+- [x] Permission keys, in all four places (catalog keys, catalog entries, `roles-catalog.ts`,
       contracts)
-- [ ] Web: an import wizard following the Import screen pattern in `banking-workbench.tsx`
-- [ ] Integration tests: valid file, bad rows, duplicates, replay, tenant isolation
-- [ ] Tick GAPS #15
+- [x] Web: an import wizard following the Import screen pattern in `banking-workbench.tsx`
+- [x] Integration tests: valid file, bad rows, duplicates, replay, tenant isolation
+- [x] Tick GAPS #15
 
 ### [ ] 19 · H10 · Publish Terms, Privacy and Accessibility pages (M)
 

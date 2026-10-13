@@ -653,6 +653,12 @@ const ENDPOINTS: readonly EndpointCase[] = [
     body: {},
   },
   {
+    method: 'post',
+    path: 'organizations/:organizationId/customers/import',
+    permission: 'customers.import',
+    body: {},
+  },
+  {
     method: 'patch',
     path: 'organizations/:organizationId/customers/:contactId',
     permission: 'customers.manage',
@@ -721,6 +727,12 @@ const ENDPOINTS: readonly EndpointCase[] = [
     method: 'post',
     path: 'organizations/:organizationId/catalog/items',
     permission: 'catalog.manage',
+    body: {},
+  },
+  {
+    method: 'post',
+    path: 'organizations/:organizationId/catalog/import',
+    permission: 'catalog.import',
     body: {},
   },
   {
@@ -1050,6 +1062,12 @@ const ENDPOINTS: readonly EndpointCase[] = [
     method: 'post',
     path: 'organizations/:organizationId/vendors',
     permission: 'vendors.manage',
+    body: {},
+  },
+  {
+    method: 'post',
+    path: 'organizations/:organizationId/vendors/import',
+    permission: 'vendors.import',
     body: {},
   },
   {
