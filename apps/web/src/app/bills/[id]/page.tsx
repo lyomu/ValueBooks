@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 
 import { AppShell } from '../../../components/app-shell';
-import { BillEditorPage } from '../../../components/bills-workbench';
+import { BillsPage } from '../../../components/bills-workbench';
 
 export const metadata: Metadata = { title: 'Bill | ValueBooks' };
 
@@ -10,7 +10,7 @@ export default async function BillRoute({ params }: { params: Promise<{ id: stri
 
   return (
     <AppShell>
-      <BillEditorPage billId={id} />
+      <BillsPage initialSelectedBillId={id} />
     </AppShell>
   );
 }

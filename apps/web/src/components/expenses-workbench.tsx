@@ -34,6 +34,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ApiError, apiRequest, apiUpload } from '../lib/api';
 import { hasPermission, useWorkspace } from '../lib/workspace';
 import { DocumentExtractionPanel, type ExtractionCandidate } from './document-extraction-panel';
+import { EntityDetailView } from './master-detail/entity-detail-view';
+import { RecordDetailWorkspace } from './record-detail-workspace';
 import { TransactionCollaboration } from './transaction-collaboration';
 
 type ExpenseListResponse = { data: Expense[] };
@@ -70,7 +72,8 @@ const statusOptions: readonly ExpenseStatus[] = [
   'CANCELLED',
 ];
 
-export function ExpensesPage() {
+export function ExpensesPage({ initialSelectedExpenseId }: { initialSelectedExpenseId?: string }) {
+  const router = useRouter();
   const workspace = useWorkspace({ requireOrganization: true });
   const organization = workspace.activeOrganization;
   const organizationId = organization?.id ?? null;
@@ -81,6 +84,9 @@ export function ExpensesPage() {
   const [statusFilter, setStatusFilter] = useState<'' | ExpenseStatus>('');
   const [query, setQuery] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const [selectedExpenseId, setSelectedExpenseId] = useState<string | null>(
+    initialSelectedExpenseId ?? null,
+  );
 
   const load = useCallback(async () => {
     if (!organizationId) return;
@@ -99,6 +105,11 @@ export function ExpensesPage() {
   useEffect(() => {
     void load();
   }, [load]);
+
+  useEffect(
+    () => setSelectedExpenseId(initialSelectedExpenseId ?? null),
+    [initialSelectedExpenseId],
+  );
 
   const filtered = useMemo(() => {
     const needle = query.trim().toLowerCase();
@@ -137,6 +148,96 @@ export function ExpensesPage() {
       <ForbiddenState description="Ask an organization owner, administrator, or accountant to grant expense access." />
     );
   }
+
+  const selectedExpense = expenses?.find((expense) => expense.id === selectedExpenseId);
+  if (selectedExpense)
+    return (
+      <RecordDetailWorkspace
+        variant="compact"
+        title="Expenses"
+        records={expenses ?? []}
+        selectedId={selectedExpense.id}
+        onSelect={(expense) => {
+          setSelectedExpenseId(expense.id);
+          router.push(`/expenses/${expense.id}`);
+        }}
+        onClose={() => {
+          setSelectedExpenseId(null);
+          router.push('/expenses');
+        }}
+        recordHref={(expense) => `/expenses/${expense.id}`}
+        searchText={(expense) =>
+          `${expense.expenseNumber ?? ''} ${expense.payeeVendorName ?? ''} ${expense.payeeName ?? ''} ${expense.status}`
+        }
+        railHeader={
+          <>
+            <h1>All expenses</h1>
+            {canManage ? (
+              <Link
+                className="rb-record-workspace__new"
+                href="/expenses/new"
+                aria-label="New expense"
+              >
+                <FilePlus2 aria-hidden="true" />
+              </Link>
+            ) : null}
+          </>
+        }
+        renderRailRecord={(expense) => (
+          <>
+            <span className="rb-invoice-rail__top">
+              <strong>{expense.payeeVendorName ?? expense.payeeName ?? 'Expense'}</strong>
+              <span className="rb-invoice-rail__amount">
+                {formatMinor(expense.totalMinor, expense.currency)}
+              </span>
+            </span>
+            <span className="rb-invoice-rail__meta">
+              {expense.expenseNumber ?? 'Draft'} · {expense.expenseDate}
+            </span>
+            <span className="rb-invoice-rail__status">{expense.status.replaceAll('_', ' ')}</span>
+          </>
+        )}
+        detailTitle={(expense) => <h1>{expense.expenseNumber ?? 'Draft expense'}</h1>}
+        headerActions={(expense) =>
+          canManage && expense.status === 'DRAFT' ? (
+            <Button asChild variant="outline">
+              <Link href={`/expenses/${expense.id}/edit`}>Edit</Link>
+            </Button>
+          ) : null
+        }
+        renderDetail={(expense) => (
+          <EntityDetailView>
+            <Card className="rb-bill-detail">
+              <header className="rb-bill-detail__head">
+                <div>
+                  <p className="rb-bill-detail__eyebrow">Expense</p>
+                  <h2>{expense.payeeVendorName ?? expense.payeeName ?? 'Unspecified payee'}</h2>
+                </div>
+                <StatusBadge status={expense.status} />
+              </header>
+              <dl className="rb-bill-detail__totals">
+                <div>
+                  <dt>Date</dt>
+                  <dd>{expense.expenseDate}</dd>
+                </div>
+                <div>
+                  <dt>Category</dt>
+                  <dd>{expense.categoryName ?? 'Uncategorised'}</dd>
+                </div>
+                <div>
+                  <dt>Amount</dt>
+                  <dd className="rb-num">{formatMinor(expense.amountMinor, expense.currency)}</dd>
+                </div>
+                <div className="is-total">
+                  <dt>Total</dt>
+                  <dd className="rb-num">{formatMinor(expense.totalMinor, expense.currency)}</dd>
+                </div>
+              </dl>
+            </Card>
+          </EntityDetailView>
+        )}
+      />
+    );
 
   return (
     <>

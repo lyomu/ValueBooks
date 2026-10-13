@@ -10,17 +10,22 @@ import {
   type DataTableColumn,
 } from '@valuebooks/ui';
 import { Plus } from 'lucide-react';
+import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useState } from 'react';
 
 import { ApiError, apiRequest } from '../lib/api';
 import { hasPermission, useWorkspace } from '../lib/workspace';
 import { ItemDialog } from './item-dialog';
 import { OperationalListing } from './operational-listing';
+import { EntityDetailView } from './master-detail/entity-detail-view';
 import { MasterDataImportWizard } from './master-data-import-wizard';
+import { RecordDetailWorkspace } from './record-detail-workspace';
 
 type ItemListResponse = { data: Item[] };
 
-export function ItemsPage() {
+export function ItemsPage({ initialSelectedItemId }: { initialSelectedItemId?: string }) {
+  const router = useRouter();
   const workspace = useWorkspace({ requireOrganization: true });
   const organization = workspace.activeOrganization;
   const organizationId = organization?.id ?? null;
@@ -36,6 +41,9 @@ export function ItemsPage() {
   const [showCreate, setShowCreate] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const [selectedItemId, setSelectedItemId] = useState<string | null>(
+    initialSelectedItemId ?? null,
+  );
 
   const load = useCallback(async () => {
     if (!organizationId) return;
@@ -54,6 +62,8 @@ export function ItemsPage() {
   useEffect(() => {
     void load();
   }, [load]);
+
+  useEffect(() => setSelectedItemId(initialSelectedItemId ?? null), [initialSelectedItemId]);
 
   async function setStatus(item: Item, status: 'ACTIVE' | 'INACTIVE') {
     if (!organizationId) return;
@@ -79,7 +89,7 @@ export function ItemsPage() {
       value: (item) => item.name,
       cell: (item) => (
         <>
-          {item.name}
+          <Link href={`/catalog/items/${item.id}`}>{item.name}</Link>
           {item.sku ? <span> {item.sku}</span> : null}
         </>
       ),
@@ -145,6 +155,68 @@ export function ItemsPage() {
       <ForbiddenState description="Ask an organization owner, administrator, or accountant to grant catalog access." />
     );
   }
+
+  const selectedItem = items?.find((item) => item.id === selectedItemId);
+  if (selectedItem)
+    return (
+      <RecordDetailWorkspace
+        variant="compact"
+        title="Items & services"
+        records={items ?? []}
+        selectedId={selectedItem.id}
+        onSelect={(item) => {
+          setSelectedItemId(item.id);
+          router.push(`/catalog/items/${item.id}`);
+        }}
+        onClose={() => {
+          setSelectedItemId(null);
+          router.push('/catalog/items');
+        }}
+        recordHref={(item) => `/catalog/items/${item.id}`}
+        searchText={(item) => `${item.name} ${item.sku ?? ''} ${item.itemType}`}
+        railHeader={<h1>All items & services</h1>}
+        renderRailRecord={(item) => (
+          <>
+            <span className="rb-customer-rail__line">
+              <strong>{item.name}</strong>
+            </span>
+            <span className="rb-customer-rail__meta">{item.sku ?? item.itemType}</span>
+          </>
+        )}
+        detailTitle={(item) => <h1>{item.name}</h1>}
+        renderDetail={(item) => (
+          <EntityDetailView>
+            <div className="rb-bill-detail">
+              <header className="rb-bill-detail__head">
+                <div>
+                  <p className="rb-bill-detail__eyebrow">{item.itemType}</p>
+                  <h2>{item.sku ?? item.name}</h2>
+                </div>
+                <StatusBadge status={item.status} />
+              </header>
+              <dl className="rb-bill-detail__totals">
+                <div>
+                  <dt>Inventory</dt>
+                  <dd>{item.inventoryTracked ? 'Tracked' : 'Not tracked'}</dd>
+                </div>
+                <div>
+                  <dt>Reorder threshold</dt>
+                  <dd>{item.reorderThreshold ?? 'Not set'}</dd>
+                </div>
+                <div>
+                  <dt>Price</dt>
+                  <dd className="rb-num">
+                    {item.prices[0]
+                      ? `${item.prices[0].currency} ${(Number(item.prices[0].unitPriceMinor) / 100).toFixed(2)}`
+                      : '—'}
+                  </dd>
+                </div>
+              </dl>
+            </div>
+          </EntityDetailView>
+        )}
+      />
+    );
 
   const formTarget = editing;
   const formOpen = showCreate || Boolean(editing);

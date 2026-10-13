@@ -23,6 +23,8 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ApiError, apiRequest } from '../lib/api';
 import { hasPermission, useWorkspace } from '../lib/workspace';
 import { OperationalListing } from './operational-listing';
+import { RecordDetailWorkspace } from './record-detail-workspace';
+import { SimpleDocumentDetail } from './master-detail/simple-document-detail';
 import { TransactionCollaboration } from './transaction-collaboration';
 
 type SalesOrderListResponse = { data: SalesOrder[] };
@@ -60,7 +62,8 @@ const blankLine = (): DraftLine => ({
   taxCodeId: '',
 });
 
-export function SalesOrdersPage() {
+export function SalesOrdersPage({ initialSelectedOrderId }: { initialSelectedOrderId?: string }) {
+  const router = useRouter();
   const workspace = useWorkspace({ requireOrganization: true });
   const organization = workspace.activeOrganization;
   const organizationId = organization?.id ?? null;
@@ -69,6 +72,9 @@ export function SalesOrdersPage() {
 
   const [orders, setOrders] = useState<SalesOrder[] | null>(null);
   const [statusFilter, setStatusFilter] = useState<'' | SalesOrderStatus>('');
+  const [selectedOrderId, setSelectedOrderId] = useState<string | null>(
+    initialSelectedOrderId ?? null,
+  );
   const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
@@ -88,6 +94,7 @@ export function SalesOrdersPage() {
   useEffect(() => {
     void load();
   }, [load]);
+  useEffect(() => setSelectedOrderId(initialSelectedOrderId ?? null), [initialSelectedOrderId]);
 
   const columns: readonly DataTableColumn<SalesOrder>[] = [
     {
@@ -121,6 +128,85 @@ export function SalesOrdersPage() {
       <ForbiddenState description="Ask an organization owner, administrator, or sales manager to grant sales order access." />
     );
   }
+  const selectedOrder = orders?.find((order) => order.id === selectedOrderId);
+  if (selectedOrder)
+    return (
+      <RecordDetailWorkspace
+        variant="compact"
+        title="Sales orders"
+        records={orders ?? []}
+        selectedId={selectedOrder.id}
+        onSelect={(order) => {
+          setSelectedOrderId(order.id);
+          router.push(`/sales-orders/${order.id}`);
+        }}
+        onClose={() => {
+          setSelectedOrderId(null);
+          router.push('/sales-orders');
+        }}
+        recordHref={(order) => `/sales-orders/${order.id}`}
+        searchText={(order) => `${order.orderNumber ?? ''} ${order.contactName} ${order.status}`}
+        railHeader={
+          <>
+            <button
+              type="button"
+              className="rb-record-workspace__title-button"
+              onClick={() => {
+                setSelectedOrderId(null);
+                router.push('/sales-orders');
+              }}
+            >
+              All sales orders
+            </button>
+            {canManage ? (
+              <Link
+                className="rb-record-workspace__new"
+                href="/sales-orders/new"
+                aria-label="New sales order"
+              >
+                <FilePlus2 aria-hidden="true" />
+              </Link>
+            ) : null}
+          </>
+        }
+        renderRailRecord={(order) => (
+          <>
+            <span className="rb-invoice-rail__top">
+              <strong>{order.contactName}</strong>
+              <span className="rb-invoice-rail__amount">
+                {formatMinor(order.totalMinor, order.currency)}
+              </span>
+            </span>
+            <span className="rb-invoice-rail__meta">
+              {order.orderNumber ?? 'Draft'} · {formatDate(order.issueDate)}
+            </span>
+            <span className="rb-invoice-rail__status">{order.status.replaceAll('_', ' ')}</span>
+          </>
+        )}
+        detailTitle={(order) => <h1>{order.orderNumber ?? 'Draft sales order'}</h1>}
+        headerActions={() =>
+          canManage ? (
+            <Button asChild variant="outline" size="sm">
+              <Link href={`/sales-orders/${selectedOrder.id}/edit`}>Edit</Link>
+            </Button>
+          ) : null
+        }
+        renderDetail={(order) => (
+          <SimpleDocumentDetail
+            type="Sales order"
+            reference={order.orderNumber ?? 'Draft sales order'}
+            partyLabel="Customer"
+            partyName={order.contactName}
+            status={order.status}
+            currency={order.currency}
+            issueDate={order.issueDate}
+            subtotalMinor={order.subtotalMinor}
+            totalMinor={order.totalMinor}
+            lines={order.lines}
+          />
+        )}
+      />
+    );
 
   return (
     <>
@@ -406,7 +492,9 @@ export function SalesOrderEditorPage({ orderId }: { orderId?: string }) {
         description="Build an order, approve and confirm it, then convert it to an invoice."
         actions={
           <Button asChild variant="outline">
-            <Link href="/sales-orders">Back to sales orders</Link>
+            <Link href={orderId ? `/sales-orders/${orderId}` : '/sales-orders'}>
+              Back to sales order
+            </Link>
           </Button>
         }
       />
@@ -681,4 +769,10 @@ function formatMinor(value: string, currency: string): string {
   const cents = absolute % 100n;
   const formattedWhole = new Intl.NumberFormat('en-KE').format(Number(whole));
   return `${negative ? '-' : ''}${currency} ${formattedWhole}.${cents.toString().padStart(2, '0')}`;
+}
+
+function formatDate(value: string | null): string {
+  return value
+    ? new Intl.DateTimeFormat('en-KE', { dateStyle: 'medium' }).format(new Date(value))
+    : '—';
 }

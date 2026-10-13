@@ -23,6 +23,8 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ApiError, apiRequest } from '../lib/api';
 import { hasPermission, useWorkspace } from '../lib/workspace';
 import { OperationalListing } from './operational-listing';
+import { RecordDetailWorkspace } from './record-detail-workspace';
+import { SimpleDocumentDetail } from './master-detail/simple-document-detail';
 import { TransactionCollaboration } from './transaction-collaboration';
 
 type QuoteListResponse = { data: Quote[] };
@@ -62,7 +64,8 @@ const blankLine = (): DraftLine => ({
   taxCodeId: '',
 });
 
-export function QuotesPage() {
+export function QuotesPage({ initialSelectedQuoteId }: { initialSelectedQuoteId?: string }) {
+  const router = useRouter();
   const workspace = useWorkspace({ requireOrganization: true });
   const organization = workspace.activeOrganization;
   const organizationId = organization?.id ?? null;
@@ -71,6 +74,9 @@ export function QuotesPage() {
 
   const [quotes, setQuotes] = useState<Quote[] | null>(null);
   const [statusFilter, setStatusFilter] = useState<'' | QuoteStatus>('');
+  const [selectedQuoteId, setSelectedQuoteId] = useState<string | null>(
+    initialSelectedQuoteId ?? null,
+  );
   const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
@@ -90,6 +96,8 @@ export function QuotesPage() {
   useEffect(() => {
     void load();
   }, [load]);
+
+  useEffect(() => setSelectedQuoteId(initialSelectedQuoteId ?? null), [initialSelectedQuoteId]);
 
   const columns: readonly DataTableColumn<Quote>[] = [
     {
@@ -121,6 +129,88 @@ export function QuotesPage() {
   if (!workspace.loading && organization && !canView) {
     return (
       <ForbiddenState description="Ask an organization owner, administrator, or sales manager to grant quote access." />
+    );
+  }
+
+  const selectedQuote = quotes?.find((quote) => quote.id === selectedQuoteId);
+  if (selectedQuote) {
+    return (
+      <RecordDetailWorkspace
+        variant="compact"
+        title="Quotes"
+        records={quotes ?? []}
+        selectedId={selectedQuote.id}
+        onSelect={(quote) => {
+          setSelectedQuoteId(quote.id);
+          router.push(`/quotes/${quote.id}`);
+        }}
+        onClose={() => {
+          setSelectedQuoteId(null);
+          router.push('/quotes');
+        }}
+        recordHref={(quote) => `/quotes/${quote.id}`}
+        searchText={(quote) => `${quote.quoteNumber ?? ''} ${quote.contactName} ${quote.status}`}
+        railHeader={
+          <>
+            <button
+              type="button"
+              className="rb-record-workspace__title-button"
+              onClick={() => {
+                setSelectedQuoteId(null);
+                router.push('/quotes');
+              }}
+            >
+              All estimates
+            </button>
+            {canManage ? (
+              <Link
+                className="rb-record-workspace__new"
+                href="/quotes/new"
+                aria-label="New estimate"
+              >
+                <FilePlus2 aria-hidden="true" />
+              </Link>
+            ) : null}
+          </>
+        }
+        renderRailRecord={(quote) => (
+          <>
+            <span className="rb-invoice-rail__top">
+              <strong>{quote.contactName}</strong>
+              <span className="rb-invoice-rail__amount">
+                {formatMinor(quote.totalMinor, quote.currency)}
+              </span>
+            </span>
+            <span className="rb-invoice-rail__meta">
+              {quote.quoteNumber ?? 'Draft'} · {formatDate(quote.issueDate)}
+            </span>
+            <span className="rb-invoice-rail__status">{quote.status.replaceAll('_', ' ')}</span>
+          </>
+        )}
+        detailTitle={(quote) => <h1>{quote.quoteNumber ?? 'Draft estimate'}</h1>}
+        headerActions={() =>
+          canManage ? (
+            <Button asChild variant="outline" size="sm">
+              <Link href={`/quotes/${selectedQuote.id}/edit`}>Edit</Link>
+            </Button>
+          ) : null
+        }
+        renderDetail={(quote) => (
+          <SimpleDocumentDetail
+            type="Estimate"
+            reference={quote.quoteNumber ?? 'Draft estimate'}
+            partyLabel="Customer"
+            partyName={quote.contactName}
+            status={quote.status}
+            currency={quote.currency}
+            issueDate={quote.issueDate}
+            secondaryDate={{ label: 'Expiry date', value: quote.expiryDate }}
+            subtotalMinor={quote.subtotalMinor}
+            totalMinor={quote.totalMinor}
+            lines={quote.lines}
+          />
+        )}
+      />
     );
   }
 
@@ -394,7 +484,7 @@ export function QuoteEditorPage({ quoteId }: { quoteId?: string }) {
         description="Build a quote, submit it for approval, then send it to the customer."
         actions={
           <Button asChild variant="outline">
-            <Link href="/quotes">Back to quotes</Link>
+            <Link href={quoteId ? `/quotes/${quoteId}` : '/quotes'}>Back to quote</Link>
           </Button>
         }
       />
@@ -683,4 +773,10 @@ function formatMinor(value: string, currency: string): string {
   const cents = absolute % 100n;
   const formattedWhole = new Intl.NumberFormat('en-KE').format(Number(whole));
   return `${negative ? '-' : ''}${currency} ${formattedWhole}.${cents.toString().padStart(2, '0')}`;
+}
+
+function formatDate(value: string | null): string {
+  return value
+    ? new Intl.DateTimeFormat('en-KE', { dateStyle: 'medium' }).format(new Date(value))
+    : '—';
 }

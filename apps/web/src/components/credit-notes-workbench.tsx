@@ -32,6 +32,8 @@ import { ApiError, apiRequest } from '../lib/api';
 import { takeInvoiceSeed } from './invoice-seed';
 import { hasPermission, useWorkspace } from '../lib/workspace';
 import { OperationalListing } from './operational-listing';
+import { RecordDetailWorkspace } from './record-detail-workspace';
+import { SimpleDocumentDetail } from './master-detail/simple-document-detail';
 import { TransactionCollaboration } from './transaction-collaboration';
 
 type CreditNoteListResponse = { data: CreditNote[] };
@@ -69,7 +71,12 @@ const blankLine = (): DraftLine => ({
   taxCodeId: '',
 });
 
-export function CreditNotesPage() {
+export function CreditNotesPage({
+  initialSelectedCreditNoteId,
+}: {
+  initialSelectedCreditNoteId?: string;
+}) {
+  const router = useRouter();
   const workspace = useWorkspace({ requireOrganization: true });
   const organization = workspace.activeOrganization;
   const organizationId = organization?.id ?? null;
@@ -79,6 +86,9 @@ export function CreditNotesPage() {
   const [creditNotes, setCreditNotes] = useState<CreditNote[] | null>(null);
   const [statusFilter, setStatusFilter] = useState<'' | CreditNoteStatus>('');
   const [error, setError] = useState<string | null>(null);
+  const [selectedCreditNoteId, setSelectedCreditNoteId] = useState<string | null>(
+    initialSelectedCreditNoteId ?? null,
+  );
 
   const load = useCallback(async () => {
     if (!organizationId) return;
@@ -97,6 +107,11 @@ export function CreditNotesPage() {
   useEffect(() => {
     void load();
   }, [load]);
+
+  useEffect(
+    () => setSelectedCreditNoteId(initialSelectedCreditNoteId ?? null),
+    [initialSelectedCreditNoteId],
+  );
 
   const columns: readonly DataTableColumn<CreditNote>[] = [
     {
@@ -138,6 +153,82 @@ export function CreditNotesPage() {
   if (!workspace.loading && organization && !canView) {
     return (
       <ForbiddenState description="Ask an organization owner, administrator, or accountant to grant credit note access." />
+    );
+  }
+
+  const selectedCreditNote = creditNotes?.find(
+    (creditNote) => creditNote.id === selectedCreditNoteId,
+  );
+  if (selectedCreditNote) {
+    return (
+      <RecordDetailWorkspace
+        variant="compact"
+        title="Credit notes"
+        records={creditNotes ?? []}
+        selectedId={selectedCreditNote.id}
+        onSelect={(creditNote) => {
+          setSelectedCreditNoteId(creditNote.id);
+          router.push(`/credit-notes/${creditNote.id}`);
+        }}
+        onClose={() => {
+          setSelectedCreditNoteId(null);
+          router.push('/credit-notes');
+        }}
+        recordHref={(creditNote) => `/credit-notes/${creditNote.id}`}
+        searchText={(creditNote) =>
+          `${creditNote.creditNoteNumber ?? ''} ${creditNote.contactName} ${creditNote.status}`
+        }
+        railHeader={
+          <>
+            <h1>All credit notes</h1>
+            {canManage ? (
+              <Link
+                className="rb-record-workspace__new"
+                href="/credit-notes/new"
+                aria-label="New credit note"
+              >
+                <FilePlus2 aria-hidden="true" />
+              </Link>
+            ) : null}
+          </>
+        }
+        renderRailRecord={(creditNote) => (
+          <>
+            <span className="rb-invoice-rail__top">
+              <strong>{creditNote.contactName}</strong>
+              <span className="rb-invoice-rail__amount">
+                {formatMinor(creditNote.totalMinor, creditNote.currency)}
+              </span>
+            </span>
+            <span className="rb-invoice-rail__meta">{creditNote.creditNoteNumber ?? 'Draft'}</span>
+            <span className="rb-invoice-rail__status">
+              {creditNote.status.replaceAll('_', ' ')}
+            </span>
+          </>
+        )}
+        detailTitle={(creditNote) => <h1>{creditNote.creditNoteNumber ?? 'Draft credit note'}</h1>}
+        headerActions={(creditNote) =>
+          canManage && creditNote.status === 'DRAFT' ? (
+            <Button asChild variant="outline">
+              <Link href={`/credit-notes/${creditNote.id}/edit`}>Edit</Link>
+            </Button>
+          ) : null
+        }
+        renderDetail={(creditNote) => (
+          <SimpleDocumentDetail
+            type="Credit note"
+            reference={creditNote.creditNoteNumber ?? 'Draft'}
+            partyLabel="Customer"
+            partyName={creditNote.contactName}
+            status={creditNote.status}
+            currency={creditNote.currency}
+            issueDate={creditNote.issueDate}
+            subtotalMinor={creditNote.subtotalMinor}
+            totalMinor={creditNote.totalMinor}
+            lines={creditNote.lines}
+          />
+        )}
+      />
     );
   }
 
@@ -206,6 +297,10 @@ export function CreditNotesPage() {
                   Clear filters
                 </Button>
               ),
+            }}
+            onRowClick={(creditNote) => {
+              setSelectedCreditNoteId(creditNote.id);
+              router.push(`/credit-notes/${creditNote.id}`);
             }}
           />
         )}

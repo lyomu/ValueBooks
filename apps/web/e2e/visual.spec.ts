@@ -44,6 +44,42 @@ function collectBrowserErrors(page: Page) {
 }
 
 test.describe('ValueBooks design foundation', () => {
+  test('@visual migrated master-detail routes retain a real record link', async ({
+    page,
+  }, testInfo) => {
+    // Six routes are visited here against a freshly started API server, whose first database
+    // query pays a one-time cost (Prisma's query engine connecting/warming up) well past the
+    // global 5s assertion timeout. A throwaway warm-up request absorbs that cost outside the
+    // timed per-route assertions below, and the test itself still gets headroom for the loop.
+    testInfo.setTimeout(120_000);
+    await signIn(page);
+    await page.goto('/invoices', { waitUntil: 'networkidle' });
+    const routes = [
+      ['/invoices', 'invoices-master-detail.png'],
+      ['/bills', 'bills-master-detail.png'],
+      ['/quotes', 'quotes-master-detail.png'],
+      ['/purchase-orders', 'purchase-orders-master-detail.png'],
+      ['/sales-orders', 'sales-orders-master-detail.png'],
+      ['/dashboard/customers', 'customers-master-detail.png'],
+    ] as const;
+
+    for (const [route, snapshot] of routes) {
+      await openStable(page, route);
+      const recordLink = page.locator('main .rb-table a').first();
+      await expect(recordLink).toBeVisible();
+      await recordLink.click();
+      // The first navigation against a freshly started production server can take noticeably
+      // longer than steady-state (on-demand route compilation), so this uses a generous timeout
+      // rather than the global 5s default to avoid flaking on cold start.
+      await expect(page.locator('.rb-master-detail')).toBeVisible({ timeout: 15000 });
+      await expect(page.locator('.rb-master-detail__detail')).toBeVisible();
+      if (testInfo.project.name === 'mobile') {
+        await expect(page.getByRole('button', { name: /Back to .* list/ })).toBeVisible();
+      }
+      await expect(page).toHaveScreenshot(snapshot, { fullPage: true });
+    }
+  });
+
   test('@visual authentication references', async ({ page }, testInfo) => {
     if (testInfo.project.name === 'desktop') {
       await page.setViewportSize({ width: 2560, height: 1356 });

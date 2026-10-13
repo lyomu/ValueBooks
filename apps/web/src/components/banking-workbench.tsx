@@ -47,11 +47,15 @@ import {
   SplitSquareHorizontal,
   Trash2,
 } from 'lucide-react';
+import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
 
 import { ApiError, apiRequest, apiUpload } from '../lib/api';
 import { formValue } from '../lib/forms';
 import { hasPermission, useWorkspace } from '../lib/workspace';
+import { EntityDetailView } from './master-detail/entity-detail-view';
+import { RecordDetailWorkspace } from './record-detail-workspace';
 
 interface BankMatchCandidate {
   targetType: MatchTargetType;
@@ -848,12 +852,17 @@ function BankRuleForm({
   }
 }
 
-export function TransfersPage() {
+export function TransfersPage({
+  initialSelectedTransferId,
+}: {
+  initialSelectedTransferId?: string;
+} = {}) {
   const workspace = useWorkspace({ requireOrganization: true });
   const organization = workspace.activeOrganization;
   const organizationId = organization?.id ?? null;
   const canView = hasPermission(organization, 'banking.transfers.view');
   const canManage = hasPermission(organization, 'banking.transfers.manage');
+  const router = useRouter();
 
   const [accounts, setAccounts] = useState<FinancialAccount[]>([]);
   const [transfers, setTransfers] = useState<Transfer[] | null>(null);
@@ -861,6 +870,9 @@ export function TransfersPage() {
   const [showCreate, setShowCreate] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const [selectedTransferId, setSelectedTransferId] = useState<string | null>(
+    initialSelectedTransferId ?? null,
+  );
 
   const load = useCallback(async () => {
     if (!organizationId) return;
@@ -883,6 +895,11 @@ export function TransfersPage() {
   useEffect(() => {
     void load();
   }, [load]);
+
+  useEffect(
+    () => setSelectedTransferId(initialSelectedTransferId ?? null),
+    [initialSelectedTransferId],
+  );
 
   const accountNames = useMemo(() => financialAccountLabelMap(accounts), [accounts]);
 
@@ -909,7 +926,9 @@ export function TransfersPage() {
       header: 'Transfer',
       cell: (transfer) => (
         <div>
-          <strong>{transfer.transferNumber ?? 'Transfer'}</strong>
+          <strong>
+            <Link href={`/transfers/${transfer.id}`}>{transfer.transferNumber ?? 'Transfer'}</Link>
+          </strong>
           <span className="rb-table-secondary">
             {transfer.description ?? transfer.transferDate}
           </span>
@@ -960,6 +979,89 @@ export function TransfersPage() {
   if (!workspace.loading && organization && !canView) {
     return (
       <ForbiddenState description="Ask for banking transfer access to review account movements." />
+    );
+  }
+
+  const selectedTransfer = (transfers ?? []).find((transfer) => transfer.id === selectedTransferId);
+  if (selectedTransfer) {
+    return (
+      <RecordDetailWorkspace
+        variant="compact"
+        title="Transfers"
+        records={transfers ?? []}
+        selectedId={selectedTransfer.id}
+        onSelect={(transfer) => {
+          setSelectedTransferId(transfer.id);
+          router.push(`/transfers/${transfer.id}`);
+        }}
+        onClose={() => {
+          setSelectedTransferId(null);
+          router.push('/transfers');
+        }}
+        recordHref={(transfer) => `/transfers/${transfer.id}`}
+        searchText={(transfer) => `${transfer.transferNumber ?? ''} ${transfer.description ?? ''}`}
+        railHeader={<h1>All transfers</h1>}
+        renderRailRecord={(transfer) => (
+          <>
+            <span className="rb-customer-rail__line">
+              <strong>{transfer.transferNumber ?? 'Transfer'}</strong>
+            </span>
+            <span className="rb-customer-rail__meta">
+              {transfer.description ?? transfer.transferDate}
+            </span>
+          </>
+        )}
+        detailTitle={(transfer) => <h1>{transfer.transferNumber ?? 'Transfer'}</h1>}
+        headerActions={(transfer) =>
+          canManage && transfer.status === 'POSTED' ? (
+            <Button
+              variant="ghost"
+              size="sm"
+              type="button"
+              onClick={() => void voidTransfer(transfer)}
+            >
+              <Ban aria-hidden="true" /> Void
+            </Button>
+          ) : null
+        }
+        renderDetail={(transfer) => (
+          <EntityDetailView>
+            <Card className="rb-bill-detail">
+              <header className="rb-bill-detail__head">
+                <div>
+                  <p className="rb-bill-detail__eyebrow">Transfer</p>
+                  <h2>{transfer.transferNumber ?? 'Transfer'}</h2>
+                </div>
+                <StatusBadge status={transfer.status} />
+              </header>
+              <dl className="rb-bill-detail__totals">
+                <div>
+                  <dt>Date</dt>
+                  <dd>{transfer.transferDate}</dd>
+                </div>
+                <div>
+                  <dt>From</dt>
+                  <dd>
+                    {accountNames.get(transfer.fromFinancialAccountId) ?? transfer.fromCurrency}
+                  </dd>
+                </div>
+                <div>
+                  <dt>To</dt>
+                  <dd>{accountNames.get(transfer.toFinancialAccountId) ?? transfer.toCurrency}</dd>
+                </div>
+                <div>
+                  <dt>Amount</dt>
+                  <dd>{formatMinor(transfer.fromAmountMinor, transfer.fromCurrency)}</dd>
+                </div>
+                <div>
+                  <dt>Description</dt>
+                  <dd>{transfer.description ?? '—'}</dd>
+                </div>
+              </dl>
+            </Card>
+          </EntityDetailView>
+        )}
+      />
     );
   }
 

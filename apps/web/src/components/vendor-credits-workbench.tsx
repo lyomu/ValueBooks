@@ -31,6 +31,8 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import { ApiError, apiRequest } from '../lib/api';
 import { hasPermission, useWorkspace } from '../lib/workspace';
+import { RecordDetailWorkspace } from './record-detail-workspace';
+import { SimpleDocumentDetail } from './master-detail/simple-document-detail';
 import { TransactionCollaboration } from './transaction-collaboration';
 
 type VendorCreditListResponse = { data: VendorCredit[] };
@@ -62,7 +64,12 @@ const blankLine = (): DraftLine => ({
   taxCodeId: '',
 });
 
-export function VendorCreditsPage() {
+export function VendorCreditsPage({
+  initialSelectedVendorCreditId,
+}: {
+  initialSelectedVendorCreditId?: string;
+}) {
+  const router = useRouter();
   const workspace = useWorkspace({ requireOrganization: true });
   const organization = workspace.activeOrganization;
   const organizationId = organization?.id ?? null;
@@ -73,6 +80,9 @@ export function VendorCreditsPage() {
   const [statusFilter, setStatusFilter] = useState<'' | VendorCreditStatus>('');
   const [query, setQuery] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const [selectedVendorCreditId, setSelectedVendorCreditId] = useState<string | null>(
+    initialSelectedVendorCreditId ?? null,
+  );
 
   const load = useCallback(async () => {
     if (!organizationId) return;
@@ -91,6 +101,11 @@ export function VendorCreditsPage() {
   useEffect(() => {
     void load();
   }, [load]);
+
+  useEffect(
+    () => setSelectedVendorCreditId(initialSelectedVendorCreditId ?? null),
+    [initialSelectedVendorCreditId],
+  );
 
   const filtered = useMemo(() => {
     const needle = query.trim().toLowerCase();
@@ -140,6 +155,79 @@ export function VendorCreditsPage() {
       <ForbiddenState description="Ask an organization owner, administrator, or accountant to grant vendor credit access." />
     );
   }
+
+  const selectedVendorCredit = vendorCredits?.find(
+    (credit) => credit.id === selectedVendorCreditId,
+  );
+  if (selectedVendorCredit)
+    return (
+      <RecordDetailWorkspace
+        variant="compact"
+        title="Vendor credits"
+        records={vendorCredits ?? []}
+        selectedId={selectedVendorCredit.id}
+        onSelect={(credit) => {
+          setSelectedVendorCreditId(credit.id);
+          router.push(`/vendor-credits/${credit.id}`);
+        }}
+        onClose={() => {
+          setSelectedVendorCreditId(null);
+          router.push('/vendor-credits');
+        }}
+        recordHref={(credit) => `/vendor-credits/${credit.id}`}
+        searchText={(credit) =>
+          `${credit.vendorCreditNumber ?? ''} ${credit.vendorName} ${credit.status}`
+        }
+        railHeader={
+          <>
+            <h1>All vendor credits</h1>
+            {canManage ? (
+              <Link
+                className="rb-record-workspace__new"
+                href="/vendor-credits/new"
+                aria-label="New vendor credit"
+              >
+                <FilePlus2 aria-hidden="true" />
+              </Link>
+            ) : null}
+          </>
+        }
+        renderRailRecord={(credit) => (
+          <>
+            <span className="rb-invoice-rail__top">
+              <strong>{credit.vendorName}</strong>
+              <span className="rb-invoice-rail__amount">
+                {formatMinor(credit.totalMinor, credit.currency)}
+              </span>
+            </span>
+            <span className="rb-invoice-rail__meta">{credit.vendorCreditNumber ?? 'Draft'}</span>
+            <span className="rb-invoice-rail__status">{credit.status.replaceAll('_', ' ')}</span>
+          </>
+        )}
+        detailTitle={(credit) => <h1>{credit.vendorCreditNumber ?? 'Draft vendor credit'}</h1>}
+        headerActions={(credit) =>
+          canManage && credit.status === 'DRAFT' ? (
+            <Button asChild variant="outline">
+              <Link href={`/vendor-credits/${credit.id}/edit`}>Edit</Link>
+            </Button>
+          ) : null
+        }
+        renderDetail={(credit) => (
+          <SimpleDocumentDetail
+            type="Vendor credit"
+            reference={credit.vendorCreditNumber ?? 'Draft'}
+            partyLabel="Vendor"
+            partyName={credit.vendorName}
+            status={credit.status}
+            currency={credit.currency}
+            issueDate={credit.issueDate}
+            subtotalMinor={credit.subtotalMinor}
+            totalMinor={credit.totalMinor}
+            lines={credit.lines}
+          />
+        )}
+      />
+    );
 
   return (
     <>

@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 
 import { AppShell } from '../../../components/app-shell';
-import { ExpenseEditorPage } from '../../../components/expenses-workbench';
+import { ExpensesPage } from '../../../components/expenses-workbench';
 
 export const metadata: Metadata = { title: 'Expense | ValueBooks' };
 
@@ -10,7 +10,7 @@ export default async function ExpenseRoute({ params }: { params: Promise<{ id: s
 
   return (
     <AppShell>
-      <ExpenseEditorPage expenseId={id} />
+      <ExpensesPage initialSelectedExpenseId={id} />
     </AppShell>
   );
 }

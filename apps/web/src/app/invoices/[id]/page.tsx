@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 
 import { AppShell } from '../../../components/app-shell';
-import { InvoiceEditorPage } from '../../../components/invoices-workbench';
+import { InvoicesPage } from '../../../components/invoices-workbench';
 
 export const metadata: Metadata = { title: 'Invoice | ValueBooks' };
 
@@ -10,7 +10,7 @@ export default async function InvoiceRoute({ params }: { params: Promise<{ id: s
 
   return (
     <AppShell>
-      <InvoiceEditorPage invoiceId={id} />
+      <InvoicesPage initialSelectedInvoiceId={id} />
     </AppShell>
   );
 }

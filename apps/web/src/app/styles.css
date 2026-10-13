@@ -6192,6 +6192,163 @@ a.rb-nav-item:hover {
   margin-bottom: 1rem;
 }
 
+/* Read-only document content shared by the master-detail document variant. */
+.rb-master-detail__document {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+}
+.rb-bill-detail__toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.625rem 1rem;
+  background: hsl(var(--rb-muted));
+  border-bottom: 1px solid hsl(var(--rb-border));
+}
+.rb-bill-detail {
+  width: min(100% - 3rem, 64rem);
+  margin: 1.5rem auto 3rem;
+  padding: 2.5rem;
+  color: hsl(var(--rb-foreground));
+  background: hsl(var(--rb-card));
+  border: 1px solid hsl(var(--rb-border));
+  border-radius: var(--rb-radius);
+  box-shadow: var(--rb-shadow-sm);
+}
+.rb-bill-detail__head,
+.rb-bill-detail__parties {
+  display: flex;
+  justify-content: space-between;
+  gap: 2rem;
+}
+.rb-bill-detail__head {
+  padding-bottom: 1.5rem;
+  border-bottom: 1px solid hsl(var(--rb-border));
+}
+.rb-bill-detail__eyebrow,
+.rb-bill-detail__head p,
+.rb-bill-detail__status span,
+.rb-bill-detail__parties span,
+.rb-bill-detail__parties dt,
+.rb-bill-detail__totals dt {
+  margin: 0;
+  color: hsl(var(--rb-muted-foreground));
+  font-size: 12px;
+  line-height: 1.4;
+}
+.rb-bill-detail__eyebrow {
+  margin-bottom: 0.25rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.rb-bill-detail__head h2 {
+  margin: 0 0 0.35rem;
+  font-size: 1.5rem;
+  letter-spacing: -0.02em;
+}
+.rb-bill-detail__status {
+  display: grid;
+  justify-items: end;
+  gap: 0.35rem;
+  text-align: right;
+}
+.rb-bill-detail__status strong {
+  font-size: 1.125rem;
+}
+.rb-bill-detail__parties {
+  align-items: start;
+  padding: 1.5rem 0;
+}
+.rb-bill-detail__parties > div,
+.rb-bill-detail__parties dl {
+  display: grid;
+  gap: 0.35rem;
+  margin: 0;
+}
+.rb-bill-detail__parties > div strong,
+.rb-bill-detail__parties dd,
+.rb-bill-detail__table,
+.rb-bill-detail__totals dd {
+  font-size: 12px;
+  font-weight: 500;
+}
+.rb-bill-detail__parties dl {
+  grid-template-columns: repeat(3, minmax(5rem, auto));
+  gap: 1.25rem;
+}
+.rb-bill-detail__parties dl div,
+.rb-bill-detail__totals div {
+  display: grid;
+  gap: 0.25rem;
+}
+.rb-bill-detail__parties dd,
+.rb-bill-detail__totals dd {
+  margin: 0;
+}
+.rb-bill-detail__table-wrap {
+  overflow-x: auto;
+}
+.rb-bill-detail__table {
+  width: 100%;
+  border-collapse: collapse;
+}
+.rb-bill-detail__table th,
+.rb-bill-detail__table td {
+  padding: 0.75rem;
+  text-align: left;
+  border-bottom: 1px solid hsl(var(--rb-border));
+}
+.rb-bill-detail__table th {
+  color: hsl(var(--rb-muted-foreground));
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.025em;
+  text-transform: uppercase;
+  background: hsl(var(--rb-muted));
+}
+.rb-bill-detail__table .is-number {
+  text-align: right;
+  white-space: nowrap;
+}
+.rb-bill-detail__totals {
+  display: grid;
+  gap: 0.5rem;
+  width: min(100%, 18rem);
+  margin: 1.5rem 0 0 auto;
+}
+.rb-bill-detail__totals div {
+  grid-template-columns: 1fr auto;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid hsl(var(--rb-border));
+}
+.rb-bill-detail__totals .is-total,
+.rb-bill-detail__totals .is-balance {
+  font-weight: 600;
+}
+@media (max-width: 760px) {
+  .rb-bill-detail {
+    width: calc(100% - 1.5rem);
+    margin: 0.75rem auto 2rem;
+    padding: 1.25rem;
+  }
+  .rb-bill-detail__head,
+  .rb-bill-detail__parties {
+    display: grid;
+    gap: 1rem;
+  }
+  .rb-bill-detail__status {
+    justify-items: start;
+    text-align: left;
+  }
+  .rb-bill-detail__parties dl {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
 .rb-invoice-next {
   margin-bottom: 1.5rem;
   background: hsl(var(--rb-card));

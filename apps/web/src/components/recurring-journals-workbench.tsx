@@ -14,10 +14,13 @@ import {
   StatusBadge,
 } from '@valuebooks/ui';
 import { Play, Plus, Save, Trash2 } from 'lucide-react';
-import { useCallback, useEffect, useState } from 'react';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import { ApiError, apiRequest } from '../lib/api';
 import { hasPermission, useWorkspace } from '../lib/workspace';
+import { EntityDetailView } from './master-detail/entity-detail-view';
+import { RecordDetailWorkspace } from './record-detail-workspace';
 
 type TemplateListResponse = { data: RecurringJournalTemplateView[] };
 type AccountListResponse = { data: LedgerAccount[] };
@@ -48,6 +51,18 @@ export function RecurringJournalsPage() {
   const organizationId = organization?.id ?? null;
   const canView = hasPermission(organization, 'journals.recurring.view');
   const canManage = hasPermission(organization, 'journals.recurring.manage');
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const selectedTemplateId = searchParams.get('template');
+
+  function selectTemplate(templateId: string | null) {
+    const params = new URLSearchParams(searchParams.toString());
+    if (templateId) params.set('template', templateId);
+    else params.delete('template');
+    const query = params.toString();
+    router.push(query ? `${pathname}?${query}` : pathname, { scroll: false });
+  }
 
   const [accounts, setAccounts] = useState<LedgerAccount[]>([]);
   const [templates, setTemplates] = useState<TemplateListResponse['data'] | null>(null);
@@ -88,6 +103,14 @@ export function RecurringJournalsPage() {
   useEffect(() => {
     void load();
   }, [load]);
+
+  const accountLabels = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const account of accounts) map.set(account.id, `${account.code} — ${account.name}`);
+    return map;
+  }, [accounts]);
+
+  const selectedTemplate = (templates ?? []).find((template) => template.id === selectedTemplateId);
 
   if (!canView) return <ForbiddenState />;
 
@@ -165,6 +188,106 @@ export function RecurringJournalsPage() {
     }
   }
 
+  if (selectedTemplate) {
+    return (
+      <RecordDetailWorkspace
+        variant="compact"
+        title="Recurring journals"
+        records={templates ?? []}
+        selectedId={selectedTemplate.id}
+        onSelect={(template) => selectTemplate(template.id)}
+        onClose={() => selectTemplate(null)}
+        searchText={(template) => `${template.name} ${template.memo ?? ''}`}
+        railHeader={<h1>Recurring journals</h1>}
+        renderRailRecord={(template) => (
+          <>
+            <span className="rb-customer-rail__line">
+              <strong>{template.name}</strong>
+            </span>
+            <span className="rb-customer-rail__meta">
+              {template.cadence.toLowerCase()} · next {template.nextRunDate}
+            </span>
+          </>
+        )}
+        detailTitle={(template) => <h1>{template.name}</h1>}
+        headerActions={(template) =>
+          canManage ? (
+            <Button
+              size="sm"
+              variant={template.active ? 'ghost' : 'outline'}
+              disabled={busy}
+              onClick={() =>
+                void toggle(template.id, template.active ? 'deactivate' : 'reactivate')
+              }
+            >
+              {template.active ? 'Deactivate' : 'Reactivate'}
+            </Button>
+          ) : null
+        }
+        renderDetail={(template) => (
+          <EntityDetailView>
+            <Card className="rb-bill-detail">
+              <header className="rb-bill-detail__head">
+                <div>
+                  <p className="rb-bill-detail__eyebrow">Template</p>
+                  <h2>{template.name}</h2>
+                </div>
+                <StatusBadge status={template.active ? 'ACTIVE' : 'INACTIVE'} />
+              </header>
+              <dl className="rb-bill-detail__totals">
+                <div>
+                  <dt>Cadence</dt>
+                  <dd>{template.cadence}</dd>
+                </div>
+                <div>
+                  <dt>Start date</dt>
+                  <dd>{template.startDate}</dd>
+                </div>
+                <div>
+                  <dt>End date</dt>
+                  <dd>{template.endDate ?? 'None'}</dd>
+                </div>
+                <div>
+                  <dt>Next run</dt>
+                  <dd>{template.nextRunDate}</dd>
+                </div>
+                <div>
+                  <dt>Memo</dt>
+                  <dd>{template.memo ?? '—'}</dd>
+                </div>
+              </dl>
+            </Card>
+            <Card className="rb-bill-detail">
+              <h2>Lines</h2>
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="text-left text-slate-500">
+                    <th className="py-1 pr-2 font-medium">Account</th>
+                    <th className="py-1 pr-2 font-medium">Debit</th>
+                    <th className="py-1 pr-2 font-medium">Credit</th>
+                    <th className="py-1 pr-2 font-medium">Description</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {template.lines.map((line) => (
+                    <tr key={line.id}>
+                      <td className="py-1 pr-2">
+                        {accountLabels.get(line.accountId) ?? line.accountId}
+                      </td>
+                      <td className="py-1 pr-2">{line.debitMinor}</td>
+                      <td className="py-1 pr-2">{line.creditMinor}</td>
+                      <td className="py-1 pr-2">{line.description ?? '—'}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </Card>
+          </EntityDetailView>
+        )}
+      />
+    );
+  }
+
   return (
     <div className="space-y-6">
       <PageHeader
@@ -221,7 +344,13 @@ export function RecurringJournalsPage() {
                 className="flex flex-wrap items-center justify-between gap-2 py-2 text-sm"
               >
                 <div>
-                  <span className="font-medium">{template.name}</span>
+                  <button
+                    type="button"
+                    className="font-medium underline-offset-2 hover:underline"
+                    onClick={() => selectTemplate(template.id)}
+                  >
+                    {template.name}
+                  </button>
                   <span className="text-slate-500">
                     {' '}
                     — {template.cadence.toLowerCase()}, next {template.nextRunDate}

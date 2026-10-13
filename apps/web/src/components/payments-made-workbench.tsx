@@ -29,6 +29,8 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ApiError, apiRequest } from '../lib/api';
 import { hasPermission, useWorkspace } from '../lib/workspace';
 import { OperationalListing } from './operational-listing';
+import { EntityDetailView } from './master-detail/entity-detail-view';
+import { RecordDetailWorkspace } from './record-detail-workspace';
 import { TransactionCollaboration } from './transaction-collaboration';
 
 type PaymentListResponse = { data: PaymentMade[] };
@@ -42,7 +44,12 @@ const statusOptions: readonly PaymentStatus[] = [
   'FULLY_ALLOCATED',
 ];
 
-export function PaymentsMadePage() {
+export function PaymentsMadePage({
+  initialSelectedPaymentId,
+}: {
+  initialSelectedPaymentId?: string;
+}) {
+  const router = useRouter();
   const workspace = useWorkspace({ requireOrganization: true });
   const organization = workspace.activeOrganization;
   const organizationId = organization?.id ?? null;
@@ -52,6 +59,9 @@ export function PaymentsMadePage() {
   const [payments, setPayments] = useState<PaymentMade[] | null>(null);
   const [statusFilter, setStatusFilter] = useState<'' | PaymentStatus>('');
   const [error, setError] = useState<string | null>(null);
+  const [selectedPaymentId, setSelectedPaymentId] = useState<string | null>(
+    initialSelectedPaymentId ?? null,
+  );
 
   const load = useCallback(async () => {
     if (!organizationId) return;
@@ -70,6 +80,11 @@ export function PaymentsMadePage() {
   useEffect(() => {
     void load();
   }, [load]);
+
+  useEffect(
+    () => setSelectedPaymentId(initialSelectedPaymentId ?? null),
+    [initialSelectedPaymentId],
+  );
 
   const columns: readonly DataTableColumn<PaymentMade>[] = [
     {
@@ -109,6 +124,88 @@ export function PaymentsMadePage() {
   if (!workspace.loading && organization && !canView) {
     return (
       <ForbiddenState description="Ask an organization owner, administrator, or accountant to grant payment access." />
+    );
+  }
+
+  const selectedPayment = payments?.find((payment) => payment.id === selectedPaymentId);
+  if (selectedPayment) {
+    return (
+      <RecordDetailWorkspace
+        variant="compact"
+        title="Payments made"
+        records={payments ?? []}
+        selectedId={selectedPayment.id}
+        onSelect={(payment) => {
+          setSelectedPaymentId(payment.id);
+          router.push(`/payments-made/${payment.id}`);
+        }}
+        onClose={() => {
+          setSelectedPaymentId(null);
+          router.push('/payments-made');
+        }}
+        recordHref={(payment) => `/payments-made/${payment.id}`}
+        searchText={(payment) =>
+          `${payment.paymentNumber ?? ''} ${payment.vendorName} ${payment.status}`
+        }
+        railHeader={
+          <>
+            <h1>All payments made</h1>
+            {canRecord ? (
+              <Link
+                className="rb-record-workspace__new"
+                href="/payments-made/new"
+                aria-label="New payment made"
+              >
+                <PlusCircle aria-hidden="true" />
+              </Link>
+            ) : null}
+          </>
+        }
+        renderRailRecord={(payment) => (
+          <>
+            <span className="rb-invoice-rail__top">
+              <strong>{payment.vendorName}</strong>
+              <span className="rb-invoice-rail__amount">
+                {formatMinor(payment.amountMinor, payment.currency)}
+              </span>
+            </span>
+            <span className="rb-invoice-rail__meta">{payment.paymentNumber ?? 'Payment'}</span>
+            <span className="rb-invoice-rail__status">{payment.status.replaceAll('_', ' ')}</span>
+          </>
+        )}
+        detailTitle={(payment) => <h1>{payment.paymentNumber ?? 'Payment'}</h1>}
+        renderDetail={(payment) => (
+          <EntityDetailView>
+            <Card className="rb-bill-detail">
+              <header className="rb-bill-detail__head">
+                <div>
+                  <p className="rb-bill-detail__eyebrow">Payment made</p>
+                  <h2>{payment.vendorName}</h2>
+                </div>
+                <StatusBadge status={payment.status} />
+              </header>
+              <dl className="rb-bill-detail__totals">
+                <div>
+                  <dt>Paid</dt>
+                  <dd className="rb-num">{formatMinor(payment.amountMinor, payment.currency)}</dd>
+                </div>
+                <div>
+                  <dt>Allocated</dt>
+                  <dd className="rb-num">
+                    {formatMinor(payment.allocatedMinor, payment.currency)}
+                  </dd>
+                </div>
+                <div className="is-total">
+                  <dt>Unapplied</dt>
+                  <dd className="rb-num">
+                    {formatMinor(payment.unappliedMinor, payment.currency)}
+                  </dd>
+                </div>
+              </dl>
+            </Card>
+          </EntityDetailView>
+        )}
+      />
     );
   }
 
@@ -167,6 +264,10 @@ export function PaymentsMadePage() {
               title: 'No payments match this view',
               description: 'Try a different search term or clear the active status filter.',
               variant: 'no-results',
+            }}
+            onRowClick={(payment) => {
+              setSelectedPaymentId(payment.id);
+              router.push(`/payments-made/${payment.id}`);
             }}
           />
         )}

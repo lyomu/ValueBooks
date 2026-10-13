@@ -2,6 +2,9 @@ import { defineConfig, devices } from '@playwright/test';
 
 const baseURL = process.env.PLAYWRIGHT_BASE_URL ?? 'http://127.0.0.1:3300';
 const useExistingServer = Boolean(process.env.PLAYWRIGHT_BASE_URL);
+const e2eDatabaseUrl =
+  process.env.E2E_DATABASE_URL ??
+  'postgresql://valuebooks:valuebooks@127.0.0.1:55432/valuebooks_e2e';
 
 export default defineConfig({
   testDir: './e2e',
@@ -56,8 +59,10 @@ export default defineConfig({
           cwd: '../..',
           env: {
             ...process.env,
+            NODE_OPTIONS: process.env.NODE_OPTIONS ?? '--max-old-space-size=4096',
             API_PORT: '3401',
-            DATABASE_URL: 'postgresql://valuebooks:valuebooks@127.0.0.1:55432/valuebooks_e2e',
+            DATABASE_URL: e2eDatabaseUrl,
+            DATABASE_MIGRATION_URL: e2eDatabaseUrl,
             REDIS_URL: 'redis://127.0.0.1:56780',
             // Must match e2e/prepare.mjs: MinIO is remapped to 59300 because Windows reserves the
             // 58957-59056 range docker-compose's 59000 default falls in. With 59000 here every
@@ -79,6 +84,7 @@ export default defineConfig({
           cwd: '../..',
           env: {
             ...process.env,
+            NODE_OPTIONS: process.env.NODE_OPTIONS ?? '--max-old-space-size=4096',
             NEXT_PUBLIC_API_URL: 'http://127.0.0.1:3401',
             // The generated standalone server.js reads these env vars, not --hostname/--port CLI
             // flags (that's `next start`'s interface, not the standalone server's) -- passing them as

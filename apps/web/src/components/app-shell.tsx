@@ -540,7 +540,7 @@ export function AppShell({
 
       <div className="rb-app-shell__workspace">
         <TopBar onMenuClick={() => setMobileOpen(true)} workspace={workspace} />
-        <main className="rb-main-scroll">
+        <main className="rb-main-scroll" id="main-content" tabIndex={-1}>
           <div className="rb-page-container">{children}</div>
         </main>
       </div>

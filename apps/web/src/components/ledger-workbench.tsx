@@ -46,6 +46,8 @@ import { useCallback, useEffect, useMemo, useState, type FormEvent } from 'react
 import { ApiError, apiRequest } from '../lib/api';
 import { formValue } from '../lib/forms';
 import { hasPermission, useWorkspace } from '../lib/workspace';
+import { EntityDetailView } from './master-detail/entity-detail-view';
+import { RecordDetailWorkspace } from './record-detail-workspace';
 import { TransactionCollaboration } from './transaction-collaboration';
 
 type AccountResponse = { data: LedgerAccount[] };
@@ -395,7 +397,8 @@ function AccountForm({
   );
 }
 
-export function JournalsPage() {
+export function JournalsPage({ initialSelectedJournalId }: { initialSelectedJournalId?: string }) {
+  const router = useRouter();
   const workspace = useWorkspace({ requireOrganization: true });
   const organization = workspace.activeOrganization;
   const organizationId = organization?.id ?? null;
@@ -404,6 +407,9 @@ export function JournalsPage() {
   const [journals, setJournals] = useState<JournalSummary[] | null>(null);
   const [status, setStatus] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const [selectedJournalId, setSelectedJournalId] = useState<string | null>(
+    initialSelectedJournalId ?? null,
+  );
 
   useEffect(() => {
     if (!organizationId) return;
@@ -417,6 +423,11 @@ export function JournalsPage() {
         setError(caught instanceof Error ? caught.message : 'Journals could not be loaded.'),
       );
   }, [organizationId, status]);
+
+  useEffect(
+    () => setSelectedJournalId(initialSelectedJournalId ?? null),
+    [initialSelectedJournalId],
+  );
 
   const columns: readonly DataTableColumn<JournalSummary>[] = [
     {
@@ -438,6 +449,66 @@ export function JournalsPage() {
       cell: (journal) => formatMinor(journal.debitMinor, currency),
     },
   ];
+
+  const selectedJournal = journals?.find((journal) => journal.id === selectedJournalId);
+  if (selectedJournal)
+    return (
+      <RecordDetailWorkspace
+        variant="compact"
+        title="Journals"
+        records={journals ?? []}
+        selectedId={selectedJournal.id}
+        onSelect={(journal) => {
+          setSelectedJournalId(journal.id);
+          router.push(`/journals/${journal.id}`);
+        }}
+        onClose={() => {
+          setSelectedJournalId(null);
+          router.push('/journals');
+        }}
+        recordHref={(journal) => `/journals/${journal.id}`}
+        searchText={(journal) =>
+          `${journal.reference ?? ''} ${journal.description} ${journal.status}`
+        }
+        railHeader={<h1>All journals</h1>}
+        renderRailRecord={(journal) => (
+          <>
+            <span className="rb-customer-rail__line">
+              <strong>{journal.reference ?? 'Draft journal'}</strong>
+              <span className="rb-invoice-rail__amount">
+                {formatMinor(journal.debitMinor, currency)}
+              </span>
+            </span>
+            <span className="rb-customer-rail__meta">{journal.description}</span>
+            <span className="rb-invoice-rail__status">{journal.status}</span>
+          </>
+        )}
+        detailTitle={(journal) => <h1>{journal.reference ?? 'Draft journal'}</h1>}
+        renderDetail={(journal) => (
+          <EntityDetailView>
+            <Card className="rb-bill-detail">
+              <header className="rb-bill-detail__head">
+                <div>
+                  <p className="rb-bill-detail__eyebrow">Journal</p>
+                  <h2>{journal.description}</h2>
+                </div>
+                <StatusBadge status={journal.status} />
+              </header>
+              <dl className="rb-bill-detail__totals">
+                <div>
+                  <dt>Date</dt>
+                  <dd>{journal.journalDate}</dd>
+                </div>
+                <div className="is-total">
+                  <dt>Total debit</dt>
+                  <dd className="rb-num">{formatMinor(journal.debitMinor, currency)}</dd>
+                </div>
+              </dl>
+            </Card>
+          </EntityDetailView>
+        )}
+      />
+    );
 
   return (
     <>

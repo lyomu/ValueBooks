@@ -29,6 +29,8 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ApiError, apiRequest } from '../lib/api';
 import { hasPermission, useWorkspace } from '../lib/workspace';
 import { OperationalListing } from './operational-listing';
+import { RecordDetailWorkspace } from './record-detail-workspace';
+import { SimpleDocumentDetail } from './master-detail/simple-document-detail';
 import { TransactionCollaboration } from './transaction-collaboration';
 
 type PurchaseOrderListResponse = { data: PurchaseOrder[] };
@@ -65,7 +67,12 @@ const blankLine = (): DraftLine => ({
   taxCodeId: '',
 });
 
-export function PurchaseOrdersPage() {
+export function PurchaseOrdersPage({
+  initialSelectedOrderId,
+}: {
+  initialSelectedOrderId?: string;
+}) {
+  const router = useRouter();
   const workspace = useWorkspace({ requireOrganization: true });
   const organization = workspace.activeOrganization;
   const organizationId = organization?.id ?? null;
@@ -74,6 +81,9 @@ export function PurchaseOrdersPage() {
 
   const [orders, setOrders] = useState<PurchaseOrder[] | null>(null);
   const [statusFilter, setStatusFilter] = useState<'' | PurchaseOrderStatus>('');
+  const [selectedOrderId, setSelectedOrderId] = useState<string | null>(
+    initialSelectedOrderId ?? null,
+  );
   const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
@@ -93,6 +103,8 @@ export function PurchaseOrdersPage() {
   useEffect(() => {
     void load();
   }, [load]);
+
+  useEffect(() => setSelectedOrderId(initialSelectedOrderId ?? null), [initialSelectedOrderId]);
 
   const columns: readonly DataTableColumn<PurchaseOrder>[] = [
     {
@@ -130,6 +142,90 @@ export function PurchaseOrdersPage() {
   if (!workspace.loading && organization && !canView) {
     return (
       <ForbiddenState description="Ask an organization owner, administrator, or purchasing manager to grant purchase order access." />
+    );
+  }
+
+  const selectedOrder = orders?.find((order) => order.id === selectedOrderId);
+  if (selectedOrder) {
+    return (
+      <RecordDetailWorkspace
+        variant="compact"
+        title="Purchase orders"
+        records={orders ?? []}
+        selectedId={selectedOrder.id}
+        onSelect={(order) => {
+          setSelectedOrderId(order.id);
+          router.push(`/purchase-orders/${order.id}`);
+        }}
+        onClose={() => {
+          setSelectedOrderId(null);
+          router.push('/purchase-orders');
+        }}
+        recordHref={(order) => `/purchase-orders/${order.id}`}
+        searchText={(order) =>
+          `${order.orderNumber ?? ''} ${order.vendorName} ${order.status} ${order.receiptStatus}`
+        }
+        railHeader={
+          <>
+            <button
+              type="button"
+              className="rb-record-workspace__title-button"
+              onClick={() => {
+                setSelectedOrderId(null);
+                router.push('/purchase-orders');
+              }}
+            >
+              All purchase orders
+            </button>
+            {canManage ? (
+              <Link
+                className="rb-record-workspace__new"
+                href="/purchase-orders/new"
+                aria-label="New purchase order"
+              >
+                <FilePlus2 aria-hidden="true" />
+              </Link>
+            ) : null}
+          </>
+        }
+        renderRailRecord={(order) => (
+          <>
+            <span className="rb-invoice-rail__top">
+              <strong>{order.vendorName}</strong>
+              <span className="rb-invoice-rail__amount">
+                {formatMinor(order.totalMinor, order.currency)}
+              </span>
+            </span>
+            <span className="rb-invoice-rail__meta">
+              {order.orderNumber ?? 'Draft'} · {formatDate(order.issueDate)}
+            </span>
+            <span className="rb-invoice-rail__status">{order.status.replaceAll('_', ' ')}</span>
+          </>
+        )}
+        detailTitle={(order) => <h1>{order.orderNumber ?? 'Draft purchase order'}</h1>}
+        headerActions={() =>
+          canManage ? (
+            <Button asChild variant="outline" size="sm">
+              <Link href={`/purchase-orders/${selectedOrder.id}/edit`}>Edit</Link>
+            </Button>
+          ) : null
+        }
+        renderDetail={(order) => (
+          <SimpleDocumentDetail
+            type="Purchase order"
+            reference={order.orderNumber ?? 'Draft purchase order'}
+            partyLabel="Vendor"
+            partyName={order.vendorName}
+            status={order.status}
+            currency={order.currency}
+            issueDate={order.issueDate}
+            secondaryDate={{ label: 'Expected delivery', value: order.expectedDeliveryDate }}
+            subtotalMinor={order.subtotalMinor}
+            totalMinor={order.totalMinor}
+            lines={order.lines}
+          />
+        )}
+      />
     );
   }
 
@@ -386,7 +482,9 @@ export function PurchaseOrderEditorPage({ orderId }: { orderId?: string }) {
         description="Build an order, approve and issue it, then record receipt against it."
         actions={
           <Button asChild variant="outline">
-            <Link href="/purchase-orders">Back to purchase orders</Link>
+            <Link href={orderId ? `/purchase-orders/${orderId}` : '/purchase-orders'}>
+              Back to purchase order
+            </Link>
           </Button>
         }
       />
@@ -686,4 +784,10 @@ function formatMinor(value: string, currency: string): string {
   const cents = absolute % 100n;
   const formattedWhole = new Intl.NumberFormat('en-KE').format(Number(whole));
   return `${negative ? '-' : ''}${currency} ${formattedWhole}.${cents.toString().padStart(2, '0')}`;
+}
+
+function formatDate(value: string | null): string {
+  return value
+    ? new Intl.DateTimeFormat('en-KE', { dateStyle: 'medium' }).format(new Date(value))
+    : '—';
 }
