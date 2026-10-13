@@ -1,3 +1,4 @@
+import { ListBucketsCommand, S3Client } from '@aws-sdk/client-s3';
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import type { HealthResponse, QueueStatus, ServiceStatus } from '@valuebooks/contracts';
@@ -206,11 +207,19 @@ export class HealthService {
 
   private async checkMinio(): Promise<ServiceStatus> {
     return this.timedCheck('minio', async () => {
-      const endpoint = this.config.getOrThrow<string>('S3_ENDPOINT');
-      const response = await fetch(`${endpoint}/minio/health/live`, {
-        signal: AbortSignal.timeout(1_500),
+      const client = new S3Client({
+        endpoint: this.config.getOrThrow<string>('S3_ENDPOINT'),
+        region: this.config.getOrThrow<string>('S3_REGION'),
+        credentials: {
+          accessKeyId: this.config.getOrThrow<string>('S3_ACCESS_KEY'),
+          secretAccessKey: this.config.getOrThrow<string>('S3_SECRET_KEY'),
+        },
+        forcePathStyle: true,
+        requestHandler: { requestTimeout: 1_500 },
       });
-      if (!response.ok) throw new Error(`MinIO returned ${response.status}`);
+      // A generic S3 API call rather than a vendor-specific health endpoint, so this also works
+      // against Localstack (used in CI) and real AWS S3, not just MinIO.
+      await client.send(new ListBucketsCommand({}));
     });
   }
 
