@@ -21,6 +21,7 @@ import { EntitlementsService } from './entitlements.service.js';
 import { PlatformAccessService } from './platform-access.service.js';
 import { writePlatformAudit } from './platform-audit.js';
 import { PlatformCatalogService } from './platform-catalog.service.js';
+import { HostedAiEgressApprovalService } from './hosted-ai-egress-approval.service.js';
 import { RequirePlatformRole, type PlatformRequest } from './platform-context.js';
 import { PlatformOperationsService } from './platform-operations.service.js';
 import { PlatformTenantsService } from './platform-tenants.service.js';
@@ -28,6 +29,7 @@ import { PlatformGuard } from './platform.guard.js';
 import {
   AssignPlanDto,
   CreateFeatureFlagDto,
+  CreateHostedAiEgressApprovalDto,
   CreatePlanDto,
   FailedJobSearchDto,
   FlagPreviewDto,
@@ -35,6 +37,7 @@ import {
   OrganizationSearchDto,
   PlatformAuditSearchDto,
   ReactivateOrganizationDto,
+  RevokeHostedAiEgressApprovalDto,
   SecurityEventSearchDto,
   SuspendOrganizationDto,
   UpdateFeatureFlagDto,
@@ -65,6 +68,7 @@ export class PlatformController {
     private readonly access: PlatformAccessService,
     private readonly tenants: PlatformTenantsService,
     private readonly catalog: PlatformCatalogService,
+    private readonly hostedEgressApprovals: HostedAiEgressApprovalService,
     private readonly operations: PlatformOperationsService,
     private readonly entitlements: EntitlementsService,
     private readonly prisma: PrismaService,
@@ -367,6 +371,61 @@ export class PlatformController {
   @RequirePlatformRole('SUPPORT')
   async previewFlag(@Param('key') key: string, @Query() query: FlagPreviewDto) {
     return { data: await this.entitlements.preview({ flagKey: key, ...query }) };
+  }
+
+  // --- Hosted AI egress ---------------------------------------------------------------------
+
+  /** Support can determine the current status without receiving signer or legal-artifact data. */
+  @Get('organizations/:organizationId/hosted-ai-egress-approval')
+  @RequirePlatformRole('SUPPORT')
+  async hostedAiEgressStatus(@Param('organizationId', new ParseUUIDPipe()) organizationId: string) {
+    return { data: await this.hostedEgressApprovals.status(organizationId) };
+  }
+
+  /** Full consent metadata is restricted to superadmins. */
+  @Get('organizations/:organizationId/hosted-ai-egress-approval/records')
+  @RequirePlatformRole('SUPERADMIN')
+  async hostedAiEgressRecords(
+    @Param('organizationId', new ParseUUIDPipe()) organizationId: string,
+  ) {
+    return { data: await this.hostedEgressApprovals.listRecords(organizationId) };
+  }
+
+  @Post('organizations/:organizationId/hosted-ai-egress-approval')
+  @HttpCode(201)
+  @RequirePlatformRole('SUPERADMIN')
+  async approveHostedAiEgress(
+    @Param('organizationId', new ParseUUIDPipe()) organizationId: string,
+    @Body() input: CreateHostedAiEgressApprovalDto,
+    @Req() request: PlatformRequest,
+  ) {
+    return {
+      data: await this.hostedEgressApprovals.approve(
+        request.platform,
+        organizationId,
+        input,
+        this.ipHash(request),
+      ),
+    };
+  }
+
+  @Post('organizations/:organizationId/hosted-ai-egress-approval/:approvalId/revoke')
+  @RequirePlatformRole('SUPERADMIN')
+  async revokeHostedAiEgress(
+    @Param('organizationId', new ParseUUIDPipe()) organizationId: string,
+    @Param('approvalId', new ParseUUIDPipe()) approvalId: string,
+    @Body() input: RevokeHostedAiEgressApprovalDto,
+    @Req() request: PlatformRequest,
+  ) {
+    return {
+      data: await this.hostedEgressApprovals.revoke(
+        request.platform,
+        organizationId,
+        approvalId,
+        input,
+        this.ipHash(request),
+      ),
+    };
   }
 
   // --- Operations ----------------------------------------------------------------------------

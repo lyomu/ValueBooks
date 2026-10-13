@@ -1,10 +1,11 @@
 import { Bot, Check, CreditCard, FileText, MoreHorizontal, Send, TrendingUp } from 'lucide-react';
+import Image from 'next/image';
 
 export function DashboardMockup() {
   return (
     <div className="mk-mockup mk-dashboard-mockup" aria-label="Illustrative ValueBooks dashboard">
       <div className="mk-mockup__bar">
-        <span className="mk-mockup__logo">RB</span>
+        <span className="mk-mockup__logo"><Image src="/logo-mark.png" alt="ValueBooks" width={14} height={14} /></span>
         <span>Good morning, Maya</span>
         <MoreHorizontal />
       </div>
@@ -21,7 +22,7 @@ export function DashboardMockup() {
           <div className="mk-mockup__heading">
             <div>
               <small>Cash available</small>
-              <strong>KES 482,400</strong>
+              <strong>USD 482,400</strong>
               <em>
                 <TrendingUp /> 12.4% this month
               </em>
@@ -40,20 +41,20 @@ export function DashboardMockup() {
             <div>
               <small>Invoices due</small>
               <strong>14</strong>
-              <span>KES 186,000</span>
+              <span>USD 186,000</span>
             </div>
             <div>
               <small>Expenses</small>
-              <strong>KES 74,200</strong>
+              <strong>USD 74,200</strong>
               <span>28 categorized</span>
             </div>
           </div>
           <div className="mk-mockup__table">
             <b>Recent activity</b>
             {[
-              'Invoice #1084  ·  KES 32,000',
-              'Bluewave Logistics  ·  KES 8,400',
-              'Bank match ready  ·  KES 14,900',
+              'Invoice #1084  ·  USD 32,000',
+              'Bluewave Logistics  ·  USD 8,400',
+              'Bank match ready  ·  USD 14,900',
             ].map((item, i) => (
               <p key={item}>
                 <span>{item}</span>
@@ -70,7 +71,7 @@ export function InvoiceMockup() {
   return (
     <div className="mk-mockup mk-invoice-mockup" aria-label="Illustrative invoice screen">
       <header>
-        <span className="mk-mockup__logo">RB</span>
+        <span className="mk-mockup__logo"><Image src="/logo-mark.png" alt="ValueBooks" width={14} height={14} /></span>
         <small>Invoice #1084</small>
         <b>Sent</b>
       </header>
@@ -86,8 +87,8 @@ export function InvoiceMockup() {
         </div>
         <hr />
         {[
-          ['Brand strategy workshop', '1', 'KES 48,000'],
-          ['Delivery & review', '1', 'KES 12,000'],
+          ['Brand strategy workshop', '1', 'USD 48,000'],
+          ['Delivery & review', '1', 'USD 12,000'],
         ].map((row) => (
           <p key={row[0]}>
             <span>{row[0]}</span>
@@ -97,7 +98,7 @@ export function InvoiceMockup() {
         ))}
         <footer>
           <span>Total due</span>
-          <strong>KES 60,000</strong>
+          <strong>USD 60,000</strong>
           <button type="button">
             <CreditCard /> Pay invoice
           </button>
@@ -123,7 +124,7 @@ export function AiMockup() {
           <p>
             <b>Three invoices are ready for a nudge.</b>
             <br />
-            Bluewave Logistics has KES 60,000 due Friday. Nairobi Studio and Pamoja Foods are both 4
+            Bluewave Logistics has USD 60,000 due Friday. Nairobi Studio and Pamoja Foods are both 4
             days overdue.
           </p>
         </div>
@@ -131,7 +132,7 @@ export function AiMockup() {
           <FileText />
           <span>
             <b>Collections summary</b>
-            <small>3 invoices · KES 94,300 outstanding</small>
+            <small>3 invoices · USD 94,300 outstanding</small>
           </span>
           <button type="button">View</button>
         </div>
@@ -153,12 +154,12 @@ export function ReconciliationMockup() {
       <div className="mk-recon-mockup__balance">
         <div>
           <small>Statement balance</small>
-          <b>KES 482,400</b>
+          <b>USD 482,400</b>
         </div>
         <span>−</span>
         <div>
           <small>Book balance</small>
-          <b>KES 482,400</b>
+          <b>USD 482,400</b>
         </div>
         <em>Matched</em>
       </div>

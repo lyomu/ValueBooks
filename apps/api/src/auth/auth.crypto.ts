@@ -1,4 +1,4 @@
-import { createHash, randomBytes } from 'node:crypto';
+import { createHash, randomBytes, randomInt } from 'node:crypto';
 
 import { hash, verify } from '@node-rs/argon2';
 
@@ -20,6 +20,10 @@ export function hashToken(token: string): string {
 
 export function hashIdentifier(value: string, pepper: string): string {
   return createHash('sha256').update(`${pepper}:${value}`).digest('hex');
+}
+
+export function createMfaCode(length = 8): string {
+  return randomInt(0, 10 ** length).toString().padStart(length, '0');
 }
 
 export function hashPassword(password: string): Promise<string> {

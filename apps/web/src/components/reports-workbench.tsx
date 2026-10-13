@@ -30,7 +30,7 @@ import {
   Select,
   Skeleton,
 } from '@valuebooks/ui';
-import { Download, FileBarChart, Save, Trash2 } from 'lucide-react';
+import { ArrowUpRight, Bookmark, Download, Search, Save, Trash2 } from 'lucide-react';
 import Link from 'next/link';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
@@ -45,6 +45,9 @@ export function ReportLibraryPage() {
   const organizationId = organization?.id ?? null;
   const canView = hasPermission(organization, 'reports.view');
   const [definitions, setDefinitions] = useState<ReportDefinition[]>([]);
+  const [query, setQuery] = useState('');
+  const [family, setFamily] = useState<string>('All');
+  const [recentKeys, setRecentKeys] = useState<ReportKey[]>([]);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -59,9 +62,36 @@ export function ReportLibraryPage() {
       );
   }, [canView, organizationId]);
 
-  const groups = useMemo(
-    () => Map.groupBy(definitions, (definition) => definition.family),
+  useEffect(() => {
+    if (!organizationId) return;
+    setRecentKeys(readRecentReportKeys(organizationId));
+  }, [organizationId]);
+
+  const families = useMemo(
+    () => [...new Set(definitions.map((definition) => definition.family))],
     [definitions],
+  );
+  const groups = useMemo(() => {
+    const normalizedQuery = query.trim().toLocaleLowerCase();
+    return Map.groupBy(
+      definitions.filter((definition) => {
+        const matchesFamily = family === 'All' || definition.family === family;
+        const matchesQuery =
+          !normalizedQuery ||
+          [definition.name, definition.description, definition.family].some((value) =>
+            value.toLocaleLowerCase().includes(normalizedQuery),
+          );
+        return matchesFamily && matchesQuery;
+      }),
+      (definition) => definition.family,
+    );
+  }, [definitions, family, query]);
+  const recentReports = useMemo(
+    () =>
+      recentKeys
+        .map((key) => definitions.find((definition) => definition.key === key))
+        .filter(Boolean) as ReportDefinition[],
+    [definitions, recentKeys],
   );
 
   if (!workspace.loading && organization && !canView) {
@@ -79,32 +109,107 @@ export function ReportLibraryPage() {
           </Button>
         }
       />
-      <div className="rb-ledger-stack">
+      <div className="rb-ledger-stack rb-report-library">
         <Messages error={error} />
         {definitions.length === 0 && !error ? <Skeleton /> : null}
+        {definitions.length > 0 ? (
+          <div className="rb-report-library__controls">
+            <div className="rb-report-library__search">
+              <Search aria-hidden="true" />
+              <label className="rb-visually-hidden" htmlFor="report-search">
+                Search reports
+              </label>
+              <Input
+                id="report-search"
+                type="search"
+                placeholder="Search reports"
+                value={query}
+                onChange={(event) => setQuery(event.target.value)}
+              />
+            </div>
+            <div className="rb-report-library__filters" aria-label="Report categories">
+              {['All', ...families].map((item) => (
+                <Button
+                  key={item}
+                  size="sm"
+                  variant={family === item ? 'primary' : 'outline'}
+                  aria-pressed={family === item}
+                  onClick={() => setFamily(item)}
+                >
+                  {item}
+                </Button>
+              ))}
+            </div>
+          </div>
+        ) : null}
+        {recentReports.length > 0 ? (
+          <section className="rb-report-shortcuts" aria-labelledby="frequently-used-reports">
+            <div className="rb-report-section-heading">
+              <div>
+                <span className="rb-report-section-heading__eyebrow">
+                  <Bookmark aria-hidden="true" /> Your shortcuts
+                </span>
+                <h2 id="frequently-used-reports">Frequently used</h2>
+              </div>
+              <span>{recentReports.length} reports</span>
+            </div>
+            <div className="rb-report-library-grid rb-report-library-grid--shortcuts">
+              {recentReports.map((report) => (
+                <ReportLibraryCard key={report.key} report={report} compact />
+              ))}
+            </div>
+          </section>
+        ) : null}
         {[...groups.entries()].map(([family, reports]) => (
-          <Card key={family} className="rb-report-family">
-            <div className="rb-report-family__heading">
-              <FileBarChart aria-hidden="true" />
-              <h2>{family}</h2>
-              <Badge>{reports.length} reports</Badge>
+          <section
+            key={family}
+            className="rb-report-family"
+            aria-labelledby={`report-family-${family}`}
+          >
+            <div className="rb-report-section-heading">
+              <div>
+                <h2 id={`report-family-${family}`}>{family}</h2>
+              </div>
+              <Badge tone="neutral">{reports.length} reports</Badge>
             </div>
             <div className="rb-report-library-grid">
               {reports.map((report) => (
-                <Link
-                  className="rb-report-library-card"
-                  href={`/reports/${report.key}`}
-                  key={report.key}
-                >
-                  <strong>{report.name}</strong>
-                  <span>{report.description}</span>
-                </Link>
+                <ReportLibraryCard key={report.key} report={report} />
               ))}
             </div>
-          </Card>
+          </section>
         ))}
+        {definitions.length > 0 && groups.size === 0 ? (
+          <Card className="rb-report-library__empty">
+            <Search aria-hidden="true" />
+            <strong>No reports match that search</strong>
+            <span>Try a report name, a category, or a shorter phrase.</span>
+          </Card>
+        ) : null}
       </div>
     </>
+  );
+}
+
+function ReportLibraryCard({
+  report,
+  compact = false,
+}: {
+  report: ReportDefinition;
+  compact?: boolean;
+}) {
+  return (
+    <Link
+      className="rb-report-library-card"
+      href={`/reports/${report.key}`}
+      data-compact={compact || undefined}
+    >
+      <strong>{report.name}</strong>
+      <span className="rb-report-library-card__description">{report.description}</span>
+      <span className="rb-report-library-card__action">
+        Open report <ArrowUpRight aria-hidden="true" />
+      </span>
+    </Link>
   );
 }
 
@@ -160,6 +265,10 @@ export function ReportRunnerPage({
   }, [load]);
 
   useEffect(() => {
+    if (organizationId && definition) recordRecentReport(organizationId, definition.key);
+  }, [definition, organizationId]);
+
+  useEffect(() => {
     if (!organizationId || !definition || (!definition.supportsProject && !definition.supportsTag))
       return;
     void apiRequest<{
@@ -192,7 +301,7 @@ export function ReportRunnerPage({
     return <ForbiddenState description="Ask for report access to run this report." />;
   }
 
-  const currency = report?.baseCurrency ?? organization?.baseCurrency ?? 'KES';
+  const currency = report?.baseCurrency ?? organization?.baseCurrency ?? 'USD';
   return (
     <>
       <PageHeader
@@ -458,81 +567,104 @@ function ReportTable({
 }) {
   const canExplain = Boolean(onExplain) && report.definition.supportsDrillDown;
   const labelColumn = report.definition.columns[0];
+  const totals = report.definition.columns.filter(
+    (column) =>
+      (column.type === 'money' || column.type === 'number') &&
+      report.totals[column.key] !== undefined,
+  );
   return (
-    <div className="rb-table-scroll">
-      <table className="rb-table rb-report-table">
-        <caption className="rb-visually-hidden">{report.definition.name}</caption>
-        <thead>
-          <tr>
-            {report.definition.columns.map((column) => (
-              <th
-                key={column.key}
-                className={
-                  column.type === 'money' || column.type === 'number'
-                    ? 'rb-table--right'
-                    : undefined
-                }
-              >
-                {column.label}
-              </th>
-            ))}
-            <th>Source</th>
-            {canExplain ? <th>Explain</th> : null}
-          </tr>
-        </thead>
-        <tbody>
-          {report.rows.map((row) => (
-            <tr key={row.id}>
+    <section className="rb-report-results" aria-label={`${report.definition.name} results`}>
+      {totals.length > 0 ? (
+        <div className="rb-report-totals" aria-label="Report totals">
+          {totals.map((column) => (
+            <div key={column.key}>
+              <span>{column.label}</span>
+              <strong className="rb-num">
+                {formatCell(report.totals[column.key], column, currency)}
+              </strong>
+            </div>
+          ))}
+          <div>
+            <span>Rows</span>
+            <strong className="rb-num">{report.pagination.totalRows}</strong>
+          </div>
+        </div>
+      ) : null}
+      <div className="rb-table-scroll">
+        <table className="rb-table rb-report-table">
+          <caption className="rb-visually-hidden">{report.definition.name}</caption>
+          <thead>
+            <tr>
               {report.definition.columns.map((column) => (
-                <td
+                <th
                   key={column.key}
                   className={
                     column.type === 'money' || column.type === 'number'
-                      ? 'rb-table--right rb-num'
+                      ? 'rb-table--right'
                       : undefined
                   }
                 >
-                  {formatCell(
-                    row.cells[column.key],
-                    column,
-                    String(row.cells.currency ?? currency),
-                  )}
-                </td>
+                  {column.label}
+                </th>
               ))}
-              <td>{row.source ? <Link href={row.source.href}>View source</Link> : '—'}</td>
-              {canExplain ? (
-                <td>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() =>
-                      onExplain?.(
-                        row,
-                        labelColumn
-                          ? formatCell(row.cells[labelColumn.key], labelColumn, currency)
-                          : row.id,
-                      )
+              <th>Source</th>
+              {canExplain ? <th>Explain</th> : null}
+            </tr>
+          </thead>
+          <tbody>
+            {report.rows.map((row) => (
+              <tr key={row.id}>
+                {report.definition.columns.map((column) => (
+                  <td
+                    key={column.key}
+                    className={
+                      column.type === 'money' || column.type === 'number'
+                        ? 'rb-table--right rb-num'
+                        : undefined
                     }
                   >
-                    Explain
-                  </Button>
+                    {formatCell(
+                      row.cells[column.key],
+                      column,
+                      String(row.cells.currency ?? currency),
+                    )}
+                  </td>
+                ))}
+                <td>{row.source ? <Link href={row.source.href}>View source</Link> : '—'}</td>
+                {canExplain ? (
+                  <td>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() =>
+                        onExplain?.(
+                          row,
+                          labelColumn
+                            ? formatCell(row.cells[labelColumn.key], labelColumn, currency)
+                            : row.id,
+                        )
+                      }
+                    >
+                      Explain
+                    </Button>
+                  </td>
+                ) : null}
+              </tr>
+            ))}
+            {report.rows.length === 0 ? (
+              <tr>
+                <td colSpan={report.definition.columns.length + 1 + (canExplain ? 1 : 0)}>
+                  No activity for these filters.
                 </td>
-              ) : null}
-            </tr>
-          ))}
-          {report.rows.length === 0 ? (
-            <tr>
-              <td colSpan={report.definition.columns.length + 1 + (canExplain ? 1 : 0)}>
-                No activity for these filters.
-              </td>
-            </tr>
-          ) : null}
-        </tbody>
-      </table>
-      <div className="rb-report-pagination">
-        Showing {report.rows.length} of {report.pagination.totalRows} rows.
+              </tr>
+            ) : null}
+          </tbody>
+        </table>
+        <div className="rb-report-pagination">
+          Showing {report.rows.length} of {report.pagination.totalRows} rows.
+        </div>
       </div>
-    </div>
+    </section>
   );
 }
 
@@ -827,4 +959,31 @@ function today(): string {
 }
 function yearStart(): string {
   return `${today().slice(0, 4)}-01-01`;
+}
+
+const recentReportsKey = (organizationId: string) => `rb-recent-reports:${organizationId}`;
+
+function readRecentReportKeys(organizationId: string): ReportKey[] {
+  try {
+    const stored = window.localStorage.getItem(recentReportsKey(organizationId));
+    if (!stored) return [];
+    const parsed = JSON.parse(stored);
+    return Array.isArray(parsed)
+      ? parsed.filter((value): value is ReportKey => typeof value === 'string')
+      : [];
+  } catch {
+    return [];
+  }
+}
+
+function recordRecentReport(organizationId: string, reportKey: ReportKey): void {
+  try {
+    const updated = [
+      reportKey,
+      ...readRecentReportKeys(organizationId).filter((key) => key !== reportKey),
+    ].slice(0, 4);
+    window.localStorage.setItem(recentReportsKey(organizationId), JSON.stringify(updated));
+  } catch {
+    // Storage can be unavailable in privacy-restricted browsing; report access must still work.
+  }
 }

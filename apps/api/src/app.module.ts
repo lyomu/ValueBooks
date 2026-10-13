@@ -8,6 +8,7 @@ import { AttachmentsModule } from './attachments/attachments.module.js';
 import { AutomationModule } from './automation/automation.module.js';
 import { AiModule } from './ai/ai.module.js';
 import { BankingModule } from './banking/banking.module.js';
+import { BillingModule } from './billing/billing.module.js';
 import { CollaborationModule } from './collaboration/collaboration.module.js';
 import { InsightsModule } from './insights/insights.module.js';
 import { ApiExceptionFilter } from './common/api-exception.filter.js';
@@ -45,6 +46,7 @@ import { SalesModule } from './sales/sales.module.js';
     SalesModule,
     PurchasesModule,
     BankingModule,
+    BillingModule,
     InventoryModule,
     ProjectsModule,
     ReportingModule,

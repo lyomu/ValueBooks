@@ -8,6 +8,11 @@ export interface ProjectMarginAdvice {
   readonly projectName: string;
   readonly unbilledTimeMinor: string;
   readonly unbilledExpenseMinor: string;
+  readonly revenueMinor: string | null;
+  readonly costMinor: string | null;
+  readonly grossProfitMinor: string | null;
+  readonly budgetAmountMinor: string | null;
+  readonly budgetUtilizationPercent: number | null;
   readonly currentMarginPercent: number | null;
   readonly priorMarginPercent: number | null;
   readonly marginErosion: boolean;
@@ -37,9 +42,15 @@ export class ProjectMarginAdviserService {
       // bigint is never === a string, so `timeMinor !== '0'` was always true) or throws when a raw
       // bigint reaches JSON.stringify in the HTTP response.
       this.prisma.$queryRaw<
-        { projectId: string; projectName: string; timeMinor: bigint; expenseMinor: bigint }[]
+        {
+          projectId: string;
+          projectName: string;
+          timeMinor: bigint;
+          expenseMinor: bigint;
+          budgetAmountMinor: bigint | null;
+        }[]
       >(Prisma.sql`
-        SELECT p.id::text AS "projectId", p.name AS "projectName",
+        SELECT p.id::text AS "projectId", p.name AS "projectName", p.budget_amount_minor AS "budgetAmountMinor",
           COALESCE((SELECT SUM(ROUND(te.hours * COALESCE(te.rate_minor, p.default_rate_minor, 0)))::bigint
                     FROM time_entries te WHERE te.organization_id = ${organizationId}::uuid AND te.project_id = p.id
                       AND te.status = 'APPROVED' AND te.billable AND te.invoice_line_id IS NULL), 0) AS "timeMinor",
@@ -53,15 +64,14 @@ export class ProjectMarginAdviserService {
       this.marginByProject(organizationId, priorStart, currentStart),
     ]);
 
-    const currentByProject = new Map(
-      currentMargins.map((row) => [row.projectId, row.marginPercent]),
-    );
+    const currentByProject = new Map(currentMargins.map((row) => [row.projectId, row]));
     const priorByProject = new Map(priorMargins.map((row) => [row.projectId, row.marginPercent]));
 
     return unbilled
       .filter((row) => row.timeMinor !== 0n || row.expenseMinor !== 0n)
       .map((row) => {
-        const currentMarginPercent = currentByProject.get(row.projectId) ?? null;
+        const current = currentByProject.get(row.projectId);
+        const currentMarginPercent = current?.marginPercent ?? null;
         const priorMarginPercent = priorByProject.get(row.projectId) ?? null;
         const marginErosion =
           currentMarginPercent !== null &&
@@ -72,6 +82,14 @@ export class ProjectMarginAdviserService {
           projectName: row.projectName,
           unbilledTimeMinor: row.timeMinor.toString(),
           unbilledExpenseMinor: row.expenseMinor.toString(),
+          revenueMinor: current?.revenueMinor.toString() ?? null,
+          costMinor: current?.costMinor.toString() ?? null,
+          grossProfitMinor: current?.grossProfitMinor.toString() ?? null,
+          budgetAmountMinor: row.budgetAmountMinor?.toString() ?? null,
+          budgetUtilizationPercent:
+            row.budgetAmountMinor && row.budgetAmountMinor > 0n && current
+              ? (Number(current.costMinor) / Number(row.budgetAmountMinor)) * 100
+              : null,
           currentMarginPercent,
           priorMarginPercent,
           marginErosion,
@@ -83,7 +101,15 @@ export class ProjectMarginAdviserService {
     organizationId: string,
     from: Date,
     to: Date,
-  ): Promise<{ projectId: string; marginPercent: number | null }[]> {
+  ): Promise<
+    {
+      projectId: string;
+      revenueMinor: bigint;
+      costMinor: bigint;
+      grossProfitMinor: bigint;
+      marginPercent: number | null;
+    }[]
+  > {
     const rows = await this.prisma.$queryRaw<
       { projectId: string; revenueMinor: bigint; marginMinor: bigint }[]
     >(Prisma.sql`
@@ -108,6 +134,9 @@ export class ProjectMarginAdviserService {
     `);
     return rows.map((row) => ({
       projectId: row.projectId,
+      revenueMinor: row.revenueMinor,
+      costMinor: row.revenueMinor - row.marginMinor,
+      grossProfitMinor: row.marginMinor,
       marginPercent:
         row.revenueMinor === 0n ? null : (Number(row.marginMinor) / Number(row.revenueMinor)) * 100,
     }));

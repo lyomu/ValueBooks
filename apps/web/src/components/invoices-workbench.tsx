@@ -118,7 +118,7 @@ export function InvoicesPage() {
     );
   }, [invoices, query]);
 
-  const summaryCurrency = organization?.baseCurrency ?? invoices?.[0]?.currency ?? 'KES';
+  const summaryCurrency = organization?.baseCurrency ?? invoices?.[0]?.currency ?? 'USD';
   const receivables = useMemo(() => {
     const today = new Date().toISOString().slice(0, 10);
     const thirtyDays = new Date();
@@ -191,18 +191,6 @@ export function InvoicesPage() {
       align: 'right',
       cell: (invoice) => formatMinor(invoice.balanceMinor, invoice.currency),
       hideBelow: 'tablet',
-    },
-    {
-      key: 'open',
-      header: <span className="rb-visually-hidden">Open</span>,
-      align: 'right',
-      cell: (invoice) => (
-        <Button asChild variant="ghost" size="sm">
-          <Link href={`/invoices/${invoice.id}`}>
-            Open <ArrowUpRight aria-hidden="true" />
-          </Link>
-        </Button>
-      ),
     },
   ];
 
@@ -490,7 +478,7 @@ export function InvoiceEditorPage({ invoiceId }: { invoiceId?: string }) {
   }, [invoiceId]);
 
   const contact = customers.find((candidate) => candidate.id === contactId) ?? null;
-  const currency = contact?.currency ?? invoice?.currency ?? organization?.baseCurrency ?? 'KES';
+  const currency = contact?.currency ?? invoice?.currency ?? organization?.baseCurrency ?? 'USD';
 
   const subtotalPreviewMinor = useMemo(
     () =>
@@ -1048,7 +1036,7 @@ export function InvoiceEditorPage({ invoiceId }: { invoiceId?: string }) {
         open={customerDialogOpen}
         onOpenChange={setCustomerDialogOpen}
         organizationId={organizationId}
-        baseCurrency={organization?.baseCurrency ?? 'KES'}
+        baseCurrency={organization?.baseCurrency ?? 'USD'}
         canOverrideCurrency={hasPermission(organization, 'customers.currency_override')}
         onSaved={(customer) => {
           setCustomers((current) =>

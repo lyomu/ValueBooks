@@ -69,6 +69,7 @@ describe('validateApiEnvironment', () => {
   it('keeps AI disabled unless a private endpoint is explicitly configured', () => {
     expect(validateApiEnvironment({ NODE_ENV: 'test' })).toMatchObject({
       AI_MODE: 'off',
+      AI_HOSTED_PROVIDER: 'DEEPSEEK',
       AI_MAX_CONTEXT_ROWS: 50,
     });
 
@@ -85,6 +86,35 @@ describe('validateApiEnvironment', () => {
     expect(() => validateApiEnvironment({ NODE_ENV: 'test', AI_RUN_RETENTION_DAYS: '0' })).toThrow(
       /AI_RUN_RETENTION_DAYS/,
     );
+  });
+
+  it('bounds serialized provider requests and organization daily usage', () => {
+    expect(validateApiEnvironment({ NODE_ENV: 'test' })).toMatchObject({
+      AI_MAX_REQUEST_BYTES: 48_000,
+      AI_MAX_OUTPUT_TOKENS: 500,
+      AI_ORGANIZATION_DAILY_TOKEN_LIMIT: 50_000,
+      AI_ORGANIZATION_DAILY_ALERT_PERCENT: 80,
+    });
+    expect(() => validateApiEnvironment({ NODE_ENV: 'test', AI_MAX_OUTPUT_TOKENS: '5' })).toThrow(
+      /AI_MAX_OUTPUT_TOKENS/,
+    );
+    expect(() =>
+      validateApiEnvironment({ NODE_ENV: 'test', AI_ORGANIZATION_DAILY_ALERT_PERCENT: '100' }),
+    ).toThrow(/AI_ORGANIZATION_DAILY_ALERT_PERCENT/);
+  });
+
+  it('uses bounded document-extraction defaults and rejects unsafe worker concurrency', () => {
+    expect(validateApiEnvironment({ NODE_ENV: 'test' })).toMatchObject({
+      DOCUMENT_EXTRACTION_TIMEOUT_MS: 90_000,
+      DOCUMENT_EXTRACTION_MAX_BYTES: 15 * 1024 * 1024,
+      DOCUMENT_EXTRACTION_MAX_PAGES: 5,
+      DOCUMENT_EXTRACTION_MAX_PAGE_PIXELS: 16_000_000,
+      DOCUMENT_EXTRACTION_MAX_TOTAL_PIXELS: 40_000_000,
+      DOCUMENT_EXTRACTION_WORKER_CONCURRENCY: 2,
+    });
+    expect(() =>
+      validateApiEnvironment({ NODE_ENV: 'test', DOCUMENT_EXTRACTION_WORKER_CONCURRENCY: '3' }),
+    ).toThrow(/DOCUMENT_EXTRACTION_WORKER_CONCURRENCY/);
   });
 
   it('requires an allowlisted HTTPS private endpoint in production', () => {
@@ -142,6 +172,15 @@ describe('validateApiEnvironment', () => {
         AI_HOSTED_MODEL: 'deepseek-chat',
       }),
     ).toMatchObject({ AI_MODE: 'hosted_limited', AI_HOSTED_MODEL: 'deepseek-chat' });
+  });
+
+  it('accepts only reviewed hosted provider profiles', () => {
+    expect(() =>
+      validateApiEnvironment({
+        NODE_ENV: 'test',
+        AI_HOSTED_PROVIDER: 'UNREVIEWED_PROVIDER',
+      }),
+    ).toThrow(/AI_HOSTED_PROVIDER/);
   });
 
   it('requires AI_HOSTED_API_KEY when AI_MODE is hosted_limited in production', () => {
