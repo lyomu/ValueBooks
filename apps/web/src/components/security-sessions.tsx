@@ -16,7 +16,11 @@ interface Session {
   current: boolean;
 }
 
-interface MfaStatus { enabled: boolean; email: string; enabledAt: string | null; }
+interface MfaStatus {
+  enabled: boolean;
+  email: string;
+  enabledAt: string | null;
+}
 
 export function SecuritySessions() {
   const router = useRouter();
@@ -76,34 +80,64 @@ export function SecuritySessions() {
   }
 
   async function startMfaEnrollment() {
-    setBusyId('mfa'); setError(null);
-    try { await apiRequest('/auth/mfa/enroll', { method: 'POST' }); setMfaCodePending(true); }
-    catch (caught) { setError(caught instanceof Error ? caught.message : 'Email verification could not be started.'); }
-    finally { setBusyId(null); }
+    setBusyId('mfa');
+    setError(null);
+    try {
+      await apiRequest('/auth/mfa/enroll', { method: 'POST' });
+      setMfaCodePending(true);
+    } catch (caught) {
+      setError(
+        caught instanceof Error ? caught.message : 'Email verification could not be started.',
+      );
+    } finally {
+      setBusyId(null);
+    }
   }
 
   async function verifyMfa(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault(); setBusyId('mfa'); setError(null);
+    event.preventDefault();
+    setBusyId('mfa');
+    setError(null);
     try {
       const code = new FormData(event.currentTarget).get('code');
       await apiRequest('/auth/mfa/verify', { method: 'POST', body: JSON.stringify({ code }) });
-      setMfaCodePending(false); await load();
-    } catch (caught) { setError(caught instanceof Error ? caught.message : 'The verification code could not be checked.'); }
-    finally { setBusyId(null); }
+      setMfaCodePending(false);
+      await load();
+    } catch (caught) {
+      setError(
+        caught instanceof Error ? caught.message : 'The verification code could not be checked.',
+      );
+    } finally {
+      setBusyId(null);
+    }
   }
 
   async function resendMfa() {
-    setBusyId('mfa'); setError(null);
-    try { await apiRequest('/auth/mfa/resend', { method: 'POST' }); }
-    catch (caught) { setError(caught instanceof Error ? caught.message : 'A new code could not be sent.'); }
-    finally { setBusyId(null); }
+    setBusyId('mfa');
+    setError(null);
+    try {
+      await apiRequest('/auth/mfa/resend', { method: 'POST' });
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : 'A new code could not be sent.');
+    } finally {
+      setBusyId(null);
+    }
   }
 
   async function disableMfa() {
-    setBusyId('mfa'); setError(null);
-    try { await apiRequest('/auth/mfa', { method: 'DELETE' }); router.replace('/login'); router.refresh(); }
-    catch (caught) { setError(caught instanceof Error ? caught.message : 'Email verification could not be disabled.'); }
-    finally { setBusyId(null); }
+    setBusyId('mfa');
+    setError(null);
+    try {
+      await apiRequest('/auth/mfa', { method: 'DELETE' });
+      router.replace('/login');
+      router.refresh();
+    } catch (caught) {
+      setError(
+        caught instanceof Error ? caught.message : 'Email verification could not be disabled.',
+      );
+    } finally {
+      setBusyId(null);
+    }
   }
 
   if (!sessions && !error) {
@@ -182,22 +216,71 @@ export function SecuritySessions() {
         <div className="rb-security-section__header">
           <div>
             <h2 id="mfa-title">Email verification</h2>
-            <p>An optional emailed code after your password and before sensitive account actions.</p>
+            <p>
+              An optional emailed code after your password and before sensitive account actions.
+            </p>
           </div>
-          <Badge tone={mfa?.enabled ? 'success' : 'neutral'}>{mfa?.enabled ? 'Enabled' : 'Optional'}</Badge>
+          <Badge tone={mfa?.enabled ? 'success' : 'neutral'}>
+            {mfa?.enabled ? 'Enabled' : 'Optional'}
+          </Badge>
         </div>
         <div className="rb-security-note">
           {mfaCodePending ? (
             <form className="rb-inline-verification" onSubmit={(event) => void verifyMfa(event)}>
-              <label htmlFor="security-email-code">Enter the 8-digit code sent to {mfa?.email ?? 'your email'}.</label>
-              <input id="security-email-code" name="code" inputMode="numeric" autoComplete="one-time-code" pattern="[0-9]{8}" minLength={8} maxLength={8} required />
-              <Button type="submit" loading={busyId === 'mfa'}>Verify email</Button>
-              <Button type="button" variant="ghost" onClick={() => void resendMfa()} disabled={busyId === 'mfa'}>Resend code</Button>
+              <label htmlFor="security-email-code">
+                Enter the 8-digit code sent to {mfa?.email ?? 'your email'}.
+              </label>
+              <input
+                id="security-email-code"
+                name="code"
+                inputMode="numeric"
+                autoComplete="one-time-code"
+                pattern="[0-9]{8}"
+                minLength={8}
+                maxLength={8}
+                required
+              />
+              <Button type="submit" loading={busyId === 'mfa'}>
+                Verify email
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={() => void resendMfa()}
+                disabled={busyId === 'mfa'}
+              >
+                Resend code
+              </Button>
             </form>
           ) : mfa?.enabled ? (
-            <div className="rb-inline-verification"><span>Enabled for {mfa.email}. This is email verification, not a phishing-resistant MFA factor.</span><Button type="button" variant="outline" onClick={() => void disableMfa()} loading={busyId === 'mfa'}>Disable</Button></div>
+            <div className="rb-inline-verification">
+              <span>
+                Enabled for {mfa.email}. This is email verification, not a phishing-resistant MFA
+                factor.
+              </span>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => void disableMfa()}
+                loading={busyId === 'mfa'}
+              >
+                Disable
+              </Button>
+            </div>
           ) : (
-            <div className="rb-inline-verification"><span>Email codes provide an extra check, but are weaker than authenticator apps or passkeys.</span><Button type="button" onClick={() => void startMfaEnrollment()} loading={busyId === 'mfa'}>Enable email verification</Button></div>
+            <div className="rb-inline-verification">
+              <span>
+                Email codes provide an extra check, but are weaker than authenticator apps or
+                passkeys.
+              </span>
+              <Button
+                type="button"
+                onClick={() => void startMfaEnrollment()}
+                loading={busyId === 'mfa'}
+              >
+                Enable email verification
+              </Button>
+            </div>
           )}
         </div>
       </section>

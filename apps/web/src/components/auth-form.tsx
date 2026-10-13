@@ -75,7 +75,11 @@ export function AuthForm({
     const email = formValue(data, 'email');
     const body =
       mode === 'signup'
-        ? { email, password: data.get('password'), ...(registrationIntent ? { registrationIntentId: registrationIntent } : {}) }
+        ? {
+            email,
+            password: data.get('password'),
+            ...(registrationIntent ? { registrationIntentId: registrationIntent } : {}),
+          }
         : mode === 'reset'
           ? { token, password: data.get('password') }
           : mode === 'forgot'
@@ -83,10 +87,9 @@ export function AuthForm({
             : { email, password: data.get('password') };
 
     try {
-      const response = await apiRequest<{ data?: { user?: { profileComplete?: boolean }; mfaRequired?: boolean } }>(
-        config.endpoint,
-        { method: 'POST', body: JSON.stringify(body) },
-      );
+      const response = await apiRequest<{
+        data?: { user?: { profileComplete?: boolean }; mfaRequired?: boolean };
+      }>(config.endpoint, { method: 'POST', body: JSON.stringify(body) });
       if (mode === 'login') {
         if (response.data?.mfaRequired) {
           setMfaRequired(true);
@@ -108,7 +111,9 @@ export function AuthForm({
         return;
       }
       if (mode === 'signup') {
-        router.push(`/verify-email-code?email=${encodeURIComponent(email)}${registrationIntent ? `&intent=${encodeURIComponent(registrationIntent)}` : ''}`);
+        router.push(
+          `/verify-email-code?email=${encodeURIComponent(email)}${registrationIntent ? `&intent=${encodeURIComponent(registrationIntent)}` : ''}`,
+        );
         return;
       }
       setSubmittedEmail(email);
@@ -131,14 +136,26 @@ export function AuthForm({
     setError(null);
     try {
       const code = formValue(new FormData(event.currentTarget), 'code');
-      const response = await apiRequest<{ data: { user?: { profileComplete?: boolean } } }>('/auth/mfa/verify', {
-        method: 'POST', body: JSON.stringify({ code }),
-      });
-      const destination = invitation ? `/accept-invitation?token=${encodeURIComponent(invitation)}` : redirectTo;
-      router.push(response.data.user?.profileComplete === false ? `/complete-profile?next=${encodeURIComponent(destination)}` : destination);
+      const response = await apiRequest<{ data: { user?: { profileComplete?: boolean } } }>(
+        '/auth/mfa/verify',
+        {
+          method: 'POST',
+          body: JSON.stringify({ code }),
+        },
+      );
+      const destination = invitation
+        ? `/accept-invitation?token=${encodeURIComponent(invitation)}`
+        : redirectTo;
+      router.push(
+        response.data.user?.profileComplete === false
+          ? `/complete-profile?next=${encodeURIComponent(destination)}`
+          : destination,
+      );
       router.refresh();
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : 'The verification code could not be checked.');
+      setError(
+        caught instanceof Error ? caught.message : 'The verification code could not be checked.',
+      );
     } finally {
       setLoading(false);
     }
@@ -182,11 +199,31 @@ export function AuthForm({
       <form className="rb-auth-form" onSubmit={(event) => void verifyEmailCode(event)} noValidate>
         <div className="rb-auth-field">
           <Label htmlFor="email-code">Email verification code</Label>
-          <Input id="email-code" name="code" inputMode="numeric" autoComplete="one-time-code" pattern="[0-9]{8}" minLength={8} maxLength={8} required />
-          <div className="rb-auth-field__hint-row"><span>Enter the 8-digit code we sent to your email.</span><button type="button" onClick={() => void resendEmailCode()} disabled={loading}>Resend code</button></div>
+          <Input
+            id="email-code"
+            name="code"
+            inputMode="numeric"
+            autoComplete="one-time-code"
+            pattern="[0-9]{8}"
+            minLength={8}
+            maxLength={8}
+            required
+          />
+          <div className="rb-auth-field__hint-row">
+            <span>Enter the 8-digit code we sent to your email.</span>
+            <button type="button" onClick={() => void resendEmailCode()} disabled={loading}>
+              Resend code
+            </button>
+          </div>
         </div>
-        {error ? <div className="rb-auth-error" ref={errorSummaryRef} role="alert" tabIndex={-1}>{error}</div> : null}
-        <Button className="rb-auth-form__submit" size="lg" type="submit" loading={loading}>{loading ? 'Verifying' : 'Verify and sign in'}</Button>
+        {error ? (
+          <div className="rb-auth-error" ref={errorSummaryRef} role="alert" tabIndex={-1}>
+            {error}
+          </div>
+        ) : null}
+        <Button className="rb-auth-form__submit" size="lg" type="submit" loading={loading}>
+          {loading ? 'Verifying' : 'Verify and sign in'}
+        </Button>
       </form>
     );
   }
