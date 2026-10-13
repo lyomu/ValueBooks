@@ -9,18 +9,29 @@ async function signIn(page: import('@playwright/test').Page) {
   await page.getByLabel('Password', { exact: true }).fill('DemoValueBooks1!');
   await page.getByRole('button', { name: 'Sign in', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Dashboard', exact: true })).toBeVisible();
+  // A freshly started API server pays a one-time cost on its first database query (Prisma's
+  // query engine connecting/warming up), well past the global 5s assertion timeout used below.
+  // Absorb that cost here, outside any timed assertion, instead of in the tests themselves.
+  await page.goto('/invoices', { waitUntil: 'networkidle' });
 }
 
 test.describe('master-detail records', () => {
   test('opens a semantic invoice link and preserves the selected detail on refresh', async ({
     page,
-  }) => {
+  }, testInfo) => {
+    // A freshly started API server pays a one-time cost on its first database query (Prisma's
+    // query engine connecting/warming up), well past the global 5s assertion timeout. Give this
+    // test headroom beyond the 30s default so that alone doesn't flake it.
+    testInfo.setTimeout(60_000);
     await signIn(page);
     await page.goto('/invoices');
     const reference = page.locator('.rb-table a[href^="/invoices/"]').first();
     await expect(reference).toBeVisible();
     await reference.click();
-    await expect(page.locator('.rb-master-detail')).toBeVisible();
+    // The first navigation against a freshly started production server can take noticeably
+    // longer than steady-state (on-demand route compilation), so this uses a generous timeout
+    // rather than the global 5s default to avoid flaking on cold start.
+    await expect(page.locator('.rb-master-detail')).toBeVisible({ timeout: 15000 });
     const detailUrl = page.url();
     await page.reload();
     await expect(page).toHaveURL(detailUrl);

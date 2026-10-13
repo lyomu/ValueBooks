@@ -47,7 +47,13 @@ test.describe('ValueBooks design foundation', () => {
   test('@visual migrated master-detail routes retain a real record link', async ({
     page,
   }, testInfo) => {
+    // Six routes are visited here against a freshly started API server, whose first database
+    // query pays a one-time cost (Prisma's query engine connecting/warming up) well past the
+    // global 5s assertion timeout. A throwaway warm-up request absorbs that cost outside the
+    // timed per-route assertions below, and the test itself still gets headroom for the loop.
+    testInfo.setTimeout(120_000);
     await signIn(page);
+    await page.goto('/invoices', { waitUntil: 'networkidle' });
     const routes = [
       ['/invoices', 'invoices-master-detail.png'],
       ['/bills', 'bills-master-detail.png'],
@@ -62,7 +68,10 @@ test.describe('ValueBooks design foundation', () => {
       const recordLink = page.locator('main .rb-table a').first();
       await expect(recordLink).toBeVisible();
       await recordLink.click();
-      await expect(page.locator('.rb-master-detail')).toBeVisible();
+      // The first navigation against a freshly started production server can take noticeably
+      // longer than steady-state (on-demand route compilation), so this uses a generous timeout
+      // rather than the global 5s default to avoid flaking on cold start.
+      await expect(page.locator('.rb-master-detail')).toBeVisible({ timeout: 15000 });
       await expect(page.locator('.rb-master-detail__detail')).toBeVisible();
       if (testInfo.project.name === 'mobile') {
         await expect(page.getByRole('button', { name: /Back to .* list/ })).toBeVisible();
