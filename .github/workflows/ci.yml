@@ -43,6 +43,17 @@ jobs:
           --health-timeout 5s
           --health-retries 10
 
+      # BullMQ-backed job queues (email, automation, document extraction) need a real Redis.
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
@@ -80,6 +91,12 @@ jobs:
       - name: Test
         run: npm test
 
+      # document-rendering.service.ts launches a real headless Chromium to render PDFs;
+      # npm ci installs the playwright package but not its browser binary.
+      - name: Install Playwright Chromium
+        working-directory: apps/api
+        run: npx playwright install --with-deps chromium
+
       - name: Integration test
         working-directory: apps/api
         env:
@@ -92,6 +109,7 @@ jobs:
           S3_REGION: us-east-1
           S3_ACCESS_KEY: valuebooks
           S3_SECRET_KEY: valuebooks-local
+          REDIS_URL: redis://localhost:6379
           S3_BUCKET: valuebooks-local
         run: npm run test:integration
 
