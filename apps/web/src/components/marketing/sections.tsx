@@ -22,6 +22,11 @@ export function MarketingCopy({
   return <p className={`mk-copy ${className}`.trim()}>{children}</p>;
 }
 
+/** The single heading treatment for public-site sections. */
+export function MarketingSectionHeading({ children }: { children: ReactNode }) {
+  return <h2 className="mk-landing-section-heading">{children}</h2>;
+}
+
 export function PageHero({
   eyebrow,
   title,
@@ -62,7 +67,7 @@ export function SectionIntro({
   return (
     <div className={centered ? 'mk-section-intro is-centered' : 'mk-section-intro'}>
       {kicker ? <MarketingKicker>{kicker}</MarketingKicker> : null}
-      <h2>{title}</h2>
+      <MarketingSectionHeading>{title}</MarketingSectionHeading>
       {text ? <MarketingCopy>{text}</MarketingCopy> : null}
     </div>
   );
@@ -103,13 +108,7 @@ export function FeatureGrid() {
       <SectionIntro
         centered
         kicker="Built for how you work"
-        title={
-          <>
-            Everything your business needs,
-            <br />
-            in one place.
-          </>
-        }
+        title={<>Everything your business needs, in one place.</>}
       />
       <div className="mk-feature-grid__row mk-feature-grid__row--top">
         <article className="mk-feature-card mk-feature-card--cream">

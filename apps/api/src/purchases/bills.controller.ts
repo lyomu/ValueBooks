@@ -186,16 +186,20 @@ export class BillsController {
   @RequirePermission('purchases.bills.view')
   @RequireFeatureFlag(PHASE13_FEATURE_FLAGS.DOCUMENT_EXTRACTION)
   async getExtraction(
+    @Param('billId', new ParseUUIDPipe()) billId: string,
     @Param('attachmentId', new ParseUUIDPipe()) attachmentId: string,
     @Req() request: OrganizationRequest,
   ) {
-    return { data: await this.extractionReview.get(request.organization.id, attachmentId) };
+    return {
+      data: await this.extractionReview.get(request.organization.id, 'BILL', billId, attachmentId),
+    };
   }
 
   @Post(':billId/attachments/:attachmentId/extraction/accept')
   @RequirePermission('purchases.bills.manage')
   @RequireFeatureFlag(PHASE13_FEATURE_FLAGS.DOCUMENT_EXTRACTION)
   async acceptExtraction(
+    @Param('billId', new ParseUUIDPipe()) billId: string,
     @Param('attachmentId', new ParseUUIDPipe()) attachmentId: string,
     @Req() request: OrganizationRequest,
   ) {
@@ -203,6 +207,8 @@ export class BillsController {
     return {
       data: await this.extractionReview.accept(
         request.organization.id,
+        'BILL',
+        billId,
         attachmentId,
         request.auth.user,
         metadata,
@@ -214,6 +220,7 @@ export class BillsController {
   @RequirePermission('purchases.bills.manage')
   @RequireFeatureFlag(PHASE13_FEATURE_FLAGS.DOCUMENT_EXTRACTION)
   async rejectExtraction(
+    @Param('billId', new ParseUUIDPipe()) billId: string,
     @Param('attachmentId', new ParseUUIDPipe()) attachmentId: string,
     @Req() request: OrganizationRequest,
   ) {
@@ -221,6 +228,8 @@ export class BillsController {
     return {
       data: await this.extractionReview.reject(
         request.organization.id,
+        'BILL',
+        billId,
         attachmentId,
         request.auth.user,
         metadata,

@@ -250,8 +250,12 @@ export class AiOrchestrator {
       }
       // The number itself never blocks on an AI failure: recompute it fresh so a slow/failed model
       // call can never return a number that is more stale than a plain report view would be.
+      const refreshedOrganization = await this.access.requireMembership(actor.id, organization.id);
+      if (!refreshedOrganization.permissions.has('reports.view')) {
+        throw new AiGatewayException('MODEL_EVIDENCE_UNAUTHORIZED');
+      }
       const freshDrillDown = await this.reports.drillDown(
-        organization.id,
+        refreshedOrganization.id,
         input.reportKey,
         input,
         input.rowId,

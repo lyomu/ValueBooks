@@ -182,7 +182,7 @@ export function CustomersPage() {
           }
         }}
         organizationId={organizationId}
-        baseCurrency={organization?.baseCurrency ?? 'KES'}
+        baseCurrency={organization?.baseCurrency ?? 'USD'}
         canOverrideCurrency={canOverrideCurrency}
         customer={formTarget}
         onSaved={(customer) => {

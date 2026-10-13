@@ -25,6 +25,7 @@ import { useEffect, useMemo, useState, type FormEvent, type ReactNode } from 're
 import { ApiError, apiRequest } from '../lib/api';
 import { formValue } from '../lib/forms';
 import { useAssignableRoles } from '../lib/workspace';
+import { SearchableCombobox } from './searchable-combobox';
 
 type WizardStep =
   'PROFILE' | 'JURISDICTION' | 'ACCOUNTING' | 'TAX' | 'NUMBERING' | 'TEAM' | 'REVIEW';
@@ -450,13 +451,7 @@ function ProfileStep({
               label="Country of operation"
               hint="Sets your starting currency, time zone, and fiscal calendar. All remain editable."
             >
-              <Select id="countryCode" name="countryCode" defaultValue="KE">
-                {reference.countries.map((country) => (
-                  <option key={country.code} value={country.code}>
-                    {country.name}
-                  </option>
-                ))}
-              </Select>
+              <SearchableCombobox id="countryCode" name="countryCode" defaultValue="KE" options={reference.countries.map((country) => ({ value: country.code, label: country.name }))} />
             </Field>
           )}
         </div>
@@ -534,17 +529,7 @@ function JurisdictionStep({
       >
         <div className="rb-field-grid">
           <Field id="country" label="Country">
-            <Select
-              id="country"
-              value={countryCode}
-              onChange={(event) => applyCountry(event.target.value)}
-            >
-              {reference.countries.map((country) => (
-                <option key={country.code} value={country.code}>
-                  {country.name}
-                </option>
-              ))}
-            </Select>
+            <SearchableCombobox id="country" value={countryCode} onChange={applyCountry} options={reference.countries.map((country) => ({ value: country.code, label: country.name }))} />
           </Field>
 
           <Field
@@ -552,41 +537,15 @@ function JurisdictionStep({
             label="Base currency"
             hint="Reporting currency for the general ledger."
           >
-            <Select
-              id="currency"
-              value={baseCurrency}
-              onChange={(event) => setBaseCurrency(event.target.value)}
-            >
-              {reference.currencies.map((currency) => (
-                <option key={currency.code} value={currency.code}>
-                  {currency.code} — {currency.name}
-                </option>
-              ))}
-            </Select>
+            <SearchableCombobox id="currency" value={baseCurrency} onChange={setBaseCurrency} options={reference.currencies.map((currency) => ({ value: currency.code, label: `${currency.code} — ${currency.name}` }))} />
           </Field>
 
           <Field id="timeZone" label="Time zone">
-            <Select
-              id="timeZone"
-              value={timeZone}
-              onChange={(event) => setTimeZone(event.target.value)}
-            >
-              {reference.timeZones.map((zone) => (
-                <option key={zone} value={zone}>
-                  {zone.replace(/_/g, ' ')}
-                </option>
-              ))}
-            </Select>
+            <SearchableCombobox id="timeZone" value={timeZone} onChange={setTimeZone} options={reference.timeZones.map((zone) => ({ value: zone, label: zone.replace(/_/g, ' ') }))} />
           </Field>
 
           <Field id="locale" label="Language and formatting">
-            <Select id="locale" value={locale} onChange={(event) => setLocale(event.target.value)}>
-              {reference.locales.map((entry) => (
-                <option key={entry.code} value={entry.code}>
-                  {entry.name}
-                </option>
-              ))}
-            </Select>
+            <SearchableCombobox id="locale" value={locale} onChange={setLocale} options={reference.locales.map((entry) => ({ value: entry.code, label: entry.name }))} />
           </Field>
 
           <Field id="fiscalMonth" label="Fiscal year starts">

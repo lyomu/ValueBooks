@@ -1,6 +1,6 @@
 {
   "seed": 130914,
-  "generatedAt": "2026-09-14",
+  "generatedAt": "2026-10-11",
   "totalCases": 110,
   "devCount": 78,
   "holdoutCount": 32,
@@ -192,7 +192,9 @@
         "totalMinor": "341321",
         "categoryId": null,
         "arithmeticValid": true,
-        "fieldFlags": ["category_unmatched"]
+        "fieldFlags": [
+          "category_unmatched"
+        ]
       },
       "fieldOutcomes": {
         "vendorName": "true_positive",
@@ -218,7 +220,9 @@
         "totalMinor": "59556",
         "categoryId": "category-us_saas-2",
         "arithmeticValid": true,
-        "fieldFlags": ["date_unresolved"]
+        "fieldFlags": [
+          "date_unresolved"
+        ]
       },
       "fieldOutcomes": {
         "vendorName": "true_positive",
@@ -244,7 +248,11 @@
         "totalMinor": "22844",
         "categoryId": "category-uk_consulting-1",
         "arithmeticValid": false,
-        "fieldFlags": ["date_ambiguous", "arithmetic_mismatch", "vendor_unmatched"]
+        "fieldFlags": [
+          "date_ambiguous",
+          "arithmetic_mismatch",
+          "vendor_unmatched"
+        ]
       },
       "fieldOutcomes": {
         "vendorName": "true_positive",
@@ -270,7 +278,11 @@
         "totalMinor": "301738",
         "categoryId": "category-eu_manufacturing-3",
         "arithmeticValid": false,
-        "fieldFlags": ["currency_unresolved", "tax_unresolved", "arithmetic_unverifiable"]
+        "fieldFlags": [
+          "currency_unresolved",
+          "tax_unresolved",
+          "arithmetic_unverifiable"
+        ]
       },
       "fieldOutcomes": {
         "vendorName": "true_positive",
@@ -362,7 +374,9 @@
         "totalMinor": "183303",
         "categoryId": "category-us_saas-0",
         "arithmeticValid": true,
-        "fieldFlags": ["date_ambiguous"]
+        "fieldFlags": [
+          "date_ambiguous"
+        ]
       },
       "fieldOutcomes": {
         "vendorName": "true_positive",
@@ -388,7 +402,10 @@
         "totalMinor": "48039",
         "categoryId": "category-uk_consulting-1",
         "arithmeticValid": true,
-        "fieldFlags": ["currency_unresolved", "vendor_unmatched"]
+        "fieldFlags": [
+          "currency_unresolved",
+          "vendor_unmatched"
+        ]
       },
       "fieldOutcomes": {
         "vendorName": "true_positive",
@@ -414,7 +431,10 @@
         "totalMinor": "42483",
         "categoryId": "category-eu_manufacturing-3",
         "arithmeticValid": false,
-        "fieldFlags": ["arithmetic_mismatch", "vendor_unmatched"]
+        "fieldFlags": [
+          "arithmetic_mismatch",
+          "vendor_unmatched"
+        ]
       },
       "fieldOutcomes": {
         "vendorName": "true_positive",
@@ -473,7 +493,11 @@
         "totalMinor": null,
         "categoryId": "category-kenya_retail-2",
         "arithmeticValid": false,
-        "fieldFlags": ["date_ambiguous", "total_unresolved", "arithmetic_unverifiable"]
+        "fieldFlags": [
+          "date_ambiguous",
+          "total_unresolved",
+          "arithmetic_unverifiable"
+        ]
       },
       "fieldOutcomes": {
         "vendorName": "true_positive",
@@ -531,7 +555,9 @@
         "totalMinor": "40750",
         "categoryId": "category-uk_consulting-3",
         "arithmeticValid": true,
-        "fieldFlags": ["vendor_unmatched"]
+        "fieldFlags": [
+          "vendor_unmatched"
+        ]
       },
       "fieldOutcomes": {
         "vendorName": "true_positive",
@@ -557,7 +583,9 @@
         "totalMinor": "156034",
         "categoryId": "category-eu_manufacturing-0",
         "arithmeticValid": true,
-        "fieldFlags": ["date_unresolved"]
+        "fieldFlags": [
+          "date_unresolved"
+        ]
       },
       "fieldOutcomes": {
         "vendorName": "true_positive",
@@ -648,7 +676,10 @@
         "totalMinor": null,
         "categoryId": "category-us_saas-3",
         "arithmeticValid": false,
-        "fieldFlags": ["total_unresolved", "arithmetic_unverifiable"]
+        "fieldFlags": [
+          "total_unresolved",
+          "arithmetic_unverifiable"
+        ]
       },
       "fieldOutcomes": {
         "vendorName": "true_positive",
@@ -707,7 +738,10 @@
         "totalMinor": "503208",
         "categoryId": "category-eu_manufacturing-4",
         "arithmeticValid": true,
-        "fieldFlags": ["date_ambiguous", "vendor_unmatched"]
+        "fieldFlags": [
+          "date_ambiguous",
+          "vendor_unmatched"
+        ]
       },
       "fieldOutcomes": {
         "vendorName": "true_positive",
@@ -765,7 +799,10 @@
         "totalMinor": "30169",
         "categoryId": null,
         "arithmeticValid": false,
-        "fieldFlags": ["arithmetic_mismatch", "category_unmatched"]
+        "fieldFlags": [
+          "arithmetic_mismatch",
+          "category_unmatched"
+        ]
       },
       "fieldOutcomes": {
         "vendorName": "true_positive",
@@ -791,7 +828,11 @@
         "totalMinor": "274089",
         "categoryId": "category-us_saas-0",
         "arithmeticValid": false,
-        "fieldFlags": ["date_unresolved", "tax_unresolved", "arithmetic_unverifiable"]
+        "fieldFlags": [
+          "date_unresolved",
+          "tax_unresolved",
+          "arithmetic_unverifiable"
+        ]
       },
       "fieldOutcomes": {
         "vendorName": "true_positive",
@@ -913,7 +954,10 @@
         "totalMinor": "456688",
         "categoryId": "category-kenya_retail-1",
         "arithmeticValid": true,
-        "fieldFlags": ["currency_unresolved", "date_unresolved"]
+        "fieldFlags": [
+          "currency_unresolved",
+          "date_unresolved"
+        ]
       },
       "fieldOutcomes": {
         "vendorName": "true_positive",
@@ -939,7 +983,10 @@
         "totalMinor": "177073",
         "categoryId": "category-us_saas-0",
         "arithmeticValid": false,
-        "fieldFlags": ["date_ambiguous", "arithmetic_mismatch"]
+        "fieldFlags": [
+          "date_ambiguous",
+          "arithmetic_mismatch"
+        ]
       },
       "fieldOutcomes": {
         "vendorName": "true_positive",
@@ -996,7 +1043,10 @@
         "totalMinor": null,
         "categoryId": "category-eu_manufacturing-2",
         "arithmeticValid": false,
-        "fieldFlags": ["total_unresolved", "arithmetic_unverifiable"]
+        "fieldFlags": [
+          "total_unresolved",
+          "arithmetic_unverifiable"
+        ]
       },
       "fieldOutcomes": {
         "vendorName": "true_positive",
@@ -1055,7 +1105,10 @@
         "totalMinor": "134519",
         "categoryId": null,
         "arithmeticValid": true,
-        "fieldFlags": ["date_ambiguous", "category_unmatched"]
+        "fieldFlags": [
+          "date_ambiguous",
+          "category_unmatched"
+        ]
       },
       "fieldOutcomes": {
         "vendorName": "true_positive",
@@ -1081,7 +1134,9 @@
         "totalMinor": "165622",
         "categoryId": "category-us_saas-3",
         "arithmeticValid": true,
-        "fieldFlags": ["currency_unresolved"]
+        "fieldFlags": [
+          "currency_unresolved"
+        ]
       },
       "fieldOutcomes": {
         "vendorName": "true_positive",
@@ -1107,7 +1162,10 @@
         "totalMinor": "111203",
         "categoryId": "category-uk_consulting-1",
         "arithmeticValid": false,
-        "fieldFlags": ["arithmetic_mismatch", "vendor_unmatched"]
+        "fieldFlags": [
+          "arithmetic_mismatch",
+          "vendor_unmatched"
+        ]
       },
       "fieldOutcomes": {
         "vendorName": "true_positive",
@@ -1228,7 +1286,9 @@
         "totalMinor": "454604",
         "categoryId": null,
         "arithmeticValid": true,
-        "fieldFlags": ["category_unmatched"]
+        "fieldFlags": [
+          "category_unmatched"
+        ]
       },
       "fieldOutcomes": {
         "vendorName": "true_positive",
@@ -1254,7 +1314,9 @@
         "totalMinor": "198793",
         "categoryId": "category-uk_consulting-4",
         "arithmeticValid": true,
-        "fieldFlags": ["date_unresolved"]
+        "fieldFlags": [
+          "date_unresolved"
+        ]
       },
       "fieldOutcomes": {
         "vendorName": "true_positive",
@@ -1345,7 +1407,10 @@
         "totalMinor": null,
         "categoryId": "category-kenya_retail-4",
         "arithmeticValid": false,
-        "fieldFlags": ["total_unresolved", "arithmetic_unverifiable"]
+        "fieldFlags": [
+          "total_unresolved",
+          "arithmetic_unverifiable"
+        ]
       },
       "fieldOutcomes": {
         "vendorName": "true_positive",
@@ -1404,7 +1469,10 @@
         "totalMinor": "196810",
         "categoryId": "category-uk_consulting-4",
         "arithmeticValid": true,
-        "fieldFlags": ["date_ambiguous", "vendor_unmatched"]
+        "fieldFlags": [
+          "date_ambiguous",
+          "vendor_unmatched"
+        ]
       },
       "fieldOutcomes": {
         "vendorName": "true_positive",
@@ -1430,7 +1498,11 @@
         "totalMinor": "74616",
         "categoryId": null,
         "arithmeticValid": true,
-        "fieldFlags": ["currency_unresolved", "vendor_unmatched", "category_unmatched"]
+        "fieldFlags": [
+          "currency_unresolved",
+          "vendor_unmatched",
+          "category_unmatched"
+        ]
       },
       "fieldOutcomes": {
         "vendorName": "true_positive",
@@ -1518,7 +1590,11 @@
         "totalMinor": null,
         "categoryId": "category-us_saas-1",
         "arithmeticValid": false,
-        "fieldFlags": ["date_ambiguous", "total_unresolved", "arithmetic_unverifiable"]
+        "fieldFlags": [
+          "date_ambiguous",
+          "total_unresolved",
+          "arithmetic_unverifiable"
+        ]
       },
       "fieldOutcomes": {
         "vendorName": "true_positive",
@@ -1576,7 +1652,9 @@
         "totalMinor": "164635",
         "categoryId": "category-eu_manufacturing-2",
         "arithmeticValid": true,
-        "fieldFlags": ["vendor_unmatched"]
+        "fieldFlags": [
+          "vendor_unmatched"
+        ]
       },
       "fieldOutcomes": {
         "vendorName": "true_positive",
@@ -1635,7 +1713,10 @@
         "totalMinor": "552886",
         "categoryId": "category-kenya_retail-0",
         "arithmeticValid": false,
-        "fieldFlags": ["date_ambiguous", "arithmetic_mismatch"]
+        "fieldFlags": [
+          "date_ambiguous",
+          "arithmetic_mismatch"
+        ]
       },
       "fieldOutcomes": {
         "vendorName": "true_positive",
@@ -1661,7 +1742,11 @@
         "totalMinor": "468014",
         "categoryId": "category-us_saas-0",
         "arithmeticValid": false,
-        "fieldFlags": ["currency_unresolved", "tax_unresolved", "arithmetic_unverifiable"]
+        "fieldFlags": [
+          "currency_unresolved",
+          "tax_unresolved",
+          "arithmetic_unverifiable"
+        ]
       },
       "fieldOutcomes": {
         "vendorName": "true_positive",
@@ -1687,7 +1772,11 @@
         "totalMinor": null,
         "categoryId": "category-uk_consulting-0",
         "arithmeticValid": false,
-        "fieldFlags": ["total_unresolved", "arithmetic_unverifiable", "vendor_unmatched"]
+        "fieldFlags": [
+          "total_unresolved",
+          "arithmetic_unverifiable",
+          "vendor_unmatched"
+        ]
       },
       "fieldOutcomes": {
         "vendorName": "true_positive",
@@ -1779,7 +1868,10 @@
         "totalMinor": "538656",
         "categoryId": null,
         "arithmeticValid": true,
-        "fieldFlags": ["currency_unresolved", "category_unmatched"]
+        "fieldFlags": [
+          "currency_unresolved",
+          "category_unmatched"
+        ]
       },
       "fieldOutcomes": {
         "vendorName": "true_positive",
@@ -1805,7 +1897,9 @@
         "totalMinor": "22660",
         "categoryId": "category-us_saas-4",
         "arithmeticValid": false,
-        "fieldFlags": ["arithmetic_mismatch"]
+        "fieldFlags": [
+          "arithmetic_mismatch"
+        ]
       },
       "fieldOutcomes": {
         "vendorName": "true_positive",
@@ -1951,7 +2045,10 @@
         "totalMinor": "211932",
         "categoryId": null,
         "arithmeticValid": true,
-        "fieldFlags": ["date_unresolved", "category_unmatched"]
+        "fieldFlags": [
+          "date_unresolved",
+          "category_unmatched"
+        ]
       },
       "fieldOutcomes": {
         "vendorName": "true_positive",
@@ -1977,7 +2074,11 @@
         "totalMinor": "135730",
         "categoryId": "category-uk_consulting-3",
         "arithmeticValid": false,
-        "fieldFlags": ["date_ambiguous", "arithmetic_mismatch", "vendor_unmatched"]
+        "fieldFlags": [
+          "date_ambiguous",
+          "arithmetic_mismatch",
+          "vendor_unmatched"
+        ]
       },
       "fieldOutcomes": {
         "vendorName": "true_positive",
@@ -2003,7 +2104,11 @@
         "totalMinor": "387798",
         "categoryId": "category-eu_manufacturing-2",
         "arithmeticValid": false,
-        "fieldFlags": ["currency_unresolved", "tax_unresolved", "arithmetic_unverifiable"]
+        "fieldFlags": [
+          "currency_unresolved",
+          "tax_unresolved",
+          "arithmetic_unverifiable"
+        ]
       },
       "fieldOutcomes": {
         "vendorName": "true_positive",
@@ -2094,7 +2199,9 @@
         "totalMinor": "83610",
         "categoryId": "category-us_saas-1",
         "arithmeticValid": true,
-        "fieldFlags": ["date_ambiguous"]
+        "fieldFlags": [
+          "date_ambiguous"
+        ]
       },
       "fieldOutcomes": {
         "vendorName": "true_positive",
@@ -2120,7 +2227,10 @@
         "totalMinor": "295734",
         "categoryId": "category-uk_consulting-4",
         "arithmeticValid": true,
-        "fieldFlags": ["currency_unresolved", "vendor_unmatched"]
+        "fieldFlags": [
+          "currency_unresolved",
+          "vendor_unmatched"
+        ]
       },
       "fieldOutcomes": {
         "vendorName": "true_positive",
@@ -2146,7 +2256,9 @@
         "totalMinor": "316099",
         "categoryId": "category-eu_manufacturing-1",
         "arithmeticValid": false,
-        "fieldFlags": ["arithmetic_mismatch"]
+        "fieldFlags": [
+          "arithmetic_mismatch"
+        ]
       },
       "fieldOutcomes": {
         "vendorName": "true_positive",
@@ -2205,7 +2317,11 @@
         "totalMinor": null,
         "categoryId": "category-kenya_retail-0",
         "arithmeticValid": false,
-        "fieldFlags": ["date_ambiguous", "total_unresolved", "arithmetic_unverifiable"]
+        "fieldFlags": [
+          "date_ambiguous",
+          "total_unresolved",
+          "arithmetic_unverifiable"
+        ]
       },
       "fieldOutcomes": {
         "vendorName": "true_positive",
@@ -2264,7 +2380,10 @@
         "totalMinor": "20571",
         "categoryId": null,
         "arithmeticValid": true,
-        "fieldFlags": ["vendor_unmatched", "category_unmatched"]
+        "fieldFlags": [
+          "vendor_unmatched",
+          "category_unmatched"
+        ]
       },
       "fieldOutcomes": {
         "vendorName": "true_positive",
@@ -2290,7 +2409,9 @@
         "totalMinor": "542221",
         "categoryId": "category-eu_manufacturing-3",
         "arithmeticValid": true,
-        "fieldFlags": ["date_unresolved"]
+        "fieldFlags": [
+          "date_unresolved"
+        ]
       },
       "fieldOutcomes": {
         "vendorName": "true_positive",
@@ -2350,7 +2471,11 @@
         "totalMinor": "466644",
         "categoryId": "category-kenya_retail-4",
         "arithmeticValid": false,
-        "fieldFlags": ["currency_unresolved", "tax_unresolved", "arithmetic_unverifiable"]
+        "fieldFlags": [
+          "currency_unresolved",
+          "tax_unresolved",
+          "arithmetic_unverifiable"
+        ]
       },
       "fieldOutcomes": {
         "vendorName": "true_positive",
@@ -2376,7 +2501,11 @@
         "totalMinor": null,
         "categoryId": null,
         "arithmeticValid": false,
-        "fieldFlags": ["total_unresolved", "arithmetic_unverifiable", "category_unmatched"]
+        "fieldFlags": [
+          "total_unresolved",
+          "arithmetic_unverifiable",
+          "category_unmatched"
+        ]
       },
       "fieldOutcomes": {
         "vendorName": "true_positive",
@@ -2436,7 +2565,10 @@
         "totalMinor": "334980",
         "categoryId": "category-eu_manufacturing-0",
         "arithmeticValid": true,
-        "fieldFlags": ["date_ambiguous", "vendor_unmatched"]
+        "fieldFlags": [
+          "date_ambiguous",
+          "vendor_unmatched"
+        ]
       },
       "fieldOutcomes": {
         "vendorName": "true_positive",
@@ -2496,7 +2628,10 @@
         "totalMinor": "41824",
         "categoryId": null,
         "arithmeticValid": false,
-        "fieldFlags": ["arithmetic_mismatch", "category_unmatched"]
+        "fieldFlags": [
+          "arithmetic_mismatch",
+          "category_unmatched"
+        ]
       },
       "fieldOutcomes": {
         "vendorName": "true_positive",
@@ -2650,7 +2785,10 @@
         "totalMinor": "454510",
         "categoryId": "category-kenya_retail-0",
         "arithmeticValid": true,
-        "fieldFlags": ["currency_unresolved", "date_unresolved"]
+        "fieldFlags": [
+          "currency_unresolved",
+          "date_unresolved"
+        ]
       },
       "fieldOutcomes": {
         "vendorName": "true_positive",
@@ -2676,7 +2814,10 @@
         "totalMinor": "141332",
         "categoryId": "category-us_saas-0",
         "arithmeticValid": false,
-        "fieldFlags": ["date_ambiguous", "arithmetic_mismatch"]
+        "fieldFlags": [
+          "date_ambiguous",
+          "arithmetic_mismatch"
+        ]
       },
       "fieldOutcomes": {
         "vendorName": "true_positive",
@@ -2733,7 +2874,10 @@
         "totalMinor": null,
         "categoryId": "category-eu_manufacturing-3",
         "arithmeticValid": false,
-        "fieldFlags": ["total_unresolved", "arithmetic_unverifiable"]
+        "fieldFlags": [
+          "total_unresolved",
+          "arithmetic_unverifiable"
+        ]
       },
       "fieldOutcomes": {
         "vendorName": "true_positive",
@@ -2792,7 +2936,9 @@
         "totalMinor": "462377",
         "categoryId": "category-kenya_retail-2",
         "arithmeticValid": true,
-        "fieldFlags": ["date_ambiguous"]
+        "fieldFlags": [
+          "date_ambiguous"
+        ]
       },
       "fieldOutcomes": {
         "vendorName": "true_positive",
@@ -2818,7 +2964,9 @@
         "totalMinor": "455503",
         "categoryId": "category-us_saas-1",
         "arithmeticValid": true,
-        "fieldFlags": ["currency_unresolved"]
+        "fieldFlags": [
+          "currency_unresolved"
+        ]
       },
       "fieldOutcomes": {
         "vendorName": "true_positive",
@@ -2844,7 +2992,11 @@
         "totalMinor": "404192",
         "categoryId": null,
         "arithmeticValid": false,
-        "fieldFlags": ["arithmetic_mismatch", "vendor_unmatched", "category_unmatched"]
+        "fieldFlags": [
+          "arithmetic_mismatch",
+          "vendor_unmatched",
+          "category_unmatched"
+        ]
       },
       "fieldOutcomes": {
         "vendorName": "true_positive",
@@ -2993,7 +3145,10 @@
         "totalMinor": "320860",
         "categoryId": "category-uk_consulting-3",
         "arithmeticValid": true,
-        "fieldFlags": ["date_unresolved", "vendor_unmatched"]
+        "fieldFlags": [
+          "date_unresolved",
+          "vendor_unmatched"
+        ]
       },
       "fieldOutcomes": {
         "vendorName": "true_positive",
@@ -3019,7 +3174,11 @@
         "totalMinor": "190726",
         "categoryId": null,
         "arithmeticValid": false,
-        "fieldFlags": ["date_ambiguous", "arithmetic_mismatch", "category_unmatched"]
+        "fieldFlags": [
+          "date_ambiguous",
+          "arithmetic_mismatch",
+          "category_unmatched"
+        ]
       },
       "fieldOutcomes": {
         "vendorName": "true_positive",
@@ -3077,7 +3236,11 @@
         "totalMinor": null,
         "categoryId": null,
         "arithmeticValid": false,
-        "fieldFlags": ["total_unresolved", "arithmetic_unverifiable", "category_unmatched"]
+        "fieldFlags": [
+          "total_unresolved",
+          "arithmetic_unverifiable",
+          "category_unmatched"
+        ]
       },
       "fieldOutcomes": {
         "vendorName": "true_positive",
@@ -3135,7 +3298,10 @@
         "totalMinor": "516769",
         "categoryId": "category-uk_consulting-0",
         "arithmeticValid": true,
-        "fieldFlags": ["date_ambiguous", "vendor_unmatched"]
+        "fieldFlags": [
+          "date_ambiguous",
+          "vendor_unmatched"
+        ]
       },
       "fieldOutcomes": {
         "vendorName": "true_positive",
@@ -3161,7 +3327,11 @@
         "totalMinor": "141760",
         "categoryId": null,
         "arithmeticValid": true,
-        "fieldFlags": ["currency_unresolved", "vendor_unmatched", "category_unmatched"]
+        "fieldFlags": [
+          "currency_unresolved",
+          "vendor_unmatched",
+          "category_unmatched"
+        ]
       },
       "fieldOutcomes": {
         "vendorName": "true_positive",
@@ -3317,7 +3487,9 @@
         "totalMinor": "479900",
         "categoryId": "category-eu_manufacturing-3",
         "arithmeticValid": true,
-        "fieldFlags": ["vendor_unmatched"]
+        "fieldFlags": [
+          "vendor_unmatched"
+        ]
       },
       "fieldOutcomes": {
         "vendorName": "true_positive",
