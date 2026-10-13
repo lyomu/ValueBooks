@@ -238,7 +238,7 @@ export function InsightsPage() {
         ) : null}
 
         <Tabs defaultValue="overview" className="rb-ledger-stack">
-          <TabsList aria-label="Insight categories">
+          <TabsList className="rb-insights-tabs" aria-label="Insight categories">
             <TabsTrigger value="overview">Overview</TabsTrigger>
             <TabsTrigger value="cash-flow">Cash flow</TabsTrigger>
             <TabsTrigger value="collections">Collections</TabsTrigger>

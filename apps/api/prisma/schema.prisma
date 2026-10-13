@@ -34,6 +34,7 @@ enum MfaChallengePurpose {
   LOGIN
   ENROLL
   STEP_UP
+  SIGNUP
 }
 
 enum OrganizationStatus {
@@ -290,6 +291,7 @@ model User {
   sessions                         Session[]
   actionTokens                     ActionToken[]
   mfaChallenges                    MfaChallenge[]
+  registrationIntents              RegistrationIntent[]
   securityEvents                   SecurityEvent[]
   auditEvents                      AuditEvent[]
   platformAdmin                    PlatformAdmin?             @relation("PlatformAdminUser")
@@ -419,6 +421,27 @@ model ActionToken {
   @@index([userId, purpose, consumedAt])
   @@index([expiresAt])
   @@map("action_tokens")
+}
+
+/// A server-owned selection made before registration. The browser only carries this opaque id;
+/// plan, currency and price are always re-read from the catalog before checkout.
+model RegistrationIntent {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  planId      String   @map("plan_id") @db.Uuid
+  userId      String?  @map("user_id") @db.Uuid
+  email       String?  @db.Citext
+  expiresAt   DateTime @map("expires_at") @db.Timestamptz(6)
+  consumedAt  DateTime? @map("consumed_at") @db.Timestamptz(6)
+  paymentVerifiedAt DateTime? @map("payment_verified_at") @db.Timestamptz(6)
+  providerReference String? @map("provider_reference") @db.VarChar(160)
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  plan        Plan     @relation(fields: [planId], references: [id], onDelete: Restrict)
+  user        User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([userId, consumedAt])
+  @@index([expiresAt])
+  @@map("registration_intents")
 }
 
 enum AuditAction {
@@ -3930,6 +3953,7 @@ model Plan {
   updatedAt       DateTime                   @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
   entitlements    PlanEntitlement[]
   subscriptions   OrganizationSubscription[]
+  registrationIntents RegistrationIntent[]
   flagRules       FeatureFlagRule[]
 
   @@index([status, sortOrder])

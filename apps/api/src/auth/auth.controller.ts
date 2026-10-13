@@ -42,7 +42,7 @@ export class AuthController {
 
   @Post('signup')
   @HttpCode(202)
-  async signup(@Body() input: SignupDto, @Req() request: Request) {
+  async signup(@Body() input: SignupDto, @Req() request: Request, @Res({ passthrough: true }) response: Response) {
     const metadata = requestMetadata(request, this.auth.pepper);
     await this.rateLimit.consume(`auth:signup:ip:${metadata.ipHash}`, 25, 60 * 60);
     await this.rateLimit.consume(
@@ -50,7 +50,9 @@ export class AuthController {
       5,
       60 * 60,
     );
-    return { data: await this.auth.signup(input, metadata) };
+    const result = await this.auth.signup(input, metadata);
+    if (result.challengeToken) setMfaChallengeCookie(response, result.challengeToken);
+    return { data: { message: result.message } };
   }
 
   @Post('resend-verification')
@@ -116,8 +118,8 @@ export class AuthController {
     if (!rawToken) throw new BadRequestException('No verification challenge is active.');
     const result = await this.auth.verifyMfaChallenge(rawToken, input.code, requestMetadata(request, this.auth.pepper));
     clearMfaChallengeCookie(response);
-    if (result.kind === 'login') setSessionCookie(response, result.token);
-    return { data: result.kind === 'login' ? { user: result.user, mfaRequired: false } : result.kind === 'enrolled' ? { enabled: true } : { verified: true } };
+    if (result.kind === 'login' || result.kind === 'signup') setSessionCookie(response, result.token);
+    return { data: result.kind === 'login' || result.kind === 'signup' ? { user: result.user, mfaRequired: false, signupVerified: result.kind === 'signup' } : result.kind === 'enrolled' ? { enabled: true } : { verified: true } };
   }
 
   @Post('mfa/resend')

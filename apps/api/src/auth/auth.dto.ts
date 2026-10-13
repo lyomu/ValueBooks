@@ -1,5 +1,5 @@
 import { Transform } from 'class-transformer';
-import { IsEmail, IsString, Length, Matches, MaxLength } from 'class-validator';
+import { IsEmail, IsOptional, IsString, IsUUID, Length, Matches, MaxLength } from 'class-validator';
 
 const normalizeEmail = ({ value }: { value: unknown }): unknown =>
   typeof value === 'string' ? value.trim().toLowerCase() : value;
@@ -16,6 +16,10 @@ export class SignupDto {
   @Matches(/[A-Z]/, { message: 'password must include an uppercase letter' })
   @Matches(/[0-9]/, { message: 'password must include a number' })
   password!: string;
+
+  @IsOptional()
+  @IsUUID()
+  registrationIntentId?: string;
 }
 
 export class UpdateProfileDto {
@@ -38,7 +42,7 @@ export class LoginDto {
 
 export class MfaCodeDto {
   @IsString()
-  @Matches(/^\d{8}$/, { message: 'code must be an 8-digit number' })
+  @Matches(/^\d{6,8}$/, { message: 'code must be a 6 to 8 digit number' })
   code!: string;
 }
 

@@ -27,6 +27,7 @@ export function AuthForm({
   mode,
   token,
   invitation,
+  registrationIntent,
   redirectTo = '/dashboard',
   socialOptions = true,
 }: {
@@ -34,6 +35,8 @@ export function AuthForm({
   token?: string;
   /** Set when the visitor arrived from an organization invitation link. */
   invitation?: string;
+  /** Opaque server-owned selection passed from public pricing. */
+  registrationIntent?: string;
   /**
    * Where a successful sign-in lands. The customer portal is a separate surface with its own
    * sign-in page, and its visitors are not organization members -- sending them to the internal
@@ -72,7 +75,7 @@ export function AuthForm({
     const email = formValue(data, 'email');
     const body =
       mode === 'signup'
-        ? { email, password: data.get('password') }
+        ? { email, password: data.get('password'), ...(registrationIntent ? { registrationIntentId: registrationIntent } : {}) }
         : mode === 'reset'
           ? { token, password: data.get('password') }
           : mode === 'forgot'
@@ -102,6 +105,10 @@ export function AuthForm({
       }
       if (mode === 'reset') {
         router.push('/login?reset=success');
+        return;
+      }
+      if (mode === 'signup') {
+        router.push(`/verify-email-code?email=${encodeURIComponent(email)}${registrationIntent ? `&intent=${encodeURIComponent(registrationIntent)}` : ''}`);
         return;
       }
       setSubmittedEmail(email);

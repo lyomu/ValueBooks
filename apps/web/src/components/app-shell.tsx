@@ -81,6 +81,7 @@ const navigationGroups: NavigationGroup[] = [
     alwaysOpen: true,
     items: [
       { label: 'Dashboard', icon: LayoutDashboard, href: '/dashboard' },
+      { label: 'Getting Started', icon: ListChecks, href: '/getting-started' },
       { label: 'Notifications', icon: Bell, href: '/notifications' },
     ],
   },

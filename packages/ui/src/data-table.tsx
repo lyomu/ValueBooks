@@ -6,7 +6,7 @@ import { Card } from './card';
 import { Dropdown, DropdownContent, DropdownTrigger } from './dropdown';
 import { EmptyState, type EmptyStateConfig } from './empty-state';
 import { Input } from './form';
-import { Spinner } from './loading';
+import { Spinner, TableSkeleton } from './loading';
 import { cn } from './utils';
 
 export type DataTableColumn<T> = {
@@ -109,6 +109,7 @@ export function DataTable<T extends { id: string }>({
   rows,
   onRowClick,
   loading = false,
+  skeletonRows = 6,
   emptyTitle = 'No records yet',
   emptyDescription,
   emptyState,
@@ -119,6 +120,7 @@ export function DataTable<T extends { id: string }>({
   rows: readonly T[];
   onRowClick?: (row: T) => void;
   loading?: boolean;
+  skeletonRows?: number;
   emptyTitle?: string;
   emptyDescription?: string;
   emptyState?: Omit<EmptyStateConfig, 'title' | 'description'> &
@@ -137,7 +139,7 @@ export function DataTable<T extends { id: string }>({
   };
 
   return (
-    <Card className="rb-table-card">
+    <Card className="rb-table-card" aria-busy={loading || undefined}>
       {toolbar}
       <div className="rb-table-scroll">
         <table className="rb-table rb-table--listing">
@@ -160,7 +162,8 @@ export function DataTable<T extends { id: string }>({
             </tr>
           </thead>
           <tbody>
-            {loading ? (
+            {loading ? <TableSkeleton columns={columns.length} rows={skeletonRows} /> : null}
+            {loading && false ? (
               <tr>
                 <td colSpan={columns.length} className="rb-table__state">
                   <span className="rb-table__loading">
