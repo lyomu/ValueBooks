@@ -967,7 +967,7 @@ function readRecentReportKeys(organizationId: string): ReportKey[] {
   try {
     const stored = window.localStorage.getItem(recentReportsKey(organizationId));
     if (!stored) return [];
-    const parsed = JSON.parse(stored);
+    const parsed: unknown = JSON.parse(stored);
     return Array.isArray(parsed)
       ? parsed.filter((value): value is ReportKey => typeof value === 'string')
       : [];
