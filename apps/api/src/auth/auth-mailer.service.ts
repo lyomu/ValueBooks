@@ -48,6 +48,21 @@ export class AuthMailerService {
     });
   }
 
+  async sendMfaCode(email: string, displayName: string, code: string): Promise<void> {
+    const message = {
+      to: email,
+      subject: 'Your ValueBooks verification code',
+      text: `Hello ${displayName},\n\nYour ValueBooks verification code is ${code}. It expires in 10 minutes. If you did not request it, change your password.`,
+      html: this.template('Verify your sign-in', `Hello ${escapeHtml(displayName)}, enter this code to continue: <strong style="font-size:24px;letter-spacing:0.16em">${escapeHtml(code)}</strong>.`, 'Open ValueBooks', this.webUrl, 'This code expires in 10 minutes. We will never ask for it by phone or email.'),
+    } satisfies EmailDeliveryJob;
+    try {
+      await this.emailQueue.enqueue(EMAIL_JOB_NAMES.mfaCode, message);
+    } catch (error) {
+      this.logger.error(`Email verification code enqueue failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      throw error;
+    }
+  }
+
   async sendOrganizationInvitation(invitation: {
     email: string;
     organizationName: string;

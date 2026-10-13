@@ -16,6 +16,7 @@ import { usePathname } from 'next/navigation';
 import type { ReactNode } from 'react';
 
 import { usePlatformSession } from '../lib/platform';
+import { BrandLogo } from './brand-logo';
 
 const NAV = [
   { href: '/platform', label: 'Overview', icon: Gauge },
@@ -75,11 +76,9 @@ export function PlatformShell({ children }: { children: ReactNode }) {
   return (
     <div className="rb-platform">
       <header className="rb-platform__bar">
-        <Link href="/platform" className="rb-platform__brand">
-          <ShieldAlert aria-hidden="true" />
-          <span>
-            ValueBooks <strong>Platform</strong>
-          </span>
+        <Link href="/platform" className="rb-platform__brand" aria-label="ValueBooks Platform">
+          <BrandLogo variant="full" height={26} alt="ValueBooks Platform" priority />
+          <span className="rb-platform__badge">Platform</span>
         </Link>
         <div className="rb-platform__identity">
           <span className="rb-platform__role">{session?.role.toLowerCase()}</span>

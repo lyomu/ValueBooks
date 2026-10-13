@@ -4,7 +4,7 @@
 double-entry accounting & invoicing web platform (monorepo: `apps/api` NestJS, `apps/web` Next.js,
 `packages/*` shared libs).
 
-**Last refreshed:** 2026-10-06 (current-source reconciliation and release-gate audit).
+**Last refreshed:** 2026-10-10 (P1 docs-reconciliation pass — see `docs/P1_HANDOVER.md`).
 
 ## Current reconciliation — 2026-10-06
 
@@ -26,21 +26,22 @@ and Phase 12 closed on 2026-09-10, both with captured green evidence.** Phase 11
 record is in `docs/PHASE11_TODO.md`; Phase 12's closure evidence lives in
 `docs/PHASE12_TODO.md`.
 
-| Phase                      | State                                                                                                     |
-| -------------------------- | --------------------------------------------------------------------------------------------------------- |
-| 1 Foundation               | Functionally complete; hardening/test debt open (Milestone 1J)                                            |
-| 2 Sales                    | Complete and verified (2A–2K)                                                                             |
-| 3 Purchases                | Complete and verified (3A–3H)                                                                             |
-| 4 Accounting Engine        | Complete and verified (4A–4G)                                                                             |
-| 5 Banking & Reconciliation | Complete and verified (5A–5E)                                                                             |
-| 6 Inventory                | Complete and verified (6A–6E)                                                                             |
-| 7 Projects & Time          | Complete and verified (7A–7F)                                                                             |
-| 8 Globalization            | Complete and verified (8A–8E)                                                                             |
-| 9 Reporting                | Complete and verified (9A–9F)                                                                             |
-| 10 Automation & Approvals  | Complete and verified (10A–10I), 64/76 checklist items; tracked debt named in `PHASE10_TODO.md` and below |
-| 11 Portals & Collaboration | Complete and verified, closed 2026-09-11 — closure record in `PHASE11_TODO.md`                            |
-| 12 Platform Admin          | Complete and verified (12A–12J), closed 2026-09-10                                                        |
-| 13–14                      | No code                                                                                                   |
+| Phase                      | State                                                                                                             |
+| -------------------------- | ----------------------------------------------------------------------------------------------------------------- |
+| 1 Foundation               | Functionally complete; hardening/test debt open (Milestone 1J)                                                    |
+| 2 Sales                    | Complete and verified (2A–2K)                                                                                     |
+| 3 Purchases                | Complete and verified (3A–3H)                                                                                     |
+| 4 Accounting Engine        | Complete and verified (4A–4G)                                                                                     |
+| 5 Banking & Reconciliation | Complete and verified (5A–5E)                                                                                     |
+| 6 Inventory                | Complete and verified (6A–6E)                                                                                     |
+| 7 Projects & Time          | Complete and verified (7A–7F)                                                                                     |
+| 8 Globalization            | Complete and verified (8A–8E)                                                                                     |
+| 9 Reporting                | Complete and verified (9A–9F)                                                                                     |
+| 10 Automation & Approvals  | Complete and verified (10A–10I), 64/76 checklist items; tracked debt named in `PHASE10_TODO.md` and below         |
+| 11 Portals & Collaboration | Complete and verified, closed 2026-09-11 — closure record in `PHASE11_TODO.md`                                    |
+| 12 Platform Admin          | Complete and verified (12A–12J), closed 2026-09-10                                                                |
+| 13 AI Layer                | Implemented, behind per-organization feature flags; acceptance open — see `PHASE13_TODO.md`, `PENDING_WORK.md` P4 |
+| 14 Hardening & Release     | In progress — see `PHASE14_RELEASE_GATE.md`, `PENDING_WORK.md` P2–P3                                              |
 
 **The plan is `docs/EXECUTION_PLAN.md`.** It sequenced the verification debt (Stages 0–4) and
 Phases 7–10 (Stages 5–8), and records three decisions (D1 ledger dimensions, D2 report query
@@ -49,31 +50,13 @@ strategy, D3 country-pack DB model). All three are decided; D1 is implemented.
 documents its remaining test-plan debt. **Stage 9 (Phase 11) closed 2026-09-11** with captured gates in `docs/PHASE11_TODO.md`; Stage 10
 (Phase 12) closed 2026-09-10. Phases 13–14 (AI and cross-module scenarios) have no code.
 
-### What is genuinely open, in priority order
+### What is genuinely open
 
-1. **Phase 11 is closed (2026-09-11).** The gate is green end-to-end with captured output: lint,
-   format, typecheck, both production builds, the integration suite, Playwright (desktop 10/10,
-   mobile overflow, committed desktop baseline), the design detector, and drift/replay — all
-   recorded in `docs/PHASE11_TODO.md`. The closing change also folds in the small runtime fixes
-   the gates surfaced (CORS `Content-Disposition` for the portal CSV export; the auth rate-limit
-   reset in the E2E sharing test; the desktop-only visual baseline).
-2. **Phases 13–14 have no code.** AI (13) and the pre-release cross-module scenarios (14) are
-   roadmap sections only. The §18.1 quote-through-payment chain remains the
-   named end-to-end gap: banking import/match/reconcile are covered in isolation, but not the full
-   chain from quote through acceptance, invoice, partial and final payment, to P&L/AR/GL
-   agreement.
-3. **Phase 10 tracked debt**, each named on its own unchecked bullet in `docs/PHASE10_TODO.md`: the
-   10H approval edge-case tests (multi-level ordering, criteria boundaries, concurrent decisions,
-   mid-flight policy edits, revoked permissions), Quote's bespoke approval route as an adapter into
-   the policy engine, the two deferred 10F refactors (export streaming, async `202` oversized-PDF
-   export), the 10E recurring unification, two 10A contract schemas, 10C's `submitter role`
-   condition and state-machine documentation, 10D's field-update action, and 10I's operator docs.
-4. **One ADR 0011 follow-up** remains: validating the environment once at startup
-   (`packages/config` is still a stub, and only `SECURITY_PEPPER` asserts itself). The attachment
-   content-type allowlist landed with Phase 11 — uploads are now checked for a supported extension,
-   a matching declared MIME type, and bytes whose signature agrees with both.
-5. **Stage 4.5–4.8** — visual-regression baselines, the WCAG 2.2 AA review, and the backup/restore
-   drill — are folded into Phase 14 by decision, not by drift. See `PHASE1_TODO.md` Milestone 1J.
+This section used to list open work here directly; it drifted (it still said env validation was
+open and that the quote→payment chain was missing, both long since done) because open work lives
+in one place now. **See `docs/PENDING_WORK.md`** for the current, prioritized, checkable list, and
+`docs/P0_HANDOVER.md` / `docs/P1_HANDOVER.md` for the two handovers driving the current session.
+`docs/GAPS.md` remains the long-form record behind it.
 
 ### Decided (2026-09-02) — the execution plan's three pre-Phase-7 decisions
 

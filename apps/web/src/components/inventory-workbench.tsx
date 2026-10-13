@@ -264,7 +264,7 @@ export function StockMovementsPage() {
   const [warehouseId, setWarehouseId] = useState('');
   const [query, setQuery] = useState('');
   const [error, setError] = useState<string | null>(null);
-  const currency = organization?.baseCurrency ?? 'KES';
+  const currency = organization?.baseCurrency ?? 'USD';
 
   const load = useCallback(async () => {
     if (!organizationId) return;
@@ -412,7 +412,7 @@ export function InventoryAdjustmentsPage() {
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
-  const currency = organization?.baseCurrency ?? 'KES';
+  const currency = organization?.baseCurrency ?? 'USD';
 
   const load = useCallback(async () => {
     if (!organizationId) return;
@@ -942,7 +942,7 @@ export function InventoryValuationPage() {
   const canView = hasPermission(organization, 'inventory.valuation.view');
   const [valuation, setValuation] = useState<InventoryValuation | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const currency = organization?.baseCurrency ?? 'KES';
+  const currency = organization?.baseCurrency ?? 'USD';
 
   useEffect(() => {
     if (!organizationId) return;

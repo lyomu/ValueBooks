@@ -1,8 +1,8 @@
 'use client';
 
 import {
-  BookOpen,
   Bot,
+  BookOpen,
   BriefcaseBusiness,
   Building2,
   ChevronDown,
@@ -10,6 +10,7 @@ import {
   ReceiptText,
   X,
 } from 'lucide-react';
+import Image from 'next/image';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useEffect, useState } from 'react';
@@ -62,10 +63,7 @@ export function SiteHeader() {
     >
       <div className="mk-header__inner">
         <Link className="mk-brand" href="/" aria-label="ValueBooks home">
-          <span>
-            <BookOpen aria-hidden="true" />
-          </span>
-          <strong>ValueBooks</strong>
+          <Image src="/logo-full.png" alt="ValueBooks" height={28} width={142} priority />
         </Link>
         <nav className="mk-nav" aria-label="Marketing navigation">
           <button

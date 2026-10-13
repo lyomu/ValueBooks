@@ -486,6 +486,23 @@ export class OrganizationService {
         tx,
       );
 
+      // A paid plan is attached only after server-side payment verification. The latest verified,
+      // unconsumed registration intent belongs to this owner and is consumed in this same
+      // finalization transaction, making retries safe and preventing duplicate subscriptions.
+      const paidIntent = await tx.registrationIntent.findFirst({
+        where: { userId: user.id, paymentVerifiedAt: { not: null }, consumedAt: null, expiresAt: { gt: new Date() } },
+        orderBy: { paymentVerifiedAt: 'desc' },
+        select: { id: true, planId: true, plan: { select: { trialDays: true } } },
+      });
+      if (paidIntent) {
+        await tx.organizationSubscription.upsert({
+          where: { organizationId: context.id },
+          create: { organizationId: context.id, planId: paidIntent.planId, status: 'ACTIVE' },
+          update: { planId: paidIntent.planId, status: 'ACTIVE', cancelledAt: null },
+        });
+        await tx.registrationIntent.update({ where: { id: paidIntent.id }, data: { consumedAt: new Date() } });
+      }
+
       const pending = await tx.organizationInvitation.findMany({
         where: {
           organizationId: context.id,

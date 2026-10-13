@@ -47,7 +47,7 @@ const sampleAccounts: readonly SampleAccount[] = [
     code: '1000',
     name: 'Cash and cash equivalents',
     type: 'Asset',
-    balance: 'KES 0.00',
+    balance: 'USD 0.00',
     status: 'Active',
   },
   {
@@ -55,7 +55,7 @@ const sampleAccounts: readonly SampleAccount[] = [
     code: '2000',
     name: 'Accounts payable',
     type: 'Liability',
-    balance: 'KES 0.00',
+    balance: 'USD 0.00',
     status: 'Active',
   },
   {
@@ -63,7 +63,7 @@ const sampleAccounts: readonly SampleAccount[] = [
     code: '4000',
     name: 'Operating revenue',
     type: 'Income',
-    balance: 'KES 0.00',
+    balance: 'USD 0.00',
     status: 'Draft',
   },
 ];

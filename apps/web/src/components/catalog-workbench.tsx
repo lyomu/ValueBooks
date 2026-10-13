@@ -28,7 +28,7 @@ export function ItemsPage() {
   const canManage = hasPermission(organization, 'catalog.manage');
   const canImport = hasPermission(organization, 'catalog.import');
   const [importFile, setImportFile] = useState<File | null>(null);
-  const currency = organization?.baseCurrency ?? 'KES';
+  const currency = organization?.baseCurrency ?? 'USD';
 
   const [items, setItems] = useState<Item[] | null>(null);
   const [statusFilter, setStatusFilter] = useState<'' | 'ACTIVE' | 'INACTIVE'>('');
