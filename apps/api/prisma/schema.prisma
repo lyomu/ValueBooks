@@ -2459,6 +2459,11 @@ model DocumentExtraction {
   /// retrieval, not just hashes -- see `document_extractions_search_tsv_idx` in this migration for
   /// the generated `tsvector` column this backs.
   ocrText                 String?                       @map("ocr_text")
+  /// Generated `tsvector` column backing `document_extractions_search_tsv_idx`; Prisma Client
+  /// never reads or writes this directly (queried via raw SQL only), but it's declared here as
+  /// `Unsupported` so `prisma migrate diff` sees it and doesn't report drift against the migration
+  /// that creates it.
+  searchTsv               Unsupported("tsvector")?      @default(dbgenerated("to_tsvector('english'::regconfig, COALESCE(ocr_text, ''::text))")) @map("search_tsv")
   arithmeticValid         Boolean                       @default(false) @map("arithmetic_valid")
   fieldFlags              Json                          @default("[]") @map("field_flags")
   disposition             DocumentExtractionDisposition @default(PENDING)
@@ -2471,6 +2476,7 @@ model DocumentExtraction {
 
   @@index([organizationId, entityType, entityId])
   @@index([organizationId, status])
+  @@index([searchTsv], type: Gin, map: "document_extractions_search_tsv_idx")
   @@map("document_extractions")
 }
 
