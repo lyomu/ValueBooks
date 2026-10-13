@@ -34,7 +34,7 @@ read-only detail, and then use a permitted full-page edit route when that record
   interchangeable records with one read-only/editable shape. Forcing it into the rail model would
   mean relocating unrelated subsystems (task management, budget allocation, invoice generation)
   into a detail pane sized for a single record summary, which is a net regression for that page.
-  The projects *register* (`ProjectsPage`) is a plain list; it still opens the full project page
+  The projects _register_ (`ProjectsPage`) is a plain list; it still opens the full project page
   via `/projects/[id]` rather than a rail, for the same reason.
 
 ## Migrated this phase

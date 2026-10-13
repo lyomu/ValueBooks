@@ -999,9 +999,7 @@ export function TransfersPage({
           router.push('/transfers');
         }}
         recordHref={(transfer) => `/transfers/${transfer.id}`}
-        searchText={(transfer) =>
-          `${transfer.transferNumber ?? ''} ${transfer.description ?? ''}`
-        }
+        searchText={(transfer) => `${transfer.transferNumber ?? ''} ${transfer.description ?? ''}`}
         railHeader={<h1>All transfers</h1>}
         renderRailRecord={(transfer) => (
           <>
@@ -1016,7 +1014,12 @@ export function TransfersPage({
         detailTitle={(transfer) => <h1>{transfer.transferNumber ?? 'Transfer'}</h1>}
         headerActions={(transfer) =>
           canManage && transfer.status === 'POSTED' ? (
-            <Button variant="ghost" size="sm" type="button" onClick={() => void voidTransfer(transfer)}>
+            <Button
+              variant="ghost"
+              size="sm"
+              type="button"
+              onClick={() => void voidTransfer(transfer)}
+            >
               <Ban aria-hidden="true" /> Void
             </Button>
           ) : null
