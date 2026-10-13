@@ -451,7 +451,15 @@ function ProfileStep({
               label="Country of operation"
               hint="Sets your starting currency, time zone, and fiscal calendar. All remain editable."
             >
-              <SearchableCombobox id="countryCode" name="countryCode" defaultValue="KE" options={reference.countries.map((country) => ({ value: country.code, label: country.name }))} />
+              <SearchableCombobox
+                id="countryCode"
+                name="countryCode"
+                defaultValue="KE"
+                options={reference.countries.map((country) => ({
+                  value: country.code,
+                  label: country.name,
+                }))}
+              />
             </Field>
           )}
         </div>
@@ -529,7 +537,15 @@ function JurisdictionStep({
       >
         <div className="rb-field-grid">
           <Field id="country" label="Country">
-            <SearchableCombobox id="country" value={countryCode} onChange={applyCountry} options={reference.countries.map((country) => ({ value: country.code, label: country.name }))} />
+            <SearchableCombobox
+              id="country"
+              value={countryCode}
+              onChange={applyCountry}
+              options={reference.countries.map((country) => ({
+                value: country.code,
+                label: country.name,
+              }))}
+            />
           </Field>
 
           <Field
@@ -537,15 +553,36 @@ function JurisdictionStep({
             label="Base currency"
             hint="Reporting currency for the general ledger."
           >
-            <SearchableCombobox id="currency" value={baseCurrency} onChange={setBaseCurrency} options={reference.currencies.map((currency) => ({ value: currency.code, label: `${currency.code} — ${currency.name}` }))} />
+            <SearchableCombobox
+              id="currency"
+              value={baseCurrency}
+              onChange={setBaseCurrency}
+              options={reference.currencies.map((currency) => ({
+                value: currency.code,
+                label: `${currency.code} — ${currency.name}`,
+              }))}
+            />
           </Field>
 
           <Field id="timeZone" label="Time zone">
-            <SearchableCombobox id="timeZone" value={timeZone} onChange={setTimeZone} options={reference.timeZones.map((zone) => ({ value: zone, label: zone.replace(/_/g, ' ') }))} />
+            <SearchableCombobox
+              id="timeZone"
+              value={timeZone}
+              onChange={setTimeZone}
+              options={reference.timeZones.map((zone) => ({
+                value: zone,
+                label: zone.replace(/_/g, ' '),
+              }))}
+            />
           </Field>
 
           <Field id="locale" label="Language and formatting">
-            <SearchableCombobox id="locale" value={locale} onChange={setLocale} options={reference.locales.map((entry) => ({ value: entry.code, label: entry.name }))} />
+            <SearchableCombobox
+              id="locale"
+              value={locale}
+              onChange={setLocale}
+              options={reference.locales.map((entry) => ({ value: entry.code, label: entry.name }))}
+            />
           </Field>
 
           <Field id="fiscalMonth" label="Fiscal year starts">

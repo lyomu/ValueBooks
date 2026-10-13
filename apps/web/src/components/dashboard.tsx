@@ -314,7 +314,7 @@ export function Dashboard() {
                     axisLine={false}
                     tickLine={false}
                     width={72}
-                    tickFormatter={(value) => compactCurrency(value, data.currency)}
+                    tickFormatter={(value) => compactCurrency(Number(value), data.currency)}
                     tick={{ fontSize: 11, fill: 'hsl(215 16% 47%)' }}
                   />
                   <Tooltip formatter={(value) => formatMajor(Number(value), data.currency)} />
@@ -488,7 +488,9 @@ export function Dashboard() {
                     width={82}
                     axisLine={false}
                     tickLine={false}
-                    tickFormatter={(value) => compactCurrency(value, data?.currency ?? 'USD')}
+                    tickFormatter={(value) =>
+                      compactCurrency(Number(value), data?.currency ?? 'USD')
+                    }
                     tick={{ fontSize: 11, fill: 'hsl(215 16% 47%)' }}
                   />
                   <Tooltip

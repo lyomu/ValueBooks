@@ -132,7 +132,10 @@ export function RecurringInvoicesPage() {
     setShowCreate(true);
   }, []);
 
-  const currency = customers.find((customer) => customer.id === contactId)?.currency ?? organization?.baseCurrency ?? 'USD';
+  const currency =
+    customers.find((customer) => customer.id === contactId)?.currency ??
+    organization?.baseCurrency ??
+    'USD';
 
   function resetForm() {
     setContactId('');
