@@ -19,6 +19,7 @@ import { hasPermission, useWorkspace } from '../lib/workspace';
 import { ItemDialog } from './item-dialog';
 import { OperationalListing } from './operational-listing';
 import { EntityDetailView } from './master-detail/entity-detail-view';
+import { MasterDataImportWizard } from './master-data-import-wizard';
 import { RecordDetailWorkspace } from './record-detail-workspace';
 
 type ItemListResponse = { data: Item[] };
@@ -30,6 +31,8 @@ export function ItemsPage({ initialSelectedItemId }: { initialSelectedItemId?: s
   const organizationId = organization?.id ?? null;
   const canView = hasPermission(organization, 'catalog.view');
   const canManage = hasPermission(organization, 'catalog.manage');
+  const canImport = hasPermission(organization, 'catalog.import');
+  const [importFile, setImportFile] = useState<File | null>(null);
   const currency = organization?.baseCurrency ?? 'USD';
 
   const [items, setItems] = useState<Item[] | null>(null);
@@ -238,6 +241,19 @@ export function ItemsPage({ initialSelectedItemId }: { initialSelectedItemId?: s
           void load();
         }}
       />
+      {organizationId ? (
+        <MasterDataImportWizard
+          kind="items"
+          organizationId={organizationId}
+          file={importFile}
+          onClose={() => setImportFile(null)}
+          onCommitted={(result) => {
+            setNotice(`${result.createCount + result.updateCount} items imported.`);
+            setImportFile(null);
+            void load();
+          }}
+        />
+      ) : null}
       {error ? (
         <div className="rb-auth-error" role="alert">
           {error}
@@ -286,9 +302,8 @@ export function ItemsPage({ initialSelectedItemId }: { initialSelectedItemId?: s
             ) : null
           }
           onRefresh={() => void load()}
-          onImport={(file, sourceNamespace) => {
-            setNotice(`${file.name} is ready to map under ${sourceNamespace}.`);
-          }}
+          importEnabled={canImport}
+          onImport={canImport ? (file) => setImportFile(file) : undefined}
           emptyState={{
             title: 'Build your product and service catalog',
             description:

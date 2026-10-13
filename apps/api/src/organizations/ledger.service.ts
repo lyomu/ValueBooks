@@ -323,7 +323,10 @@ export class LedgerService {
     const journal = await this.prisma.$transaction(async (tx) => {
       await tx.journalLine.deleteMany({ where: { journalId } });
       return tx.journal.update({
-        where: { id: journalId },
+        where: {
+          id: journalId,
+          ...(input.version !== undefined ? { version: input.version } : {}),
+        },
         data: {
           journalDate: isoDate(input.journalDate),
           currency: input.currency,
@@ -331,6 +334,7 @@ export class LedgerService {
           description: input.description,
           sourceType: input.sourceType,
           sourceId: input.sourceId,
+          version: { increment: 1 },
           lines: { create: lineCreates(context.id, input.lines) },
         },
         include: journalDetailInclude,
@@ -358,6 +362,7 @@ export class LedgerService {
     journalId: string,
     metadata: RequestMetadata,
     idempotencyKey?: string,
+    expectedVersion?: number,
   ) {
     const posted = await this.prisma.$transaction(async (tx) => {
       await this.lockIdempotency(tx, context.id, 'JOURNAL_POST', idempotencyKey);
@@ -393,6 +398,7 @@ export class LedgerService {
         metadata,
         'JOURNAL_POST',
         idempotencyKey,
+        expectedVersion,
       );
     });
 
@@ -479,7 +485,18 @@ export class LedgerService {
         include: journalDetailInclude,
       });
 
-      return this.finalizePosting(tx, context, user, draft, metadata, operation, idempotencyKey);
+      return this.finalizePosting(
+        tx,
+        context,
+        user,
+        draft,
+        metadata,
+        operation,
+        idempotencyKey,
+        // A draft created moments earlier in this same transaction has no caller-observed
+        // version to be stale against.
+        undefined,
+      );
     };
 
     const posted = externalTx ? await run(externalTx) : await this.prisma.$transaction(run);
@@ -500,6 +517,7 @@ export class LedgerService {
     metadata: RequestMetadata,
     operation: string,
     idempotencyKey: string | undefined,
+    expectedVersion?: number,
   ): Promise<JournalWithDetail> {
     const preparedJournal = await this.prepareFxPosting(tx, context.id, journal);
     await this.validatePostingState(tx, context.id, preparedJournal);
@@ -509,12 +527,16 @@ export class LedgerService {
       preparedJournal.journalDate,
     );
     const postedJournal = await tx.journal.update({
-      where: { id: preparedJournal.id },
+      where: {
+        id: preparedJournal.id,
+        ...(expectedVersion !== undefined ? { version: expectedVersion } : {}),
+      },
       data: {
         reference: allocation.value,
         status: JournalStatus.POSTED,
         postedAt: new Date(),
         postedByUserId: user.id,
+        version: { increment: 1 },
       },
       include: journalDetailInclude,
     });
@@ -661,8 +683,11 @@ export class LedgerService {
       });
 
       await tx.journal.update({
-        where: { id: original.id },
-        data: { status: JournalStatus.REVERSED },
+        where: {
+          id: original.id,
+          ...(input.version !== undefined ? { version: input.version } : {}),
+        },
+        data: { status: JournalStatus.REVERSED, version: { increment: 1 } },
       });
 
       await this.recordIdempotency(tx, context.id, 'JOURNAL_REVERSE', key, created.id);
@@ -1249,6 +1274,7 @@ function journalSummary(journal: Journal & { lines: JournalLine[] }) {
     postedAt: journal.postedAt?.toISOString() ?? null,
     createdAt: journal.createdAt.toISOString(),
     postingRule: journal.postingRule ?? null,
+    version: journal.version,
   };
 }
 

@@ -4,6 +4,7 @@ import {
   ArrayMinSize,
   IsArray,
   IsIn,
+  IsInt,
   IsOptional,
   IsString,
   Length,
@@ -109,6 +110,25 @@ export class UpdateSalesOrderDto {
   @ValidateNested({ each: true })
   @Type(() => SalesOrderLineDto)
   lines?: SalesOrderLineDto[];
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  version?: number;
+}
+
+export class ConfirmSalesOrderDto {
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  version?: number;
+}
+
+export class ConvertSalesOrderDto {
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  version?: number;
 }
 
 export class ListSalesOrdersQueryDto {

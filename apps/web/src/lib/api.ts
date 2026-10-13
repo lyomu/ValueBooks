@@ -71,6 +71,7 @@ export async function apiUpload<T>(
   path: string,
   file: File,
   fields: Record<string, string> = {},
+  headers: HeadersInit = {},
 ): Promise<T> {
   const body = new FormData();
   body.append('file', file);
@@ -79,6 +80,7 @@ export async function apiUpload<T>(
     method: 'POST',
     credentials: 'include',
     body,
+    headers,
   });
 
   if (!response.ok) {

@@ -148,12 +148,16 @@ export class SalesOrdersService {
         await tx.salesOrderLine.deleteMany({ where: { salesOrderId: orderId } });
       }
       const order = await tx.salesOrder.update({
-        where: { id: orderId },
+        where: {
+          id: orderId,
+          ...(input.version !== undefined ? { version: input.version } : {}),
+        },
         data: {
           contactId: contact.id,
           currency,
           subtotalMinor: totalMinor,
           totalMinor,
+          version: { increment: 1 },
           ...(resolvedLines
             ? {
                 lines: {
@@ -234,12 +238,14 @@ export class SalesOrdersService {
     user: PublicUser,
     orderId: string,
     metadata: RequestMetadata,
+    expectedVersion?: number,
   ) {
     return this.transition(context, user, orderId, metadata, {
       from: ['APPROVED'],
       to: 'CONFIRMED',
       eventKey: 'sales.order_confirmed',
       errorMessage: 'Only approved orders can be confirmed.',
+      expectedVersion,
     });
   }
 
@@ -294,6 +300,7 @@ export class SalesOrdersService {
     user: PublicUser,
     orderId: string,
     metadata: RequestMetadata,
+    expectedVersion?: number,
   ) {
     const existing = await this.findOrThrow(context.id, orderId);
     if (!CONVERTIBLE_STATUSES.includes(existing.status)) {
@@ -327,8 +334,11 @@ export class SalesOrdersService {
 
     const updated = await this.prisma.$transaction(async (tx) => {
       const order = await tx.salesOrder.update({
-        where: { id: orderId },
-        data: { convertedInvoiceId: invoice.id },
+        where: {
+          id: orderId,
+          ...(expectedVersion !== undefined ? { version: expectedVersion } : {}),
+        },
+        data: { convertedInvoiceId: invoice.id, version: { increment: 1 } },
         include: orderDetailInclude,
       });
       await writeAuditEvent(tx, {
@@ -357,6 +367,7 @@ export class SalesOrdersService {
       to: SalesOrderStatus;
       eventKey: string;
       errorMessage: string;
+      expectedVersion?: number;
     },
   ) {
     const existing = await this.findOrThrow(context.id, orderId);
@@ -365,7 +376,10 @@ export class SalesOrdersService {
     }
     const updated = await this.prisma.$transaction(async (tx) => {
       const order = await tx.salesOrder.update({
-        where: { id: orderId },
+        where: {
+          id: orderId,
+          ...(options.expectedVersion !== undefined ? { version: options.expectedVersion } : {}),
+        },
         data: {
           status: options.to,
           // This timestamp, rather than the current status, is the irreversible customer-visibility
@@ -375,6 +389,7 @@ export class SalesOrdersService {
           ...(options.to === 'CONFIRMED' && existing.portalVisibleAt === null
             ? { portalVisibleAt: new Date() }
             : {}),
+          version: { increment: 1 },
         },
         include: orderDetailInclude,
       });
@@ -540,6 +555,7 @@ function summarizeOrder(order: SalesOrderWithLines) {
     })),
     createdAt: order.createdAt.toISOString(),
     updatedAt: order.updatedAt.toISOString(),
+    version: order.version,
   };
 }
 

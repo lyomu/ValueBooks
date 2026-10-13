@@ -175,7 +175,10 @@ export class VendorCreditsService {
         await tx.vendorCreditLine.deleteMany({ where: { vendorCreditId } });
       }
       const vendorCredit = await tx.vendorCredit.update({
-        where: { id: vendorCreditId },
+        where: {
+          id: vendorCreditId,
+          ...(input.version !== undefined ? { version: input.version } : {}),
+        },
         data: {
           vendorId: vendor.id,
           currency,
@@ -184,6 +187,7 @@ export class VendorCreditsService {
           subtotalMinor: totals.subtotalMinor,
           taxTotalMinor: totals.taxTotalMinor,
           totalMinor: totals.totalMinor,
+          version: { increment: 1 },
           ...(resolvedLines
             ? {
                 lines: {
@@ -655,11 +659,15 @@ export class VendorCreditsService {
 
       const newRemainingMinor = vendorCredit.remainingMinor - totalRequestedMinor;
       const updatedVendorCredit = await tx.vendorCredit.update({
-        where: { id: vendorCreditId },
+        where: {
+          id: vendorCreditId,
+          ...(input.version !== undefined ? { version: input.version } : {}),
+        },
         data: {
           appliedMinor: vendorCredit.appliedMinor + totalRequestedMinor,
           remainingMinor: newRemainingMinor,
           status: newRemainingMinor === 0n ? 'APPLIED' : 'ISSUED',
+          version: { increment: 1 },
         },
         include: vendorCreditDetailInclude,
       });
@@ -935,6 +943,7 @@ function summarizeVendorCredit(vendorCredit: VendorCreditWithDetail) {
     })),
     createdAt: vendorCredit.createdAt.toISOString(),
     updatedAt: vendorCredit.updatedAt.toISOString(),
+    version: vendorCredit.version,
   };
 }
 

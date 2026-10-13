@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Headers,
   Get,
   HttpCode,
   Param,
@@ -21,6 +22,10 @@ import {
 } from '../organizations/organization-context.js';
 import { OrganizationGuard } from '../organizations/organization.guard.js';
 import { CatalogService } from './catalog.service.js';
+import { MasterDataImportService } from '../master-data-import/master-data-import.service.js';
+import type { UploadedFileLike } from '../attachments/attachments.service.js';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { UploadedFile, UseInterceptors } from '@nestjs/common';
 import {
   CreateCategoryDto,
   CreateItemDto,
@@ -36,6 +41,7 @@ import {
 export class CatalogController {
   constructor(
     private readonly catalog: CatalogService,
+    private readonly imports: MasterDataImportService,
     private readonly auth: AuthService,
   ) {}
 
@@ -118,6 +124,32 @@ export class CatalogController {
   @RequirePermission('catalog.view')
   async items(@Query() query: ListItemsQueryDto, @Req() request: OrganizationRequest) {
     return { data: await this.catalog.listItems(request.organization.id, query.status) };
+  }
+
+  @Post('import')
+  @RequirePermission('catalog.import')
+  @UseInterceptors(FileInterceptor('file', { limits: { fileSize: 8 * 1024 * 1024 } }))
+  async import(
+    @Body('mapping') mapping: string | undefined,
+    @Body('actions') actions: string | undefined,
+    @Body('dryRun') dryRun: string | undefined,
+    @Headers('idempotency-key') idempotencyKey: string | undefined,
+    @UploadedFile() file: UploadedFileLike,
+    @Req() request: OrganizationRequest,
+  ) {
+    return {
+      data: await this.imports.run(
+        'items',
+        request.organization,
+        request.auth.user,
+        file,
+        mapping,
+        actions,
+        dryRun !== 'false',
+        idempotencyKey,
+        requestMetadata(request, this.auth.pepper),
+      ),
+    };
   }
 
   @Get('items/:itemId')

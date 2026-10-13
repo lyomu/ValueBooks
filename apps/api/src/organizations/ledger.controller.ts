@@ -21,6 +21,7 @@ import {
   AccountLedgerQueryDto,
   CreateAccountDto,
   JournalQueryDto,
+  PostJournalDto,
   ReversalDto,
   TrialBalanceQueryDto,
   UpdateAccountDto,
@@ -150,6 +151,7 @@ export class LedgerController {
   @RequirePermission('journals.post')
   async postJournal(
     @Param('journalId', new ParseUUIDPipe()) journalId: string,
+    @Body() input: PostJournalDto,
     @Headers('idempotency-key') idempotencyKey: string | undefined,
     @Req() request: OrganizationRequest,
   ) {
@@ -161,6 +163,7 @@ export class LedgerController {
         journalId,
         metadata,
         idempotencyKey,
+        input.version,
       ),
     };
   }
