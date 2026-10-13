@@ -41,6 +41,9 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Generate Prisma client
+        run: npm run db:generate --workspace @valuebooks/api
+
       # Scoped to production dependencies (--omit=dev): dev/build-only tooling (vitest, the
       # eslint-plugin-next chain) is never shipped, so scanning it adds noise, not signal.
       # continue-on-error is temporary: one documented, owner-assigned advisory

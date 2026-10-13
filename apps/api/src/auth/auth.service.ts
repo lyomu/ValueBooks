@@ -15,7 +15,14 @@ import {
 } from '@prisma/client';
 
 import { PrismaService } from '../database/prisma.service.js';
-import { createMfaCode, createOpaqueToken, hashIdentifier, hashPassword, hashToken, verifyPassword } from './auth.crypto.js';
+import {
+  createMfaCode,
+  createOpaqueToken,
+  hashIdentifier,
+  hashPassword,
+  hashToken,
+  verifyPassword,
+} from './auth.crypto.js';
 import { AuthMailerService } from './auth-mailer.service.js';
 import type { LoginDto, ResetPasswordDto, SignupDto } from './auth.dto.js';
 import type { RequestMetadata } from './request-context.js';
@@ -111,12 +118,19 @@ export class AuthService {
     });
   }
 
-  async signup(input: SignupDto, metadata: RequestMetadata): Promise<{ message: string; challengeToken?: string }> {
+  async signup(
+    input: SignupDto,
+    metadata: RequestMetadata,
+  ): Promise<{ message: string; challengeToken?: string }> {
     const existing = await this.prisma.user.findUnique({ where: { email: input.email } });
 
     if (existing) {
       if (existing.status === UserStatus.PENDING_VERIFICATION) {
-        const challengeToken = await this.createMfaChallenge(existing.id, MfaChallengePurpose.SIGNUP, existing);
+        const challengeToken = await this.createMfaChallenge(
+          existing.id,
+          MfaChallengePurpose.SIGNUP,
+          existing,
+        );
         await this.bindRegistrationIntent(input.registrationIntentId, existing.id, input.email);
         return { message: 'Check your email for the verification code.', challengeToken };
       }
@@ -203,7 +217,12 @@ export class AuthService {
   async login(
     input: LoginDto,
     metadata: RequestMetadata,
-  ): Promise<{ token?: string; mfaChallengeToken?: string; user: PublicUser; mfaRequired: boolean }> {
+  ): Promise<{
+    token?: string;
+    mfaChallengeToken?: string;
+    user: PublicUser;
+    mfaRequired: boolean;
+  }> {
     const user = await this.prisma.user.findUnique({
       where: { email: input.email },
       include: { authMethods: { where: { provider: AuthProvider.PASSWORD } } },
@@ -239,8 +258,19 @@ export class AuthService {
     }
 
     if (user.emailMfaEnabledAt) {
-      const mfaChallengeToken = await this.createMfaChallenge(user.id, MfaChallengePurpose.LOGIN, user);
-      await this.prisma.securityEvent.create({ data: { userId: user.id, eventKey: 'auth.mfa_challenge_issued', ipHash: metadata.ipHash, metadata: { purpose: 'login' } } });
+      const mfaChallengeToken = await this.createMfaChallenge(
+        user.id,
+        MfaChallengePurpose.LOGIN,
+        user,
+      );
+      await this.prisma.securityEvent.create({
+        data: {
+          userId: user.id,
+          eventKey: 'auth.mfa_challenge_issued',
+          ipHash: metadata.ipHash,
+          metadata: { purpose: 'login' },
+        },
+      });
       return { mfaChallengeToken, user: toPublicUser(user), mfaRequired: true };
     }
     const session = await this.createSession(user.id, metadata);
@@ -257,12 +287,20 @@ export class AuthService {
   }
 
   async mfaStatus(userId: string) {
-    const user = await this.prisma.user.findUniqueOrThrow({ where: { id: userId }, select: { email: true, emailMfaEnabledAt: true } });
-    return { enabled: Boolean(user.emailMfaEnabledAt), email: user.email, enabledAt: user.emailMfaEnabledAt?.toISOString() ?? null };
+    const user = await this.prisma.user.findUniqueOrThrow({
+      where: { id: userId },
+      select: { email: true, emailMfaEnabledAt: true },
+    });
+    return {
+      enabled: Boolean(user.emailMfaEnabledAt),
+      email: user.email,
+      enabledAt: user.emailMfaEnabledAt?.toISOString() ?? null,
+    };
   }
 
   async beginMfaEnrollment(user: PublicUser): Promise<string> {
-    if (!user.emailVerified) throw new ForbiddenException('Verify your email before enabling email verification.');
+    if (!user.emailVerified)
+      throw new ForbiddenException('Verify your email before enabling email verification.');
     return this.createMfaChallenge(user.id, MfaChallengePurpose.ENROLL, user);
   }
 
@@ -270,7 +308,12 @@ export class AuthService {
     if (!context.user.emailMfaEnabled) {
       throw new BadRequestException('Email verification is not enabled for this account.');
     }
-    return this.createMfaChallenge(context.user.id, MfaChallengePurpose.STEP_UP, context.user, context.sessionId);
+    return this.createMfaChallenge(
+      context.user.id,
+      MfaChallengePurpose.STEP_UP,
+      context.user,
+      context.sessionId,
+    );
   }
 
   async resendMfaChallenge(rawToken: string): Promise<void> {
@@ -278,61 +321,114 @@ export class AuthService {
       where: { tokenHash: hashToken(rawToken) },
       include: { user: true },
     });
-    if (!challenge || challenge.consumedAt || challenge.expiresAt <= new Date() || challenge.failedAttempts >= MAX_MFA_ATTEMPTS || challenge.resendCount >= 3) {
+    if (
+      !challenge ||
+      challenge.consumedAt ||
+      challenge.expiresAt <= new Date() ||
+      challenge.failedAttempts >= MAX_MFA_ATTEMPTS ||
+      challenge.resendCount >= 3
+    ) {
       throw new BadRequestException('This verification challenge cannot be resent. Start again.');
     }
     const code = createMfaCode();
     await this.mailer.sendMfaCode(challenge.user.email, challenge.user.displayName, code);
     await this.prisma.mfaChallenge.update({
       where: { id: challenge.id },
-      data: { codeHash: hashIdentifier(code, this.securityPepper), expiresAt: new Date(Date.now() + MFA_CODE_TTL_MS), resendCount: { increment: 1 } },
+      data: {
+        codeHash: hashIdentifier(code, this.securityPepper),
+        expiresAt: new Date(Date.now() + MFA_CODE_TTL_MS),
+        resendCount: { increment: 1 },
+      },
     });
   }
 
   async verifyMfaChallenge(rawToken: string, code: string, metadata: RequestMetadata) {
-    const challenge = await this.prisma.mfaChallenge.findUnique({ where: { tokenHash: hashToken(rawToken) }, include: { user: true } });
-    if (!challenge || challenge.consumedAt || challenge.expiresAt <= new Date() || challenge.failedAttempts >= MAX_MFA_ATTEMPTS) throw new BadRequestException('This verification code is invalid or has expired.');
+    const challenge = await this.prisma.mfaChallenge.findUnique({
+      where: { tokenHash: hashToken(rawToken) },
+      include: { user: true },
+    });
+    if (
+      !challenge ||
+      challenge.consumedAt ||
+      challenge.expiresAt <= new Date() ||
+      challenge.failedAttempts >= MAX_MFA_ATTEMPTS
+    )
+      throw new BadRequestException('This verification code is invalid or has expired.');
     if (challenge.codeHash !== hashIdentifier(code, this.securityPepper)) {
-      await this.prisma.mfaChallenge.update({ where: { id: challenge.id }, data: { failedAttempts: { increment: 1 } } });
-      await this.securityEvent(this.prisma, challenge.userId, 'auth.mfa_verification_failed', metadata, { purpose: challenge.purpose });
+      await this.prisma.mfaChallenge.update({
+        where: { id: challenge.id },
+        data: { failedAttempts: { increment: 1 } },
+      });
+      await this.securityEvent(
+        this.prisma,
+        challenge.userId,
+        'auth.mfa_verification_failed',
+        metadata,
+        { purpose: challenge.purpose },
+      );
       throw new BadRequestException('This verification code is invalid or has expired.');
     }
     const now = new Date();
-    await this.prisma.mfaChallenge.update({ where: { id: challenge.id }, data: { consumedAt: now } });
+    await this.prisma.mfaChallenge.update({
+      where: { id: challenge.id },
+      data: { consumedAt: now },
+    });
     if (challenge.purpose === MfaChallengePurpose.SIGNUP) {
       await this.prisma.$transaction(async (tx) => {
-        await tx.user.update({ where: { id: challenge.userId }, data: { emailVerifiedAt: now, status: UserStatus.ACTIVE } });
+        await tx.user.update({
+          where: { id: challenge.userId },
+          data: { emailVerifiedAt: now, status: UserStatus.ACTIVE },
+        });
         await this.securityEvent(tx, challenge.userId, 'auth.signup_email_verified', metadata, {});
       });
       const session = await this.createSession(challenge.userId, metadata, now);
-      return { kind: 'signup' as const, token: session.rawToken, user: toPublicUser({ ...challenge.user, emailVerifiedAt: now }) };
+      return {
+        kind: 'signup' as const,
+        token: session.rawToken,
+        user: toPublicUser({ ...challenge.user, emailVerifiedAt: now }),
+      };
     }
     if (challenge.purpose === MfaChallengePurpose.ENROLL) {
       await this.prisma.$transaction(async (tx) => {
         await tx.user.update({ where: { id: challenge.userId }, data: { emailMfaEnabledAt: now } });
-        await tx.session.updateMany({ where: { userId: challenge.userId, status: SessionStatus.ACTIVE }, data: { mfaVerifiedAt: now } });
+        await tx.session.updateMany({
+          where: { userId: challenge.userId, status: SessionStatus.ACTIVE },
+          data: { mfaVerifiedAt: now },
+        });
         await this.securityEvent(tx, challenge.userId, 'auth.mfa_enabled', metadata, {});
       });
       return { kind: 'enrolled' as const };
     }
     if (challenge.purpose === MfaChallengePurpose.STEP_UP) {
-      if (!challenge.sessionId) throw new BadRequestException('This verification challenge is invalid.');
+      if (!challenge.sessionId)
+        throw new BadRequestException('This verification challenge is invalid.');
       await this.prisma.session.updateMany({
         where: { id: challenge.sessionId, userId: challenge.userId, status: SessionStatus.ACTIVE },
         data: { mfaVerifiedAt: now },
       });
-      await this.securityEvent(this.prisma, challenge.userId, 'auth.mfa_step_up_succeeded', metadata, { sessionId: challenge.sessionId });
+      await this.securityEvent(
+        this.prisma,
+        challenge.userId,
+        'auth.mfa_step_up_succeeded',
+        metadata,
+        { sessionId: challenge.sessionId },
+      );
       return { kind: 'step_up' as const };
     }
     const session = await this.createSession(challenge.userId, metadata, now);
-    await this.securityEvent(this.prisma, challenge.userId, 'auth.mfa_login_succeeded', metadata, { sessionId: session.id });
+    await this.securityEvent(this.prisma, challenge.userId, 'auth.mfa_login_succeeded', metadata, {
+      sessionId: session.id,
+    });
     return { kind: 'login' as const, token: session.rawToken, user: toPublicUser(challenge.user) };
   }
 
   async disableMfa(userId: string, metadata: RequestMetadata): Promise<void> {
     await this.prisma.$transaction(async (tx) => {
       await tx.user.update({ where: { id: userId }, data: { emailMfaEnabledAt: null } });
-      await tx.session.updateMany({ where: { userId, status: SessionStatus.ACTIVE }, data: { status: SessionStatus.REVOKED, revokedAt: new Date() } });
+      await tx.session.updateMany({
+        where: { userId, status: SessionStatus.ACTIVE },
+        data: { status: SessionStatus.REVOKED, revokedAt: new Date() },
+      });
       await this.securityEvent(tx, userId, 'auth.mfa_disabled', metadata, {});
     });
   }
@@ -436,7 +532,11 @@ export class AuthService {
         data: { lastSeenAt: new Date() },
       });
     }
-    return { sessionId: session.id, user: toPublicUser(session.user), mfaVerifiedAt: session.mfaVerifiedAt };
+    return {
+      sessionId: session.id,
+      user: toPublicUser(session.user),
+      mfaVerifiedAt: session.mfaVerifiedAt,
+    };
   }
 
   async logout(rawToken: string | null): Promise<void> {
@@ -521,18 +621,39 @@ export class AuthService {
     return { id: session.id, rawToken };
   }
 
-  private async createMfaChallenge(userId: string, purpose: MfaChallengePurpose, user: Pick<PublicUser, 'email' | 'displayName'>, sessionId?: string): Promise<string> {
+  private async createMfaChallenge(
+    userId: string,
+    purpose: MfaChallengePurpose,
+    user: Pick<PublicUser, 'email' | 'displayName'>,
+    sessionId?: string,
+  ): Promise<string> {
     const rawToken = createOpaqueToken();
     const code = createMfaCode(purpose === MfaChallengePurpose.SIGNUP ? 6 : 8);
     await this.mailer.sendMfaCode(user.email, user.displayName, code);
     await this.prisma.$transaction([
-      this.prisma.mfaChallenge.updateMany({ where: { userId, purpose, consumedAt: null }, data: { consumedAt: new Date() } }),
-      this.prisma.mfaChallenge.create({ data: { userId, purpose, sessionId, tokenHash: hashToken(rawToken), codeHash: hashIdentifier(code, this.securityPepper), expiresAt: new Date(Date.now() + MFA_CODE_TTL_MS) } }),
+      this.prisma.mfaChallenge.updateMany({
+        where: { userId, purpose, consumedAt: null },
+        data: { consumedAt: new Date() },
+      }),
+      this.prisma.mfaChallenge.create({
+        data: {
+          userId,
+          purpose,
+          sessionId,
+          tokenHash: hashToken(rawToken),
+          codeHash: hashIdentifier(code, this.securityPepper),
+          expiresAt: new Date(Date.now() + MFA_CODE_TTL_MS),
+        },
+      }),
     ]);
     return rawToken;
   }
 
-  private async bindRegistrationIntent(intentId: string | undefined, userId: string, email: string): Promise<void> {
+  private async bindRegistrationIntent(
+    intentId: string | undefined,
+    userId: string,
+    email: string,
+  ): Promise<void> {
     if (!intentId) return;
     await this.prisma.registrationIntent.updateMany({
       where: { id: intentId, userId: null, consumedAt: null, expiresAt: { gt: new Date() } },

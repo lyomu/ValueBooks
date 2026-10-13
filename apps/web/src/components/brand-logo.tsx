@@ -39,9 +39,8 @@ export function BrandLogo({
   }
 
   // Full logo aspect ratio: dark-surface asset is tightly cropped to 1797 x 363.
-  const width = tone === 'inverse'
-    ? Math.round((height * 1797) / 363)
-    : Math.round((height * 842) / 166);
+  const width =
+    tone === 'inverse' ? Math.round((height * 1797) / 363) : Math.round((height * 842) / 166);
   return (
     <Image
       src={tone === 'inverse' ? '/logo-full-white.png' : '/logo-full.png'}
