@@ -12,6 +12,7 @@ coverage/
 .vscode/
 apps/api/prisma/dev.db
 infrastructure/data/
+infrastructure/backup/.output/
 apps/web/test-results/
 apps/web/playwright-report/
 *.traineddata
