@@ -30,7 +30,6 @@ import {
   type DataTableColumn,
 } from '@valuebooks/ui';
 import {
-  Archive,
   CheckCircle2,
   FilePlus2,
   ListChecks,

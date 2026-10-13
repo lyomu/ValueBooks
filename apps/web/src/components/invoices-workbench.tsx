@@ -17,7 +17,6 @@ import {
   type DataTableColumn,
 } from '@valuebooks/ui';
 import {
-  ArrowUpRight,
   CheckCircle2,
   ChevronDown,
   CircleDollarSign,

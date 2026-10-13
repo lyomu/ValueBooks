@@ -23,7 +23,9 @@ export function hashIdentifier(value: string, pepper: string): string {
 }
 
 export function createMfaCode(length = 8): string {
-  return randomInt(0, 10 ** length).toString().padStart(length, '0');
+  return randomInt(0, 10 ** length)
+    .toString()
+    .padStart(length, '0');
 }
 
 export function hashPassword(password: string): Promise<string> {

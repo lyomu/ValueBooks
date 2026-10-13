@@ -273,6 +273,9 @@ compliance claim.
 
 ## Stage 5 — Phase 7: Projects & Time
 
+**Status: Done — see `docs/PHASE7_TODO.md` (43/43 checked, no open items).** The checklist below
+is the original planning list, kept as-is and ticked for history; it is not the current record.
+
 **Roadmap:** `BUILD_ROADMAP.md:435–481`, 24 items. **Entities:** `Project`, `ProjectTask`,
 `TimeEntry`, `ProjectExpense`, `ProjectBudget`. **Depends on:** D1, Stages 0–3.
 **Size:** comparable to Phase 3 (Purchases) — the largest of the three new phases, because it
@@ -280,67 +283,67 @@ introduces a new document→invoice path and the first approval workflow outside
 
 ### 7A — Schema and migration
 
-- [ ] `Project` (customer, name, dates, billing method, budget, status, manager)
-- [ ] `ProjectTask` (project, name, assignee, estimate, billable default)
-- [ ] `TimeEntry` (date, project/task, user, hours, billable, rate, note)
-- [ ] `ProjectExpense` (linked `Expense`, billable markup/rate, invoiced-once guard column)
-- [ ] `ProjectBudget`
-- [ ] **Per D1:** dimension columns on `JournalLine` (+ backfill strategy for existing rows —
+- [x] `Project` (customer, name, dates, billing method, budget, status, manager)
+- [x] `ProjectTask` (project, name, assignee, estimate, billable default)
+- [x] `TimeEntry` (date, project/task, user, hours, billable, rate, note)
+- [x] `ProjectExpense` (linked `Expense`, billable markup/rate, invoiced-once guard column)
+- [x] `ProjectBudget`
+- [x] **Per D1:** dimension columns on `JournalLine` (+ backfill strategy for existing rows —
       nullable, no backfill; historical journals predate projects)
-- [ ] Replace or complement `InvoiceLine.projectTag` free text with a real `projectId` relation;
+- [x] Replace or complement `InvoiceLine.projectTag` free text with a real `projectId` relation;
       decide whether the old column is migrated or retired
-- [ ] Migration via the documented shadow-db `migrate diff` dance (`HANDOVER.md` §2 — `prisma
+- [x] Migration via the documented shadow-db `migrate diff` dance (`HANDOVER.md` §2 — `prisma
 migrate dev` hard-fails non-interactively; never edit an applied migration folder)
 
 ### 7B — Backend
 
-- [ ] Projects: lifecycle Open → On Hold → Completed → Cancelled
-- [ ] Tasks: inherit project-level access
-- [ ] Timesheets: **submitted time is immutable until rejected/unlocked** — same immutability
+- [x] Projects: lifecycle Open → On Hold → Completed → Cancelled
+- [x] Tasks: inherit project-level access
+- [x] Timesheets: **submitted time is immutable until rejected/unlocked** — same immutability
       discipline as posted journals
-- [ ] Time approval: by period/user/project, approve/reject with comment
-- [ ] Project expenses: **cannot invoice the same expense twice** (enforce in the DB with a unique
+- [x] Time approval: by period/user/project, approve/reject with comment
+- [x] Project expenses: **cannot invoice the same expense twice** (enforce in the DB with a unique
       constraint on the invoiced link, not only in the service — this is a money invariant)
-- [ ] Generate Invoice from approved unbilled time/expenses → creates `InvoiceLine`s with source
+- [x] Generate Invoice from approved unbilled time/expenses → creates `InvoiceLine`s with source
       links, posting through the existing `sales/invoice-posting-rule.ts`. Reuse; do not fork the
       invoice posting path.
-- [ ] Profitability: revenue, billed/unbilled time, cost, expenses, margin, drill-down to source
-- [ ] Idempotency key on the generate-invoice endpoint (roadmap non-negotiable, currently open)
+- [x] Profitability: revenue, billed/unbilled time, cost, expenses, margin, drill-down to source
+- [x] Idempotency key on the generate-invoice endpoint (roadmap non-negotiable)
 
 ### 7C — Permissions and contracts
 
-- [ ] `projects.*` permission keys — remember all **four** places: catalog keys array, catalog
+- [x] `projects.*` permission keys — remember all **four** places: catalog keys array, catalog
       entries, `roles-catalog.ts`, contracts `permissionKeySchema` + group enum
-- [ ] Wire `PROJECT_MANAGER`'s real permission set — today it is a placeholder holding only
+- [x] Wire `PROJECT_MANAGER`'s real permission set — today it is a placeholder holding only
       `['organization.view']` (`roles-catalog.ts:407`)
-- [ ] Contracts: Zod schemas, DTOs, response wrappers, inferred types for all five entities
+- [x] Contracts: Zod schemas, DTOs, response wrappers, inferred types for all five entities
 
 ### 7D — Web workspace
 
-- [ ] Projects list / create-edit / detail
-- [ ] Tasks within project detail
-- [ ] Timesheet entry (timer + manual)
-- [ ] Time approval screen
-- [ ] Project expenses screen
-- [ ] Generate-invoice-from-billables flow
-- [ ] Profitability report/dashboard
-- [ ] `Projects` nav group in `app-shell.tsx` (mirror the Banking/Inventory group shape; items
+- [x] Projects list / create-edit / detail
+- [x] Tasks within project detail
+- [x] Timesheet entry (timer + manual)
+- [x] Time approval screen
+- [x] Project expenses screen
+- [x] Generate-invoice-from-billables flow
+- [x] Profitability report/dashboard
+- [x] `Projects` nav group in `app-shell.tsx` (mirror the Banking/Inventory group shape; items
       unconditional, pages self-gate via `ForbiddenState`)
 
 ### 7E — Tests (not deferred this time)
 
-- [ ] Approved billable time becomes invoiceable exactly once
-- [ ] A project expense cannot be invoiced twice
-- [ ] Cross-module scenario 3 (build spec §18.3): project → approved time + expense → generate
+- [x] Approved billable time becomes invoiceable exactly once
+- [x] A project expense cannot be invoiced twice
+- [x] Cross-module scenario 3 (build spec §18.3): project → approved time + expense → generate
       invoice → record payment → profitability and ledger reconcile
-- [ ] Timesheet immutability after submit
-- [ ] Boundary matrix picks up the new controllers **automatically** via 2B.2 — if it does not,
+- [x] Timesheet immutability after submit
+- [x] Boundary matrix picks up the new controllers **automatically** via 2B.2 — if it does not,
       2B.2 is not finished
-- [ ] Check off Phase 14 cross-module scenario 3
+- [x] Check off Phase 14 cross-module scenario 3
 
 ### 7F — Close-out
 
-- [ ] `docs/PHASE7_TODO.md` created and fully checked, roadmap section rolled up **in the same
+- [x] `docs/PHASE7_TODO.md` created and fully checked, roadmap section rolled up **in the same
       commit**, `HANDOVER.md` refreshed
 
 ---
@@ -498,9 +501,10 @@ item.
 checklist, architectural decisions, sequencing, and acceptance gates are in `docs/PHASE10_TODO.md`.
 The full repository gate is green — format, lint, typecheck, 117 unit + 335 integration tests, zero
 migration drift in both directions plus shadow-database migration replay, and both production
-builds. Debt carried forward, each named on its own unchecked bullet below: the Quote
-approval-route adapter, the 10H approval edge-case tests, the two deferred 10F refactors, the 10E
-recurring unification, and the 10I operator docs.
+builds. Debt carried forward, each named on its own unchecked bullet below: the 10H approval
+edge-case tests, the 10E recurring unification, and the 10F stored-artifact streaming refactor
+(interactive exports and oversized async PDFs are done). The Quote approval-route adapter and the
+10I operator docs have since closed — see `docs/GAPS.md` section C.
 
 **Roadmap:** `BUILD_ROADMAP.md` Phase 10. **Depends on:** the existing BullMQ/email worker,
 module-specific recurring templates, target state machines, Phase 9 report/export seams, tenant
@@ -508,9 +512,10 @@ permissions, audit events, and object storage. **Critical blocker:** no durable 
 
 ### 10A — Durable foundation
 
-- [ ] Add shared contracts, permissions, Phase 10 models, migration, and recurring-schedule backfill
-      (partial: models, permissions, migration, and backfill are done and verified; the
-      `ReminderPolicy` and `ScheduledJobExecution` contract schemas remain tracked debt)
+- [x] Add shared contracts, permissions, Phase 10 models, migration, and recurring-schedule
+      backfill. The `ReminderPolicy` and `ScheduledJobExecution` contract schemas (previously
+      tracked debt) are now in `packages/contracts/src/index.ts`, covered by
+      `apps/api/test/automation-contracts.test.ts` — see `docs/GAPS.md` #18.
 - [x] Implement a PostgreSQL transactional outbox; never poll `AuditEvent` as a business event queue
 - [x] Extend the existing worker with a typed automation queue, idempotent consumers, leases,
       retries, health, metrics, and a testable clock
@@ -527,9 +532,11 @@ permissions, audit events, and object storage. **Critical blocker:** no durable 
 
 ### 10C — Approvals
 
-- [ ] Implement no/simple/multi-level/criteria policy resolution with frozen request-step snapshots
-      (partial: amount, submitter-user, tag, and project criteria resolve deterministically with
-      frozen snapshots; there is no `submitter role` condition — see `PHASE10_TODO.md` 10C)
+- [x] Implement no/simple/multi-level/criteria policy resolution with frozen request-step
+      snapshots. Amount, submitter-user, submitter-role, tag, and project criteria all resolve
+      deterministically with frozen snapshots — `submitterRoles` on `approvalConditionsSchema`,
+      evaluated in `approvals.service.ts#matchesConditions`, covered by
+      `apps/api/test/submitter-role.int.test.ts` — see `docs/GAPS.md` #20.
 - [x] Add target adapters and non-bypassable finalization gates for every roadmap approval target
 - [x] Deliver inbox, submit/reject/edit/resubmit/approve/history flows with maker-checker separation
 
@@ -542,9 +549,11 @@ permissions, audit events, and object storage. **Critical blocker:** no durable 
 ### 10E — Reminders, reports, and job operations
 
 - [x] Schedule due/overdue invoice reminders and cancel/recheck them on paid or void state
-- [ ] Deliver scheduled reports and oversized PDFs through Phase 9's engine and object storage
-      (partial: scheduled reports deliver through Phase 9's engine end to end; oversized-PDF
-      `202 Accepted` export is deliberately deferred — see `PHASE10_TODO.md` 10F)
+- [x] Deliver scheduled reports and oversized PDFs through Phase 9's engine and object storage.
+      Scheduled reports deliver through Phase 9's engine end to end. Oversized interactive PDF
+      exports (`report-export.service.ts#pdf`, over 2,000 rows) now route through
+      `AsyncReportExportService#request`, returning `202 Accepted` with a scoped status resource
+      (`GET reports/exports/:executionId`) — see `docs/GAPS.md` #25.
 - [x] Expose organization-scoped failed executions and audited, idempotent retry controls
 
 ### 10F — Web workspaces
@@ -556,9 +565,10 @@ permissions, audit events, and object storage. **Critical blocker:** no durable 
 
 - [x] Pass the §18.7 approval scenario, event atomicity/replay, reminder cancellation, recurring
       occurrence, scheduled-report, tenant-isolation, and boundary-matrix suites
-- [ ] Full repository gate and migration drift green; roll up roadmap, plan, handover, and runbooks
-      (partial: the gate, migration drift, and the roadmap/plan/handover roll-up are done
-      (2026-09-05); the operator runbooks remain — see `PHASE10_TODO.md` 10I)
+- [x] Full repository gate and migration drift green; roll up roadmap, plan, handover, and
+      runbooks. Gate, migration drift, and the roadmap/plan/handover roll-up were done
+      (2026-09-05); the operator runbooks (`docs/AUTOMATION_OPERATIONS_RUNBOOK.md`) were added
+      2026-10-10 — see `docs/GAPS.md` #27 and #28.
 
 ---
 

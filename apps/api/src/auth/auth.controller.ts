@@ -30,7 +30,14 @@ import {
   UpdateProfileDto,
 } from './auth.dto.js';
 import { getCookie, requestMetadata } from './request-context.js';
-import { clearMfaChallengeCookie, clearSessionCookie, MFA_CHALLENGE_COOKIE, SESSION_COOKIE, setMfaChallengeCookie, setSessionCookie } from './session-cookie.js';
+import {
+  clearMfaChallengeCookie,
+  clearSessionCookie,
+  MFA_CHALLENGE_COOKIE,
+  SESSION_COOKIE,
+  setMfaChallengeCookie,
+  setSessionCookie,
+} from './session-cookie.js';
 import { SessionGuard, type AuthenticatedRequest } from './session.guard.js';
 
 @Controller('auth')
@@ -42,7 +49,11 @@ export class AuthController {
 
   @Post('signup')
   @HttpCode(202)
-  async signup(@Body() input: SignupDto, @Req() request: Request, @Res({ passthrough: true }) response: Response) {
+  async signup(
+    @Body() input: SignupDto,
+    @Req() request: Request,
+    @Res({ passthrough: true }) response: Response,
+  ) {
     const metadata = requestMetadata(request, this.auth.pepper);
     await this.rateLimit.consume(`auth:signup:ip:${metadata.ipHash}`, 25, 60 * 60);
     await this.rateLimit.consume(
@@ -103,7 +114,10 @@ export class AuthController {
 
   @Post('mfa/enroll')
   @UseGuards(SessionGuard)
-  async enrollMfa(@Req() request: AuthenticatedRequest, @Res({ passthrough: true }) response: Response) {
+  async enrollMfa(
+    @Req() request: AuthenticatedRequest,
+    @Res({ passthrough: true }) response: Response,
+  ) {
     const metadata = requestMetadata(request, this.auth.pepper);
     await this.rateLimit.consume(`auth:mfa-enroll:${request.auth.user.id}`, 3, 60 * 60);
     await this.rateLimit.consume(`auth:mfa-issue:${metadata.ipHash}`, 12, 60 * 60);
@@ -113,13 +127,29 @@ export class AuthController {
   }
 
   @Post('mfa/verify')
-  async verifyMfa(@Body() input: MfaCodeDto, @Req() request: Request, @Res({ passthrough: true }) response: Response) {
+  async verifyMfa(
+    @Body() input: MfaCodeDto,
+    @Req() request: Request,
+    @Res({ passthrough: true }) response: Response,
+  ) {
     const rawToken = getCookie(request, MFA_CHALLENGE_COOKIE);
     if (!rawToken) throw new BadRequestException('No verification challenge is active.');
-    const result = await this.auth.verifyMfaChallenge(rawToken, input.code, requestMetadata(request, this.auth.pepper));
+    const result = await this.auth.verifyMfaChallenge(
+      rawToken,
+      input.code,
+      requestMetadata(request, this.auth.pepper),
+    );
     clearMfaChallengeCookie(response);
-    if (result.kind === 'login' || result.kind === 'signup') setSessionCookie(response, result.token);
-    return { data: result.kind === 'login' || result.kind === 'signup' ? { user: result.user, mfaRequired: false, signupVerified: result.kind === 'signup' } : result.kind === 'enrolled' ? { enabled: true } : { verified: true } };
+    if (result.kind === 'login' || result.kind === 'signup')
+      setSessionCookie(response, result.token);
+    return {
+      data:
+        result.kind === 'login' || result.kind === 'signup'
+          ? { user: result.user, mfaRequired: false, signupVerified: result.kind === 'signup' }
+          : result.kind === 'enrolled'
+            ? { enabled: true }
+            : { verified: true },
+    };
   }
 
   @Post('mfa/resend')
@@ -135,7 +165,10 @@ export class AuthController {
 
   @Post('mfa/step-up')
   @UseGuards(SessionGuard)
-  async stepUpMfa(@Req() request: AuthenticatedRequest, @Res({ passthrough: true }) response: Response) {
+  async stepUpMfa(
+    @Req() request: AuthenticatedRequest,
+    @Res({ passthrough: true }) response: Response,
+  ) {
     const metadata = requestMetadata(request, this.auth.pepper);
     await this.rateLimit.consume(`auth:mfa-step-up:${request.auth.user.id}`, 6, 60 * 60);
     await this.rateLimit.consume(`auth:mfa-issue:${metadata.ipHash}`, 12, 60 * 60);
@@ -147,9 +180,18 @@ export class AuthController {
   @Delete('mfa')
   @HttpCode(204)
   @UseGuards(SessionGuard)
-  async disableMfa(@Req() request: AuthenticatedRequest, @Res({ passthrough: true }) response: Response) {
-    if (request.auth.user.emailMfaEnabled && (!request.auth.mfaVerifiedAt || Date.now() - request.auth.mfaVerifiedAt.getTime() > 15 * 60 * 1000)) {
-      throw new ForbiddenException('Verify your email code again before disabling email verification.');
+  async disableMfa(
+    @Req() request: AuthenticatedRequest,
+    @Res({ passthrough: true }) response: Response,
+  ) {
+    if (
+      request.auth.user.emailMfaEnabled &&
+      (!request.auth.mfaVerifiedAt ||
+        Date.now() - request.auth.mfaVerifiedAt.getTime() > 15 * 60 * 1000)
+    ) {
+      throw new ForbiddenException(
+        'Verify your email code again before disabling email verification.',
+      );
     }
     await this.auth.disableMfa(request.auth.user.id, requestMetadata(request, this.auth.pepper));
     clearSessionCookie(response);
@@ -202,8 +244,14 @@ export class AuthController {
   @HttpCode(204)
   @UseGuards(SessionGuard)
   async revokeOthers(@Req() request: AuthenticatedRequest) {
-    if (request.auth.user.emailMfaEnabled && (!request.auth.mfaVerifiedAt || Date.now() - request.auth.mfaVerifiedAt.getTime() > 15 * 60 * 1000)) {
-      throw new ForbiddenException('Verify your email code again before signing out other sessions.');
+    if (
+      request.auth.user.emailMfaEnabled &&
+      (!request.auth.mfaVerifiedAt ||
+        Date.now() - request.auth.mfaVerifiedAt.getTime() > 15 * 60 * 1000)
+    ) {
+      throw new ForbiddenException(
+        'Verify your email code again before signing out other sessions.',
+      );
     }
     await this.auth.revokeOtherSessions(request.auth.user.id, request.auth.sessionId);
   }

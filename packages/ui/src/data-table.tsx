@@ -6,7 +6,7 @@ import { Card } from './card';
 import { Dropdown, DropdownContent, DropdownTrigger } from './dropdown';
 import { EmptyState, type EmptyStateConfig } from './empty-state';
 import { Input } from './form';
-import { Spinner, TableSkeleton } from './loading';
+import { TableSkeleton } from './loading';
 import { cn } from './utils';
 
 export type DataTableColumn<T> = {
@@ -163,15 +163,6 @@ export function DataTable<T extends { id: string }>({
           </thead>
           <tbody>
             {loading ? <TableSkeleton columns={columns.length} rows={skeletonRows} /> : null}
-            {loading && false ? (
-              <tr>
-                <td colSpan={columns.length} className="rb-table__state">
-                  <span className="rb-table__loading">
-                    <Spinner /> Loading records…
-                  </span>
-                </td>
-              </tr>
-            ) : null}
             {!loading && rows.length === 0 ? (
               <tr>
                 <td colSpan={columns.length} className="rb-table__state">
