@@ -27,6 +27,7 @@ import {
   Search,
   Upload,
 } from 'lucide-react';
+import { MaterialChevronDown } from './material-icons';
 
 export type ListingColumn<T> = {
   key: string;
@@ -268,7 +269,7 @@ export function OperationalListing<T extends { id: string }>({
       <header className="rb-operational-listing__head">
         <div className="rb-operational-listing__title">
           <h1>{title}</h1>
-          <span aria-hidden="true">⌄</span>
+          <MaterialChevronDown className="rb-operational-listing__title-chevron" />
         </div>
         <div className="rb-operational-listing__actions">
           {primaryAction ?? (
@@ -345,7 +346,7 @@ export function OperationalListing<T extends { id: string }>({
         )
       ) : (
         <div className="rb-operational-listing__table-wrap">
-          <table className="rb-operational-listing__table">
+          <table className="rb-table rb-table--listing rb-operational-listing__table">
             <thead>
               <tr>
                 <th className="rb-operational-listing__select">

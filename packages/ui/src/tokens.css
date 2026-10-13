@@ -9,15 +9,15 @@
   --rb-popover-foreground: 217 82% 13%;
 
   --rb-brand-navy: 217 82% 13%;
-  --rb-primary: 194 82% 50%;
-  --rb-primary-mid: 207 82% 48%;
-  --rb-primary-glow: 228 73% 48%;
+  --rb-primary: 209 98% 44%;
+  --rb-primary-mid: 209 98% 44%;
+  --rb-primary-glow: 209 98% 44%;
   --rb-primary-foreground: 0 0% 100%;
 
   --rb-secondary: 210 40% 96%;
   --rb-secondary-foreground: 217 82% 13%;
   --rb-muted: 210 40% 96%;
-  --rb-muted-foreground: 215 16% 47%;
+  --rb-muted-foreground: 217 56% 25%;
   --rb-accent: 207 100% 96%;
   --rb-accent-foreground: 217 82% 13%;
 
@@ -36,7 +36,7 @@
 
   --rb-sidebar-background: 217 82% 13%;
   --rb-sidebar-foreground: 214 28% 82%;
-  --rb-sidebar-muted: 215 21% 60%;
+  --rb-sidebar-muted: 214 36% 75%;
   --rb-sidebar-accent: 218 75% 18%;
   --rb-sidebar-border: 218 70% 20%;
 

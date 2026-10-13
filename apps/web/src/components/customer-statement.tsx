@@ -56,7 +56,7 @@ export function CustomerStatementPage({ contactId }: { contactId: string }) {
     );
   }
 
-  const currency = statement?.contact.currency ?? organization?.baseCurrency ?? 'KES';
+  const currency = statement?.contact.currency ?? organization?.baseCurrency ?? 'USD';
 
   return (
     <>

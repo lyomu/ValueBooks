@@ -15,6 +15,7 @@ FORM: Wave-like breathing room with a QuickBooks-scale menu, alternating proof, 
   --mk-line: hsl(var(--rb-border));
   --mk-body-size: 1rem;
   --mk-body-leading: 1.65;
+  --mk-eyebrow-size: 13.5px;
   /* Public-facing secondary text is still ink, never low-contrast grey. */
   --mk-muted: hsl(217 56% 25%);
   color: var(--mk-ink);
@@ -60,26 +61,15 @@ FORM: Wave-like breathing room with a QuickBooks-scale menu, alternating proof, 
 .mk-brand {
   display: inline-flex;
   align-items: center;
-  gap: 0.6rem;
   flex: 0 0 auto;
-  color: var(--mk-ink);
   text-decoration: none;
-  letter-spacing: -0.04em;
-  font-size: 1.12rem;
 }
-.mk-brand > span {
-  display: grid;
-  width: 2rem;
-  height: 2rem;
-  place-items: center;
-  color: white;
-  background: var(--mk-blue);
-  border-radius: 0.55rem;
+.mk-brand img {
+  display: block;
+  height: 28px;
+  width: auto;
 }
-.mk-brand svg {
-  width: 1.2rem;
-  height: 1.2rem;
-}
+
 .mk-nav {
   display: flex;
   align-items: center;
@@ -193,13 +183,21 @@ FORM: Wave-like breathing room with a QuickBooks-scale menu, alternating proof, 
   grid-template-columns: 1fr 20rem;
   gap: 3rem;
 }
-.mk-mega__label,
-.mk-kicker {
+.mk-mega__label {
   margin: 0 0 0.7rem;
   color: var(--mk-blue);
   font-size: 0.68rem;
   font-weight: 800;
   letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+.mk-kicker {
+  margin: 0 0 0.7rem;
+  color: var(--mk-blue);
+  font-size: var(--mk-eyebrow-size);
+  font-weight: 800;
+  line-height: 1.4;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
 }
 .mk-mega__links {
@@ -655,13 +653,14 @@ FORM: Wave-like breathing room with a QuickBooks-scale menu, alternating proof, 
   font-size: 0.68rem;
   line-height: 1.5;
 }
-.mk-section-intro h2 {
-  max-width: 15ch;
+.mk-landing-section-heading {
   margin-bottom: 0.9rem;
-  font-size: clamp(1.9rem, 3.2vw, 3rem);
-  line-height: 1.1;
-  letter-spacing: -0.045em;
-  text-wrap: balance;
+  color: var(--mk-ink);
+  font-size: 30px;
+  font-weight: 700;
+  line-height: 1.2;
+  letter-spacing: 0.01em;
+  text-wrap: pretty;
 }
 .mk-section-intro > p:last-child {
   max-width: 54ch;
@@ -686,9 +685,6 @@ FORM: Wave-like breathing room with a QuickBooks-scale menu, alternating proof, 
   width: min(100% - 3rem, 72rem);
   margin: 0 auto;
   padding: clamp(3rem, 6vw, 5rem) 0;
-}
-.mk-ai-section .mk-section-intro h2 {
-  max-width: 20ch;
 }
 .mk-ai-section .mk-section-intro > p:last-child {
   max-width: 48ch;
@@ -811,9 +807,6 @@ FORM: Wave-like breathing room with a QuickBooks-scale menu, alternating proof, 
 }
 .mk-alternating > .mk-photo {
   border-radius: 0.9rem;
-}
-.mk-alternating .mk-section-intro h2 {
-  max-width: 22ch;
 }
 .mk-alternating .mk-section-intro > p:last-child {
   max-width: 48ch;
@@ -1060,9 +1053,6 @@ FORM: Wave-like breathing room with a QuickBooks-scale menu, alternating proof, 
   margin: 0 auto;
   padding: clamp(4.5rem, 9vw, 8rem) 0;
 }
-.mk-industries-section > .mk-section-intro h2 {
-  max-width: none;
-}
 .mk-industries-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
@@ -1204,9 +1194,6 @@ FORM: Wave-like breathing room with a QuickBooks-scale menu, alternating proof, 
   width: min(100% - 3rem, 72rem);
   margin: auto;
   padding: clamp(3rem, 6vw, 5rem) 0;
-}
-.mk-faq-section > .mk-section-intro h2 {
-  max-width: none;
 }
 .mk-faq {
   width: min(100%, 64rem);
@@ -1395,10 +1382,6 @@ FORM: Wave-like breathing room with a QuickBooks-scale menu, alternating proof, 
 }
 .mk-feature-grid > .mk-section-intro {
   margin-bottom: 2.5rem;
-}
-.mk-feature-grid > .mk-section-intro h2 {
-  /* Keep the intentional line break after “needs,” intact on wide screens. */
-  max-width: 22ch;
 }
 .mk-feature-grid__row {
   display: grid;
@@ -1821,8 +1804,8 @@ FORM: Wave-like breathing room with a QuickBooks-scale menu, alternating proof, 
   margin: auto;
   padding: 3.5rem 0;
 }
-.mk-brand--footer {
-  color: #fff;
+.mk-brand--footer img {
+  filter: brightness(0) invert(1);
 }
 .mk-brand--footer > span {
   color: var(--mk-ink);
@@ -2283,7 +2266,6 @@ FORM: Wave-like breathing room with a QuickBooks-scale menu, alternating proof, 
   line-height: var(--mk-body-leading);
 }
 
-.mk-root .mk-kicker,
 .mk-root .mk-text-link,
 .mk-root .mk-button,
 .mk-root .mk-nav a,
@@ -2295,11 +2277,6 @@ FORM: Wave-like breathing room with a QuickBooks-scale menu, alternating proof, 
 .mk-root .mk-personas__list span,
 .mk-root .mk-security-strip > a {
   font-size: var(--mk-body-size);
-}
-
-.mk-root .mk-kicker {
-  color: var(--mk-blue);
-  letter-spacing: 0.06em;
 }
 
 /* Primary navigation stays compact without losing its readable hierarchy. */

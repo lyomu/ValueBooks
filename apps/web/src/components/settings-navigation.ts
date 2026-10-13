@@ -26,6 +26,7 @@ export type SettingsEntry = {
 };
 
 export type SettingsSection = {
+  id: string;
   label: string;
   entries: readonly SettingsEntry[];
 };
@@ -38,6 +39,7 @@ export type SettingsSection = {
  */
 export const settingsSections: readonly SettingsSection[] = [
   {
+    id: 'organization',
     label: 'Organization',
     entries: [
       {
@@ -54,11 +56,6 @@ export const settingsSections: readonly SettingsSection[] = [
         icon: CircleDollarSign,
         permission: 'settings.currency.manage',
       },
-    ],
-  },
-  {
-    label: 'Users & Roles',
-    entries: [
       {
         href: '/settings/team',
         label: 'Team & roles',
@@ -69,7 +66,8 @@ export const settingsSections: readonly SettingsSection[] = [
     ],
   },
   {
-    label: 'Taxes & Compliance',
+    id: 'accounting-compliance',
+    label: 'Accounting & Compliance',
     entries: [
       {
         href: '/settings/taxes',
@@ -78,11 +76,6 @@ export const settingsSections: readonly SettingsSection[] = [
         icon: Landmark,
         permission: 'tax.codes.view',
       },
-    ],
-  },
-  {
-    label: 'Setup & Configurations',
-    entries: [
       {
         href: '/settings/fiscal-periods',
         label: 'Fiscal periods',
@@ -100,6 +93,7 @@ export const settingsSections: readonly SettingsSection[] = [
     ],
   },
   {
+    id: 'automation',
     label: 'Automation',
     entries: [
       {
@@ -119,7 +113,8 @@ export const settingsSections: readonly SettingsSection[] = [
     ],
   },
   {
-    label: 'Security',
+    id: 'security-audit',
+    label: 'Security & Audit',
     entries: [
       {
         href: '/settings/security',

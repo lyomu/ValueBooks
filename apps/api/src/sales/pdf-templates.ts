@@ -53,7 +53,9 @@ function renderDocumentHtml(doc: PdfDocument): string {
 <head>
 <meta charset="utf-8" />
 <style>
-  body { font-family: Arial, sans-serif; color: #1a1a1a; margin: 32px; }
+  /* Keep generated PDFs aligned with the ValueBooks document surface. The fallbacks preserve
+     legibility in isolated rendering workers where the web font is not installed. */
+  body { font-family: 'Google Sans', 'Google Sans Text', Arial, sans-serif; color: #1a1a1a; margin: 32px; }
   h1 { font-size: 20px; margin-bottom: 4px; }
   .meta { color: #555; margin-bottom: 24px; }
   table { width: 100%; border-collapse: collapse; margin-bottom: 16px; }

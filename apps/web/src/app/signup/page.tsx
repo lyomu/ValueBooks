@@ -8,9 +8,9 @@ export const metadata: Metadata = { title: 'Create account | ValueBooks' };
 export default async function SignupPage({
   searchParams,
 }: {
-  searchParams: Promise<{ invitation?: string }>;
+  searchParams: Promise<{ invitation?: string; intent?: string }>;
 }) {
-  const { invitation } = await searchParams;
+  const { invitation, intent } = await searchParams;
   return (
     <AuthShell
       variant="signup"
@@ -22,7 +22,7 @@ export default async function SignupPage({
           : 'ValueBooks helps small businesses keep their finances clear and organized.'
       }
     >
-      <AuthForm mode="signup" invitation={invitation} />
+      <AuthForm mode="signup" invitation={invitation} registrationIntent={intent} />
     </AuthShell>
   );
 }

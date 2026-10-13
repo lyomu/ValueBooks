@@ -12,6 +12,7 @@ import { CountryPacksController } from './country-packs.controller.js';
 import { CurrencyCatalogController, CurrencyController } from './currency.controller.js';
 import { CurrencyService } from './currency.service.js';
 import { DocumentNumberingService } from './document-numbering.service.js';
+import { DashboardService } from './dashboard.service.js';
 import { FiscalPeriodsService } from './fiscal-periods.service.js';
 import { LedgerController } from './ledger.controller.js';
 import { LedgerService } from './ledger.service.js';
@@ -59,6 +60,7 @@ import { TaxService } from './tax.service.js';
   ],
   providers: [
     OrganizationService,
+    DashboardService,
     CountryPackAdminService,
     OrganizationMembersService,
     RolesService,
