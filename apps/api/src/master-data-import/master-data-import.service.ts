@@ -102,7 +102,7 @@ export class MasterDataImportService {
           entityType: 'master_data_import',
           entityId: context.id,
           action: AuditAction.CREATE,
-          after: commitResult as unknown as Prisma.InputJsonValue,
+          after: commitResult as Prisma.InputJsonValue,
           ipHash: metadata.ipHash,
         });
         await tx.ledgerIdempotencyKey.create({
