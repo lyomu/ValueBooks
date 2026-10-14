@@ -185,6 +185,9 @@ export class PlatformCatalogService {
     return this.prisma.$transaction(async (tx) => {
       const plan = await tx.plan.findUnique({ where: { id: planId }, select: { id: true } });
       if (!plan) throw new NotFoundException('Plan not found.');
+      if (await tx.organizationSubscription.count({ where: { planId } })) {
+        throw new BadRequestException('This plan has subscribers. Create a new version and migrate with customer authorization before changing entitlements.');
+      }
       const before = await tx.planEntitlement.findUnique({
         where: { planId_key: { planId, key: input.key } },
         select: { enabled: true, limitValue: true },
@@ -234,6 +237,9 @@ export class PlatformCatalogService {
         where: { planId_key: { planId, key } },
       });
       if (!existing) throw new NotFoundException('Entitlement not found.');
+      if (await tx.organizationSubscription.count({ where: { planId } })) {
+        throw new BadRequestException('This plan has subscribers. Its entitlements cannot be removed in place.');
+      }
       await tx.planEntitlement.delete({ where: { id: existing.id } });
       await writePlatformAudit(tx, actor, {
         eventKey: 'platform.entitlement_removed',

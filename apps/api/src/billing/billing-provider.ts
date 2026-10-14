@@ -15,6 +15,7 @@ export interface CheckoutInput {
     providerPriceId: string;
     priceMinor: bigint;
     currency: string;
+    billingInterval: 'MONTHLY' | 'YEARLY';
   };
   successUrl: string;
   cancelUrl: string;
@@ -36,6 +37,7 @@ export interface ProviderSubscription {
   currentPeriodStart: Date | null;
   currentPeriodEnd: Date | null;
   cancelAtPeriodEnd: boolean;
+  emailToken?: string;
 }
 
 export interface CancelSubscriptionInput {

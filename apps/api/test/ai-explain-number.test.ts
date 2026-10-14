@@ -57,6 +57,8 @@ describe('AiOrchestrator.explainNumber', () => {
       gateway as never,
       store as never,
       access as never,
+      { consume: vi.fn() } as never,
+      {} as never,
     );
 
     const result = await ai.explainNumber(organization, actor, input, metadata);
@@ -88,6 +90,8 @@ describe('AiOrchestrator.explainNumber', () => {
       gateway as never,
       store as never,
       access as never,
+      { consume: vi.fn() } as never,
+      {} as never,
     );
 
     const result = await ai.explainNumber(organization, actor, input, metadata);
@@ -130,6 +134,8 @@ describe('AiOrchestrator.explainNumber', () => {
       gateway as never,
       store as never,
       access as never,
+      { consume: vi.fn() } as never,
+      {} as never,
     );
 
     await expect(ai.explainNumber(organization, actor, input, metadata)).rejects.toMatchObject({
@@ -162,6 +168,8 @@ describe('AiOrchestrator.explainNumber', () => {
       gateway as never,
       store as never,
       access as never,
+      { consume: vi.fn() } as never,
+      {} as never,
     );
 
     await expect(ai.explainNumber(organization, actor, input, metadata)).rejects.toMatchObject({
@@ -206,6 +214,8 @@ describe('AiOrchestrator.explainNumber', () => {
       gateway as never,
       store as never,
       access as never,
+      { consume: vi.fn() } as never,
+      {} as never,
     );
 
     const result = await ai.explainNumber(organization, actor, input, metadata);
@@ -257,6 +267,8 @@ describe('AiOrchestrator.explainNumber', () => {
       gateway as never,
       store as never,
       access as never,
+      { consume: vi.fn() } as never,
+      {} as never,
     );
 
     const result = await ai.explainNumber(organization, actor, input, metadata);

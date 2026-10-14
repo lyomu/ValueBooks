@@ -1,4 +1,4 @@
-import { createHmac, timingSafeEqual } from 'node:crypto';
+import { createHash, createHmac, timingSafeEqual } from 'node:crypto';
 
 import { BadGatewayException, Injectable, UnauthorizedException } from '@nestjs/common';
 
@@ -61,6 +61,17 @@ export class PaystackBillingAdapter implements BillingProvider {
    * separate "create subscription" call for a brand-new subscriber.
    */
   async createCheckout(input: CheckoutInput): Promise<CheckoutResult> {
+    // Paystack ignores `amount` when a plan code is present. Verify the remote plan
+    // immediately before initialization so a stale dashboard price cannot charge differently.
+    const remote = await this.request<{ data: { plan_code: string; amount: number; currency: string; interval: string } }>(
+      `/plan/${encodeURIComponent(input.plan.providerPriceId)}`, { method: 'GET' },
+    );
+    if (remote.data.plan_code !== input.plan.providerPriceId ||
+      !Number.isSafeInteger(remote.data.amount) || BigInt(remote.data.amount) !== input.plan.priceMinor ||
+      remote.data.currency !== input.plan.currency ||
+      remote.data.interval !== (input.plan.billingInterval === 'MONTHLY' ? 'monthly' : 'annually')) {
+      throw new BadGatewayException('Paystack plan price, currency or interval differs from the ValueBooks catalog. Checkout was stopped.');
+    }
     const result = await this.request<{
       data: { authorization_url: string; reference: string };
     }>('/transaction/initialize', {
@@ -84,6 +95,7 @@ export class PaystackBillingAdapter implements BillingProvider {
         customer: { customer_code: string };
         status: string;
         next_payment_date: string | null;
+        email_token?: string;
       };
     }>(`/subscription/${providerSubscriptionId}`, { method: 'GET' });
     const data = result.data;
@@ -94,6 +106,7 @@ export class PaystackBillingAdapter implements BillingProvider {
       currentPeriodStart: null,
       currentPeriodEnd: data.next_payment_date ? new Date(data.next_payment_date) : null,
       cancelAtPeriodEnd: data.status === 'cancelled' || data.status === 'non-renewing',
+      emailToken: data.email_token,
     };
   }
 
@@ -112,6 +125,29 @@ export class PaystackBillingAdapter implements BillingProvider {
       method: 'POST',
       body: JSON.stringify({ code: input.providerSubscriptionId, token: input.emailToken }),
     });
+  }
+
+  async enableSubscription(providerSubscriptionId: string, emailToken?: string) {
+    if (!emailToken) throw new BadGatewayException('Paystack subscription reactivation requires the subscription email token.');
+    await this.request('/subscription/enable', { method: 'POST',
+      body: JSON.stringify({ code: providerSubscriptionId, token: emailToken }) });
+  }
+
+  async getPaymentMethodUrl(providerSubscriptionId: string): Promise<string> {
+    const result = await this.request<{ data: { link: string } }>(
+      `/subscription/${encodeURIComponent(providerSubscriptionId)}/manage/link`,
+      { method: 'GET' },
+    );
+    return result.data.link;
+  }
+
+  async requestRefund(providerTransactionId: string, amountMinor: bigint, currency: string, reason: string) {
+    const result = await this.request<{ data: { id: number; status: string } }>('/refund', {
+      method: 'POST',
+      body: JSON.stringify({ transaction: providerTransactionId, amount: Number(amountMinor), currency,
+        merchant_note: reason }),
+    });
+    return { reference: String(result.data.id), status: result.data.status };
   }
 
   /**
@@ -134,7 +170,10 @@ export class PaystackBillingAdapter implements BillingProvider {
 
     const payload = JSON.parse(rawBody) as { event: string; data: { id: number } };
     return Promise.resolve({
-      providerEventId: String(payload.data.id),
+      // Paystack does not supply a stable webhook-event UUID. A transaction/resource ID alone
+      // collides across distinct lifecycle event types. Exact signed payload bytes identify a
+      // delivery retry; the transaction/reference unique key protects payment application too.
+      providerEventId: createHash('sha256').update(rawBody).digest('hex'),
       eventType: payload.event,
       payload,
     });

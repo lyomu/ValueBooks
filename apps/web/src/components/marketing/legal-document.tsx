@@ -71,6 +71,10 @@ export function PrivacyDocument() {
           ),
         },
         {
+          title: 'Subscription payments',
+          content: <p>Subscription checkout and payment method management take place with Paddle for Starter and Paystack for other plans. We retain provider customer, subscription and transaction references, payment status, billing contact details and receipts needed to operate subscriptions. ValueBooks does not store raw card details. Provider privacy notices apply to information entered on their hosted pages.</p>,
+        },
+        {
           title: 'Retention',
           content: (
             <p>
@@ -227,6 +231,14 @@ export function TermsDocument() {
           ),
         },
         {
+          title: 'Trials, subscriptions, and cancellation',
+          content: <p>A new eligible organization may use a cardless 14-day trial after setup. The trial does not automatically become a paid subscription. Paid access starts only after you authorize checkout and a payment is verified. Plan prices, billing interval, provider, taxes and any change in effective date are shown before checkout. You can request cancellation from billing settings; paid access ordinarily continues through the current paid period. Ending a subscription does not delete your accounting records. If a trial or paid term ends, records remain available in restricted read-only mode, subject to the final reviewed retention policy.</p>,
+        },
+        {
+          title: 'Payment providers, taxes, and refunds',
+          content: <p>Paddle may act as merchant of record for Starter and issue its own customer tax documents. Paystack processes other plan payments for EinsBrand Digital; its payment receipts are distinct from any EinsBrand billing document. Provider-supported payment methods vary by country and eligibility. Refund requests require review and provider confirmation; a request or provider submission alone is not a completed refund. Final tax, refund, and merchant wording remains subject to legal and merchant review.</p>,
+        },
+        {
           title: 'Suspension and termination',
           content: (
             <p>
@@ -254,4 +266,15 @@ export function TermsDocument() {
       ]}
     />
   );
+}
+
+export function DataDeletionDocument() {
+  return <LegalDocument title="Data Privacy & Deletion Policy"
+    summary="How subscription changes affect access to your records and how to request export or deletion."
+    sections={[
+      { title: 'After a trial or subscription ends', content: <p>Trial expiry or subscription cancellation does not automatically delete organization financial records. Authorized people may continue to view records and use appropriate export, security and privacy controls in restricted read-only mode. Starting a new paid subscription can restore editing after payment confirmation.</p> },
+      { title: 'Export and deletion requests', content: <p>An authorized organization representative can request an export or deletion review by contacting {contact}. We verify authority before acting. We will identify records that can be deleted, records that must be retained for legal, accounting, security or dispute purposes, and the next steps. Account closure and subscription cancellation are separate actions.</p> },
+      { title: 'Payment records', content: <p>Subscription transaction, refund and audit records may need to be retained to reconcile provider payments and meet legal obligations. Paddle or Paystack may hold their own payment records under their policies. ValueBooks does not store raw payment card details.</p> },
+      { title: 'Final policy review', content: <p>Retention periods, request timelines and jurisdiction-specific rights are pending legal review. Contact {contact} for the current handling of a specific request.</p> },
+    ]} />;
 }

@@ -795,6 +795,43 @@ body {
   height: 5rem;
 }
 
+.rb-billing-facts {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border-top: 1px solid hsl(var(--rb-border));
+}
+
+.rb-billing-facts li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.5rem 1rem;
+  padding: 1rem 1.5rem;
+}
+
+.rb-billing-facts li + li { border-top: 1px solid hsl(var(--rb-border)); }
+.rb-billing-facts li span { flex: 1 1 12rem; color: hsl(var(--rb-muted-foreground)); }
+.rb-billing-facts li strong { font-weight: 600; }
+.rb-billing-facts progress { flex: 1 1 100%; width: 100%; height: 0.4rem; accent-color: hsl(var(--rb-primary-mid)); }
+
+.rb-trial-banner {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 0.5rem 1rem;
+  padding: 0.625rem 1.5rem;
+  color: hsl(var(--rb-foreground));
+  background: hsl(var(--rb-accent));
+  border-bottom: 1px solid hsl(var(--rb-border));
+  font-size: 0.875rem;
+}
+
+.rb-trial-banner a { font-weight: 600; text-decoration: underline; }
+.rb-trial-actions { display: flex; flex-wrap: wrap; gap: 0.75rem; padding: 0 1.5rem 1.5rem; }
+.rb-billing-cancel-form { display: grid; gap: 0.75rem; padding: 0 1.5rem 1.5rem; }
+.rb-billing-cancel-form .rb-trial-actions { padding: 0; }
+
 .rb-currency-stack {
   display: grid;
   max-width: 68rem;
@@ -5104,6 +5141,21 @@ a.rb-nav-item:hover {
   font-weight: 600;
   text-decoration: none;
 }
+.rb-platform__nav-group summary {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.55rem 0.7rem;
+  border-radius: 0.5rem;
+  color: hsl(var(--rb-muted-foreground));
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+.rb-platform__nav-group summary svg { width: 1rem; height: 1rem; }
+.rb-platform__nav-group summary:hover { background: hsl(var(--rb-muted)); color: hsl(var(--rb-foreground)); }
+.rb-platform__nav-group-links { padding-left: 0.7rem; }
+.rb-platform__nav-group-links a { font-size: 0.8rem; padding-block: 0.4rem; }
 .rb-platform__nav a svg {
   width: 1rem;
   height: 1rem;
@@ -8869,3 +8921,5 @@ button.rb-customer-facts__heading {
     grid-template-columns: 1fr;
   }
 }
+.rb-billing-profile-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr)); gap: 1rem; }
+.rb-billing-profile-grid > div { display: grid; gap: .4rem; }

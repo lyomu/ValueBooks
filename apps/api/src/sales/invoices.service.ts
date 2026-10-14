@@ -287,10 +287,7 @@ export class InvoicesService {
     // Internal seed/backfill override for the document and posting date. Defaults to today.
     businessDate?: string,
   ) {
-    // Quota counts an invoice once at issue, never at draft creation (billing spec Section 4).
-    // Checked before the transaction so a plan at its limit never reaches posting logic; incremented
-    // only after the transaction commits, so a failed issuance never consumes a unit of quota.
-    await this.usage.assertWithinLimit(context.id, 'invoices.issued.max');
+    // Quota is consumed inside the issuance transaction after idempotent replay has returned.
     const issued = await this.prisma.$transaction(async (tx) => {
       await this.lockInvoiceIdempotency(tx, context.id, idempotencyKey);
       const existingResult = await this.findInvoiceIdempotentResult(context.id, idempotencyKey, tx);
@@ -445,7 +442,7 @@ export class InvoicesService {
       // Counted here, inside the same transaction that flips DRAFT -> ISSUED, so the idempotent
       // early-return above (already-processed replay) never reaches this line and a rolled-back
       // issuance never leaves a stray increment behind.
-      await this.usage.increment(context.id, 'invoices.issued.max', 1, tx);
+      await this.usage.consume(context.id, 'invoices.issued.max', tx);
       await this.inventory.postInvoiceCogs(context, user, invoiceId, metadata, tx);
       await this.persistStructuredInvoice(tx, context.id, updated);
       // Freeze the exact display data the PDF renders from, in the same transaction that issues

@@ -11,6 +11,7 @@ import type { PublicUser } from '../auth/auth.service.js';
 import type { RequestMetadata } from '../auth/request-context.js';
 import { assertNoPendingApproval } from '../automation/approval-targets.js';
 import { PrismaService } from '../database/prisma.service.js';
+import { UsageMeteringService } from '../billing/usage-metering.service.js';
 import { InventoryService } from '../inventory/inventory.service.js';
 import { writeAuditEvent } from '../organizations/audit-event.js';
 import { PURCHASE_ORDER_DOCUMENT_TYPE } from '../organizations/document-numbering.js';
@@ -40,6 +41,7 @@ export class PurchaseOrdersService {
     private readonly prisma: PrismaService,
     private readonly numbering: DocumentNumberingService,
     private readonly inventory: InventoryService,
+    private readonly usage: UsageMeteringService,
   ) {}
 
   async list(organizationId: string, status?: string) {
@@ -221,7 +223,11 @@ export class PurchaseOrdersService {
       throw new ConflictException('Only approved orders can be issued.');
     }
     const updated = await this.prisma.$transaction(async (tx) => {
+      await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtext(${context.id}), 111)::text AS locked`;
+      const current = await tx.purchaseOrder.findFirst({ where: { id: orderId, organizationId: context.id }, select: { status: true } });
+      if (current?.status !== 'APPROVED') throw new ConflictException('Only approved orders can be issued.');
       await assertNoPendingApproval(tx, context.id, 'PURCHASE_ORDER', orderId);
+      await this.usage.consume(context.id, 'purchase_orders.enabled', tx);
       const allocation = await this.numbering.allocateDocumentNumberWithClient(
         tx,
         context.id,

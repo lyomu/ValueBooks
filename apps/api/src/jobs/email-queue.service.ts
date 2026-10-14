@@ -35,8 +35,8 @@ export class EmailQueueService implements OnModuleDestroy {
     });
   }
 
-  async enqueue(name: EmailJobName, data: EmailDeliveryJob): Promise<void> {
-    await this.queue.add(name, data);
+  async enqueue(name: EmailJobName, data: EmailDeliveryJob, jobId?: string): Promise<void> {
+    await this.queue.add(name, data, jobId ? { jobId } : undefined);
   }
 
   async counts(): Promise<EmailQueueCounts> {

@@ -58,6 +58,17 @@ export class PaddleBillingAdapter implements BillingProvider {
   }
 
   async createCheckout(input: CheckoutInput): Promise<CheckoutResult> {
+    const remote = await this.request<{ data: { id: string; product_id: string; status: string;
+      unit_price: { amount: string; currency_code: string }; billing_cycle: { interval: string; frequency: number } | null;
+      unit_price_overrides?: unknown[] } }>(`/prices/${encodeURIComponent(input.plan.providerPriceId)}`, { method: 'GET' });
+    const price = remote.data;
+    if (price.id !== input.plan.providerPriceId || price.product_id !== input.plan.providerProductId ||
+      price.status !== 'active' || price.unit_price.amount !== input.plan.priceMinor.toString() ||
+      price.unit_price.currency_code !== input.plan.currency || price.billing_cycle?.frequency !== 1 ||
+      price.billing_cycle.interval !== (input.plan.billingInterval === 'MONTHLY' ? 'month' : 'year') ||
+      (price.unit_price_overrides?.length ?? 0) > 0) {
+      throw new BadGatewayException('Paddle price, currency or interval differs from the ValueBooks catalog. Checkout was stopped.');
+    }
     const result = await this.request<{
       data: { id: string; checkout: { url: string } };
     }>('/transactions', {
@@ -66,7 +77,8 @@ export class PaddleBillingAdapter implements BillingProvider {
         items: [{ price_id: input.plan.providerPriceId, quantity: 1 }],
         customer_email: input.customerEmail,
         custom_data: { clientReference: input.clientReference, organizationId: input.organizationId },
-        checkout: { url: input.successUrl },
+        // Paddle's checkout.url is an approved payment-link domain, not a post-payment redirect.
+        // Let the configured default payment link generate the secure hosted URL.
       }),
     });
     return { checkoutUrl: result.data.checkout.url, providerCheckoutId: result.data.id };
@@ -106,6 +118,29 @@ export class PaddleBillingAdapter implements BillingProvider {
     });
   }
 
+  /** Paddle approves most live refunds asynchronously; this submits a full refund request only. */
+  async requestFullRefund(providerTransactionId: string, reason: string) {
+    const result = await this.request<{ data: { id: string; status: string } }>('/adjustments', {
+      method: 'POST',
+      body: JSON.stringify({ action: 'refund', type: 'full', transaction_id: providerTransactionId, reason }),
+    });
+    return { reference: result.data.id, status: result.data.status };
+  }
+
+  async getTransactionInvoiceUrl(providerTransactionId: string): Promise<string> {
+    const result = await this.request<{ data: { url: string } }>(
+      `/transactions/${encodeURIComponent(providerTransactionId)}/invoice?disposition=inline`, { method: 'GET' },
+    );
+    if (new URL(result.data.url).protocol !== 'https:') throw new BadGatewayException('Paddle did not provide a secure invoice URL.');
+    return result.data.url;
+  }
+
+  async removeScheduledCancellation(providerSubscriptionId: string) {
+    await this.request(`/subscriptions/${providerSubscriptionId}`, {
+      method: 'PATCH', body: JSON.stringify({ scheduled_change: null }),
+    });
+  }
+
   async getCustomerPortalUrl(input: { providerCustomerId: string }): Promise<string> {
     const result = await this.request<{ data: { urls: { general: { overview: string } } } }>(
       `/customers/${input.providerCustomerId}/portal-sessions`,
@@ -140,6 +175,10 @@ export class PaddleBillingAdapter implements BillingProvider {
     const providedHash = parts.get('h1');
     if (!timestamp || !providedHash) {
       throw new UnauthorizedException('Malformed Paddle-Signature header.');
+    }
+    const signedAt = Number(timestamp);
+    if (!Number.isSafeInteger(signedAt) || Math.abs(Date.now() - signedAt * 1000) > 300_000) {
+      throw new UnauthorizedException('Paddle webhook signature timestamp is outside the accepted window.');
     }
 
     const rawBody = typeof input.rawBody === 'string' ? input.rawBody : input.rawBody.toString('utf8');

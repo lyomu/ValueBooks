@@ -13,7 +13,7 @@ import type { PermissionKey } from '../src/organizations/permission-catalog.js';
 import { SYSTEM_ROLE_KEYS, type SystemRoleKey } from '../src/organizations/roles-catalog.js';
 import { API, createTestHarness, type TestHarness } from './support/app.js';
 
-type HttpMethod = 'get' | 'post' | 'patch' | 'delete';
+type HttpMethod = 'get' | 'post' | 'put' | 'patch' | 'delete';
 
 interface EndpointCase {
   method: HttpMethod;
@@ -42,6 +42,15 @@ const ENDPOINTS: readonly EndpointCase[] = [
     body: {},
   },
   { method: 'get', path: 'organizations/:organizationId', permission: 'organization.view' },
+  { method: 'get', path: 'organizations/:organizationId/dashboard', permission: 'reports.view' },
+  { method: 'get', path: 'organizations/:organizationId/billing', permission: 'organization.view' },
+  { method: 'get', path: 'organizations/:organizationId/billing/transactions', permission: 'organization.view' },
+  { method: 'get', path: 'organizations/:organizationId/billing/transactions/:transactionId/document', permission: 'organization.view' },
+  { method: 'put', path: 'organizations/:organizationId/billing/details', permission: 'organization.update', body: {} },
+  { method: 'post', path: 'organizations/:organizationId/billing/checkout', permission: 'organization.update', body: {} },
+  { method: 'post', path: 'organizations/:organizationId/billing/payment-method-link', permission: 'organization.update' },
+  { method: 'post', path: 'organizations/:organizationId/billing/cancel', permission: 'organization.update', body: {} },
+  { method: 'post', path: 'organizations/:organizationId/billing/resume', permission: 'organization.update' },
   {
     method: 'patch',
     path: 'organizations/:organizationId',
@@ -2261,7 +2270,7 @@ function normalizeEndpoints(endpoints: readonly EndpointCase[]): string[] {
 }
 
 function isHttpMethod(value: string | undefined): value is HttpMethod {
-  return value === 'get' || value === 'post' || value === 'patch' || value === 'delete';
+  return value === 'get' || value === 'post' || value === 'put' || value === 'patch' || value === 'delete';
 }
 
 function required<T>(value: T | undefined, message: string): T {

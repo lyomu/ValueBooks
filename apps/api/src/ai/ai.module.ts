@@ -4,6 +4,7 @@ import { AuthModule } from '../auth/auth.module.js';
 import { OrganizationsModule } from '../organizations/organizations.module.js';
 import { EntitlementsModule } from '../platform/entitlements.module.js';
 import { ReportingModule } from '../reporting/reporting.module.js';
+import { BillingModule } from '../billing/billing.module.js';
 import { AiSuggestionsStore } from './ai-suggestions.store.js';
 import { AiController } from './ai.controller.js';
 import { AiModelGateway } from './ai-model.gateway.js';
@@ -13,7 +14,7 @@ import { AiRetentionService } from './ai-retention.service.js';
 import { AiStore } from './ai.store.js';
 
 @Module({
-  imports: [AuthModule, OrganizationsModule, ReportingModule, EntitlementsModule],
+  imports: [AuthModule, OrganizationsModule, ReportingModule, EntitlementsModule, BillingModule],
   controllers: [AiController],
   providers: [
     AiModelGateway,

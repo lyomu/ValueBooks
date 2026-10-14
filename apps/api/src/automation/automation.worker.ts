@@ -11,6 +11,7 @@ import {
   type ScheduledExecutionJob,
 } from './automation-job.js';
 import { TrialLifecycleService } from '../billing/trial-lifecycle.service.js';
+import { BillingMaintenanceService } from '../billing/billing-maintenance.service.js';
 import { DomainEventsService } from './domain-events.service.js';
 import { RecurringScheduleRunnerService } from './recurring-schedule-runner.service.js';
 import { RemindersService } from './reminders.service.js';
@@ -39,6 +40,7 @@ export class AutomationWorker implements OnModuleInit, OnModuleDestroy {
     private readonly reminders: RemindersService,
     private readonly asyncExports: AsyncReportExportService,
     private readonly trialLifecycle: TrialLifecycleService,
+    private readonly billingMaintenance: BillingMaintenanceService,
   ) {}
 
   onModuleInit(): void {
@@ -92,6 +94,8 @@ export class AutomationWorker implements OnModuleInit, OnModuleDestroy {
         await this.trialLifecycle.executeReminder(data.executionId);
       else if (handler === 'billing.trial_expired')
         await this.trialLifecycle.executeExpiry(data.executionId);
+      else if (handler === 'billing.maintenance')
+        await this.billingMaintenance.execute(data.executionId);
       else throw new Error(`No scheduled handler is registered for ${handler}.`);
       return;
     }

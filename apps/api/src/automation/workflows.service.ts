@@ -18,6 +18,7 @@ import type { PublicUser } from '../auth/auth.service.js';
 import type { RequestMetadata } from '../auth/request-context.js';
 import { redactUrl } from '../common/logging/redact.js';
 import { PrismaService } from '../database/prisma.service.js';
+import { UsageMeteringService } from '../billing/usage-metering.service.js';
 import { writeAuditEvent } from '../organizations/audit-event.js';
 import { OrganizationAccessService } from '../organizations/organization-access.service.js';
 import type { OrganizationContext } from '../organizations/organization-context.js';
@@ -34,6 +35,7 @@ export class WorkflowsService {
     private readonly organizationAccess: OrganizationAccessService,
     private readonly notifications: NotificationsService,
     private readonly events: DomainEventsService,
+    private readonly usage: UsageMeteringService,
   ) {}
 
   async list(organizationId: string) {
@@ -49,6 +51,7 @@ export class WorkflowsService {
     input: CreateWorkflowRuleDto,
     metadata: RequestMetadata,
   ) {
+    await this.usage.assertFeatureAvailable(context.id, 'automation.enabled');
     const parsed = createWorkflowRuleSchema.safeParse(input);
     if (!parsed.success) throw new BadRequestException(parsed.error.issues);
     return this.prisma.$transaction(async (tx) => {

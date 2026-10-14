@@ -3,6 +3,7 @@ import { AuditAction } from '@prisma/client';
 
 import type { PublicUser } from '../auth/auth.service.js';
 import type { RequestMetadata } from '../auth/request-context.js';
+import { UsageMeteringService } from '../billing/usage-metering.service.js';
 import { PrismaService } from '../database/prisma.service.js';
 import { writeAuditEvent } from '../organizations/audit-event.js';
 import type { OrganizationContext } from '../organizations/organization-context.js';
@@ -13,7 +14,7 @@ import type {
 
 @Injectable()
 export class FinancialAccountsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly prisma: PrismaService, private readonly usage: UsageMeteringService) {}
 
   async list(organizationId: string, active?: string) {
     const accounts = await this.prisma.financialAccount.findMany({
@@ -41,6 +42,9 @@ export class FinancialAccountsService {
     if (existing) throw new ConflictException('A financial account with this name already exists.');
 
     const created = await this.prisma.$transaction(async (tx) => {
+      await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtext(${context.id}), 118)::text AS locked`;
+      const active = await tx.financialAccount.count({ where: { organizationId: context.id, active: true } });
+      await this.usage.assertWithinConcurrentLimit(context.id, 'bank_accounts.max', active);
       const account = await tx.financialAccount.create({
         data: {
           organizationId: context.id,
@@ -101,6 +105,11 @@ export class FinancialAccountsService {
     }
 
     const updated = await this.prisma.$transaction(async (tx) => {
+      if (input.active === true && !existing.active) {
+        await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtext(${context.id}), 118)::text AS locked`;
+        const active = await tx.financialAccount.count({ where: { organizationId: context.id, active: true } });
+        await this.usage.assertWithinConcurrentLimit(context.id, 'bank_accounts.max', active);
+      }
       const account = await tx.financialAccount.update({
         where: { id: financialAccountId },
         data: {

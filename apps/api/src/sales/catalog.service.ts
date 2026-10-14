@@ -8,6 +8,7 @@ import { AuditAction, type Prisma } from '@prisma/client';
 
 import type { PublicUser } from '../auth/auth.service.js';
 import type { RequestMetadata } from '../auth/request-context.js';
+import { UsageMeteringService } from '../billing/usage-metering.service.js';
 import { PrismaService } from '../database/prisma.service.js';
 import { writeAuditEvent } from '../organizations/audit-event.js';
 import type { OrganizationContext } from '../organizations/organization-context.js';
@@ -25,7 +26,7 @@ type ItemWithPrices = Prisma.ItemGetPayload<{ include: { prices: true } }>;
 
 @Injectable()
 export class CatalogService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly prisma: PrismaService, private readonly usage: UsageMeteringService) {}
 
   // --- Units ---
 
@@ -217,6 +218,9 @@ export class CatalogService {
     });
 
     const created = await this.prisma.$transaction(async (tx) => {
+      await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtext(${context.id}), 117)::text AS locked`;
+      const active = await tx.item.count({ where: { organizationId: context.id, status: 'ACTIVE' } });
+      await this.usage.assertWithinConcurrentLimit(context.id, 'products.max', active);
       const item = await tx.item.create({
         data: {
           organizationId: context.id,
@@ -371,6 +375,11 @@ export class CatalogService {
     if (existing.status === status) return summarizeItem(existing);
 
     const updated = await this.prisma.$transaction(async (tx) => {
+      if (status === 'ACTIVE') {
+        await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtext(${context.id}), 117)::text AS locked`;
+        const active = await tx.item.count({ where: { organizationId: context.id, status: 'ACTIVE' } });
+        await this.usage.assertWithinConcurrentLimit(context.id, 'products.max', active);
+      }
       const item = await tx.item.update({
         where: { id: itemId },
         data: { status },

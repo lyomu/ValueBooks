@@ -529,6 +529,10 @@ model Organization {
   platformAuditEvents           PlatformAuditEvent[]
   subscription                  OrganizationSubscription?
   billingTransactions           BillingTransaction[]
+  billingRefunds                BillingRefund[]
+  billingOverrides              BillingEntitlementOverride[]
+  billingNotices                BillingNotice[]
+  billingProfile                BillingProfile?
   usageCounters                 UsageCounter[]
   subscriptionChanges           SubscriptionChange[]
   featureFlagRules              FeatureFlagRule[]
@@ -4096,6 +4100,9 @@ model BillingTransaction {
   id                     String                    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   organizationId         String                    @map("organization_id") @db.Uuid
   subscriptionId         String?                   @map("subscription_id") @db.Uuid
+    planId                 String?                   @map("plan_id") @db.Uuid
+    planNameSnapshot       String?                   @map("plan_name_snapshot") @db.VarChar(120)
+    billingIntervalSnapshot BillingInterval?         @map("billing_interval_snapshot")
   billingProvider        BillingProviderName       @map("billing_provider")
   providerTransactionId  String                    @map("provider_transaction_id") @db.VarChar(160)
   status                 BillingTransactionStatus  @default(INITIATED)
@@ -4114,11 +4121,113 @@ model BillingTransaction {
   updatedAt              DateTime                  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
   organization           Organization              @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   subscription           OrganizationSubscription?  @relation(fields: [subscriptionId], references: [id], onDelete: SetNull)
+  refunds                BillingRefund[]
 
   @@unique([billingProvider, providerTransactionId])
   @@index([organizationId, createdAt])
+    @@index([planId, createdAt])
   @@index([status, createdAt])
   @@map("billing_transactions")
+}
+
+/// Local contact/invoicing profile. Provider billing identity remains authoritative for provider
+/// receipts and taxes; this row never claims to change Paddle or Paystack customer details.
+model BillingProfile {
+  organizationId String @id @map("organization_id") @db.Uuid
+  contactName String @map("contact_name") @db.VarChar(180)
+  contactEmail String @map("contact_email") @db.VarChar(255)
+  addressLine1 String? @map("address_line_1") @db.VarChar(255)
+  addressLine2 String? @map("address_line_2") @db.VarChar(255)
+  city String? @db.VarChar(120)
+  region String? @db.VarChar(120)
+  postalCode String? @map("postal_code") @db.VarChar(40)
+  countryCode String @map("country_code") @db.Char(2)
+  taxId String? @map("tax_id") @db.VarChar(100)
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@map("billing_profiles")
+}
+
+enum BillingRefundStatus {
+  REQUESTED
+  REJECTED
+  SUBMITTED
+  COMPLETED
+  FAILED
+}
+
+model BillingRefund {
+  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organizationId String @map("organization_id") @db.Uuid
+  transactionId String @map("transaction_id") @db.Uuid
+  amountMinor BigInt @map("amount_minor")
+  currency String @db.Char(3)
+  reason String @db.VarChar(500)
+  status BillingRefundStatus @default(REQUESTED)
+  requestedByUserId String @map("requested_by_user_id") @db.Uuid
+  approvedByUserId String? @map("approved_by_user_id") @db.Uuid
+  approvalReason String? @map("approval_reason") @db.VarChar(500)
+  providerReference String? @map("provider_reference") @db.VarChar(160)
+  providerStatus String? @map("provider_status") @db.VarChar(80)
+  completedAt DateTime? @map("completed_at") @db.Timestamptz(6)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  transaction BillingTransaction @relation(fields: [transactionId], references: [id], onDelete: Restrict)
+
+  @@index([status, createdAt])
+  @@index([transactionId])
+  @@map("billing_refunds")
+}
+
+enum BillingOverrideStatus {
+  PENDING
+  ACTIVE
+  REJECTED
+  REVOKED
+}
+
+/// A temporary support exception. Expiration is enforced by the resolver's time predicate, even
+/// when no worker runs. An override never changes a provider price or subscription plan.
+model BillingEntitlementOverride {
+  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organizationId String @map("organization_id") @db.Uuid
+  entitlementKey String @map("entitlement_key") @db.VarChar(60)
+  limitValue Int? @map("limit_value")
+  unlimited Boolean @default(false)
+  enabled Boolean? 
+  status BillingOverrideStatus @default(PENDING)
+  reason String @db.VarChar(500)
+  requestedByUserId String @map("requested_by_user_id") @db.Uuid
+  approvedByUserId String? @map("approved_by_user_id") @db.Uuid
+  effectiveAt DateTime @map("effective_at") @db.Timestamptz(6)
+  expiresAt DateTime @map("expires_at") @db.Timestamptz(6)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, entitlementKey, status, effectiveAt, expiresAt])
+  @@map("billing_entitlement_overrides")
+}
+
+model BillingNotice {
+  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organizationId String @map("organization_id") @db.Uuid
+  eventKey String @map("event_key") @db.VarChar(80)
+  sourceId String @map("source_id") @db.VarChar(160)
+  recipientEmail String @map("recipient_email") @db.VarChar(255)
+  subject String @db.VarChar(255)
+  body String @db.Text
+  queuedAt DateTime? @map("queued_at") @db.Timestamptz(6)
+  attempts Int @default(0)
+  lastError String? @map("last_error") @db.VarChar(1000)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, eventKey, sourceId])
+  @@index([queuedAt, createdAt])
+  @@map("billing_notices")
 }
 
 /// Atomic, concurrency-safe counter for one metered resource in one billing period. Monthly quota
@@ -4170,6 +4279,7 @@ model BillingWebhookEvent {
 
 enum SubscriptionChangeStatus {
   PENDING
+  SCHEDULED
   PAYMENT_PENDING
   ACTIVE_NEW
   CANCELLING_OLD
@@ -4191,6 +4301,12 @@ model SubscriptionChange {
   effectiveAt     DateTime?                @map("effective_at") @db.Timestamptz(6)
   completedAt     DateTime?                @map("completed_at") @db.Timestamptz(6)
   errorMessage    String?                  @map("error_message") @db.VarChar(1000)
+    idempotencyKey  String?                  @map("idempotency_key") @db.VarChar(120)
+    providerCheckoutId String?               @map("provider_checkout_id") @db.VarChar(160)
+    checkoutUrl     String?                  @map("checkout_url") @db.VarChar(1000)
+    priorProviderSubscriptionId String?      @map("prior_provider_subscription_id") @db.VarChar(160)
+    replacementProviderSubscriptionId String? @map("replacement_provider_subscription_id") @db.VarChar(160)
+    oldCancellationStatus String?           @map("old_cancellation_status") @db.VarChar(40)
   createdAt       DateTime                 @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt       DateTime                 @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
   organization    Organization             @relation(fields: [organizationId], references: [id], onDelete: Cascade)
@@ -4198,6 +4314,7 @@ model SubscriptionChange {
   toPlan          Plan                     @relation("SubscriptionChangeToPlan", fields: [toPlanId], references: [id], onDelete: Restrict)
 
   @@index([organizationId, createdAt])
+    @@unique([organizationId, idempotencyKey])
   @@index([status])
   @@map("subscription_changes")
 }

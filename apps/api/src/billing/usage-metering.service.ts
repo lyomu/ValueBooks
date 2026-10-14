@@ -41,6 +41,29 @@ export class UsageMeteringService {
     return { start, end };
   }
 
+  /** Paid yearly terms contain twelve separate monthly quota windows. Trial usage is bounded by
+   * the exact 336-hour trial. Older organizations without billing rows retain calendar windows. */
+  async periodForOrganization(organizationId: string, now = new Date()) {
+    const subscription = await this.prisma.organizationSubscription.findUnique({
+      where: { organizationId },
+      select: { status: true, startedAt: true, trialEndsAt: true, currentPeriodStart: true, currentPeriodEnd: true },
+    });
+    if (subscription?.status === 'TRIALING' && subscription.trialEndsAt) {
+      return { start: subscription.startedAt, end: subscription.trialEndsAt };
+    }
+    if (subscription?.currentPeriodStart && subscription.currentPeriodEnd) {
+      let start = subscription.currentPeriodStart;
+      let monthIndex = 1;
+      let end = monthlyBoundary(subscription.currentPeriodStart, monthIndex);
+      while (end <= now && end < subscription.currentPeriodEnd) {
+        start = end;
+        end = monthlyBoundary(subscription.currentPeriodStart, ++monthIndex);
+      }
+      return { start, end: end < subscription.currentPeriodEnd ? end : subscription.currentPeriodEnd };
+    }
+    return this.currentPeriod(now);
+  }
+
   /**
    * Null means "not enforced", for two different reasons that both resolve the same way: an
    * organization with no subscription row at all (every organization created before billing
@@ -51,15 +74,22 @@ export class UsageMeteringService {
    * that actually means "not included on this tier", and that one still returns 0.
    */
   async resolveLimit(organizationId: string, resourceKey: string): Promise<number | null> {
+    const override = await this.prisma.billingEntitlementOverride.findFirst({
+      where: { organizationId, entitlementKey: resourceKey, status: 'ACTIVE', effectiveAt: { lte: new Date() }, expiresAt: { gt: new Date() } },
+      orderBy: { createdAt: 'desc' }, select: { enabled: true, unlimited: true, limitValue: true },
+    });
+    if (override) return override.enabled === false ? 0 : override.unlimited ? null : override.limitValue;
     const subscription = await this.prisma.organizationSubscription.findUnique({
       where: { organizationId },
       select: {
+        status: true,
         plan: {
           select: { entitlements: { where: { key: resourceKey }, select: { enabled: true, limitValue: true } } },
         },
       },
     });
     if (!subscription) return null;
+    if (subscription.status === 'TRIALING' && resourceKey === 'ai_insights.max') return 10;
     const entitlement = subscription.plan.entitlements[0];
     if (!entitlement) return null;
     if (!entitlement.enabled) return 0;
@@ -68,7 +98,7 @@ export class UsageMeteringService {
 
   async getUsage(organizationId: string, resourceKey: string): Promise<QuotaCheck> {
     const limit = await this.resolveLimit(organizationId, resourceKey);
-    const { start } = this.currentPeriod();
+    const { start } = await this.periodForOrganization(organizationId);
     const counter = await this.prisma.usageCounter.findUnique({
       where: { organizationId_resourceKey_periodStart: { organizationId, resourceKey, periodStart: start } },
       select: { usedCount: true },
@@ -118,6 +148,18 @@ export class UsageMeteringService {
     return { resourceKey, used: currentCount, limit, allowed };
   }
 
+  /** Uses the same entitlement source as numeric quotas for an included capability. A disabled
+   * entitlement resolves to zero and yields the structured upgrade response the client understands. */
+  async assertFeatureAvailable(organizationId: string, resourceKey: string): Promise<void> {
+    const limit = await this.resolveLimit(organizationId, resourceKey);
+    if (limit === 0) {
+      throw new ForbiddenException({
+        code: 'PLAN_LIMIT_REACHED', feature: resourceKey,
+        currentUsage: 0, limit: 0, upgradeRequired: true,
+      });
+    }
+  }
+
   /**
    * Atomic increment, safe under concurrent requests: the row is created at zero and bumped with
    * a single `UPDATE ... SET used_count = used_count + 1`, never a read-then-write race. Accepts
@@ -131,7 +173,7 @@ export class UsageMeteringService {
     by = 1,
     client: QueryClient = this.prisma,
   ): Promise<void> {
-    const { start, end } = this.currentPeriod();
+    const { start, end } = await this.periodForOrganization(organizationId);
     await client.$executeRaw`
       INSERT INTO "usage_counters" ("organization_id", "resource_key", "period_start", "period_end", "used_count")
       VALUES (${organizationId}::uuid, ${resourceKey}, ${start}, ${end}, ${by})
@@ -139,4 +181,36 @@ export class UsageMeteringService {
       DO UPDATE SET "used_count" = "usage_counters"."used_count" + ${by}, "updated_at" = now()
     `;
   }
+
+  /** Atomically reserves a monthly unit in the caller's business transaction. A competing request
+   * cannot pass the cap between a separate read and increment. A rollback returns the unit. */
+  async consume(organizationId: string, resourceKey: string, client: QueryClient, by = 1) {
+    const [limit, period] = await Promise.all([
+      this.resolveLimit(organizationId, resourceKey),
+      this.periodForOrganization(organizationId),
+    ]);
+    const changed = await client.$queryRaw<{ used_count: number }[]>`
+      INSERT INTO "usage_counters" ("organization_id", "resource_key", "period_start", "period_end", "used_count")
+      SELECT ${organizationId}::uuid, ${resourceKey}, ${period.start}, ${period.end}, ${by}
+      WHERE ${limit}::integer IS NULL OR ${by} <= ${limit}::integer
+      ON CONFLICT ("organization_id", "resource_key", "period_start")
+      DO UPDATE SET "used_count" = "usage_counters"."used_count" + ${by}, "updated_at" = now()
+      WHERE ${limit}::integer IS NULL OR "usage_counters"."used_count" + ${by} <= ${limit}::integer
+      RETURNING "used_count"
+    `;
+    if (!changed.length) {
+      const check = await this.getUsage(organizationId, resourceKey);
+      throw new ForbiddenException({
+        code: 'PLAN_LIMIT_REACHED', feature: resourceKey,
+        currentUsage: check.used, limit, upgradeRequired: true,
+      });
+    }
+  }
+}
+
+function monthlyBoundary(date: Date, monthIndex: number) {
+  const year = date.getUTCFullYear();
+  const month = date.getUTCMonth() + monthIndex;
+  const day = Math.min(date.getUTCDate(), new Date(Date.UTC(year, month + 1, 0)).getUTCDate());
+  return new Date(Date.UTC(year, month, day, date.getUTCHours(), date.getUTCMinutes(), date.getUTCSeconds(), date.getUTCMilliseconds()));
 }

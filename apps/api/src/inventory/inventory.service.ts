@@ -19,6 +19,7 @@ import { assertNoPendingApproval } from '../automation/approval-targets.js';
 import { DomainEventsService } from '../automation/domain-events.service.js';
 import type { RequestMetadata } from '../auth/request-context.js';
 import { PrismaService } from '../database/prisma.service.js';
+import { UsageMeteringService } from '../billing/usage-metering.service.js';
 import { writeAuditEvent } from '../organizations/audit-event.js';
 import { LedgerService } from '../organizations/ledger.service.js';
 import type { OrganizationContext } from '../organizations/organization-context.js';
@@ -41,6 +42,7 @@ export class InventoryService {
     private readonly prisma: PrismaService,
     private readonly ledger: LedgerService,
     private readonly events: DomainEventsService,
+    private readonly usage: UsageMeteringService,
   ) {}
 
   async listWarehouses(organizationId: string) {
@@ -62,6 +64,9 @@ export class InventoryService {
     if (existing) throw new ConflictException('A warehouse with this code already exists.');
 
     return this.prisma.$transaction(async (tx) => {
+      await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtext(${context.id}), 110)::text AS locked`;
+      const active = await tx.warehouse.count({ where: { organizationId: context.id, status: 'ACTIVE' } });
+      await this.usage.assertWithinConcurrentLimit(context.id, 'warehouses.enabled', active);
       const warehouse = await tx.warehouse.create({
         data: {
           organizationId: context.id,
@@ -103,6 +108,11 @@ export class InventoryService {
     }
 
     return this.prisma.$transaction(async (tx) => {
+      if (input.status === 'ACTIVE' && existing.status !== 'ACTIVE') {
+        await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtext(${context.id}), 110)::text AS locked`;
+        const active = await tx.warehouse.count({ where: { organizationId: context.id, status: 'ACTIVE' } });
+        await this.usage.assertWithinConcurrentLimit(context.id, 'warehouses.enabled', active);
+      }
       const warehouse = await tx.warehouse.update({
         where: { id: warehouseId },
         data: {

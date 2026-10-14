@@ -26,6 +26,7 @@ import {
   type ApprovalTargetSnapshot,
 } from './approval-targets.js';
 import { DomainEventsService } from './domain-events.service.js';
+import { UsageMeteringService } from '../billing/usage-metering.service.js';
 import type {
   ApprovalDecisionDto,
   ApprovalPolicyStepDto,
@@ -44,6 +45,7 @@ export class ApprovalsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly events: DomainEventsService,
+    private readonly usage: UsageMeteringService,
   ) {}
 
   async listPolicies(organizationId: string) {
@@ -60,6 +62,7 @@ export class ApprovalsService {
     input: CreateApprovalPolicyDto,
     metadata: RequestMetadata,
   ) {
+    await this.usage.assertFeatureAvailable(context.id, 'approval_workflows.enabled');
     const steps = normalizeSteps(input.steps);
     await this.assertApproversAreMembers(context.id, steps);
     return this.prisma.$transaction(async (tx) => {

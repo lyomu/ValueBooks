@@ -3,7 +3,6 @@
 import type {
   OrganizationEntitlements,
   PlatformOrganization,
-  PlatformPlan,
   PlatformUsage,
 } from '@valuebooks/contracts';
 import Link from 'next/link';
@@ -171,15 +170,13 @@ export function PlatformOrganizations() {
 export function PlatformOrganizationDetail({ organizationId }: { organizationId: string }) {
   const { session } = usePlatformSession();
   const [detail, setDetail] = useState<Detail | null>(null);
-  const [plans, setPlans] = useState<PlatformPlan[]>([]);
+  const [billing, setBilling] = useState<{ id: string; status: string; billingProvider: string | null; trialEndsAt: string | null; currentPeriodEnd: string | null; lastPaymentAt: string | null; plan: { name: string }; usage: Array<{ resourceKey: string; usedCount: number }> } | null>(null);
   const [reason, setReason] = useState('');
-  const [planId, setPlanId] = useState('');
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState('');
   const [error, setError] = useState('');
 
   const canOperate = platformRoleAtLeast(session?.role ?? null, 'OPERATIONS');
-  const canManagePlans = platformRoleAtLeast(session?.role ?? null, 'SUPERADMIN');
 
   const load = useCallback(async () => {
     try {
@@ -187,6 +184,8 @@ export function PlatformOrganizationDetail({ organizationId }: { organizationId:
         `/platform/organizations/${organizationId}`,
       );
       setDetail(response.data);
+      void apiRequest<{ data: typeof billing }>(`/platform/billing/tenants/${organizationId}`)
+        .then((result) => setBilling(result.data)).catch(() => setBilling(null));
     } catch {
       setError('This organization could not be loaded.');
     }
@@ -194,12 +193,7 @@ export function PlatformOrganizationDetail({ organizationId }: { organizationId:
 
   useEffect(() => {
     void load();
-    if (canManagePlans) {
-      void apiRequest<{ data: PlatformPlan[] }>('/platform/plans')
-        .then((response) => setPlans(response.data))
-        .catch(() => setPlans([]));
-    }
-  }, [load, canManagePlans]);
+  }, [load]);
 
   async function act(path: string, body: Record<string, unknown>, success: string) {
     setBusy(true);
@@ -325,30 +319,22 @@ export function PlatformOrganizationDetail({ organizationId }: { organizationId:
               }
             />
           </dl>
-          {canManagePlans ? (
-            <>
-              <label>
-                Move to plan
-                <select value={planId} onChange={(event) => setPlanId(event.target.value)}>
-                  <option value="">Choose a plan</option>
-                  {plans.map((plan) => (
-                    <option key={plan.id} value={plan.id}>
-                      {plan.name}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <div className="rb-platform__actions">
-                <button
-                  type="button"
-                  disabled={busy || !planId}
-                  onClick={() => void act('plan', { planId, reason }, 'Plan updated.')}
-                >
-                  Assign plan
-                </button>
-              </div>
-            </>
-          ) : null}
+          <p className="rb-platform__muted">Paid changes require customer checkout and verified provider payment.</p>
+        </section>
+
+        <section className="rb-platform__card" aria-label="Billing and subscription">
+          <h2>Billing &amp; Subscription</h2>
+          {billing ? <dl>
+            <Row label="Plan" value={billing.plan.name} />
+            <Row label="Provider" value={billing.billingProvider ?? 'Cardless trial'} />
+            <Row label="Status" value={billing.status} />
+            <Row label="Trial ends" value={billing.trialEndsAt ? new Date(billing.trialEndsAt).toLocaleString() : '—'} />
+            <Row label="Paid through" value={billing.currentPeriodEnd ? new Date(billing.currentPeriodEnd).toLocaleString() : '—'} />
+            <Row label="Last payment" value={billing.lastPaymentAt ? new Date(billing.lastPaymentAt).toLocaleString() : '—'} />
+            <Row label="Usage counters" value={billing.usage.length} />
+          </dl> : <p className="rb-platform__muted">No billing subscription is recorded.</p>}
+          {billing ? <Link href={`/platform/billing/subscriptions/${billing.id}`}>View subscription detail</Link> : null}
+          {canOperate ? <p><Link href={`/platform/billing/organizations/${organizationId}/overrides`}>Manage support overrides</Link></p> : null}
         </section>
 
         <section className="rb-platform__card" aria-label="Entitlements">

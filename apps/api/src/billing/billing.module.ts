@@ -4,6 +4,8 @@ import { AutomationModule } from '../automation/automation.module.js';
 import { JobsModule } from '../jobs/jobs.module.js';
 import { BillingController } from './billing.controller.js';
 import { BillingMailerService } from './billing-mailer.service.js';
+import { BillingNotificationService } from './billing-notification.service.js';
+import { BillingMaintenanceService } from './billing-maintenance.service.js';
 import { BillingService } from './billing.service.js';
 import { BillingWebhookController } from './billing-webhook.controller.js';
 import { BillingWebhookService } from './billing-webhook.service.js';
@@ -21,6 +23,8 @@ import { UsageMeteringService } from './usage-metering.service.js';
     PaystackBillingAdapter,
     BillingWebhookService,
     BillingMailerService,
+    BillingNotificationService,
+    BillingMaintenanceService,
     TrialLifecycleService,
   ],
   exports: [
@@ -29,6 +33,9 @@ import { UsageMeteringService } from './usage-metering.service.js';
     PaddleBillingAdapter,
     PaystackBillingAdapter,
     TrialLifecycleService,
+    BillingWebhookService,
+    BillingNotificationService,
+    BillingMaintenanceService,
   ],
 })
 export class BillingModule {}

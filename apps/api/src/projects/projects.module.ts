@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 
 import { AuthModule } from '../auth/auth.module.js';
+import { BillingModule } from '../billing/billing.module.js';
 import { OrganizationsModule } from '../organizations/organizations.module.js';
 import { SalesModule } from '../sales/sales.module.js';
 import { ProjectsController } from './projects.controller.js';
@@ -12,7 +13,7 @@ import { ProjectsService } from './projects.service.js';
  * sequence, one posting rule, one audit trail.
  */
 @Module({
-  imports: [AuthModule, OrganizationsModule, SalesModule],
+  imports: [AuthModule, OrganizationsModule, SalesModule, BillingModule],
   controllers: [ProjectsController],
   providers: [ProjectsService],
   exports: [ProjectsService],

@@ -60,12 +60,13 @@ describe('identity and tenancy over HTTP', () => {
       .send({ email, password: PASSWORD })
       .expect(202);
     expect((signup.body as { data: { message: string } }).data.message).toBe(
-      'Check your email for the next step.',
+      'Check your email for the verification code.',
     );
 
-    const verificationToken = await queuedToken(email, '/verify-email?token=');
-    await agent.post(`${API}/auth/verify-email`).send({ token: verificationToken }).expect(200);
-    await agent.post(`${API}/auth/verify-email`).send({ token: verificationToken }).expect(400);
+    const verificationCode = await queuedVerificationCode(email);
+    const verified = await agent.post(`${API}/auth/mfa/verify`).send({ code: verificationCode }).expect(201);
+    const originalCookie = sessionCookie(verified.headers['set-cookie']);
+    await agent.post(`${API}/auth/mfa/verify`).send({ code: verificationCode }).expect(400);
 
     const login = await agent
       .post(`${API}/auth/login`)
@@ -79,7 +80,6 @@ describe('identity and tenancy over HTTP', () => {
     expect((await agent.get(`${API}/me`).expect(200)).body).toMatchObject({
       data: { displayName: 'Identity User', profileComplete: true },
     });
-    const originalCookie = sessionCookie(login.headers['set-cookie']);
     const user = await harness.prisma.user.findUniqueOrThrow({ where: { email } });
     const originalSession = await harness.prisma.session.findFirstOrThrow({
       where: { userId: user.id, status: 'ACTIVE' },
@@ -246,8 +246,8 @@ describe('identity and tenancy over HTTP', () => {
 
     const agent = harness.http();
     await agent.post(`${API}/auth/signup`).send({ email, password: PASSWORD }).expect(202);
-    const verificationToken = await queuedToken(email, '/verify-email?token=');
-    await agent.post(`${API}/auth/verify-email`).send({ token: verificationToken }).expect(200);
+    const verificationCode = await queuedVerificationCode(email);
+    await agent.post(`${API}/auth/mfa/verify`).send({ code: verificationCode }).expect(201);
     await agent.post(`${API}/auth/login`).send({ email, password: PASSWORD }).expect(200);
     await agent.patch(`${API}/auth/profile`).send({ displayName: 'New Invitee' }).expect(200);
     await agent.post(`${API}/invitations/accept`).send({ token: invitation.rawToken }).expect(200);
@@ -306,10 +306,19 @@ describe('identity and tenancy over HTTP', () => {
     if (!encoded) throw new Error(`No queued token found for ${email} and ${marker}.`);
     return decodeURIComponent(encoded);
   }
+
+  async function queuedVerificationCode(email: string): Promise<string> {
+    const jobs = await queue.getJobs(['wait', 'delayed']);
+    const job = jobs.find((candidate) => candidate.data.to === email && candidate.data.subject === 'Your ValueBooks verification code');
+    const code = job?.data.text.match(/verification code is (\d{6})/i)?.[1];
+    if (!code) throw new Error(`No queued verification code found for ${email}.`);
+    return code;
+  }
 });
 
 function sessionCookie(header: string | string[] | undefined): string {
-  const value = Array.isArray(header) ? header[0] : header;
+  const values = Array.isArray(header) ? header : header ? [header] : [];
+  const value = values.find((candidate) => candidate.startsWith('rb_session='));
   if (!value) throw new Error('Expected a session Set-Cookie header.');
   return value.split(';', 1)[0] ?? value;
 }

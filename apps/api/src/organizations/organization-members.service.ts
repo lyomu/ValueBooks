@@ -5,13 +5,14 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { InvitationStatus, OrganizationStatus } from '@prisma/client';
+import { InvitationStatus, MembershipStatus, OrganizationStatus } from '@prisma/client';
 
 import { AuthMailerService } from '../auth/auth-mailer.service.js';
 import { createOpaqueToken, hashToken } from '../auth/auth.crypto.js';
 import type { PublicUser } from '../auth/auth.service.js';
 import type { RequestMetadata } from '../auth/request-context.js';
 import { PrismaService } from '../database/prisma.service.js';
+import { UsageMeteringService } from '../billing/usage-metering.service.js';
 import { writeAuditEvent } from './audit-event.js';
 import type { OrganizationContext } from './organization-context.js';
 import type { InviteMemberDto, UpdateMemberDto } from './organization.dto.js';
@@ -31,6 +32,7 @@ export class OrganizationMembersService {
     private readonly prisma: PrismaService,
     private readonly mailer: AuthMailerService,
     private readonly roles: RolesService,
+    private readonly usage: UsageMeteringService,
   ) {}
 
   async listMembers(organizationId: string) {
@@ -93,6 +95,14 @@ export class OrganizationMembersService {
     }
 
     const updated = await this.prisma.$transaction(async (tx) => {
+      if (input.status === MembershipStatus.ACTIVE && member.status !== MembershipStatus.ACTIVE) {
+        await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtext(${context.id}), 109)::text AS locked`;
+        const [active, pending] = await Promise.all([
+          tx.organizationMember.count({ where: { organizationId: context.id, status: MembershipStatus.ACTIVE } }),
+          tx.organizationInvitation.count({ where: { organizationId: context.id, status: InvitationStatus.PENDING, expiresAt: { gt: new Date() } } }),
+        ]);
+        await this.usage.assertWithinConcurrentLimit(context.id, 'seats.max', active + pending);
+      }
       const result = await tx.organizationMember.update({
         where: { id: memberId },
         data: {
@@ -271,17 +281,11 @@ export class OrganizationMembersService {
 
     const role = await this.roles.resolveAssignableRole(context.id, input.roleId);
 
-    const pendingCount = await this.prisma.organizationInvitation.count({
-      where: { organizationId: context.id, status: InvitationStatus.PENDING },
-    });
-    if (pendingCount >= MAX_PENDING_INVITATIONS) {
-      throw new ConflictException('This organization has too many pending invitations.');
-    }
-
     const rawToken = createOpaqueToken();
     const deferDelivery = context.status === OrganizationStatus.DRAFT;
 
     const invitation = await this.prisma.$transaction(async (tx) => {
+      await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtext(${context.id}), 109)::text AS locked`;
       await tx.organizationInvitation.updateMany({
         where: {
           organizationId: context.id,
@@ -290,6 +294,15 @@ export class OrganizationMembersService {
         },
         data: { status: InvitationStatus.REVOKED, revokedAt: new Date() },
       });
+
+      const [active, pending] = await Promise.all([
+        tx.organizationMember.count({ where: { organizationId: context.id, status: MembershipStatus.ACTIVE } }),
+        tx.organizationInvitation.count({ where: { organizationId: context.id, status: InvitationStatus.PENDING, expiresAt: { gt: new Date() } } }),
+      ]);
+      if (pending >= MAX_PENDING_INVITATIONS) {
+        throw new ConflictException('This organization has too many pending invitations.');
+      }
+      await this.usage.assertWithinConcurrentLimit(context.id, 'seats.max', active + pending);
 
       const created = await tx.organizationInvitation.create({
         data: {

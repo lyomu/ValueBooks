@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 
 import { EMAIL_JOB_NAMES, type EmailDeliveryJob, type EmailJobName } from '../jobs/email-job.js';
@@ -8,7 +8,6 @@ import { EmailQueueService } from '../jobs/email-queue.service.js';
  * convention as `AuthMailerService` rather than a shared catch-all mailer. */
 @Injectable()
 export class BillingMailerService {
-  private readonly logger = new Logger(BillingMailerService.name);
   private readonly webUrl: string;
 
   constructor(
@@ -57,14 +56,16 @@ export class BillingMailerService {
     });
   }
 
+  async sendEvent(input: { to: string; subject: string; body: string; actionUrl?: string; actionLabel?: string; jobId: string }) {
+    await this.emailQueue.enqueue(EMAIL_JOB_NAMES.billingNotice, {
+      to: input.to, subject: input.subject, text: [input.body, input.actionUrl ? `${input.actionLabel ?? 'View billing'}: ${input.actionUrl}` : ''].filter(Boolean).join('\n\n'),
+      html: this.template(input.subject, escapeHtml(input.body).replaceAll('\n', '<br>'),
+        input.actionLabel ?? 'View billing', input.actionUrl ?? `${this.webUrl}/settings/billing`, 'ValueBooks billing notice'),
+    }, input.jobId);
+  }
+
   private async send(name: EmailJobName, message: EmailDeliveryJob): Promise<void> {
-    try {
-      await this.emailQueue.enqueue(name, message);
-    } catch (error) {
-      this.logger.error(
-        `Transactional email enqueue failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
-      );
-    }
+    await this.emailQueue.enqueue(name, message);
   }
 
   private template(title: string, copy: string, button: string, url: string, footnote: string): string {

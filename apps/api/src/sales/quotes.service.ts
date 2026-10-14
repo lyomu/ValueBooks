@@ -12,6 +12,7 @@ import type { RequestMetadata } from '../auth/request-context.js';
 import { assertNoPendingApproval } from '../automation/approval-targets.js';
 import { ApprovalTargetsService } from '../automation/approval-targets.service.js';
 import { PrismaService } from '../database/prisma.service.js';
+import { UsageMeteringService } from '../billing/usage-metering.service.js';
 import { EMAIL_JOB_NAMES } from '../jobs/email-job.js';
 import { EmailQueueService } from '../jobs/email-queue.service.js';
 import { writeAuditEvent } from '../organizations/audit-event.js';
@@ -42,6 +43,7 @@ export class QuotesService {
     private readonly documentRendering: DocumentRenderingService,
     private readonly emailQueue: EmailQueueService,
     private readonly approvalTargets: ApprovalTargetsService,
+    private readonly usage: UsageMeteringService,
   ) {}
 
   async list(organizationId: string, status?: string) {
@@ -493,6 +495,10 @@ export class QuotesService {
       throw new ConflictException(options.errorMessage);
     }
     const updated = await this.prisma.$transaction(async (tx) => {
+      await tx.$queryRaw`SELECT "id" FROM "quotes" WHERE "id" = ${quoteId}::uuid AND "organization_id" = ${context.id}::uuid FOR UPDATE`;
+      const current = await tx.quote.findUniqueOrThrow({ where: { id: quoteId }, select: { status: true } });
+      if (!options.from.includes(current.status)) throw new ConflictException(options.errorMessage);
+      if (options.to === 'APPROVED') await this.usage.consume(context.id, 'quotes.max', tx);
       const quote = await tx.quote.update({
         where: { id: quoteId },
         data: { status: options.to },

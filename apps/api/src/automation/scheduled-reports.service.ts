@@ -6,6 +6,7 @@ import { randomUUID } from 'node:crypto';
 import type { PublicUser } from '../auth/auth.service.js';
 import type { RequestMetadata } from '../auth/request-context.js';
 import { PrismaService } from '../database/prisma.service.js';
+import { UsageMeteringService } from '../billing/usage-metering.service.js';
 import { writeAuditEvent } from '../organizations/audit-event.js';
 import { OrganizationAccessService } from '../organizations/organization-access.service.js';
 import type { OrganizationContext } from '../organizations/organization-context.js';
@@ -20,6 +21,7 @@ export class ScheduledReportsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly organizationAccess: OrganizationAccessService,
+    private readonly usage: UsageMeteringService,
   ) {}
 
   async list(organizationId: string) {
@@ -62,6 +64,9 @@ export class ScheduledReportsService {
     const scheduledJobId = randomUUID();
     const nextRunAt = nextOccurrence(new Date(), schedule, organization.timeZone);
     return this.prisma.$transaction(async (tx) => {
+      await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtext(${context.id}), 113)::text AS locked`;
+      const active = await tx.scheduledReport.count({ where: { organizationId: context.id, active: true } });
+      await this.usage.assertWithinConcurrentLimit(context.id, 'reports.scheduled.enabled', active);
       await tx.scheduledJob.create({
         data: {
           id: scheduledJobId,
@@ -188,6 +193,11 @@ export class ScheduledReportsService {
     });
     if (!report) throw new NotFoundException('Scheduled report not found.');
     return this.prisma.$transaction(async (tx) => {
+      if (active && !report.active) {
+        await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtext(${context.id}), 113)::text AS locked`;
+        const count = await tx.scheduledReport.count({ where: { organizationId: context.id, active: true } });
+        await this.usage.assertWithinConcurrentLimit(context.id, 'reports.scheduled.enabled', count);
+      }
       const updated = await tx.scheduledReport.update({
         where: { id: report.id },
         data: { active },

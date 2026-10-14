@@ -53,6 +53,8 @@ import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { apiRequest } from '../lib/api';
 import { hasPermission, useWorkspace } from '../lib/workspace';
 import { AiAssistantWidget } from './ai-assistant';
+import { BillingTrialNotice } from './billing-trial-notice';
+import { BillingUpgradePrompt } from './billing-upgrade-prompt';
 import { MaterialIcon, type MaterialIconName } from './material-icon';
 import { OrganizationSwitcher } from './organization-switcher';
 
@@ -540,6 +542,8 @@ export function AppShell({
 
       <div className="rb-app-shell__workspace">
         <TopBar onMenuClick={() => setMobileOpen(true)} workspace={workspace} />
+        <BillingTrialNotice organizationId={workspace.activeOrganization?.id ?? null} />
+        <BillingUpgradePrompt />
         <main className="rb-main-scroll" id="main-content" tabIndex={-1}>
           <div className="rb-page-container">{children}</div>
         </main>

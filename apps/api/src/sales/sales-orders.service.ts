@@ -11,6 +11,7 @@ import type { PublicUser } from '../auth/auth.service.js';
 import type { RequestMetadata } from '../auth/request-context.js';
 import { assertNoPendingApproval } from '../automation/approval-targets.js';
 import { PrismaService } from '../database/prisma.service.js';
+import { UsageMeteringService } from '../billing/usage-metering.service.js';
 import { writeAuditEvent } from '../organizations/audit-event.js';
 import { SALES_ORDER_DOCUMENT_TYPE } from '../organizations/document-numbering.js';
 import { DocumentNumberingService } from '../organizations/document-numbering.service.js';
@@ -42,6 +43,7 @@ export class SalesOrdersService {
     private readonly prisma: PrismaService,
     private readonly numbering: DocumentNumberingService,
     private readonly invoices: InvoicesService,
+    private readonly usage: UsageMeteringService,
   ) {}
 
   async list(organizationId: string, status?: string) {
@@ -202,6 +204,10 @@ export class SalesOrdersService {
       throw new ConflictException('Only draft orders can be approved.');
     }
     const updated = await this.prisma.$transaction(async (tx) => {
+      await tx.$queryRaw`SELECT "id" FROM "sales_orders" WHERE "id" = ${orderId}::uuid AND "organization_id" = ${context.id}::uuid FOR UPDATE`;
+      const current = await tx.salesOrder.findUniqueOrThrow({ where: { id: orderId }, select: { status: true } });
+      if (current.status !== 'DRAFT') throw new ConflictException('Only draft orders can be approved.');
+      await this.usage.consume(context.id, 'sales_orders.enabled', tx);
       const allocation = await this.numbering.allocateDocumentNumberWithClient(
         tx,
         context.id,

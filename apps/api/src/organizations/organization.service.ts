@@ -21,6 +21,8 @@ import { createOpaqueToken, hashToken } from '../auth/auth.crypto.js';
 import type { PublicUser } from '../auth/auth.service.js';
 import type { RequestMetadata } from '../auth/request-context.js';
 import { TrialLifecycleService } from '../billing/trial-lifecycle.service.js';
+import { UsageMeteringService } from '../billing/usage-metering.service.js';
+import { BillingNotificationService } from '../billing/billing-notification.service.js';
 import { PrismaService } from '../database/prisma.service.js';
 import { writeAuditEvent } from './audit-event.js';
 import { CountryPackStore, type ComplianceResolution } from './country-pack.store.js';
@@ -99,6 +101,8 @@ export class OrganizationService {
     private readonly currencies: CurrencyService,
     private readonly countryPacks: CountryPackStore,
     private readonly trialLifecycle: TrialLifecycleService,
+    private readonly usage: UsageMeteringService,
+    private readonly billingNotices: BillingNotificationService,
   ) {}
 
   async listForUser(userId: string, preferredOrganizationId: string | null) {
@@ -501,6 +505,8 @@ export class OrganizationService {
         orderBy: { paymentVerifiedAt: 'desc' },
         select: { id: true, planId: true, plan: { select: { trialDays: true } } },
       });
+      let trialStartedAt: Date | null = null;
+      let trialEndForNotice: Date | null = null;
       if (paidIntent) {
         await tx.organizationSubscription.upsert({
           where: { organizationId: context.id },
@@ -536,14 +542,17 @@ export class OrganizationService {
           select: { id: true },
         });
         if (trialPlan && !alreadySubscribed) {
-          const trialDays = trialPlan.trialDays > 0 ? trialPlan.trialDays : 14;
-          const trialEndsAt = new Date(Date.now() + trialDays * 24 * 60 * 60 * 1000);
+          const startedAt = new Date();
+          const trialEndsAt = new Date(startedAt.getTime() + 336 * 60 * 60 * 1000);
+          trialStartedAt = startedAt;
+          trialEndForNotice = trialEndsAt;
           await tx.organizationSubscription.create({
             data: {
               organizationId: context.id,
               planId: trialPlan.id,
               intendedPlanId: unpaidIntent?.planId ?? null,
               status: 'TRIALING',
+              startedAt,
               trialEndsAt,
             },
           });
@@ -583,12 +592,17 @@ export class OrganizationService {
         invitationsQueued: pending.length,
       });
 
-      return { organization: activated, pending };
+      return { organization: activated, pending, trialStartedAt, trialEndForNotice };
     });
 
     // Invitation tokens are only known at issue time, so deferred mail carries a fresh token.
     for (const invitation of result.pending) {
       await this.reissueAndSendInvitation(invitation.id, result.organization.legalName, user);
+    }
+    if (result.trialStartedAt && result.trialEndForNotice) {
+      await this.billingNotices.notify({ organizationId: context.id, eventKey: 'billing.trial_started',
+        sourceId: context.id, subject: 'Your ValueBooks free trial has started',
+        body: `Your 14-day Professional-feature trial is ready. It ends ${result.trialEndForNotice.toISOString()}. No card is needed. Your records remain available if you do not subscribe.` });
     }
 
     return this.withCompliance(
@@ -672,6 +686,17 @@ export class OrganizationService {
     }
 
     await this.prisma.$transaction(async (tx) => {
+      await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtext(${invitation.organizationId}), 109)::text AS locked`;
+      const existingMembership = await tx.organizationMember.findUnique({
+        where: { organizationId_userId: { organizationId: invitation.organizationId, userId: user.id } },
+        select: { status: true },
+      });
+      if (existingMembership?.status !== MembershipStatus.ACTIVE) {
+        const active = await tx.organizationMember.count({ where: { organizationId: invitation.organizationId, status: MembershipStatus.ACTIVE } });
+        // Claiming a reserved invitation exchanges one pending seat for one active seat.
+        // Still check legacy invitations created before seat reservations existed.
+        await this.usage.assertWithinConcurrentLimit(invitation.organizationId, 'seats.max', active);
+      }
       const claimed = await tx.organizationInvitation.updateMany({
         where: { id: invitation.id, status: InvitationStatus.PENDING },
         data: {

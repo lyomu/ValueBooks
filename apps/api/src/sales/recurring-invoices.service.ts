@@ -20,6 +20,7 @@ import { PrismaService } from '../database/prisma.service.js';
 import { writeAuditEvent } from '../organizations/audit-event.js';
 import type { OrganizationContext } from '../organizations/organization-context.js';
 import { InvoicesService } from './invoices.service.js';
+import { UsageMeteringService } from '../billing/usage-metering.service.js';
 import type {
   CreateRecurringInvoiceTemplateDto,
   RecurringInvoiceTemplateLineDto,
@@ -51,6 +52,7 @@ export class RecurringInvoicesService {
     private readonly prisma: PrismaService,
     private readonly invoices: InvoicesService,
     private readonly scheduler: SchedulerService,
+    private readonly usage: UsageMeteringService,
   ) {}
 
   async list(organizationId: string, active?: string) {
@@ -77,6 +79,7 @@ export class RecurringInvoicesService {
     input: CreateRecurringInvoiceTemplateDto,
     metadata: RequestMetadata,
   ) {
+    await this.usage.assertFeatureAvailable(context.id, 'recurring_invoices.enabled');
     const contact = await this.prisma.contact.findFirst({
       where: { id: input.contactId, organizationId: context.id, type: 'CUSTOMER' },
     });

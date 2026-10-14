@@ -9,6 +9,7 @@ import { AuditAction, type ExpenseStatus, type Prisma } from '@prisma/client';
 import type { PublicUser } from '../auth/auth.service.js';
 import type { RequestMetadata } from '../auth/request-context.js';
 import { PrismaService } from '../database/prisma.service.js';
+import { UsageMeteringService } from '../billing/usage-metering.service.js';
 import { writeAuditEvent } from '../organizations/audit-event.js';
 import { EXPENSE_DOCUMENT_TYPE } from '../organizations/document-numbering.js';
 import { DocumentNumberingService } from '../organizations/document-numbering.service.js';
@@ -31,6 +32,7 @@ export class ExpensesService {
     private readonly ledger: LedgerService,
     private readonly tax: TaxService,
     private readonly numbering: DocumentNumberingService,
+    private readonly usage: UsageMeteringService,
   ) {}
 
   async list(organizationId: string, status?: string) {
@@ -276,6 +278,7 @@ export class ExpensesService {
       if (expense.status !== 'DRAFT' && expense.status !== 'APPROVED') {
         throw new ConflictException('Only draft or approved expenses can be posted.');
       }
+      await this.usage.consume(context.id, 'expenses.max', tx);
 
       const postDate = businessDate ? dateOnly(isoDate(businessDate)) : dateOnly(new Date());
       const payeeLabel = expense.payeeVendor?.displayName ?? expense.payeeName ?? 'payee';
