@@ -1012,7 +1012,8 @@ export function InvoiceEditorPage({ invoiceId }: { invoiceId?: string }) {
             <footer className="rb-invoice-detail__status-line">
               <span>Issued to {invoice?.contactName}.</span>
               <span>
-                Posted transactions are immutable — corrections use a credit note or reversal.
+                Posted transactions are immutable. Use a credit note or reversal to make
+                corrections.
               </span>
             </footer>
           )}

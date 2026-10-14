@@ -295,13 +295,13 @@ export function PlatformFeatureFlags() {
               <span className="rb-platform__pill">{flag.status.toLowerCase()}</span>
             </div>
             <p className="rb-platform__muted">
-              <code>{flag.key}</code> — {flag.description ?? 'No description.'} Default:{' '}
+              <code>{flag.key}</code>: {flag.description ?? 'No description.'} Default:{' '}
               <strong>{flag.defaultEnabled ? 'on' : 'off'}</strong>.
             </p>
 
             {flag.rules.length === 0 ? (
               <p className="rb-platform__muted">
-                No targeting rules — every organization gets the default.
+                No targeting rules. Every organization gets the default.
               </p>
             ) : (
               <ul className="rb-platform__list">

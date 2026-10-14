@@ -443,7 +443,7 @@ function SubmitPanel({ organizationId }: { organizationId: string | null }) {
     <Card className="rb-ledger-form-card">
       <p>
         Route an existing document into an active approval policy. Copy its ID from the
-        document&rsquo;s own page — this freezes its current state until a decision is made.
+        document&rsquo;s own page. This freezes its current state until a decision is made.
       </p>
       <Messages error={error} notice={notice} />
       <div className="rb-field">
@@ -834,7 +834,7 @@ function RequestDetailPanel({
                   <p key={decision.id}>
                     {decision.decision === 'APPROVED' ? 'Approved' : 'Rejected'} on{' '}
                     {formatDate(decision.createdAt)}
-                    {decision.comment ? ` — "${decision.comment}"` : ''}
+                    {decision.comment ? ` Comment: "${decision.comment}"` : ''}
                   </p>
                 ))}
                 {step.status === 'PENDING' ? <p>Awaiting a decision.</p> : null}

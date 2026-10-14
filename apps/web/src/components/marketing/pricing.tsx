@@ -84,7 +84,7 @@ export function CurrencyDisclaimer({ currencyCode }: { currencyCode: string }) {
   if (!display.isApproximate) return null;
   return (
     <p className="mk-pricing-disclaimer">
-      Prices shown in {display.code} for convenience — you&apos;ll be billed in US dollars (USD).
+      Prices are shown in {display.code} for convenience. You&apos;ll be billed in US dollars (USD).
     </p>
   );
 }

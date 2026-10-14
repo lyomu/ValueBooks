@@ -1,39 +1,41 @@
 'use client';
+
 import { Mail, MessageCircle, Phone, Send } from 'lucide-react';
 import { useState, type FormEvent } from 'react';
+
+import { Reveal } from '../../../components/marketing/motion';
+import { revealDelay } from '../../../components/marketing/reveal-delay';
+import { PageHero } from '../../../components/marketing/sections';
+
 export default function ContactPage() {
   const [sent, setSent] = useState(false);
+
   function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setSent(true);
   }
+
   return (
     <>
-      <section className="mk-page-hero mk-page-hero--center">
-        <div>
-          <p className="mk-kicker">Contact ValueBooks</p>
-          <h1>Let’s talk about a clearer financial workflow.</h1>
-          <p>
-            Whether you are evaluating ValueBooks, planning a rollout, or looking for support, our
-            team can point you in the right direction.
-          </p>
-        </div>
-      </section>
+      <PageHero
+        title="Let’s talk about a clearer financial workflow."
+        copy="Whether you are evaluating ValueBooks, planning a rollout, or looking for support, our team can point you in the right direction."
+      />
       <section className="mk-contact-grid">
         <div className="mk-contact-options">
-          <article>
+          <Reveal as="article">
             <MessageCircle />
             <h2>Talk to sales</h2>
             <p>See how ValueBooks can fit the way your team already works.</p>
             <a href="mailto:sales@valuebooks.example">sales@valuebooks.example</a>
-          </article>
-          <article>
+          </Reveal>
+          <Reveal as="article" delay={revealDelay(1)}>
             <Mail />
             <h2>Product support</h2>
             <p>Have a question about your workspace or an existing account?</p>
             <a href="mailto:support@valuebooks.example">support@valuebooks.example</a>
-          </article>
-          <article>
+          </Reveal>
+          <Reveal as="article" delay={revealDelay(2)}>
             <Phone />
             <h2>Business hours</h2>
             <p>
@@ -41,9 +43,9 @@ export default function ContactPage() {
               <br />
               9:00–17:00 EAT
             </p>
-          </article>
+          </Reveal>
         </div>
-        <form className="mk-contact-form" onSubmit={submit}>
+        <Reveal as="form" className="mk-contact-form" onSubmit={submit}>
           <p className="mk-kicker">Send a message</p>
           <h2>Tell us a little about what you need.</h2>
           <div>
@@ -76,13 +78,13 @@ export default function ContactPage() {
           </label>
           {sent ? (
             <p className="mk-form-success">
-              Thanks—we’ve received your message. Our team will be in touch.
+              Thanks. We’ve received your message, and our team will be in touch.
             </p>
           ) : null}
           <button className="mk-button" type="submit">
             Send message <Send />
           </button>
-        </form>
+        </Reveal>
       </section>
     </>
   );

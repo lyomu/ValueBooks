@@ -319,7 +319,7 @@ export function WorkflowRulesPage() {
     <>
       <PageHeader
         title="Workflow rules"
-        description="Trigger a notification or a task automatically when an accounting event happens. No arbitrary code — every trigger, condition, and action is from a fixed, safe list."
+        description="Trigger a notification or a task automatically when an accounting event happens. Every trigger, condition, and action comes from a fixed, safe list."
       />
       <div className="rb-ledger-stack">
         <Messages error={error} notice={notice} />
@@ -709,7 +709,7 @@ function RuleDetailPanel({
         if (!open) onClose();
       }}
     >
-      <DialogContent title={rule ? `Test & history — ${rule.name}` : 'Test & history'}>
+      <DialogContent title={rule ? `Test & history: ${rule.name}` : 'Test & history'}>
         {rule ? (
           <div className="rb-ledger-stack">
             <div className="rb-field">

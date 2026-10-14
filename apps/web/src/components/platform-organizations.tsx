@@ -260,8 +260,8 @@ export function PlatformOrganizationDetail({ organizationId }: { organizationId:
           <p>
             {detail.suspendedReason ?? 'No reason recorded.'}
             {detail.suspendedAt
-              ? ` — ${new Date(detail.suspendedAt).toLocaleString()}`
-              : ' — recorded before platform administration existed.'}
+              ? `. Suspended on ${new Date(detail.suspendedAt).toLocaleString()}`
+              : '. Recorded before platform administration existed.'}
             {detail.suspendedBy ? ` by ${detail.suspendedBy}` : ''}
           </p>
           <p className="rb-platform__muted">
@@ -284,8 +284,8 @@ export function PlatformOrganizationDetail({ organizationId }: { organizationId:
         <section className="rb-platform__card" aria-label="Suspend this organization">
           <h2>Suspend</h2>
           <p className="rb-platform__muted">
-            Blocks access without changing any data. A reason is required — it is the only durable
-            answer to why this tenant was locked out.
+            Blocks access without changing any data. A reason is required because it is the only
+            durable answer to why this tenant was locked out.
           </p>
           <label>
             Reason
@@ -411,7 +411,7 @@ export function PlatformOrganizationDetail({ organizationId }: { organizationId:
             <Row label="Portal users" value={detail.usage.portalUsers} />
           </dl>
           <p className="rb-platform__muted">
-            Counts and dates only — the console does not read this tenant&apos;s financial data.
+            Counts and dates only. The console does not read this tenant&apos;s financial data.
           </p>
         </section>
       </div>

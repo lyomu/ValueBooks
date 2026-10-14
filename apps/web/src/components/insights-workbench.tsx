@@ -917,7 +917,7 @@ function InventoryPanel({ organizationId }: { organizationId: string | null }) {
       header: 'Days remaining',
       cell: (row: PurchasingAdvice) =>
         row.daysOfStockRemaining === null
-          ? 'Unavailable — no recent outflow'
+          ? 'Unavailable because there has been no recent outflow'
           : `${formatQuantity(row.daysOfStockRemaining)} days`,
     },
     {

@@ -6,7 +6,16 @@ import type {
   OrganizationReferenceData,
   OrganizationSummary,
 } from '@valuebooks/contracts';
-import { Badge, Button, FieldMessage, Input, Label, Select, Skeleton } from '@valuebooks/ui';
+import {
+  Badge,
+  Button,
+  FieldMessage,
+  FormCombobox,
+  Input,
+  Label,
+  Select,
+  Skeleton,
+} from '@valuebooks/ui';
 import {
   BookOpenCheck,
   Building2,
@@ -25,7 +34,6 @@ import { useEffect, useMemo, useState, type FormEvent, type ReactNode } from 're
 import { ApiError, apiRequest } from '../lib/api';
 import { formValue } from '../lib/forms';
 import { useAssignableRoles } from '../lib/workspace';
-import { SearchableCombobox } from './searchable-combobox';
 
 type WizardStep =
   'PROFILE' | 'JURISDICTION' | 'ACCOUNTING' | 'TAX' | 'NUMBERING' | 'TEAM' | 'REVIEW';
@@ -451,7 +459,7 @@ function ProfileStep({
               label="Country of operation"
               hint="Sets your starting currency, time zone, and fiscal calendar. All remain editable."
             >
-              <SearchableCombobox
+              <FormCombobox
                 id="countryCode"
                 name="countryCode"
                 defaultValue="KE"
@@ -487,22 +495,30 @@ function JurisdictionStep({
   const [locale, setLocale] = useState(organization.locale);
   const [month, setMonth] = useState(organization.fiscalYearStartMonth);
   const [day, setDay] = useState(organization.fiscalYearStartDay);
+  const [customized, setCustomized] = useState({
+    currency: false,
+    timeZone: false,
+    locale: false,
+    fiscal: false,
+  });
 
   const maxDay = useMemo(() => {
     const lengths = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
     return lengths[month - 1] ?? 31;
   }, [month]);
 
-  /** Choosing a country re-applies that country's defaults; each field stays editable after. */
+  /** Country choices suggest defaults without replacing choices the user has already made. */
   function applyCountry(code: string) {
     setCountryCode(code);
     const country = reference.countries.find((candidate) => candidate.code === code);
     if (!country) return;
-    setBaseCurrency(country.defaultCurrency);
-    setTimeZone(country.defaultTimeZone);
-    setLocale(country.defaultLocale);
-    setMonth(country.defaultFiscalStartMonth);
-    setDay(country.defaultFiscalStartDay);
+    if (!customized.currency) setBaseCurrency(country.defaultCurrency);
+    if (!customized.timeZone) setTimeZone(country.defaultTimeZone);
+    if (!customized.locale) setLocale(country.defaultLocale);
+    if (!customized.fiscal) {
+      setMonth(country.defaultFiscalStartMonth);
+      setDay(country.defaultFiscalStartDay);
+    }
   }
 
   return (
@@ -537,7 +553,7 @@ function JurisdictionStep({
       >
         <div className="rb-field-grid">
           <Field id="country" label="Country">
-            <SearchableCombobox
+            <FormCombobox
               id="country"
               value={countryCode}
               onChange={applyCountry}
@@ -553,22 +569,28 @@ function JurisdictionStep({
             label="Base currency"
             hint="Reporting currency for the general ledger."
           >
-            <SearchableCombobox
+            <FormCombobox
               id="currency"
               value={baseCurrency}
-              onChange={setBaseCurrency}
+              onChange={(next) => {
+                setCustomized((current) => ({ ...current, currency: true }));
+                setBaseCurrency(next);
+              }}
               options={reference.currencies.map((currency) => ({
                 value: currency.code,
-                label: `${currency.code} — ${currency.name}`,
+                label: `${currency.code}: ${currency.name}`,
               }))}
             />
           </Field>
 
           <Field id="timeZone" label="Time zone">
-            <SearchableCombobox
+            <FormCombobox
               id="timeZone"
               value={timeZone}
-              onChange={setTimeZone}
+              onChange={(next) => {
+                setCustomized((current) => ({ ...current, timeZone: true }));
+                setTimeZone(next);
+              }}
               options={reference.timeZones.map((zone) => ({
                 value: zone,
                 label: zone.replace(/_/g, ' '),
@@ -577,10 +599,13 @@ function JurisdictionStep({
           </Field>
 
           <Field id="locale" label="Language and formatting">
-            <SearchableCombobox
+            <FormCombobox
               id="locale"
               value={locale}
-              onChange={setLocale}
+              onChange={(next) => {
+                setCustomized((current) => ({ ...current, locale: true }));
+                setLocale(next);
+              }}
               options={reference.locales.map((entry) => ({ value: entry.code, label: entry.name }))}
             />
           </Field>
@@ -589,7 +614,10 @@ function JurisdictionStep({
             <Select
               id="fiscalMonth"
               value={month}
-              onChange={(event) => setMonth(Number(event.target.value))}
+              onChange={(event) => {
+                setCustomized((current) => ({ ...current, fiscal: true }));
+                setMonth(Number(event.target.value));
+              }}
             >
               {MONTHS.map((name, index) => (
                 <option key={name} value={index + 1}>
@@ -603,7 +631,10 @@ function JurisdictionStep({
             <Select
               id="fiscalDay"
               value={Math.min(day, maxDay)}
-              onChange={(event) => setDay(Number(event.target.value))}
+              onChange={(event) => {
+                setCustomized((current) => ({ ...current, fiscal: true }));
+                setDay(Number(event.target.value));
+              }}
             >
               {Array.from({ length: maxDay }, (_, index) => index + 1).map((value) => (
                 <option key={value} value={value}>
@@ -670,7 +701,7 @@ function AccountingStep({
             >
               {reference.accountingBases.map((basis) => (
                 <option key={basis.code} value={basis.code}>
-                  {basis.name} — {basis.description}
+                  {basis.name}: {basis.description}
                 </option>
               ))}
             </Select>
@@ -794,7 +825,7 @@ function TaxStep({
             >
               {reference.taxTreatments.map((treatment) => (
                 <option key={treatment.code} value={treatment.code}>
-                  {treatment.name} — {treatment.description}
+                  {treatment.name}: {treatment.description}
                 </option>
               ))}
             </Select>
@@ -1149,7 +1180,7 @@ function ReviewStep({
         ['You', 'Owner'],
         [
           'Invitations',
-          invitations.length > 0 ? `${invitations.length} pending` : 'None — invite anytime',
+          invitations.length > 0 ? `${invitations.length} pending` : 'None. Invite anytime.',
         ],
       ],
     },

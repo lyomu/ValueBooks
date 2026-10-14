@@ -6,23 +6,24 @@ import {
   MarketingCopy,
   MarketingKicker,
   SectionIntro,
-  SecurityStrip,
   StatBand,
-  TestimonialGrid,
+  BusinessValueGrid,
   TrustNote,
 } from '../../components/marketing/sections';
 import { Photo } from '../../components/marketing/photo';
 import { FaqAccordion, type FaqItem } from '../../components/marketing/faq-accordion';
+import { Reveal } from '../../components/marketing/motion';
+import { revealDelay } from '../../components/marketing/reveal-delay';
 import { PricingTeaserSection } from '../../components/marketing/pricing-section';
 
 const faqItems: FaqItem[] = [
   {
     q: 'What is ValueBooks?',
-    a: 'ValueBooks is an accounting platform built for growing businesses — invoicing, expenses, banking, reporting, and AI assistance in one place.',
+    a: 'ValueBooks is an accounting platform for growing businesses, with invoicing, expenses, banking, reporting, and AI assistance in one place.',
   },
   {
     q: 'Do I need to be an accountant to use ValueBooks?',
-    a: "No. ValueBooks is built for business owners, not just bookkeepers — ValueBooks AI and guided workflows handle the accounting logic so you don't have to.",
+    a: "No. ValueBooks is built for business owners, not just bookkeepers. ValueBooks AI and guided workflows handle the accounting logic so you don't have to.",
   },
   {
     q: 'Is there a free trial?',
@@ -30,7 +31,7 @@ const faqItems: FaqItem[] = [
   },
   {
     q: 'What does ValueBooks AI actually do?',
-    a: 'It answers financial questions grounded in your own books, drafts documents, and flags activity worth a closer look — you stay in control of every decision.',
+    a: 'It answers financial questions grounded in your own books, drafts documents, and flags activity worth a closer look. You stay in control of every decision.',
   },
   {
     q: 'Can my customers view and pay their invoices themselves?',
@@ -60,9 +61,9 @@ export default function MarketingHomePage() {
               See what matters. <em>Move with clarity.</em>
             </h1>
             <MarketingCopy>
-              Invoices, expenses, accounting, and practical next steps—kept together in one calm,
-              capable workspace. Keep invoices and cash flow in view, turn financial activity into
-              clear next steps, and stay in control of every decision.
+              Invoices, expenses, accounting, and practical next steps are kept together in one
+              calm, capable workspace. Keep invoices and cash flow in view, turn financial activity
+              into clear next steps, and stay in control of every decision.
             </MarketingCopy>
             <div className="mk-hero-actions">
               <Link className="mk-button mk-button--hero" href="/signup">
@@ -126,32 +127,40 @@ export default function MarketingHomePage() {
             kicker="ValueBooks AI"
             title="AI that works the books, without working around you."
             text="Ask a financial question, draft the next document, or surface activity that deserves a closer look. Turn a short prompt into an invoice-ready starting point, bring consistency to spending and bank activity, and catch unusual movement before it becomes a problem. You stay in control."
+            action={
+              <Link className="mk-text-link" href="/ai">
+                Meet ValueBooks AI <ArrowRight />
+              </Link>
+            }
           />
-          <Link className="mk-text-link" href="/ai">
-            Meet ValueBooks AI <ArrowRight />
-          </Link>
         </div>
-        <Photo
-          id="photo-1551836022-d5d88e9218df"
-          alt="A business owner reviewing financial activity"
-          ratio="6 / 5"
-        />
+        <Reveal as="div" variant="scale">
+          <Photo
+            id="photo-1551836022-d5d88e9218df"
+            alt="A business owner reviewing financial activity"
+            ratio="6 / 5"
+          />
+        </Reveal>
       </section>
       <section className="mk-alternating">
-        <Photo
-          id="photo-1556761175-4b46a572b786"
-          alt="A small business owner preparing an invoice"
-          ratio="6 / 5"
-        />
+        <Reveal as="div" variant="scale">
+          <Photo
+            id="photo-1556761175-4b46a572b786"
+            alt="A small business owner preparing an invoice"
+            ratio="6 / 5"
+          />
+        </Reveal>
         <div>
           <SectionIntro
             kicker="Get paid"
             title="Send invoices that are a pleasure to receive."
             text="Create professional invoices and quotes from ready-made templates, automate recurring billing with thoughtful reminders, and keep credit notes and payments tracked. A customer portal gives clients shared visibility into what's outstanding."
+            action={
+              <Link className="mk-text-link" href="/invoicing">
+                Explore invoicing <ArrowRight />
+              </Link>
+            }
           />
-          <Link className="mk-text-link" href="/invoicing">
-            Explore invoicing <ArrowRight />
-          </Link>
         </div>
       </section>
       <section className="mk-alternating mk-alternating--reverse">
@@ -159,35 +168,41 @@ export default function MarketingHomePage() {
           <SectionIntro
             kicker="Keep the books moving"
             title="Know what happened, then know what to do next."
-            text="Keep banking, expenses, journals, accounts, and reporting close enough to act on—without turning your workday into a reconciliation marathon. Manage your chart of accounts and journal workflows, import and match bank activity, and keep financial periods, audit history, and permissions under control, with reports that stay connected to the detail."
+            text="Keep banking, expenses, journals, accounts, and reporting close enough to act on without turning your workday into a reconciliation marathon. Manage your chart of accounts and journal workflows, import and match bank activity, and keep financial periods, audit history, and permissions under control, with reports that stay connected to the detail."
+            action={
+              <Link className="mk-text-link" href="/accounting">
+                Explore accounting <ArrowRight />
+              </Link>
+            }
           />
-          <Link className="mk-text-link" href="/accounting">
-            Explore accounting <ArrowRight />
-          </Link>
         </div>
-        <Photo
-          id="photo-1554224155-6726b3ff858f"
-          alt="A business owner reviewing bank reconciliation"
-          ratio="6 / 5"
-        />
+        <Reveal as="div" variant="scale">
+          <Photo
+            id="photo-1554224155-6726b3ff858f"
+            alt="A business owner reviewing bank reconciliation"
+            ratio="6 / 5"
+          />
+        </Reveal>
       </section>
       <section className="mk-personas">
         <Photo id="photo-1552664730-d307ca884978" alt="Business owners meeting" ratio="21 / 9" />
         <div className="mk-personas__heading">
-          <MarketingKicker>Your way of working</MarketingKicker>
-          <h2>One financial home. Different kinds of momentum.</h2>
+          <Reveal as="div">
+            <MarketingKicker>Your way of working</MarketingKicker>
+            <h2>One financial home. Different kinds of momentum.</h2>
+          </Reveal>
         </div>
         <div className="mk-personas__list">
           {[
             ['Freelancers', 'Keep clients, invoices, and spending in one clear place.'],
             ['Retail teams', 'Stay closer to cash flow and daily operations.'],
             ['Growing businesses', 'Give the whole team the right financial view.'],
-          ].map(([title, text]) => (
-            <Link href="/industries" key={title}>
+          ].map(([title, text], index) => (
+            <Reveal as={Link} href="/industries" delay={revealDelay(index)} key={title}>
               <h3>{title}</h3>
               <MarketingCopy>{text}</MarketingCopy>
               <span>Learn more →</span>
-            </Link>
+            </Reveal>
           ))}
         </div>
       </section>
@@ -200,18 +215,20 @@ export default function MarketingHomePage() {
         />
         <IndustriesGrid />
       </section>
-      <section className="mk-testimonial-section">
+      <section className="mk-business-value-section">
         <SectionIntro
           centered
-          kicker="A calmer way forward"
-          title="What changes when the numbers are clear."
+          kicker="BUILT FOR BETTER BUSINESS DECISIONS"
+          title="Clarity that moves your business forward."
+          text="Less time managing the numbers. More time focusing on what matters."
         />
-        <TestimonialGrid />
+        <BusinessValueGrid />
       </section>
-      <SecurityStrip />
       <section className="mk-faq-section">
         <SectionIntro centered title="Frequently asked questions" />
-        <FaqAccordion items={faqItems} />
+        <Reveal as="div">
+          <FaqAccordion items={faqItems} />
+        </Reveal>
       </section>
     </>
   );

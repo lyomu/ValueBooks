@@ -357,7 +357,7 @@ body {
 }
 
 .rb-auth-form .rb-input {
-  min-height: 2.875rem;
+  min-height: var(--rb-field-height);
 }
 
 .rb-auth-field__hint-row {
@@ -783,38 +783,6 @@ body {
 
 .rb-inline-verification input {
   width: 10rem;
-}
-
-.rb-combobox {
-  position: relative;
-}
-.rb-combobox > input {
-  width: 100%;
-}
-.rb-combobox__options {
-  position: absolute;
-  z-index: 20;
-  top: calc(100% + 0.25rem);
-  right: 0;
-  left: 0;
-  max-height: 18rem;
-  margin: 0;
-  padding: 0.25rem;
-  overflow: auto;
-  list-style: none;
-  background: hsl(var(--rb-popover));
-  border: 1px solid hsl(var(--rb-border));
-  border-radius: var(--rb-radius);
-  box-shadow: var(--rb-shadow-md);
-}
-.rb-combobox__options li {
-  padding: 0.5rem 0.625rem;
-  cursor: pointer;
-  border-radius: calc(var(--rb-radius) - 0.125rem);
-}
-.rb-combobox__options li:hover,
-.rb-combobox__options li[aria-selected='true'] {
-  background: hsl(var(--rb-accent));
 }
 
 .rb-security-loading {
@@ -1636,17 +1604,20 @@ a.rb-nav-item:hover {
 .rb-portal__switch {
   display: grid;
   gap: 0.35rem;
-  color: hsl(var(--rb-muted-foreground));
-  font-size: 0.8rem;
+  color: hsl(var(--rb-field-label));
+  font-size: var(--rb-field-label-size);
+  font-weight: var(--rb-field-label-weight);
 }
 .rb-portal__switch select {
-  min-height: 2.5rem;
+  min-height: var(--rb-field-height);
   min-width: 16rem;
-  padding: 0 0.65rem;
-  color: hsl(var(--rb-foreground));
+  padding: 0 var(--rb-field-padding-x);
+  color: hsl(var(--rb-field-value));
   background: hsl(var(--rb-card));
   border: 1px solid hsl(var(--rb-border));
-  border-radius: 0.5rem;
+  border-radius: var(--rb-field-radius);
+  font-size: var(--rb-field-font-size);
+  font-weight: 400;
 }
 
 .rb-portal__nav {
@@ -1943,19 +1914,20 @@ a.rb-nav-item:hover {
 .rb-portal__form label {
   display: grid;
   gap: 0.3rem;
-  color: hsl(var(--rb-muted-foreground));
-  font-size: 0.8rem;
-  font-weight: 600;
+  color: hsl(var(--rb-field-label));
+  font-size: var(--rb-field-label-size);
+  font-weight: var(--rb-field-label-weight);
 }
 .rb-portal__filters input,
 .rb-portal__form input {
-  min-height: 2.5rem;
-  padding: 0 0.65rem;
-  color: hsl(var(--rb-foreground));
+  min-height: var(--rb-field-height);
+  padding: 0 var(--rb-field-padding-x);
+  color: hsl(var(--rb-field-value));
   background: hsl(var(--rb-card));
   border: 1px solid hsl(var(--rb-border));
-  border-radius: 0.5rem;
-  font: inherit;
+  border-radius: var(--rb-field-radius);
+  font-size: var(--rb-field-font-size);
+  font-weight: 400;
 }
 .rb-portal__balance {
   margin: 0 0 1.25rem;
@@ -4307,6 +4279,40 @@ a.rb-nav-item:hover {
   gap: 0.4375rem;
 }
 
+/* Legacy form markup shares the same field tokens while feature-specific controls retain their variants. */
+.rb-field
+  > :is(input, select, textarea):not(.rb-input):not(.rb-select):not(.rb-textarea):not(
+    [type='checkbox']
+  ):not([type='radio']):not([type='file']):not([type='hidden']) {
+  width: 100%;
+  min-height: var(--rb-field-height);
+  padding: 0 var(--rb-field-padding-x);
+  color: hsl(var(--rb-field-value));
+  background: hsl(var(--rb-card));
+  border: var(--rb-field-border-width) solid hsl(var(--rb-input));
+  border-radius: var(--rb-field-radius);
+  font-size: var(--rb-field-font-size);
+  font-weight: 400;
+  line-height: 1.4;
+}
+
+.rb-field > textarea:not(.rb-textarea) {
+  min-height: 6rem;
+  padding: var(--rb-field-padding-x);
+  resize: vertical;
+}
+
+.rb-field > :is(input, textarea):not(.rb-input):not(.rb-textarea)::placeholder {
+  color: hsl(var(--rb-field-placeholder));
+}
+
+.rb-field
+  > :is(input, select, textarea):not(.rb-input):not(.rb-select):not(.rb-textarea):focus-visible {
+  border-color: hsl(var(--rb-primary));
+  outline: 3px solid hsl(var(--rb-ring) / 0.3);
+  outline-offset: 0;
+}
+
 .rb-field-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -5312,8 +5318,8 @@ a.rb-nav-item:hover {
   display: grid;
   gap: 0.3rem;
   color: hsl(var(--rb-muted-foreground));
-  font-size: 0.78rem;
-  font-weight: 600;
+  font-size: var(--rb-field-label-size);
+  font-weight: var(--rb-field-label-weight);
 }
 .rb-platform__check {
   display: inline-flex !important;
@@ -5324,18 +5330,18 @@ a.rb-nav-item:hover {
 .rb-platform input,
 .rb-platform select,
 .rb-platform textarea {
-  min-height: 2.4rem;
-  padding: 0 0.6rem;
-  color: hsl(var(--rb-foreground));
+  min-height: var(--rb-field-height);
+  padding: 0 var(--rb-field-padding-x);
+  color: hsl(var(--rb-field-value));
   background: hsl(var(--rb-background));
   border: 1px solid hsl(var(--rb-border));
-  border-radius: 0.5rem;
-  font: inherit;
+  border-radius: var(--rb-field-radius);
+  font-size: var(--rb-field-font-size);
   font-weight: 400;
 }
 .rb-platform textarea {
   width: 100%;
-  padding: 0.65rem 0.75rem;
+  padding: var(--rb-field-padding-x);
   line-height: 1.45;
   resize: vertical;
 }
@@ -7865,20 +7871,30 @@ button.rb-customer-facts__heading {
 .rb-dash-date-range label {
   display: grid;
   gap: 0.35rem;
-  color: hsl(var(--rb-muted-foreground));
-  font-size: 0.75rem;
-  font-weight: 600;
+  color: hsl(var(--rb-field-label));
+  font-size: var(--rb-field-label-size);
+  font-weight: var(--rb-field-label-weight);
 }
 .rb-dash-toolbar select,
-.rb-dash-toolbar input,
-.rb-dash-filter select {
-  min-height: 2.5rem;
-  padding: 0 0.7rem;
+.rb-dash-toolbar input {
+  min-height: var(--rb-field-height);
+  padding: 0 var(--rb-field-padding-x);
   border: 1px solid hsl(var(--rb-border));
-  border-radius: var(--rb-radius);
+  border-radius: var(--rb-field-radius);
   background: hsl(var(--rb-card));
-  color: hsl(var(--rb-foreground));
-  font: inherit;
+  color: hsl(var(--rb-field-value));
+  font-size: var(--rb-field-font-size);
+  font-weight: 400;
+}
+.rb-dash-filter select {
+  min-height: 2.25rem;
+  padding: 0 var(--rb-space-3);
+  border: 1px solid hsl(var(--rb-border));
+  border-radius: var(--rb-field-radius);
+  background: hsl(var(--rb-card));
+  color: hsl(var(--rb-field-value));
+  font-size: var(--rb-field-font-size);
+  font-weight: 400;
 }
 .rb-dash-toolbar select {
   min-width: 11rem;

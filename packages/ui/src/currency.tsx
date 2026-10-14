@@ -27,7 +27,7 @@ export const CurrencySelect = forwardRef<HTMLSelectElement, CurrencySelectProps>
         {placeholder ? <option value="">{placeholder}</option> : null}
         {currencies.map((currency) => (
           <option key={currency.code} value={currency.code} disabled={currency.disabled}>
-            {currency.code} — {currency.name} ({currency.symbol})
+            {currency.code}: {currency.name} ({currency.symbol})
           </option>
         ))}
       </select>

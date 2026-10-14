@@ -1,7 +1,17 @@
-import { ArrowRight, Bot, Check, LockKeyhole, Quote, ShieldCheck } from 'lucide-react';
+import {
+  ArrowRight,
+  Bot,
+  ChartColumnIncreasing,
+  Check,
+  LockKeyhole,
+  ReceiptText,
+  Workflow,
+} from 'lucide-react';
 import Link from 'next/link';
 import type { ReactNode } from 'react';
 import { DashboardMockup, InvoiceMockup } from './mockups';
+import { Reveal } from './motion';
+import { revealDelay } from './reveal-delay';
 import { Photo } from './photo';
 
 export { Photo };
@@ -27,27 +37,12 @@ export function MarketingSectionHeading({ children }: { children: ReactNode }) {
   return <h2 className="mk-landing-section-heading">{children}</h2>;
 }
 
-export function PageHero({
-  eyebrow,
-  title,
-  copy,
-  action,
-}: {
-  eyebrow: string;
-  title: string;
-  copy: string;
-  action: { label: string; href: string };
-  visual?: 'ai' | 'invoice' | 'insights' | 'people' | 'security';
-}) {
+export function PageHero({ title, copy }: { title: string; copy: string }) {
   return (
     <section className="mk-page-hero">
       <div className="mk-page-hero__content">
-        <MarketingKicker>{eyebrow}</MarketingKicker>
         <h1>{title}</h1>
         <MarketingCopy>{copy}</MarketingCopy>
-        <Link className="mk-button" href={action.href}>
-          {action.label} <ArrowRight />
-        </Link>
       </div>
     </section>
   );
@@ -57,19 +52,26 @@ export function SectionIntro({
   kicker,
   title,
   text,
+  action,
   centered = false,
 }: {
   kicker?: string;
   title: ReactNode;
   text?: string;
+  action?: ReactNode;
   centered?: boolean;
 }) {
   return (
-    <div className={centered ? 'mk-section-intro is-centered' : 'mk-section-intro'}>
+    <Reveal as="div" className={centered ? 'mk-section-intro is-centered' : 'mk-section-intro'}>
       {kicker ? <MarketingKicker>{kicker}</MarketingKicker> : null}
       <MarketingSectionHeading>{title}</MarketingSectionHeading>
-      {text ? <MarketingCopy>{text}</MarketingCopy> : null}
-    </div>
+      {text || action ? (
+        <div className="mk-description-cta">
+          {text ? <MarketingCopy>{text}</MarketingCopy> : null}
+          {action}
+        </div>
+      ) : null}
+    </Reveal>
   );
 }
 export function FeatureList({ items }: { items: readonly string[] }) {
@@ -111,7 +113,7 @@ export function FeatureGrid() {
         title={<>Everything your business needs, in one place.</>}
       />
       <div className="mk-feature-grid__row mk-feature-grid__row--top">
-        <article className="mk-feature-card mk-feature-card--cream">
+        <Reveal as="article" variant="up" className="mk-feature-card mk-feature-card--cream">
           <div className="mk-feature-card__copy">
             <h3>Invoicing</h3>
             <p>
@@ -127,8 +129,13 @@ export function FeatureGrid() {
               <InvoiceMockup />
             </div>
           </div>
-        </article>
-        <article className="mk-feature-card mk-feature-card--blue">
+        </Reveal>
+        <Reveal
+          as="article"
+          variant="up"
+          delay={revealDelay(1)}
+          className="mk-feature-card mk-feature-card--blue"
+        >
           <div className="mk-feature-card__copy">
             <h3>Accounting</h3>
             <p>
@@ -144,10 +151,10 @@ export function FeatureGrid() {
               <DashboardMockup />
             </div>
           </div>
-        </article>
+        </Reveal>
       </div>
       <div className="mk-feature-grid__row mk-feature-grid__row--bottom">
-        <article className="mk-feature-card mk-feature-card--grey">
+        <Reveal as="article" variant="up" className="mk-feature-card mk-feature-card--grey">
           <span className="mk-feature-card__icon">
             <Bot aria-hidden="true" />
           </span>
@@ -156,8 +163,13 @@ export function FeatureGrid() {
           <Link className="mk-text-link" href="/ai">
             Learn about AI <ArrowRight />
           </Link>
-        </article>
-        <article className="mk-feature-card mk-feature-card--navy">
+        </Reveal>
+        <Reveal
+          as="article"
+          variant="up"
+          delay={revealDelay(1)}
+          className="mk-feature-card mk-feature-card--navy"
+        >
           <span className="mk-feature-card__icon">
             <LockKeyhole aria-hidden="true" />
           </span>
@@ -166,8 +178,13 @@ export function FeatureGrid() {
           <Link className="mk-text-link mk-text-link--on-dark" href="/security">
             Learn about Security <ArrowRight />
           </Link>
-        </article>
-        <article className="mk-feature-card mk-feature-card--gold">
+        </Reveal>
+        <Reveal
+          as="article"
+          variant="up"
+          delay={revealDelay(2)}
+          className="mk-feature-card mk-feature-card--gold"
+        >
           <h3>More features</h3>
           <ul className="mk-feature-card__links">
             {moreFeatureLinks.map((link) => (
@@ -178,7 +195,7 @@ export function FeatureGrid() {
               </li>
             ))}
           </ul>
-        </article>
+        </Reveal>
       </div>
     </section>
   );
@@ -202,8 +219,14 @@ export function IndustriesGrid() {
   ];
   return (
     <div className="mk-industries-grid">
-      {entries.map(([slug, title]) => (
-        <Link href={`/industries/${slug}`} className="mk-industry-card" key={slug}>
+      {entries.map(([slug, title], index) => (
+        <Reveal
+          as={Link}
+          href={`/industries/${slug}`}
+          delay={revealDelay(index)}
+          className="mk-industry-card"
+          key={slug}
+        >
           <Photo id={industryPhotos[slug] ?? ''} alt={`${title} business`} ratio="16 / 9" />
           <div>
             <h3>{title}</h3>
@@ -211,67 +234,47 @@ export function IndustriesGrid() {
               Explore solutions <ArrowRight />
             </span>
           </div>
-        </Link>
+        </Reveal>
       ))}
     </div>
   );
 }
-const testimonials = [
+const businessBenefits = [
   {
-    text: 'ValueBooks makes it straightforward to move from a busy week to a clear picture of what actually happened.',
-    name: 'Maya K.',
-    role: 'Founder, Studio Mavuno',
-    photo: 'photo-1494790108377-be9c29b29330',
+    title: 'Stay on Top of Every Transaction',
+    description:
+      'Keep invoices, expenses, and payments organized, so you always know where your money is going.',
+    Icon: ReceiptText,
   },
   {
-    text: 'The invoice and expense workflow lets our small team spend far less time chasing admin.',
-    name: 'Eli T.',
-    role: 'Operations lead, Northline',
-    photo: 'photo-1507003211169-0a1dd7228f2d',
+    title: 'Understand Your Financial Position',
+    description:
+      'Turn everyday financial activity into clear reports that help you make informed decisions.',
+    Icon: ChartColumnIncreasing,
   },
   {
-    text: 'I can see what needs attention before it becomes a month-end problem. That changes everything.',
-    name: 'Amara N.',
-    role: 'Owner, The Daily Table',
-    photo: 'photo-1438761681033-6461ffad8d80',
+    title: 'Spend Less Time on Manual Work',
+    description:
+      'Simplify recurring tasks, keep records connected, and focus more energy on growing your business.',
+    Icon: Workflow,
   },
 ];
-export function TestimonialGrid() {
+export function BusinessValueGrid() {
   return (
-    <div className="mk-testimonials">
-      {testimonials.map((item) => (
-        <figure key={item.name}>
-          <Quote aria-hidden="true" />
-          <blockquote>“{item.text}”</blockquote>
-          <figcaption>
-            <Photo id={item.photo} alt={item.name} ratio="1" width={240} />
-            <span>
-              <b>{item.name}</b>
-              <small>{item.role}</small>
-            </span>
-          </figcaption>
-        </figure>
+    <div className="mk-business-value-grid">
+      {businessBenefits.map(({ Icon, title, description }, index) => (
+        <Reveal
+          as="article"
+          delay={revealDelay(index)}
+          className="mk-business-value-card"
+          key={title}
+        >
+          <Icon aria-hidden="true" />
+          <h3>{title}</h3>
+          <p>{description}</p>
+        </Reveal>
       ))}
     </div>
-  );
-}
-export function SecurityStrip() {
-  return (
-    <section className="mk-security-strip">
-      <div>
-        <ShieldCheck />
-        <span>
-          <b>Your financial data deserves care.</b>
-          <small>
-            Encryption in transit and at rest, role-based access, and an auditable trail for key
-            actions.
-          </small>
-        </span>
-      </div>
-      <Link href="/security">
-        See how we protect your data <ArrowRight />
-      </Link>
-    </section>
   );
 }
 export function TrustNote() {
