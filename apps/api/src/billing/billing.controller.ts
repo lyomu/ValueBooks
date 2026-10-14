@@ -1,5 +1,5 @@
 import { Body, Controller, Get, HttpCode, Post, Req, UseGuards } from '@nestjs/common';
-import { IsString, MaxLength } from 'class-validator';
+import { IsOptional, IsString, MaxLength } from 'class-validator';
 
 import { SessionGuard, type AuthenticatedRequest } from '../auth/session.guard.js';
 import { BillingService } from './billing.service.js';
@@ -9,6 +9,10 @@ class PlanIntentDto {
 }
 class IntentDto {
   @IsString() intentId!: string;
+  // Only required when the plan has a configured provider and `checkout` actually opens a hosted
+  // checkout; `checkout/development-confirm` never reaches that branch.
+  @IsOptional() @IsString() @MaxLength(500) successUrl?: string;
+  @IsOptional() @IsString() @MaxLength(500) cancelUrl?: string;
 }
 
 @Controller('billing')
@@ -24,7 +28,15 @@ export class BillingController {
     @Body() body: IntentDto,
     @Req() request: AuthenticatedRequest,
   ) {
-    return this.billing.checkout(body.intentId, request.auth.user.id).then((data) => ({ data }));
+    return this.billing
+      .checkout(
+        body.intentId,
+        request.auth.user.id,
+        request.auth.user.email,
+        body.successUrl,
+        body.cancelUrl,
+      )
+      .then((data) => ({ data }));
   }
   @Post('checkout/development-confirm') @UseGuards(SessionGuard) confirm(
     @Body() body: IntentDto,

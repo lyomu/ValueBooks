@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { Reveal } from './motion';
 
 /**
  * The single closing moment of every marketing page: one saturated brand band, one headline, one
@@ -15,12 +16,12 @@ export function CallToAction({
   action?: { href: string; label: string };
 } = {}) {
   return (
-    <section className="mk-cta">
+    <Reveal as="section" className="mk-cta">
       <p className="mk-kicker">{kicker}</p>
       <h2>{title}</h2>
       <Link className="mk-button mk-button--contrast" href={action.href}>
         {action.label}
       </Link>
-    </section>
+    </Reveal>
   );
 }

@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 
 import { IndustryDirectoryCard } from '../../../components/marketing/industry-landing-page';
 import { industries } from '../../../content/industries';
+import { Reveal } from '../../../components/marketing/motion';
 import { PageHero } from '../../../components/marketing/sections';
 
 export const metadata: Metadata = {
@@ -20,13 +21,13 @@ export default function IndustriesPage() {
       />
       <section className="mk-industry-directory">
         <div className="mk-container">
-          <div className="mk-industry-heading is-centered">
+          <Reveal as="div" className="mk-industry-heading is-centered">
             <p className="mk-eyebrow">Find your industry</p>
             <h1>Tools that meet the financial work where it happens.</h1>
-          </div>
+          </Reveal>
           <div className="mk-industry-directory__grid">
-            {industries.map((industry) => (
-              <IndustryDirectoryCard industry={industry} key={industry.slug} />
+            {industries.map((industry, index) => (
+              <IndustryDirectoryCard industry={industry} index={index} key={industry.slug} />
             ))}
           </div>
         </div>

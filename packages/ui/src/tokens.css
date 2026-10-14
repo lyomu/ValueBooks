@@ -73,7 +73,10 @@
 
   --rb-duration-fast: 140ms;
   --rb-duration-normal: 220ms;
+  --rb-duration-slow: 550ms;
+  --rb-duration-slower: 700ms;
   --rb-ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --rb-stagger-step: 70ms;
 
   --rb-sidebar-width: 16rem;
   --rb-sidebar-collapsed-width: 5.25rem;
@@ -101,5 +104,8 @@
   :root {
     --rb-duration-fast: 0.01ms;
     --rb-duration-normal: 0.01ms;
+    --rb-duration-slow: 0.01ms;
+    --rb-duration-slower: 0.01ms;
+    --rb-stagger-step: 0ms;
   }
 }

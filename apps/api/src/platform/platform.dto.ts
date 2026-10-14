@@ -148,6 +148,20 @@ export class CreatePlanDto {
   @Transform(trim)
   description?: string;
 
+  /** Groups this plan with its other billing-interval row, e.g. "starter" for both
+   * "starter_monthly" and "starter_yearly". Defaults to `key` when omitted, matching a plan with
+   * only one interval configured so far. */
+  @IsOptional()
+  @IsString()
+  @Matches(KEY, { message: 'tierKey must be lower-case letters, digits, dot, dash or underscore' })
+  @MaxLength(40)
+  @Transform(lower)
+  tierKey?: string;
+
+  @IsOptional()
+  @IsBoolean()
+  isMostPopular?: boolean;
+
   @IsOptional()
   @Type(() => Number)
   @IsInt()
@@ -168,6 +182,22 @@ export class CreatePlanDto {
   @IsOptional()
   @IsIn(['MONTHLY', 'YEARLY'])
   billingInterval?: 'MONTHLY' | 'YEARLY';
+
+  @IsOptional()
+  @IsIn(['PADDLE', 'PAYSTACK'])
+  billingProvider?: 'PADDLE' | 'PAYSTACK';
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(160)
+  @Transform(trim)
+  providerProductId?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(160)
+  @Transform(trim)
+  providerPriceId?: string;
 
   @IsOptional()
   @Type(() => Number)
@@ -199,6 +229,17 @@ export class UpdatePlanDto {
   isDefault?: boolean;
 
   @IsOptional()
+  @IsBoolean()
+  isMostPopular?: boolean;
+
+  @IsOptional()
+  @IsString()
+  @Matches(KEY, { message: 'tierKey must be lower-case letters, digits, dot, dash or underscore' })
+  @MaxLength(40)
+  @Transform(lower)
+  tierKey?: string;
+
+  @IsOptional()
   @Type(() => Number)
   @IsInt()
   @Min(0)
@@ -218,6 +259,22 @@ export class UpdatePlanDto {
   @IsOptional()
   @IsIn(['MONTHLY', 'YEARLY'])
   billingInterval?: 'MONTHLY' | 'YEARLY';
+
+  @IsOptional()
+  @IsIn(['PADDLE', 'PAYSTACK'])
+  billingProvider?: 'PADDLE' | 'PAYSTACK';
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(160)
+  @Transform(trim)
+  providerProductId?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(160)
+  @Transform(trim)
+  providerPriceId?: string;
 
   @IsOptional()
   @Type(() => Number)

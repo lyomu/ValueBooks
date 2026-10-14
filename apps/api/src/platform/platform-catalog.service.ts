@@ -37,14 +37,19 @@ export class PlatformCatalogService {
     return plans.map((plan) => ({
       id: plan.id,
       key: plan.key,
+      tierKey: plan.tierKey,
       name: plan.name,
       description: plan.description,
       status: plan.status,
       isDefault: plan.isDefault,
+      isMostPopular: plan.isMostPopular,
       trialDays: plan.trialDays,
       priceMinor: plan.priceMinor.toString(),
       currency: plan.currency,
       billingInterval: plan.billingInterval,
+      billingProvider: plan.billingProvider,
+      providerProductId: plan.providerProductId,
+      providerPriceId: plan.providerPriceId,
       sortOrder: plan.sortOrder,
       subscriberCount: plan._count.subscriptions,
       entitlements: plan.entitlements.map((entitlement) => ({
@@ -66,12 +71,17 @@ export class PlatformCatalogService {
       const plan = await tx.plan.create({
         data: {
           key: input.key,
+          tierKey: input.tierKey ?? input.key,
           name: input.name,
           description: input.description ?? null,
+          isMostPopular: input.isMostPopular ?? false,
           trialDays: input.trialDays ?? 0,
           priceMinor: BigInt(input.priceMinor ?? '0'),
           currency: input.currency ?? 'USD',
           billingInterval: input.billingInterval ?? 'MONTHLY',
+          billingProvider: input.billingProvider,
+          providerProductId: input.providerProductId,
+          providerPriceId: input.providerPriceId,
           sortOrder: input.sortOrder ?? 0,
         },
       });
@@ -95,15 +105,27 @@ export class PlatformCatalogService {
     return this.prisma.$transaction(async (tx) => {
       const existing = await tx.plan.findUnique({ where: { id: planId } });
       if (!existing) throw new NotFoundException('Plan not found.');
-      if (input.status === 'RETIRED') {
-        const subscribers = await tx.organizationSubscription.count({ where: { planId } });
+      const subscriberCount = await tx.organizationSubscription.count({ where: { planId } });
+      if (input.status === 'RETIRED' && subscriberCount > 0) {
         // Retiring a plan that tenants are on would leave them pointing at a tier nobody can
         // reason about. Move them first; the console offers that as an explicit action.
-        if (subscribers > 0) {
-          throw new BadRequestException(
-            `${subscribers} organization(s) are still on this plan. Move them before retiring it.`,
-          );
-        }
+        throw new BadRequestException(
+          `${subscriberCount} organization(s) are still on this plan. Move them before retiring it.`,
+        );
+      }
+      if (
+        subscriberCount > 0 &&
+        ((input.priceMinor !== undefined && BigInt(input.priceMinor) !== existing.priceMinor) ||
+          (input.billingInterval !== undefined && input.billingInterval !== existing.billingInterval) ||
+          (input.currency !== undefined && input.currency !== existing.currency))
+      ) {
+        // Billing spec Section 20: never silently reprice current subscribers. A real commercial
+        // repricing is a new plan row (new key/tier) that existing subscribers are migrated onto
+        // deliberately, not an in-place edit of the row they are already on.
+        throw new BadRequestException(
+          `${subscriberCount} organization(s) are already billed on this plan's current price/interval/currency. ` +
+            'Create a new plan version and migrate them deliberately rather than editing this one in place.',
+        );
       }
       // The database enforces a single default with a partial unique index, so the previous holder
       // has to be cleared in the same transaction rather than relying on write order.
@@ -122,11 +144,22 @@ export class PlatformCatalogService {
           ...(input.description !== undefined ? { description: input.description } : {}),
           ...(input.status !== undefined ? { status: input.status } : {}),
           ...(input.isDefault !== undefined ? { isDefault: input.isDefault } : {}),
+          ...(input.isMostPopular !== undefined ? { isMostPopular: input.isMostPopular } : {}),
+          ...(input.tierKey !== undefined ? { tierKey: input.tierKey } : {}),
           ...(input.trialDays !== undefined ? { trialDays: input.trialDays } : {}),
           ...(input.priceMinor !== undefined ? { priceMinor: BigInt(input.priceMinor) } : {}),
           ...(input.currency !== undefined ? { currency: input.currency } : {}),
           ...(input.billingInterval !== undefined
             ? { billingInterval: input.billingInterval }
+            : {}),
+          ...(input.billingProvider !== undefined
+            ? { billingProvider: input.billingProvider }
+            : {}),
+          ...(input.providerProductId !== undefined
+            ? { providerProductId: input.providerProductId }
+            : {}),
+          ...(input.providerPriceId !== undefined
+            ? { providerPriceId: input.providerPriceId }
             : {}),
           ...(input.sortOrder !== undefined ? { sortOrder: input.sortOrder } : {}),
         },

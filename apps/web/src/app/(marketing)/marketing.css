@@ -323,13 +323,15 @@ FORM: Wave-like breathing room with a QuickBooks-scale menu, alternating proof, 
 }
 .mk-home-hero h1,
 .mk-page-hero h1,
-.mk-industry-hero h1 {
+.mk-industry-hero h1,
+.mk-pricing-hero h1 {
   max-width: 12ch;
   margin-bottom: 1.25rem;
   font-size: clamp(2.75rem, 5vw, 5rem);
   line-height: 1.01;
   letter-spacing: -0.055em;
   text-wrap: balance;
+  animation: mk-fade-up 500ms var(--rb-ease-out) both;
 }
 .mk-home-hero h1 em {
   font-style: normal;
@@ -337,12 +339,15 @@ FORM: Wave-like breathing room with a QuickBooks-scale menu, alternating proof, 
 }
 .mk-home-hero__copy > p:not(.mk-kicker),
 .mk-page-hero > div > p:not(.mk-kicker),
-.mk-industry-hero > div > p:not(.mk-kicker) {
+.mk-industry-hero > div > p:not(.mk-kicker),
+.mk-pricing-hero__content > p {
   max-width: 55ch;
   margin-bottom: 1.65rem;
   color: var(--mk-muted);
   font-size: 1rem;
   line-height: 1.75;
+  animation: mk-fade-up 500ms var(--rb-ease-out) both;
+  animation-delay: 90ms;
 }
 .mk-hero-actions {
   display: flex;
@@ -411,6 +416,28 @@ FORM: Wave-like breathing room with a QuickBooks-scale menu, alternating proof, 
 @keyframes mk-float {
   50% {
     transform: translateY(-8px);
+  }
+}
+/* One-time load entrance for hero content. CSS-only (no JavaScript, no hydration dependency) so
+   the LCP element never waits on a client component to become visible. */
+@keyframes mk-fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+@keyframes mk-scale-in {
+  from {
+    opacity: 0;
+    transform: scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
   }
 }
 .mk-mockup {
@@ -689,7 +716,8 @@ FORM: Wave-like breathing room with a QuickBooks-scale menu, alternating proof, 
 .mk-ai-section .mk-section-intro .mk-description-cta > .mk-copy {
   max-width: 48ch;
 }
-.mk-ai-section > .mk-photo {
+.mk-ai-section > .mk-photo,
+.mk-ai-section > .mk-reveal .mk-photo {
   border-radius: 0.9rem;
 }
 .mk-ai-mockup header {
@@ -805,7 +833,8 @@ FORM: Wave-like breathing room with a QuickBooks-scale menu, alternating proof, 
   padding: clamp(3rem, 6vw, 5rem) 0;
   border-top: 1px solid var(--mk-line);
 }
-.mk-alternating > .mk-photo {
+.mk-alternating > .mk-photo,
+.mk-alternating > .mk-reveal .mk-photo {
   border-radius: 0.9rem;
 }
 .mk-alternating .mk-section-intro .mk-description-cta > .mk-copy {
@@ -2150,6 +2179,21 @@ FORM: Wave-like breathing room with a QuickBooks-scale menu, alternating proof, 
   .mk-text-link svg {
     transition: none;
   }
+  .mk-home-hero h1,
+  .mk-page-hero h1,
+  .mk-industry-hero h1,
+  .mk-pricing-hero h1,
+  .mk-home-hero__copy > p:not(.mk-kicker),
+  .mk-page-hero > div > p:not(.mk-kicker),
+  .mk-industry-hero > div > p:not(.mk-kicker),
+  .mk-pricing-hero__content > p,
+  .mk-home-hero .mk-hero-actions,
+  .mk-home-hero .mk-trust-note,
+  .mk-home-hero__visual {
+    animation: none;
+    opacity: 1;
+    transform: none;
+  }
 }
 
 /* Public-site type system: normal reading text has one accessible baseline. Miniature text remains
@@ -2268,6 +2312,15 @@ FORM: Wave-like breathing room with a QuickBooks-scale menu, alternating proof, 
 .mk-home-hero--spotlight p.mk-copy {
   max-width: 52ch;
   color: hsl(190 80% 93%) !important;
+}
+.mk-home-hero .mk-hero-actions,
+.mk-home-hero .mk-trust-note {
+  animation: mk-fade-up 500ms var(--rb-ease-out) both;
+  animation-delay: 220ms;
+}
+.mk-home-hero__visual {
+  animation: mk-scale-in 600ms var(--rb-ease-out) both;
+  animation-delay: 340ms;
 }
 .mk-hero-proof {
   display: grid;

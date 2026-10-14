@@ -12,6 +12,7 @@ import { DomainEventsService } from '../automation/domain-events.service.js';
 import { RemindersService } from '../automation/reminders.service.js';
 import { ApprovalsService } from '../automation/approvals.service.js';
 import type { RequestMetadata } from '../auth/request-context.js';
+import { UsageMeteringService } from '../billing/usage-metering.service.js';
 import { PrismaService } from '../database/prisma.service.js';
 import { InventoryService } from '../inventory/inventory.service.js';
 import { EMAIL_JOB_NAMES } from '../jobs/email-job.js';
@@ -60,6 +61,7 @@ export class InvoicesService {
     private readonly events: DomainEventsService,
     private readonly reminders: RemindersService,
     private readonly approvals: ApprovalsService,
+    private readonly usage: UsageMeteringService,
   ) {}
 
   async list(organizationId: string, status?: string) {
@@ -285,6 +287,10 @@ export class InvoicesService {
     // Internal seed/backfill override for the document and posting date. Defaults to today.
     businessDate?: string,
   ) {
+    // Quota counts an invoice once at issue, never at draft creation (billing spec Section 4).
+    // Checked before the transaction so a plan at its limit never reaches posting logic; incremented
+    // only after the transaction commits, so a failed issuance never consumes a unit of quota.
+    await this.usage.assertWithinLimit(context.id, 'invoices.issued.max');
     const issued = await this.prisma.$transaction(async (tx) => {
       await this.lockInvoiceIdempotency(tx, context.id, idempotencyKey);
       const existingResult = await this.findInvoiceIdempotentResult(context.id, idempotencyKey, tx);
@@ -436,6 +442,10 @@ export class InvoicesService {
         include: invoiceDetailInclude,
       });
 
+      // Counted here, inside the same transaction that flips DRAFT -> ISSUED, so the idempotent
+      // early-return above (already-processed replay) never reaches this line and a rolled-back
+      // issuance never leaves a stray increment behind.
+      await this.usage.increment(context.id, 'invoices.issued.max', 1, tx);
       await this.inventory.postInvoiceCogs(context, user, invoiceId, metadata, tx);
       await this.persistStructuredInvoice(tx, context.id, updated);
       // Freeze the exact display data the PDF renders from, in the same transaction that issues

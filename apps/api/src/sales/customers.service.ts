@@ -8,6 +8,7 @@ import { AuditAction, type CollaborationTargetType, type Prisma } from '@prisma/
 
 import type { PublicUser } from '../auth/auth.service.js';
 import type { RequestMetadata } from '../auth/request-context.js';
+import { UsageMeteringService } from '../billing/usage-metering.service.js';
 import { PrismaService } from '../database/prisma.service.js';
 import { writeAuditEvent } from '../organizations/audit-event.js';
 import type { OrganizationContext } from '../organizations/organization-context.js';
@@ -20,7 +21,10 @@ import type {
 
 @Injectable()
 export class CustomersService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly usage: UsageMeteringService,
+  ) {}
 
   async list(organizationId: string, status?: 'ACTIVE' | 'INACTIVE') {
     const contacts = await this.prisma.contact.findMany({
@@ -48,6 +52,18 @@ export class CustomersService {
     });
     const currency = input.currency ?? organization.baseCurrency;
     this.assertCurrencyAllowed(context, currency, organization.baseCurrency);
+
+    // Active-customer count is a standing cap, not a monthly flow: archived customers legitimately
+    // come back out of it (billing spec Section 4), so this counts live rows rather than an
+    // ever-incrementing counter.
+    const activeCustomerCount = await this.prisma.contact.count({
+      where: { organizationId: context.id, type: 'CUSTOMER', status: 'ACTIVE' },
+    });
+    await this.usage.assertWithinConcurrentLimit(
+      context.id,
+      'customers.active.max',
+      activeCustomerCount,
+    );
 
     const existing = await this.prisma.contact.findUnique({
       where: {

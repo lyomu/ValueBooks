@@ -20,6 +20,7 @@ import { AuthMailerService } from '../auth/auth-mailer.service.js';
 import { createOpaqueToken, hashToken } from '../auth/auth.crypto.js';
 import type { PublicUser } from '../auth/auth.service.js';
 import type { RequestMetadata } from '../auth/request-context.js';
+import { TrialLifecycleService } from '../billing/trial-lifecycle.service.js';
 import { PrismaService } from '../database/prisma.service.js';
 import { writeAuditEvent } from './audit-event.js';
 import { CountryPackStore, type ComplianceResolution } from './country-pack.store.js';
@@ -97,6 +98,7 @@ export class OrganizationService {
     private readonly ledger: LedgerService,
     private readonly currencies: CurrencyService,
     private readonly countryPacks: CountryPackStore,
+    private readonly trialLifecycle: TrialLifecycleService,
   ) {}
 
   async listForUser(userId: string, preferredOrganizationId: string | null) {
@@ -509,6 +511,57 @@ export class OrganizationService {
           where: { id: paidIntent.id },
           data: { consumedAt: new Date() },
         });
+      } else {
+        // No verified payment: start the cardless 14-day trial instead. The trial always carries
+        // Professional-level entitlements (spec Section 6) regardless of which plan the owner
+        // selected on /pricing, so `planId` points at Professional and the actual selection — saved
+        // as intention only, never charged — is kept on `intendedPlanId` for checkout to default to
+        // and for the trial-expiry screen to name.
+        const unpaidIntent = await tx.registrationIntent.findFirst({
+          where: {
+            userId: user.id,
+            paymentVerifiedAt: null,
+            consumedAt: null,
+            expiresAt: { gt: new Date() },
+          },
+          orderBy: { createdAt: 'desc' },
+          select: { id: true, planId: true },
+        });
+        const trialPlan = await tx.plan.findFirst({
+          where: { tierKey: 'professional', billingInterval: 'MONTHLY', status: 'ACTIVE' },
+          select: { id: true, trialDays: true },
+        });
+        const alreadySubscribed = await tx.organizationSubscription.findUnique({
+          where: { organizationId: context.id },
+          select: { id: true },
+        });
+        if (trialPlan && !alreadySubscribed) {
+          const trialDays = trialPlan.trialDays > 0 ? trialPlan.trialDays : 14;
+          const trialEndsAt = new Date(Date.now() + trialDays * 24 * 60 * 60 * 1000);
+          await tx.organizationSubscription.create({
+            data: {
+              organizationId: context.id,
+              planId: trialPlan.id,
+              intendedPlanId: unpaidIntent?.planId ?? null,
+              status: 'TRIALING',
+              trialEndsAt,
+            },
+          });
+          // Finalization retries are made idempotent by `alreadySubscribed` above, so this only
+          // ever schedules the reminder/expiry jobs once per organization.
+          await this.trialLifecycle.scheduleTrialJobs(tx, {
+            organizationId: context.id,
+            createdByUserId: user.id,
+            trialEndsAt,
+            timeZone: activated.timeZone,
+          });
+        }
+        if (unpaidIntent) {
+          await tx.registrationIntent.update({
+            where: { id: unpaidIntent.id },
+            data: { consumedAt: new Date() },
+          });
+        }
       }
 
       const pending = await tx.organizationInvitation.findMany({

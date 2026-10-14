@@ -528,6 +528,9 @@ model Organization {
   auditEvents                   AuditEvent[]
   platformAuditEvents           PlatformAuditEvent[]
   subscription                  OrganizationSubscription?
+  billingTransactions           BillingTransaction[]
+  usageCounters                 UsageCounter[]
+  subscriptionChanges           SubscriptionChange[]
   featureFlagRules              FeatureFlagRule[]
   hostedAiEgressApprovals       HostedAiEgressApproval[]
   roles                         Role[]
@@ -3955,29 +3958,56 @@ enum BillingInterval {
   YEARLY
 }
 
-/// A sellable tier. The price fields exist so a future billing provider has somewhere to land;
-/// nothing in Phase 12 charges anyone, and no provider identifiers are stored here.
+/// The two subscription payment processors ValueBooks integrates with. Starter is routed to
+/// PADDLE; every other paid tier is routed to PAYSTACK. This routing is backend-owned and never
+/// derived from client input.
+enum BillingProviderName {
+  PADDLE
+  PAYSTACK
+}
+
+/// A sellable tier at one billing interval. Monthly and yearly pricing for the same commercial
+/// tier (e.g. "Starter") are two separate rows sharing a `tierKey`, because each needs its own
+/// provider-side recurring price identifier and may be independently retired or repriced.
 model Plan {
-  id              String                     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  key             String                     @unique @db.VarChar(40)
-  name            String                     @db.VarChar(120)
-  description     String?                    @db.VarChar(500)
-  status          PlanStatus                 @default(DRAFT)
+  id                  String                     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  key                 String                     @unique @db.VarChar(40)
+  /// Groups the monthly/yearly rows of one commercial tier, e.g. both "starter_monthly" and
+  /// "starter_yearly" carry tierKey "starter". Used to render one pricing card per tier with a
+  /// working interval switch, and to find "the other interval" of a plan during a change.
+  tierKey             String                     @map("tier_key") @db.VarChar(40)
+  name                String                     @db.VarChar(120)
+  description         String?                    @db.VarChar(500)
+  status              PlanStatus                 @default(DRAFT)
   /// At most one active plan is the default; new organizations are subscribed to it.
-  isDefault       Boolean                    @default(false) @map("is_default")
-  trialDays       Int                        @default(0) @map("trial_days") @db.SmallInt
-  priceMinor      BigInt                     @default(0) @map("price_minor")
-  currency        String                     @default("USD") @db.Char(3)
-  billingInterval BillingInterval            @default(MONTHLY) @map("billing_interval")
-  sortOrder       Int                        @default(0) @map("sort_order") @db.SmallInt
-  createdAt       DateTime                   @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt       DateTime                   @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
-  entitlements    PlanEntitlement[]
-  subscriptions   OrganizationSubscription[]
+  isDefault           Boolean                    @default(false) @map("is_default")
+  /// Marketing-only "Most Popular" badge. Carried on the plan row so admin pricing changes and the
+  /// public pricing page read the same source of truth.
+  isMostPopular       Boolean                    @default(false) @map("is_most_popular")
+  trialDays           Int                        @default(0) @map("trial_days") @db.SmallInt
+  priceMinor          BigInt                     @default(0) @map("price_minor")
+  currency            String                     @default("USD") @db.Char(3)
+  billingInterval     BillingInterval            @default(MONTHLY) @map("billing_interval")
+  /// Null until a provider-side product/price is configured. A plan can be ACTIVE for trial and
+  /// internal bookkeeping purposes before this is set, but checkout is blocked without it.
+  billingProvider     BillingProviderName?       @map("billing_provider")
+  providerProductId   String?                    @map("provider_product_id") @db.VarChar(160)
+  /// Paddle calls this a price ID; Paystack calls it a plan code. Same column, provider decides
+  /// the shape.
+  providerPriceId     String?                    @map("provider_price_id") @db.VarChar(160)
+  sortOrder           Int                        @default(0) @map("sort_order") @db.SmallInt
+  createdAt           DateTime                   @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt           DateTime                   @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  entitlements        PlanEntitlement[]
+  subscriptions       OrganizationSubscription[]
   registrationIntents RegistrationIntent[]
-  flagRules       FeatureFlagRule[]
+  flagRules           FeatureFlagRule[]
+  subscriptionChangesFrom SubscriptionChange[]   @relation("SubscriptionChangeFromPlan")
+  subscriptionChangesTo   SubscriptionChange[]   @relation("SubscriptionChangeToPlan")
+  intendedBySubscriptions OrganizationSubscription[] @relation("OrganizationSubscriptionIntendedPlan")
 
   @@index([status, sortOrder])
+  @@index([tierKey])
   @@map("plans")
 }
 
@@ -4000,28 +4030,176 @@ model PlanEntitlement {
 
 enum SubscriptionStatus {
   TRIALING
+  TRIAL_EXPIRED
   ACTIVE
   PAST_DUE
+  CANCEL_SCHEDULED
   CANCELLED
 }
 
-/// One organization's current plan. One row per organization: the history lives in
-/// `PlatformAuditEvent`, which already records who changed a plan, when, and why.
+/// One organization's current plan and provider linkage. One row per organization: the history of
+/// how it got here lives in `PlatformAuditEvent`/`AuditEvent` and `SubscriptionChange`.
 model OrganizationSubscription {
-  id             String             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  organizationId String             @unique @map("organization_id") @db.Uuid
-  planId         String             @map("plan_id") @db.Uuid
-  status         SubscriptionStatus @default(TRIALING)
-  trialEndsAt    DateTime?          @map("trial_ends_at") @db.Timestamptz(6)
-  startedAt      DateTime           @default(now()) @map("started_at") @db.Timestamptz(6)
-  cancelledAt    DateTime?          @map("cancelled_at") @db.Timestamptz(6)
-  createdAt      DateTime           @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt      DateTime           @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
-  organization   Organization       @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  plan           Plan               @relation(fields: [planId], references: [id], onDelete: Restrict)
+  id                     String             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organizationId         String             @unique @map("organization_id") @db.Uuid
+  planId                 String             @map("plan_id") @db.Uuid
+  /// During TRIALING, `planId` points at the Professional plan so the trial carries Professional
+  /// entitlements regardless of what the customer actually selected (Section 6). `intendedPlanId`
+  /// remembers that selection — saved as intention only, never charged — so checkout defaults to
+  /// it and the trial-expiry screen can say which plan they were heading toward.
+  intendedPlanId         String?            @map("intended_plan_id") @db.Uuid
+  status                 SubscriptionStatus @default(TRIALING)
+  trialEndsAt            DateTime?          @map("trial_ends_at") @db.Timestamptz(6)
+  /// Set once the Day-13 trial-ending reminder has been sent, so the scheduled job never sends it
+  /// twice even under retry.
+  trialReminderSentAt    DateTime?          @map("trial_reminder_sent_at") @db.Timestamptz(6)
+  startedAt              DateTime           @default(now()) @map("started_at") @db.Timestamptz(6)
+  cancelledAt            DateTime?          @map("cancelled_at") @db.Timestamptz(6)
+  /// True once the customer has requested cancellation but current paid access runs to
+  /// `currentPeriodEnd`. `status` stays ACTIVE until that boundary passes.
+  cancelAtPeriodEnd      Boolean            @default(false) @map("cancel_at_period_end")
+  billingProvider        BillingProviderName? @map("billing_provider")
+  providerCustomerId     String?            @map("provider_customer_id") @db.VarChar(160)
+  providerSubscriptionId String?            @map("provider_subscription_id") @db.VarChar(160)
+  currentPeriodStart     DateTime?          @map("current_period_start") @db.Timestamptz(6)
+  currentPeriodEnd       DateTime?          @map("current_period_end") @db.Timestamptz(6)
+  lastPaymentAt          DateTime?          @map("last_payment_at") @db.Timestamptz(6)
+  /// Set when a renewal charge first fails; cleared on recovery. Drives the dunning grace-period
+  /// countdown rather than re-deriving it from transaction history on every check.
+  pastDueSince           DateTime?          @map("past_due_since") @db.Timestamptz(6)
+  createdAt              DateTime           @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt              DateTime           @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  organization           Organization       @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  plan                   Plan               @relation(fields: [planId], references: [id], onDelete: Restrict)
+  intendedPlan           Plan?              @relation("OrganizationSubscriptionIntendedPlan", fields: [intendedPlanId], references: [id], onDelete: SetNull)
+  transactions           BillingTransaction[]
 
   @@index([planId, status])
+  @@index([providerSubscriptionId])
   @@map("organization_subscriptions")
+}
+
+enum BillingTransactionStatus {
+  INITIATED
+  PENDING
+  SUCCESSFUL
+  FAILED
+  REFUNDED
+  PARTIALLY_REFUNDED
+  DISPUTED
+}
+
+/// One payment-provider event that moved money (or attempted to), per Section 14/21/24 of the
+/// billing spec. Distinct from the accounting `Invoice`/`Payment` models, which record a
+/// ValueBooks customer's own invoices — this is ValueBooks' own subscription revenue.
+model BillingTransaction {
+  id                     String                    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organizationId         String                    @map("organization_id") @db.Uuid
+  subscriptionId         String?                   @map("subscription_id") @db.Uuid
+  billingProvider        BillingProviderName       @map("billing_provider")
+  providerTransactionId  String                    @map("provider_transaction_id") @db.VarChar(160)
+  status                 BillingTransactionStatus  @default(INITIATED)
+  amountMinor             BigInt                    @map("amount_minor")
+  currency               String                    @default("USD") @db.Char(3)
+  feeMinor               BigInt?                   @map("fee_minor")
+  refundedMinor          BigInt?                   @map("refunded_minor")
+  periodStart            DateTime?                 @map("period_start") @db.Timestamptz(6)
+  periodEnd              DateTime?                 @map("period_end") @db.Timestamptz(6)
+  paidAt                 DateTime?                 @map("paid_at") @db.Timestamptz(6)
+  receiptUrl             String?                   @map("receipt_url") @db.VarChar(500)
+  /// Raw provider payload for support diagnosis. Never rendered directly to customers; the typed
+  /// columns above are the source of truth for anything shown in product.
+  rawPayload             Json?                     @map("raw_payload_json") @db.JsonB
+  createdAt              DateTime                  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt              DateTime                  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  organization           Organization              @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  subscription           OrganizationSubscription?  @relation(fields: [subscriptionId], references: [id], onDelete: SetNull)
+
+  @@unique([billingProvider, providerTransactionId])
+  @@index([organizationId, createdAt])
+  @@index([status, createdAt])
+  @@map("billing_transactions")
+}
+
+/// Atomic, concurrency-safe counter for one metered resource in one billing period. Monthly quota
+/// resources (invoices, AI insights, ...) use the organization's current monthly usage window even
+/// under an annual subscription term, per Section 3.0/4.
+model UsageCounter {
+  id             String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organizationId String   @map("organization_id") @db.Uuid
+  resourceKey    String   @map("resource_key") @db.VarChar(60)
+  periodStart    DateTime @map("period_start") @db.Timestamptz(6)
+  periodEnd      DateTime @map("period_end") @db.Timestamptz(6)
+  usedCount      Int      @default(0) @map("used_count")
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, resourceKey, periodStart])
+  @@index([organizationId, resourceKey])
+  @@map("usage_counters")
+}
+
+enum WebhookProcessingState {
+  RECEIVED
+  VERIFIED
+  PROCESSED
+  FAILED
+}
+
+/// Every inbound Paddle/Paystack webhook call, signature-verified before anything in it is
+/// trusted. The unique key on (provider, providerEventId) is what makes replay/duplicate delivery
+/// safe to ignore rather than reprocess.
+model BillingWebhookEvent {
+  id                String                  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  billingProvider   BillingProviderName     @map("billing_provider")
+  providerEventId   String                  @map("provider_event_id") @db.VarChar(160)
+  eventType         String                  @map("event_type") @db.VarChar(100)
+  signatureVerified Boolean                 @default(false) @map("signature_verified")
+  processingState   WebhookProcessingState  @default(RECEIVED) @map("processing_state")
+  payload           Json                    @map("payload_json") @db.JsonB
+  retryCount        Int                     @default(0) @map("retry_count")
+  lastError         String?                 @map("last_error") @db.VarChar(1000)
+  receivedAt        DateTime                @default(now()) @map("received_at") @db.Timestamptz(6)
+  processedAt       DateTime?               @map("processed_at") @db.Timestamptz(6)
+
+  @@unique([billingProvider, providerEventId])
+  @@index([processingState, receivedAt])
+  @@map("billing_webhook_events")
+}
+
+enum SubscriptionChangeStatus {
+  PENDING
+  PAYMENT_PENDING
+  ACTIVE_NEW
+  CANCELLING_OLD
+  COMPLETED
+  FAILED
+}
+
+/// One upgrade/downgrade/migration attempt, same-provider or cross-provider, per Section 8. Kept
+/// even after completion as the audit trail of who/what/when/why for a plan change.
+model SubscriptionChange {
+  id              String                   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organizationId  String                   @map("organization_id") @db.Uuid
+  fromPlanId      String?                  @map("from_plan_id") @db.Uuid
+  toPlanId        String                   @map("to_plan_id") @db.Uuid
+  fromProvider    BillingProviderName?     @map("from_provider")
+  toProvider      BillingProviderName      @map("to_provider")
+  status          SubscriptionChangeStatus @default(PENDING)
+  requestedByUserId String?                @map("requested_by_user_id") @db.Uuid
+  effectiveAt     DateTime?                @map("effective_at") @db.Timestamptz(6)
+  completedAt     DateTime?                @map("completed_at") @db.Timestamptz(6)
+  errorMessage    String?                  @map("error_message") @db.VarChar(1000)
+  createdAt       DateTime                 @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime                 @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  organization    Organization             @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  fromPlan        Plan?                    @relation("SubscriptionChangeFromPlan", fields: [fromPlanId], references: [id], onDelete: SetNull)
+  toPlan          Plan                     @relation("SubscriptionChangeToPlan", fields: [toPlanId], references: [id], onDelete: Restrict)
+
+  @@index([organizationId, createdAt])
+  @@index([status])
+  @@map("subscription_changes")
 }
 
 enum FeatureFlagStatus {
