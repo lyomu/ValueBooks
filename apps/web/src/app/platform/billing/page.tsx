@@ -1,3 +1,5 @@
-import { PlatformBillingOverview } from '../../../components/platform-billing';
+import { PlatformBillingOverview } from '../../../components/platform-billing-overview';
 
-export default function Page() { return <PlatformBillingOverview />; }
+export default function Page() {
+  return <PlatformBillingOverview />;
+}

@@ -152,6 +152,7 @@ function runNpm(args) {
     cwd: repoRoot,
     env: {
       ...process.env,
+      NODE_OPTIONS: process.env.NODE_OPTIONS ?? '--max-old-space-size=4096',
       DATABASE_URL,
       // schema.prisma's datasource uses `directUrl = env("DATABASE_MIGRATION_URL")` for migration
       // commands (migrate deploy/dev/resolve). Without this, `prisma migrate deploy` below ignores
@@ -177,6 +178,7 @@ function runNode(args, cwd) {
     cwd,
     env: {
       ...process.env,
+      NODE_OPTIONS: process.env.NODE_OPTIONS ?? '--max-old-space-size=4096',
       DATABASE_URL,
       REDIS_URL: 'redis://127.0.0.1:56780',
       S3_ENDPOINT,

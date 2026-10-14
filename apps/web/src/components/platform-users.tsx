@@ -1,6 +1,7 @@
 'use client';
 
 import type { PlatformUser } from '@valuebooks/contracts';
+import { DataTable } from '@valuebooks/ui';
 import Link from 'next/link';
 import { useCallback, useEffect, useState, type FormEvent } from 'react';
 
@@ -100,42 +101,46 @@ export function PlatformUsers() {
         </p>
       ) : null}
 
-      {rows === null ? (
-        <p className="rb-platform__muted">Loading users…</p>
-      ) : rows.length === 0 ? (
-        <p className="rb-platform__muted">No users match these filters.</p>
-      ) : (
-        <div className="rb-platform__table-wrap">
-          <table className="rb-platform__table">
-            <caption className="rb-visually-hidden">Users</caption>
-            <thead>
-              <tr>
-                <th scope="col">Person</th>
-                <th scope="col">Status</th>
-                <th scope="col">Verified</th>
-                <th scope="col">Memberships</th>
-                <th scope="col">Joined</th>
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map((row) => (
-                <tr key={row.id}>
-                  <th scope="row">
-                    <Link href={`/platform/users/${row.id}`}>{row.displayName}</Link>
-                    <small>{row.email}</small>
-                  </th>
-                  <td>
-                    <StatusPill status={row.status} />
-                  </td>
-                  <td>{row.emailVerified ? 'Yes' : 'No'}</td>
-                  <td>{row.membershipCount}</td>
-                  <td>{new Date(row.createdAt).toLocaleDateString()}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
+      <DataTable
+        caption="Users"
+        rows={rows ?? []}
+        loading={rows === null}
+        emptyTitle="No users match these filters"
+        columns={[
+          {
+            key: 'person',
+            header: 'Person',
+            cell: (row: PlatformUser) => (
+              <>
+                <Link href={`/platform/users/${row.id}`}>{row.displayName}</Link>
+                <small>{row.email}</small>
+              </>
+            ),
+          },
+          {
+            key: 'status',
+            header: 'Status',
+            cell: (row: PlatformUser) => <StatusPill status={row.status} />,
+          },
+          {
+            key: 'verified',
+            header: 'Verified',
+            cell: (row: PlatformUser) => (row.emailVerified ? 'Yes' : 'No'),
+          },
+          {
+            key: 'memberships',
+            header: 'Memberships',
+            cell: (row: PlatformUser) => row.membershipCount,
+            align: 'right',
+          },
+          {
+            key: 'joined',
+            header: 'Joined',
+            cell: (row: PlatformUser) => new Date(row.createdAt).toLocaleDateString(),
+            hideBelow: 'tablet',
+          },
+        ]}
+      />
 
       <Pager page={page} pageSize={25} totalRows={totalRows} onChange={setPage} />
     </PlatformPage>
@@ -280,40 +285,38 @@ export function PlatformUserDetail({ userId }: { userId: string }) {
         </section>
       </div>
 
-      <section className="rb-platform__card" aria-label="Memberships">
+      <section className="rb-platform__section" aria-label="Memberships">
         <h2>Memberships</h2>
-        {user.memberships.length === 0 ? (
-          <p className="rb-platform__muted">This account belongs to no organization.</p>
-        ) : (
-          <div className="rb-platform__table-wrap">
-            <table className="rb-platform__table">
-              <thead>
-                <tr>
-                  <th scope="col">Organization</th>
-                  <th scope="col">Role</th>
-                  <th scope="col">Membership</th>
-                  <th scope="col">Organization status</th>
-                </tr>
-              </thead>
-              <tbody>
-                {user.memberships.map((membership) => (
-                  <tr key={membership.organizationId}>
-                    <th scope="row">
-                      <Link href={`/platform/organizations/${membership.organizationId}`}>
-                        {membership.organizationName}
-                      </Link>
-                    </th>
-                    <td>{membership.roleName}</td>
-                    <td>{membership.membershipStatus}</td>
-                    <td>
-                      <StatusPill status={membership.organizationStatus} />
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
+        <DataTable
+          caption="User memberships"
+          rows={user.memberships.map((membership) => ({
+            ...membership,
+            id: membership.organizationId,
+          }))}
+          emptyTitle="This account belongs to no organization"
+          columns={[
+            {
+              key: 'organization',
+              header: 'Organization',
+              cell: (membership) => (
+                <Link href={`/platform/organizations/${membership.organizationId}`}>
+                  {membership.organizationName}
+                </Link>
+              ),
+            },
+            { key: 'role', header: 'Role', cell: (membership) => membership.roleName },
+            {
+              key: 'membership',
+              header: 'Membership',
+              cell: (membership) => membership.membershipStatus,
+            },
+            {
+              key: 'organization-status',
+              header: 'Organization status',
+              cell: (membership) => <StatusPill status={membership.organizationStatus} />,
+            },
+          ]}
+        />
       </section>
     </PlatformPage>
   );

@@ -1,6 +1,8 @@
 'use client';
 
 import type { PlatformAnalytics } from '@valuebooks/contracts';
+import { Building2, CheckCircle2, Clock3, ShieldAlert, UserRoundPlus, Users } from 'lucide-react';
+import { StatCard } from '@valuebooks/ui';
 import { useEffect, useState } from 'react';
 
 import { apiRequest } from '../lib/api';
@@ -44,13 +46,45 @@ export function PlatformOverview() {
       title="Overview"
       description={`Platform-wide adoption as at ${new Date(analytics.observedAt).toLocaleString()}.`}
     >
-      <section className="rb-platform__stats" aria-label="Organizations">
-        <Stat label="Organizations" value={analytics.organizations.total} />
-        <Stat label="Active" value={analytics.organizations.active} />
-        <Stat label="Suspended" value={analytics.organizations.suspended} tone="warn" />
-        <Stat label="Still in setup" value={analytics.organizations.draft} />
-        <Stat label="New in 30 days" value={analytics.organizations.createdLast30Days} />
-        <Stat label="Users" value={analytics.users.total} />
+      <section className="rb-platform__section" aria-labelledby="platform-organizations-heading">
+        <h2 id="platform-organizations-heading">Organizations</h2>
+        <div className="rb-platform__stats">
+          <StatCard
+            label="Organizations"
+            value={analytics.organizations.total.toLocaleString()}
+            icon={Building2}
+          />
+          <StatCard
+            label="Active"
+            value={analytics.organizations.active.toLocaleString()}
+            icon={CheckCircle2}
+            tone="success"
+          />
+          <StatCard
+            label="Suspended"
+            value={analytics.organizations.suspended.toLocaleString()}
+            icon={ShieldAlert}
+            tone="warning"
+          />
+          <StatCard
+            label="Still in setup"
+            value={analytics.organizations.draft.toLocaleString()}
+            icon={Clock3}
+            tone="info"
+          />
+        </div>
+      </section>
+      <section className="rb-platform__section" aria-labelledby="platform-growth-heading">
+        <h2 id="platform-growth-heading">People and growth</h2>
+        <div className="rb-platform__stats rb-platform__stats--secondary">
+          <StatCard
+            label="New organizations in 30 days"
+            value={analytics.organizations.createdLast30Days.toLocaleString()}
+            icon={UserRoundPlus}
+            tone="info"
+          />
+          <StatCard label="Users" value={analytics.users.total.toLocaleString()} icon={Users} />
+        </div>
       </section>
 
       <div className="rb-platform__grid">
@@ -117,15 +151,6 @@ export function PlatformOverview() {
         </section>
       </div>
     </PlatformPage>
-  );
-}
-
-function Stat({ label, value, tone }: { label: string; value: number; tone?: 'warn' }) {
-  return (
-    <div className={`rb-platform__stat${tone === 'warn' ? ' is-warn' : ''}`}>
-      <span>{label}</span>
-      <strong>{value.toLocaleString()}</strong>
-    </div>
   );
 }
 

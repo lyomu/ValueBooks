@@ -327,9 +327,6 @@ export class PlatformTenantsService {
       ]);
       if (!organization) throw new NotFoundException('Organization not found.');
       if (!plan) throw new NotFoundException('Plan not found.');
-      if (plan.priceMinor > 0n) {
-        throw new BadRequestException('Paid plan changes require customer-authorized provider checkout and verified payment.');
-      }
 
       const status = input.status ?? 'ACTIVE';
       const trialEndsAt = input.trialEndsAt

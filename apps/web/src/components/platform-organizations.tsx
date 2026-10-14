@@ -5,6 +5,7 @@ import type {
   PlatformOrganization,
   PlatformUsage,
 } from '@valuebooks/contracts';
+import { DataTable } from '@valuebooks/ui';
 import Link from 'next/link';
 import { useCallback, useEffect, useState, type FormEvent } from 'react';
 
@@ -121,46 +122,53 @@ export function PlatformOrganizations() {
         </p>
       ) : null}
 
-      {rows === null ? (
-        <p className="rb-platform__muted">Loading organizations…</p>
-      ) : rows.length === 0 ? (
-        <p className="rb-platform__muted">No organizations match these filters.</p>
-      ) : (
-        <div className="rb-platform__table-wrap">
-          <table className="rb-platform__table">
-            <caption className="rb-visually-hidden">Organizations</caption>
-            <thead>
-              <tr>
-                <th scope="col">Organization</th>
-                <th scope="col">Status</th>
-                <th scope="col">Country</th>
-                <th scope="col">Plan</th>
-                <th scope="col">Members</th>
-                <th scope="col">Owner</th>
-                <th scope="col">Created</th>
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map((row) => (
-                <tr key={row.id}>
-                  <th scope="row">
-                    <Link href={`/platform/organizations/${row.id}`}>{row.name}</Link>
-                    <small>{row.slug}</small>
-                  </th>
-                  <td>
-                    <StatusPill status={row.status} />
-                  </td>
-                  <td>{row.countryCode}</td>
-                  <td>{row.planName ?? '—'}</td>
-                  <td>{row.memberCount}</td>
-                  <td>{row.ownerEmail}</td>
-                  <td>{new Date(row.createdAt).toLocaleDateString()}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
+      <DataTable
+        caption="Organizations"
+        rows={rows ?? []}
+        loading={rows === null}
+        emptyTitle="No organizations match these filters"
+        columns={[
+          {
+            key: 'organization',
+            header: 'Organization',
+            cell: (row: PlatformOrganization) => (
+              <>
+                <Link href={`/platform/organizations/${row.id}`}>{row.name}</Link>
+                <small>{row.slug}</small>
+              </>
+            ),
+          },
+          {
+            key: 'status',
+            header: 'Status',
+            cell: (row: PlatformOrganization) => <StatusPill status={row.status} />,
+          },
+          {
+            key: 'country',
+            header: 'Country',
+            cell: (row: PlatformOrganization) => row.countryCode,
+          },
+          { key: 'plan', header: 'Plan', cell: (row: PlatformOrganization) => row.planName ?? '-' },
+          {
+            key: 'members',
+            header: 'Members',
+            cell: (row: PlatformOrganization) => row.memberCount,
+            align: 'right',
+          },
+          {
+            key: 'owner',
+            header: 'Owner',
+            cell: (row: PlatformOrganization) => row.ownerEmail,
+            hideBelow: 'tablet',
+          },
+          {
+            key: 'created',
+            header: 'Created',
+            cell: (row: PlatformOrganization) => new Date(row.createdAt).toLocaleDateString(),
+            hideBelow: 'tablet',
+          },
+        ]}
+      />
 
       <Pager page={page} pageSize={25} totalRows={totalRows} onChange={setPage} />
     </PlatformPage>
@@ -170,7 +178,16 @@ export function PlatformOrganizations() {
 export function PlatformOrganizationDetail({ organizationId }: { organizationId: string }) {
   const { session } = usePlatformSession();
   const [detail, setDetail] = useState<Detail | null>(null);
-  const [billing, setBilling] = useState<{ id: string; status: string; billingProvider: string | null; trialEndsAt: string | null; currentPeriodEnd: string | null; lastPaymentAt: string | null; plan: { name: string }; usage: Array<{ resourceKey: string; usedCount: number }> } | null>(null);
+  const [billing, setBilling] = useState<{
+    id: string;
+    status: string;
+    billingProvider: string | null;
+    trialEndsAt: string | null;
+    currentPeriodEnd: string | null;
+    lastPaymentAt: string | null;
+    plan: { name: string };
+    usage: Array<{ resourceKey: string; usedCount: number }>;
+  } | null>(null);
   const [reason, setReason] = useState('');
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState('');
@@ -185,7 +202,8 @@ export function PlatformOrganizationDetail({ organizationId }: { organizationId:
       );
       setDetail(response.data);
       void apiRequest<{ data: typeof billing }>(`/platform/billing/tenants/${organizationId}`)
-        .then((result) => setBilling(result.data)).catch(() => setBilling(null));
+        .then((result) => setBilling(result.data))
+        .catch(() => setBilling(null));
     } catch {
       setError('This organization could not be loaded.');
     }
@@ -319,22 +337,53 @@ export function PlatformOrganizationDetail({ organizationId }: { organizationId:
               }
             />
           </dl>
-          <p className="rb-platform__muted">Paid changes require customer checkout and verified provider payment.</p>
+          <p className="rb-platform__muted">
+            Paid changes require customer checkout and verified provider payment.
+          </p>
         </section>
 
         <section className="rb-platform__card" aria-label="Billing and subscription">
           <h2>Billing &amp; Subscription</h2>
-          {billing ? <dl>
-            <Row label="Plan" value={billing.plan.name} />
-            <Row label="Provider" value={billing.billingProvider ?? 'Cardless trial'} />
-            <Row label="Status" value={billing.status} />
-            <Row label="Trial ends" value={billing.trialEndsAt ? new Date(billing.trialEndsAt).toLocaleString() : '—'} />
-            <Row label="Paid through" value={billing.currentPeriodEnd ? new Date(billing.currentPeriodEnd).toLocaleString() : '—'} />
-            <Row label="Last payment" value={billing.lastPaymentAt ? new Date(billing.lastPaymentAt).toLocaleString() : '—'} />
-            <Row label="Usage counters" value={billing.usage.length} />
-          </dl> : <p className="rb-platform__muted">No billing subscription is recorded.</p>}
-          {billing ? <Link href={`/platform/billing/subscriptions/${billing.id}`}>View subscription detail</Link> : null}
-          {canOperate ? <p><Link href={`/platform/billing/organizations/${organizationId}/overrides`}>Manage support overrides</Link></p> : null}
+          {billing ? (
+            <dl>
+              <Row label="Plan" value={billing.plan.name} />
+              <Row label="Provider" value={billing.billingProvider ?? 'Cardless trial'} />
+              <Row label="Status" value={billing.status} />
+              <Row
+                label="Trial ends"
+                value={billing.trialEndsAt ? new Date(billing.trialEndsAt).toLocaleString() : '—'}
+              />
+              <Row
+                label="Paid through"
+                value={
+                  billing.currentPeriodEnd
+                    ? new Date(billing.currentPeriodEnd).toLocaleString()
+                    : '—'
+                }
+              />
+              <Row
+                label="Last payment"
+                value={
+                  billing.lastPaymentAt ? new Date(billing.lastPaymentAt).toLocaleString() : '—'
+                }
+              />
+              <Row label="Usage counters" value={billing.usage.length} />
+            </dl>
+          ) : (
+            <p className="rb-platform__muted">No billing subscription is recorded.</p>
+          )}
+          {billing ? (
+            <Link href={`/platform/billing/subscriptions/${billing.id}`}>
+              View subscription detail
+            </Link>
+          ) : null}
+          {canOperate ? (
+            <p>
+              <Link href={`/platform/billing/organizations/${organizationId}/overrides`}>
+                Manage support overrides
+              </Link>
+            </p>
+          ) : null}
         </section>
 
         <section className="rb-platform__card" aria-label="Entitlements">
@@ -402,31 +451,27 @@ export function PlatformOrganizationDetail({ organizationId }: { organizationId:
         </section>
       </div>
 
-      <section className="rb-platform__card" aria-label="Members">
+      <section className="rb-platform__section" aria-label="Members">
         <h2>Members</h2>
-        <div className="rb-platform__table-wrap">
-          <table className="rb-platform__table">
-            <thead>
-              <tr>
-                <th scope="col">Person</th>
-                <th scope="col">Role</th>
-                <th scope="col">Account</th>
-              </tr>
-            </thead>
-            <tbody>
-              {detail.members.map((member) => (
-                <tr key={member.userId}>
-                  <th scope="row">
-                    <Link href={`/platform/users/${member.userId}`}>{member.displayName}</Link>
-                    <small>{member.email}</small>
-                  </th>
-                  <td>{member.roleName}</td>
-                  <td>{member.userStatus}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <DataTable
+          caption="Organization members"
+          rows={detail.members.map((member) => ({ ...member, id: member.userId }))}
+          emptyTitle="No members"
+          columns={[
+            {
+              key: 'person',
+              header: 'Person',
+              cell: (member) => (
+                <>
+                  <Link href={`/platform/users/${member.userId}`}>{member.displayName}</Link>
+                  <small>{member.email}</small>
+                </>
+              ),
+            },
+            { key: 'role', header: 'Role', cell: (member) => member.roleName },
+            { key: 'account', header: 'Account', cell: (member) => member.userStatus },
+          ]}
+        />
       </section>
     </PlatformPage>
   );

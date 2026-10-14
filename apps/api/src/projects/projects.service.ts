@@ -412,6 +412,7 @@ export class ProjectsService {
   ) {
     const project = await this.findProjectOrThrow(context.id, input.projectId);
     this.assertProjectOpen(project.status, 'record time against');
+    await this.usage.assertFeatureAvailable(context.id, 'timesheets.enabled');
     const task = await this.resolveTask(context.id, input.projectId, input.taskId);
     assertPositiveHours(input.hours);
 
