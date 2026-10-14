@@ -1,4 +1,4 @@
-import { Linkedin, Mail, ShieldCheck } from 'lucide-react';
+import { LockKeyhole } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
 
@@ -19,7 +19,7 @@ const columns: ReadonlyArray<{ title: string; links: ReadonlyArray<readonly [str
       ['/industries', 'Industries'],
       ['/industries/retail', 'Retail'],
       ['/industries/ecommerce', 'E-commerce'],
-      ['/industries/agencies', 'Agencies'],
+      ['/industries/agencies-consultants', 'Agencies & consultants'],
     ],
   },
   {
@@ -38,17 +38,13 @@ export function SiteFooter() {
       <div className="mk-footer__grid">
         <div className="mk-footer__brand">
           <Link className="mk-brand mk-brand--footer" href="/">
-            <Image src="/logo-full.png" alt="ValueBooks" height={26} width={132} />
+            <Image src="/logo-full-white.png" alt="ValueBooks" height={26} width={129} />
           </Link>
-          <p>Clearer books, calmer decisions, and a capable AI partner when you need one.</p>
-          <div>
-            <a href="mailto:hello@valuebooks.example" aria-label="Email ValueBooks">
-              <Mail />
-            </a>
-            <a href="#" aria-label="ValueBooks on LinkedIn">
-              <Linkedin />
-            </a>
-          </div>
+          <p>
+            Clearer books, calmer decisions, and a capable AI partner when you need one. Built for
+            business owners who want to spend less time untangling admin and more time moving work
+            forward.
+          </p>
         </div>
         {columns.map((column) => (
           <div key={column.title}>
@@ -63,7 +59,7 @@ export function SiteFooter() {
           </div>
         ))}
         <div className="mk-footer__secure">
-          <ShieldCheck aria-hidden="true" />
+          <LockKeyhole aria-hidden="true" />
           <strong>Designed for responsible financial work.</strong>
           <p>
             Data is encrypted in transit and at rest. Security controls grow with your business.
@@ -73,11 +69,11 @@ export function SiteFooter() {
       </div>
       <div className="mk-footer__legal">
         <span>© {new Date().getFullYear()} ValueBooks</span>
-        <span>
-          <Link href="/privacy">Privacy Policy</Link> ·{' '}
-          <Link href="/terms">Terms and Conditions</Link> ·{' '}
+        <div className="mk-footer__legal-links">
+          <Link href="/privacy">Privacy Policy</Link>
+          <Link href="/terms">Terms and Conditions</Link>
           <Link href="/data-privacy-deletion">Data Privacy &amp; Deletion</Link>
-        </span>
+        </div>
       </div>
     </footer>
   );

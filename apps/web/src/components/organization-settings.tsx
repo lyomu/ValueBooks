@@ -1,7 +1,16 @@
 'use client';
 
 import type { OrganizationDetail, OrganizationReferenceData } from '@valuebooks/contracts';
-import { Badge, Button, FieldMessage, Input, Label, Select, Skeleton } from '@valuebooks/ui';
+import {
+  Badge,
+  Button,
+  FieldMessage,
+  FormCombobox,
+  Input,
+  Label,
+  Select,
+  Skeleton,
+} from '@valuebooks/ui';
 import { Save } from 'lucide-react';
 import { useCallback, useEffect, useState, type FormEvent } from 'react';
 
@@ -9,7 +18,6 @@ import { ApiError, apiRequest } from '../lib/api';
 import { formValue } from '../lib/forms';
 import { complianceStringKeys, complianceTone, uiStrings } from '../lib/i18n';
 import { hasPermission, useWorkspace } from '../lib/workspace';
-import { SearchableCombobox } from './searchable-combobox';
 
 type DetailResponse = { data: OrganizationDetail };
 type ReferenceResponse = { data: OrganizationReferenceData };
@@ -238,7 +246,7 @@ function JurisdictionSection({ detail, reference, canUpdate, onSave }: SectionPr
         <div className="rb-field-grid">
           <div className="rb-field">
             <Label htmlFor="org-country">Country</Label>
-            <SearchableCombobox
+            <FormCombobox
               id="org-country"
               name="countryCode"
               defaultValue={detail.countryCode}
@@ -251,20 +259,20 @@ function JurisdictionSection({ detail, reference, canUpdate, onSave }: SectionPr
           </div>
           <div className="rb-field">
             <Label htmlFor="org-currency">Base currency</Label>
-            <SearchableCombobox
+            <FormCombobox
               id="org-currency"
               name="baseCurrency"
               defaultValue={detail.baseCurrency}
               disabled={!canUpdate}
               options={reference.currencies.map((entry) => ({
                 value: entry.code,
-                label: `${entry.code} — ${entry.name}`,
+                label: `${entry.code}: ${entry.name}`,
               }))}
             />
           </div>
           <div className="rb-field">
             <Label htmlFor="org-timezone">Time zone</Label>
-            <SearchableCombobox
+            <FormCombobox
               id="org-timezone"
               name="timeZone"
               defaultValue={detail.timeZone}
@@ -277,7 +285,7 @@ function JurisdictionSection({ detail, reference, canUpdate, onSave }: SectionPr
           </div>
           <div className="rb-field">
             <Label htmlFor="org-locale">Language</Label>
-            <SearchableCombobox
+            <FormCombobox
               id="org-locale"
               name="locale"
               defaultValue={detail.locale}

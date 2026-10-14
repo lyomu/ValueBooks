@@ -544,7 +544,7 @@ function AskPanel({ organizationId, canAsk }: { organizationId: string; canAsk: 
             >
               {definitions.map((definition) => (
                 <option key={definition.key} value={definition.key}>
-                  {definition.family} — {definition.name}
+                  {definition.family}: {definition.name}
                 </option>
               ))}
             </Select>

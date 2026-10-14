@@ -13,7 +13,8 @@ import {
 import Image from 'next/image';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { industryBySlug, industryGroups } from '../../content/industries';
 
 const productLinks = [
   {
@@ -35,26 +36,31 @@ const productLinks = [
     icon: BriefcaseBusiness,
   },
 ];
-const industries = [
-  ['retail', 'Retail'],
-  ['ecommerce', 'E-commerce'],
-  ['agencies', 'Agencies & consultants'],
-  ['restaurants', 'Restaurants & hospitality'],
-  ['construction', 'Construction & trades'],
-  ['professional-services', 'Professional services'],
-] as const;
-
 export function SiteHeader() {
   const [open, setOpen] = useState<'product' | 'industries' | null>(null);
   const [mobile, setMobile] = useState(false);
+  const headerRef = useRef<HTMLElement>(null);
   const pathname = usePathname();
   useEffect(() => {
     setOpen(null);
     setMobile(false);
   }, [pathname]);
+  useEffect(() => {
+    if (!open) return;
+
+    const closeOutsideMenu = (event: PointerEvent) => {
+      if (event.target instanceof Node && !headerRef.current?.contains(event.target)) {
+        setOpen(null);
+      }
+    };
+
+    document.addEventListener('pointerdown', closeOutsideMenu);
+    return () => document.removeEventListener('pointerdown', closeOutsideMenu);
+  }, [open]);
   const toggle = (name: 'product' | 'industries') => setOpen(open === name ? null : name);
   return (
     <header
+      ref={headerRef}
       className="mk-header"
       onMouseLeave={() => setOpen(null)}
       onKeyDown={(event) => {
@@ -113,18 +119,35 @@ export function SiteHeader() {
       {open === 'product' ? (
         <div id="product-menu" className="mk-mega">
           <div className="mk-mega__grid">
-            <div>
+            <div className="mk-mega__section">
               <p className="mk-mega__label">Explore the platform</p>
-              <div className="mk-mega__links">
-                {productLinks.map(({ href, label, text, icon: Icon }) => (
-                  <Link href={href} key={href}>
-                    <Icon aria-hidden="true" />
-                    <span>
-                      <strong>{label}</strong>
-                      <small>{text}</small>
-                    </span>
-                  </Link>
-                ))}
+              <div className="mk-mega__feature-columns">
+                <div className="mk-mega__links">
+                  {productLinks
+                    .filter((_, index) => index !== 1)
+                    .map(({ href, label, text, icon: Icon }) => (
+                      <Link href={href} key={href}>
+                        <Icon aria-hidden="true" />
+                        <span>
+                          <strong>{label}</strong>
+                          <small>{text}</small>
+                        </span>
+                      </Link>
+                    ))}
+                </div>
+                <div className="mk-mega__links">
+                  {productLinks
+                    .filter((_, index) => index === 1)
+                    .map(({ href, label, text, icon: Icon }) => (
+                      <Link href={href} key={href}>
+                        <Icon aria-hidden="true" />
+                        <span>
+                          <strong>{label}</strong>
+                          <small>{text}</small>
+                        </span>
+                      </Link>
+                    ))}
+                </div>
               </div>
             </div>
             <Link href="/ai" className="mk-mega__feature">
@@ -141,17 +164,24 @@ export function SiteHeader() {
       ) : null}
       {open === 'industries' ? (
         <div id="industries-menu" className="mk-mega mk-mega--industries">
-          <div>
-            <p className="mk-mega__label">Built around how you work</p>
-            <div className="mk-industry-links">
-              {industries.map(([slug, label]) => (
-                <Link href={`/industries/${slug}`} key={slug}>
-                  <Building2 aria-hidden="true" />
-                  {label}
-                  <span>→</span>
-                </Link>
-              ))}
-            </div>
+          <div className="mk-industries-menu">
+            {industryGroups.map((group) => (
+              <div className="mk-industries-menu__group" key={group.label}>
+                <p className="mk-mega__label">{group.label}</p>
+                <div className="mk-industry-links">
+                  {group.slugs.map((slug) => {
+                    const industry = industryBySlug[slug];
+                    return (
+                      <Link href={`/industries/${slug}`} key={slug}>
+                        <Building2 aria-hidden="true" />
+                        {industry?.name}
+                        <span>→</span>
+                      </Link>
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
             <Link className="mk-all-link" href="/industries">
               Explore all industries →
             </Link>

@@ -45,7 +45,7 @@ export function RemindersPage() {
 
   const [name, setName] = useState('');
   const [offsetsText, setOffsetsText] = useState('-3, 0, 7');
-  const [subject, setSubject] = useState('Invoice {{invoiceNumber}} — {{customerName}}');
+  const [subject, setSubject] = useState('Invoice {{invoiceNumber}} for {{customerName}}');
   const [bodyTemplate, setBodyTemplate] = useState(
     'Hi {{customerName}}, invoice {{invoiceNumber}} for {{balanceMinor}} is due {{dueDate}}.',
   );
@@ -54,7 +54,7 @@ export function RemindersPage() {
     setEditingPolicyId(null);
     setName('');
     setOffsetsText('-3, 0, 7');
-    setSubject('Invoice {{invoiceNumber}} — {{customerName}}');
+    setSubject('Invoice {{invoiceNumber}} for {{customerName}}');
     setBodyTemplate(
       'Hi {{customerName}}, invoice {{invoiceNumber}} for {{balanceMinor}} is due {{dueDate}}.',
     );

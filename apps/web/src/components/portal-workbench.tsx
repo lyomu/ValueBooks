@@ -208,7 +208,7 @@ export function PortalWorkbench() {
             >
               {accounts.map((account) => (
                 <option value={account.id} key={account.id}>
-                  {account.organizationName} — {account.customerName}
+                  {account.organizationName}: {account.customerName}
                 </option>
               ))}
             </select>

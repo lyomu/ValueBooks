@@ -1,24 +1,24 @@
 'use client';
+
 import { Mail, MessageCircle, Phone, Send } from 'lucide-react';
 import { useState, type FormEvent } from 'react';
+
+import { PageHero } from '../../../components/marketing/sections';
+
 export default function ContactPage() {
   const [sent, setSent] = useState(false);
+
   function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setSent(true);
   }
+
   return (
     <>
-      <section className="mk-page-hero mk-page-hero--center">
-        <div>
-          <p className="mk-kicker">Contact ValueBooks</p>
-          <h1>Let’s talk about a clearer financial workflow.</h1>
-          <p>
-            Whether you are evaluating ValueBooks, planning a rollout, or looking for support, our
-            team can point you in the right direction.
-          </p>
-        </div>
-      </section>
+      <PageHero
+        title="Let’s talk about a clearer financial workflow."
+        copy="Whether you are evaluating ValueBooks, planning a rollout, or looking for support, our team can point you in the right direction."
+      />
       <section className="mk-contact-grid">
         <div className="mk-contact-options">
           <article>
@@ -76,7 +76,7 @@ export default function ContactPage() {
           </label>
           {sent ? (
             <p className="mk-form-success">
-              Thanks—we’ve received your message. Our team will be in touch.
+              Thanks. We’ve received your message, and our team will be in touch.
             </p>
           ) : null}
           <button className="mk-button" type="submit">

@@ -106,7 +106,7 @@ export function RecurringJournalsPage() {
 
   const accountLabels = useMemo(() => {
     const map = new Map<string, string>();
-    for (const account of accounts) map.set(account.id, `${account.code} — ${account.name}`);
+    for (const account of accounts) map.set(account.id, `${account.code}: ${account.name}`);
     return map;
   }, [accounts]);
 
@@ -292,7 +292,7 @@ export function RecurringJournalsPage() {
     <div className="space-y-6">
       <PageHeader
         title="Recurring journals"
-        description="Schedules of balanced journals — rent, depreciation, accruals — generated idempotently per occurrence."
+        description="Schedules balanced journals for rent, depreciation, and accruals. Each occurrence is generated idempotently."
       />
 
       {error ? (
@@ -352,8 +352,7 @@ export function RecurringJournalsPage() {
                     {template.name}
                   </button>
                   <span className="text-slate-500">
-                    {' '}
-                    — {template.cadence.toLowerCase()}, next {template.nextRunDate}
+                    {' · '}Runs {template.cadence.toLowerCase()}, next {template.nextRunDate}
                   </span>
                 </div>
                 <div className="flex items-center gap-2">
@@ -451,7 +450,7 @@ export function RecurringJournalsPage() {
                       <option value="">Select…</option>
                       {accounts.map((account) => (
                         <option key={account.id} value={account.id}>
-                          {account.code} — {account.name}
+                          {account.code}: {account.name}
                         </option>
                       ))}
                     </Select>

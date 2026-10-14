@@ -34,6 +34,19 @@
   --rb-input: 214 28% 91%;
   --rb-ring: 207 82% 48%;
 
+  /* Form system: values are deliberately quieter than labels while retaining AA contrast. */
+  --rb-field-height: 2.625rem;
+  --rb-field-font-size: 0.75rem;
+  --rb-field-label-size: 0.75rem;
+  --rb-field-label-weight: 600;
+  --rb-field-radius: 0.375rem;
+  --rb-field-padding-x: 0.75rem;
+  --rb-field-border-width: 1px;
+  --rb-field-value: 217 56% 25%;
+  --rb-field-placeholder: 217 32% 45%;
+  --rb-field-label: 217 82% 13%;
+  --rb-dropdown-item-font-size: 0.75rem;
+
   --rb-sidebar-background: 217 82% 13%;
   --rb-sidebar-foreground: 214 28% 82%;
   --rb-sidebar-muted: 214 36% 75%;

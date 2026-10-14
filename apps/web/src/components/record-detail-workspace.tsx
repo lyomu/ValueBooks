@@ -44,7 +44,6 @@ export function RecordDetailWorkspace<T extends { id: string }>({
   searchText,
   renderRailRecord,
   renderDetail,
-  actions,
   variant = 'default',
   railHeader,
   detailTitle,

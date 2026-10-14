@@ -1,6 +1,6 @@
 'use client';
 
-import { ArrowRight, Check } from 'lucide-react';
+import { ArrowRight } from 'lucide-react';
 import Link from 'next/link';
 import { useState } from 'react';
 import { SectionIntro } from './sections';
@@ -49,23 +49,11 @@ export function PricingPageContent() {
     <>
       <section className="mk-pricing-hero">
         <div className="mk-pricing-hero__content">
-          <p className="mk-kicker">Pricing</p>
           <h1>A plan for every stage of growth.</h1>
           <p>
             Start free, then upgrade as your team and transaction volume grow. No contracts, cancel
             anytime.
           </p>
-          <ul className="mk-pricing-hero__benefits" aria-label="ValueBooks plan benefits">
-            <li>
-              <Check aria-hidden="true" /> Start with the essentials
-            </li>
-            <li>
-              <Check aria-hidden="true" /> Scale on your schedule
-            </li>
-            <li>
-              <Check aria-hidden="true" /> Reliable support when you need it
-            </li>
-          </ul>
         </div>
         <div className="mk-pricing-hero__toggle">
           <BillingToggle interval={interval} onChange={setInterval} />

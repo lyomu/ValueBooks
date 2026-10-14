@@ -51,7 +51,7 @@ const productPages = {
   },
   accounting: {
     kicker: 'BOOKS YOU CAN ACTUALLY READ',
-    title: 'Know where the money went—and what to do next.',
+    title: 'Know where the money went and what to do next.',
     text: 'Categorize transactions, understand cash flow, and close the month with a view that feels clear instead of clinical.',
     mockup: <ReconciliationMockup />,
     features: [
@@ -65,7 +65,7 @@ const productPages = {
   ai: {
     kicker: 'AI WITH A BUSINESS BRAIN',
     title: 'Meet the assistant that helps you stay ahead.',
-    text: 'ValueBooks AI notices patterns, flags follow-ups, and turns financial questions into plain-language next steps—without pretending to replace your judgment.',
+    text: 'ValueBooks AI notices patterns, flags follow-ups, and turns financial questions into plain-language next steps without pretending to replace your judgment.',
     mockup: <AiMockup />,
     features: [
       'Ask practical questions and get answers in plain language',
@@ -85,13 +85,7 @@ export function ProductDetailPage({ page }: { page: ProductPageKey }) {
 
   return (
     <>
-      <PageHero
-        eyebrow={data.kicker}
-        title={data.title}
-        copy={data.text}
-        action={{ label: 'Get started free', href: '/contact' }}
-        visual={page === 'ai' ? 'ai' : page === 'invoicing' ? 'invoice' : 'insights'}
-      />
+      <PageHero title={data.title} copy={data.text} />
 
       <section className="mk-section mk-section--cream">
         <div className="mk-container mk-split">
@@ -104,7 +98,7 @@ export function ProductDetailPage({ page }: { page: ProductPageKey }) {
             </h2>
             <p className="mk-lead">
               {product
-                ? 'Each ValueBooks tool is useful on its own—and even more useful when it shares the same picture of your business.'
+                ? 'Each ValueBooks tool is useful on its own and even more useful when it shares the same picture of your business.'
                 : 'The small, considered details are where ValueBooks earns its keep: fewer tabs, fewer checks, and more confidence in the work.'}
             </p>
             <FeatureList items={data.features} />
@@ -166,11 +160,8 @@ export function CustomersPage() {
   return (
     <>
       <PageHero
-        eyebrow="THE PEOPLE BEHIND THE NUMBERS"
         title="Built for owners who are busy building something real."
         copy="From the first invoice to the next big decision, ValueBooks gives small businesses a clearer, calmer way forward."
-        action={{ label: 'Start your story', href: '/contact' }}
-        visual="people"
       />
 
       <section className="mk-section mk-section--cream">
@@ -241,11 +232,8 @@ export function SecurityPage() {
   return (
     <>
       <PageHero
-        eyebrow="TRUST IS PART OF THE PRODUCT"
         title="A safer place to run your business."
         copy="Your financial information deserves care. ValueBooks is built to help keep your data protected, understandable, and in your hands."
-        action={{ label: 'Contact our team', href: '/contact' }}
-        visual="security"
       />
 
       <section className="mk-section mk-section--cream">
@@ -277,7 +265,7 @@ export function SecurityPage() {
             <h2>Clear access. Clear records. Clear choices.</h2>
             <p className="mk-lead">
               Manage your business with a system that makes sensitive work feel organized and
-              grounded—not mysterious.
+              grounded, not mysterious.
             </p>
             <FeatureList
               items={[

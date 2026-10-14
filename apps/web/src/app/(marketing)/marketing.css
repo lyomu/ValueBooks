@@ -662,7 +662,7 @@ FORM: Wave-like breathing room with a QuickBooks-scale menu, alternating proof, 
   letter-spacing: 0.01em;
   text-wrap: pretty;
 }
-.mk-section-intro > p:last-child {
+.mk-section-intro > .mk-description-cta > .mk-copy {
   max-width: 54ch;
   margin-bottom: 0;
   color: var(--mk-muted);
@@ -686,7 +686,7 @@ FORM: Wave-like breathing room with a QuickBooks-scale menu, alternating proof, 
   margin: 0 auto;
   padding: clamp(3rem, 6vw, 5rem) 0;
 }
-.mk-ai-section .mk-section-intro > p:last-child {
+.mk-ai-section .mk-section-intro .mk-description-cta > .mk-copy {
   max-width: 48ch;
 }
 .mk-ai-section > .mk-photo {
@@ -808,7 +808,7 @@ FORM: Wave-like breathing room with a QuickBooks-scale menu, alternating proof, 
 .mk-alternating > .mk-photo {
   border-radius: 0.9rem;
 }
-.mk-alternating .mk-section-intro > p:last-child {
+.mk-alternating .mk-section-intro .mk-description-cta > .mk-copy {
   max-width: 48ch;
 }
 .mk-feature-list {
@@ -1094,101 +1094,42 @@ FORM: Wave-like breathing room with a QuickBooks-scale menu, alternating proof, 
 .mk-industry-card span svg {
   width: 0.85rem;
 }
-.mk-testimonial-section {
+.mk-business-value-section {
   padding: clamp(4rem, 8vw, 7rem) max(1.5rem, calc((100% - 72rem) / 2));
   background: hsl(40 28% 94%);
 }
-.mk-testimonials {
+.mk-business-value-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 1rem;
   margin-top: 2.3rem;
 }
-.mk-testimonials figure {
-  display: flex;
-  flex-direction: column;
+.mk-business-value-card {
+  display: grid;
+  align-content: start;
   margin: 0;
-  padding: 1.3rem;
+  padding: 1.5rem;
   background: #fff;
   border-radius: 0.7rem;
 }
-.mk-testimonials > figure > svg {
-  width: 1.2rem;
+.mk-business-value-card > svg {
+  width: 1.5rem;
+  height: 1.5rem;
   color: var(--mk-blue);
 }
-.mk-testimonials blockquote {
-  margin: 1rem 0 1.25rem;
-  font-size: 0.87rem;
+.mk-business-value-card h3 {
+  margin: 1rem 0 0.5rem;
+  color: var(--mk-ink);
+  font-size: 1rem;
   font-weight: 600;
-  line-height: 1.6;
-  letter-spacing: -0.018em;
+  line-height: 1.3;
 }
-.mk-testimonials figcaption {
-  display: flex;
-  align-items: center;
-  gap: 0.55rem;
-}
-.mk-testimonials figcaption .mk-photo {
-  width: 2rem;
-  flex: 0 0 2rem;
-  border-radius: 50%;
-}
-.mk-testimonials figcaption b,
-.mk-testimonials figcaption small {
-  display: block;
-  font-size: 0.62rem;
-}
-.mk-testimonials figcaption small {
-  margin-top: 0.15rem;
+.mk-business-value-card p {
+  margin: 0;
   color: var(--mk-muted);
-}
-.mk-security-strip {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 2rem;
-  width: min(100% - 3rem, 72rem);
-  margin: 0 auto;
-  padding: 3.5rem 0;
-}
-.mk-security-strip > div {
-  display: flex;
-  align-items: center;
-  gap: 0.85rem;
-}
-.mk-security-strip svg {
-  width: 2.1rem;
-  height: 2.1rem;
-  flex: 0 0 auto;
-  color: var(--mk-blue);
-}
-.mk-security-strip b,
-.mk-security-strip small {
-  display: block;
-}
-.mk-security-strip b {
-  font-size: 0.9rem;
-}
-.mk-security-strip small {
-  max-width: 53ch;
-  margin-top: 0.3rem;
-  color: var(--mk-muted);
-  font-size: 0.7rem;
-  line-height: 1.55;
-}
-.mk-security-strip > a {
-  flex: 0 0 auto;
-  display: flex;
-  align-items: center;
-  gap: 0.3rem;
-  color: var(--mk-blue);
-  font-size: 0.7rem;
-  font-weight: 700;
-  text-decoration: none;
-}
-.mk-security-strip > a svg {
-  width: 0.9rem;
-  height: 0.9rem;
+  font-size: var(--mk-body-size);
+  font-weight: 400;
+  line-height: var(--mk-body-leading);
 }
 .mk-faq-section {
   width: min(100% - 3rem, 72rem);
@@ -1687,25 +1628,8 @@ FORM: Wave-like breathing room with a QuickBooks-scale menu, alternating proof, 
   font-size: 0.8rem;
   line-height: 1.7;
 }
-.mk-industry-detail__card {
-  padding: 2.2rem;
-  color: #fff;
-  background: var(--mk-ink);
+.mk-industry-detail__image {
   border-radius: 0.85rem;
-}
-.mk-industry-detail__card svg {
-  width: 2.2rem;
-  color: hsl(var(--rb-primary));
-}
-.mk-industry-detail__card h3 {
-  margin: 2.3rem 0 0.7rem;
-  font-size: 1.35rem;
-}
-.mk-industry-detail__card p {
-  margin: 0;
-  color: hsl(var(--rb-primary-foreground) / 0.75);
-  font-size: 0.75rem;
-  line-height: 1.65;
 }
 .mk-contact-grid {
   display: grid;
@@ -1804,9 +1728,6 @@ FORM: Wave-like breathing room with a QuickBooks-scale menu, alternating proof, 
   margin: auto;
   padding: 3.5rem 0;
 }
-.mk-brand--footer img {
-  filter: brightness(0) invert(1);
-}
 .mk-brand--footer > span {
   color: var(--mk-ink);
   background: #fff;
@@ -1814,22 +1735,6 @@ FORM: Wave-like breathing room with a QuickBooks-scale menu, alternating proof, 
 .mk-footer__brand > p {
   max-width: 34ch;
   color: hsl(var(--rb-primary-foreground) / 0.7);
-}
-.mk-footer__brand > div {
-  display: flex;
-  gap: 0.65rem;
-}
-.mk-footer__brand > div a {
-  display: grid;
-  width: 2.25rem;
-  height: 2.25rem;
-  place-items: center;
-  color: #fff;
-  border: 1px solid hsl(var(--rb-primary-foreground) / 0.25);
-  border-radius: 50%;
-}
-.mk-footer__brand svg {
-  width: 1.05rem;
 }
 .mk-footer h3 {
   margin: 0 0 1rem;
@@ -2039,10 +1944,9 @@ FORM: Wave-like breathing room with a QuickBooks-scale menu, alternating proof, 
   .mk-security-details {
     grid-template-columns: 1fr 1fr;
   }
-  .mk-testimonials {
+  .mk-business-value-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
-  .mk-security-strip,
   .mk-security-callout {
     align-items: flex-start;
     flex-direction: column;
@@ -2059,6 +1963,16 @@ FORM: Wave-like breathing room with a QuickBooks-scale menu, alternating proof, 
   }
   .mk-security-orbit {
     margin: auto;
+  }
+  .mk-footer__legal-links {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.875rem;
+  }
+  .mk-footer__legal-links a + a {
+    padding-left: 0.875rem;
+    border-left: 1px solid hsl(var(--rb-primary-foreground) / 0.26);
   }
   .mk-industry-principles {
     grid-template-columns: 1fr 1fr;
@@ -2094,13 +2008,12 @@ FORM: Wave-like breathing room with a QuickBooks-scale menu, alternating proof, 
   }
   .mk-logo-strip,
   .mk-module-grid,
-  .mk-testimonial-section {
+  .mk-business-value-section {
     padding-left: 1rem;
     padding-right: 1rem;
   }
   .mk-stat-band,
   .mk-industries-section,
-  .mk-security-strip,
   .mk-case-grid,
   .mk-security-details,
   .mk-security-callout,
@@ -2114,7 +2027,7 @@ FORM: Wave-like breathing room with a QuickBooks-scale menu, alternating proof, 
   .mk-module-grid {
     grid-template-columns: 1fr;
   }
-  .mk-testimonials {
+  .mk-business-value-grid {
     grid-template-columns: 1fr;
   }
   .mk-stat-band strong {
@@ -2153,10 +2066,7 @@ FORM: Wave-like breathing room with a QuickBooks-scale menu, alternating proof, 
 .mk-root .mk-section-intro > .mk-copy,
 .mk-root .mk-feature-list li,
 .mk-root .mk-stat-band span,
-.mk-root .mk-personas__list p,
-.mk-root .mk-industry-card span,
-.mk-root .mk-testimonials figcaption small,
-.mk-root .mk-security-strip small {
+.mk-root .mk-industry-card span {
   color: var(--mk-ink);
   font-size: var(--mk-body-size);
   line-height: var(--mk-body-leading);
@@ -2179,8 +2089,7 @@ FORM: Wave-like breathing room with a QuickBooks-scale menu, alternating proof, 
 .mk-root .mk-trust-note,
 .mk-root .mk-logo-strip > span,
 .mk-root .mk-logo-strip > div,
-.mk-root .mk-personas__list span,
-.mk-root .mk-security-strip > a {
+.mk-root .mk-personas__list span {
   font-size: var(--mk-body-size);
 }
 
@@ -2190,11 +2099,21 @@ FORM: Wave-like breathing room with a QuickBooks-scale menu, alternating proof, 
   font-size: 0.9375rem;
 }
 
-.mk-root .mk-personas__list a,
 .mk-root .mk-industry-card,
-.mk-root .mk-testimonials figure,
-.mk-root .mk-security-strip {
+.mk-root .mk-business-value-card {
   color: var(--mk-ink);
+}
+
+/* Persona cards sit on the navy band; do not inherit the light-page text override above. */
+.mk-root .mk-personas__list,
+.mk-root .mk-personas__list a {
+  color: #fff;
+}
+
+.mk-root .mk-personas__list p {
+  color: hsl(var(--rb-primary-foreground) / 0.78);
+  font-size: var(--mk-body-size);
+  line-height: var(--mk-body-leading);
 }
 
 /* Hero spotlight: a decisive, high-contrast product moment that stays recognisably ValueBooks. */
@@ -2435,7 +2354,7 @@ FORM: Wave-like breathing room with a QuickBooks-scale menu, alternating proof, 
   justify-items: center;
   gap: 2rem;
   padding: clamp(4rem, 9vw, 7rem) max(1.5rem, calc((100% - 72rem) / 2));
-  color: var(--mk-ink);
+  color: #fff;
   text-align: center;
   background: hsl(var(--rb-primary));
 }
@@ -2450,7 +2369,7 @@ FORM: Wave-like breathing room with a QuickBooks-scale menu, alternating proof, 
 }
 .mk-root .mk-cta .mk-kicker {
   margin: 0;
-  color: hsl(217 70% 22%);
+  color: #fff;
 }
 
 /* `.mk-root a { color: inherit }` outranks the single-class button rules, so every button variant

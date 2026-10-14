@@ -573,3 +573,673 @@
     min-height: 14rem;
   }
 }
+
+/* Public marketing type and layout system. These tokens intentionally live only beneath
+   `.mk-root`, so the authenticated accounting workspace retains its own compact UI scale. */
+.mk-root {
+  --mk-marketing-body-size: 14px;
+  --mk-marketing-body-leading: 1.6;
+  --mk-marketing-nav-size: 14px;
+  --mk-marketing-menu-size: 12px;
+  --mk-marketing-button-size: 14px;
+  --mk-marketing-section-heading-size: 30px;
+  --mk-marketing-hero-heading-size: 48px;
+  --mk-marketing-hero-description-size: 16px;
+  --mk-marketing-eyebrow-size: 13.5px;
+  --mk-marketing-heading-tracking: 0.01em;
+  --mk-marketing-footer-size: 12px;
+  --mk-marketing-footer-legal-size: 10px;
+  --mk-marketing-description-cta-gap: 8px;
+  --mk-body-size: var(--mk-marketing-body-size);
+  --mk-body-leading: var(--mk-marketing-body-leading);
+  --mk-eyebrow-size: var(--mk-marketing-eyebrow-size);
+}
+
+/* A description and its text CTA are one content group: the 8px gap is shared across marketing. */
+.mk-root .mk-description-cta {
+  display: grid;
+  justify-items: start;
+  gap: var(--mk-marketing-description-cta-gap);
+}
+.mk-root .mk-section-intro.is-centered .mk-description-cta {
+  justify-items: center;
+}
+.mk-root .mk-description-cta > .mk-copy,
+.mk-root .mk-feature-card__copy > p,
+.mk-root .mk-feature-card > p,
+.mk-root .mk-industry-card p {
+  margin-bottom: 0;
+}
+.mk-root .mk-feature-card__copy > p + .mk-text-link,
+.mk-root .mk-feature-card > p + .mk-text-link,
+.mk-root .mk-industry-card p + .mk-text-link,
+.mk-root .mk-split .mk-lead + .mk-text-link {
+  margin-top: var(--mk-marketing-description-cta-gap);
+}
+
+/* Navigation and CTAs are distinct: calm 14px navigation, emphatic 14px buttons. */
+.mk-root .mk-nav a,
+.mk-root .mk-nav button,
+.mk-root .mk-link-button,
+.mk-root .mk-mobile-nav a {
+  font-size: var(--mk-marketing-nav-size);
+  font-weight: 450;
+  letter-spacing: normal;
+  line-height: 1.35;
+}
+.mk-root .mk-button {
+  font-size: var(--mk-marketing-button-size);
+  font-weight: 700;
+  letter-spacing: normal;
+}
+/* Pricing card controls deliberately retain their existing type scale and are out of scope. */
+.mk-root .mk-pricing-card .mk-button,
+.mk-root .mk-pricing-card .mk-button--outline {
+  font-size: 0.82rem;
+}
+
+/* One inner-page hero composition, shared by pages and by the pricing introduction. */
+.mk-root .mk-page-hero,
+.mk-root .mk-pricing-hero {
+  display: grid;
+  min-height: clamp(27rem, 39vw, 32rem);
+  padding: clamp(4.5rem, 8vw, 6.5rem) 1.5rem;
+  place-items: center;
+  color: #fff;
+  background: var(--mk-blue);
+  text-align: center;
+}
+.mk-root .mk-page-hero__content,
+.mk-root .mk-pricing-hero__content {
+  display: grid;
+  justify-items: center;
+  max-width: 64rem;
+}
+.mk-root .mk-page-hero h1,
+.mk-root .mk-pricing-hero h1 {
+  max-width: 28ch;
+  margin: 0;
+  color: #fff;
+  font-size: var(--mk-marketing-hero-heading-size);
+  font-weight: 700;
+  line-height: 1.12;
+  letter-spacing: var(--mk-marketing-heading-tracking);
+  text-wrap: balance;
+}
+.mk-root .mk-page-hero .mk-copy,
+.mk-root .mk-page-hero > div > p:not(.mk-kicker),
+.mk-root .mk-pricing-hero__content > p {
+  max-width: 58ch;
+  margin: 1.25rem 0 0;
+  color: hsl(0 0% 100% / 0.9);
+  font-size: var(--mk-marketing-hero-description-size);
+  font-weight: 400;
+  line-height: 1.6;
+}
+.mk-root .mk-pricing-hero {
+  padding-bottom: 4rem;
+}
+
+/* Major public page sections use a single, open display treatment. */
+.mk-root .mk-landing-section-heading,
+.mk-root .mk-section h2,
+.mk-root .mk-split h2,
+.mk-root .mk-industry-detail h2,
+.mk-root .mk-security-callout h2,
+.mk-root .mk-contact-form h2 {
+  font-size: var(--mk-marketing-section-heading-size);
+  font-weight: 700;
+  line-height: 1.2;
+  letter-spacing: var(--mk-marketing-heading-tracking);
+}
+.mk-root .mk-kicker,
+.mk-root .mk-eyebrow {
+  font-size: var(--mk-marketing-eyebrow-size);
+  font-weight: 600;
+  text-transform: uppercase;
+}
+.mk-root .mk-section p,
+.mk-root .mk-industry-detail > div > p:not(.mk-kicker),
+.mk-root .mk-contact-options p,
+.mk-root .mk-contact-form label,
+.mk-root .mk-contact-form input,
+.mk-root .mk-contact-form select,
+.mk-root .mk-contact-form textarea {
+  font-size: var(--mk-marketing-body-size);
+  font-weight: 400;
+  line-height: var(--mk-marketing-body-leading);
+}
+
+/* Compact mega menus keep the hierarchy without turning navigation into page content. */
+.mk-root .mk-mega {
+  padding-top: 1rem;
+  padding-bottom: 1rem;
+}
+.mk-root .mk-mega__grid {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 18rem;
+  gap: 2rem;
+}
+.mk-root .mk-mega__section {
+  grid-column: 1 / 3;
+}
+.mk-root .mk-mega__label {
+  margin-bottom: 0.55rem;
+  font-size: var(--mk-marketing-menu-size);
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  line-height: 1.35;
+}
+.mk-root .mk-mega__feature-columns {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.8rem;
+}
+.mk-root .mk-mega__links {
+  grid-template-columns: 1fr;
+  gap: 0.25rem;
+}
+.mk-root .mk-mega__links a {
+  gap: 0.55rem;
+  padding: 0.5rem;
+}
+.mk-root .mk-mega__links svg {
+  width: 1rem;
+}
+.mk-root .mk-mega__links strong,
+.mk-root .mk-mega__links small,
+.mk-root .mk-industry-links a,
+.mk-root .mk-all-link {
+  font-size: var(--mk-marketing-menu-size);
+  font-weight: 400;
+  line-height: 1.45;
+}
+.mk-root .mk-mega__links small {
+  margin-top: 0.1rem;
+}
+.mk-root .mk-industry-links {
+  gap: 0.35rem;
+}
+.mk-root .mk-industry-links a {
+  gap: 0.4rem;
+  padding: 0.55rem;
+  font-weight: 400;
+}
+.mk-root .mk-all-link {
+  margin-top: 0.65rem;
+  font-weight: 500;
+}
+.mk-root .mk-mega__feature {
+  gap: 0.45rem;
+  padding: 1rem;
+  background: var(--mk-ink);
+}
+.mk-root .mk-mega__feature p {
+  color: #fff;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.35;
+}
+.mk-root .mk-mega__feature strong {
+  color: hsl(0 0% 100% / 0.96);
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 1.5;
+}
+.mk-root .mk-mega__feature small {
+  color: hsl(0 0% 100% / 0.78);
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 1.5;
+}
+.mk-root .mk-mega__feature > span:last-child {
+  margin-top: 0.25rem;
+  color: hsl(184 96% 78%);
+  font-size: 12px;
+  font-weight: 500;
+}
+.mk-root .mk-mega__feature:hover,
+.mk-root .mk-mega__feature:focus-visible {
+  background: hsl(217 82% 18%);
+}
+
+/* The footer is intentionally quieter than the site body, with links that remain discoverable by
+   colour, focus and hover rather than persistent underlines. */
+.mk-root .mk-footer__brand > p,
+.mk-root .mk-footer li,
+.mk-root .mk-footer__secure p {
+  font-size: var(--mk-marketing-footer-size);
+  font-weight: 400;
+  line-height: 1.6;
+}
+.mk-root .mk-footer__legal,
+.mk-root .mk-footer__legal a {
+  font-size: var(--mk-marketing-footer-legal-size);
+  font-weight: 400;
+  line-height: 1.5;
+  text-decoration: none;
+}
+.mk-root .mk-footer__legal a:hover {
+  color: hsl(184 96% 78%);
+  text-decoration: none;
+}
+
+/* Header navigation spacing is owned here so every public marketing route shares the same rhythm. */
+.mk-root {
+  --marketing-nav-item-gap: 16px;
+  --marketing-nav-edge-gap: 48px;
+  --marketing-nav-balance-shift: clamp(5px, calc(50vw - 507px), 96px);
+}
+.mk-root .mk-header__inner {
+  gap: var(--marketing-nav-edge-gap);
+}
+.mk-root .mk-nav {
+  gap: var(--marketing-nav-item-gap);
+  margin-left: var(--marketing-nav-balance-shift);
+}
+
+@media (max-width: 70rem) {
+  .mk-root {
+    --marketing-nav-item-gap: 16px;
+    --marketing-nav-edge-gap: 20px;
+  }
+}
+
+@media (min-width: 48.0625rem) and (max-width: 62rem) {
+  .mk-root {
+    --marketing-nav-balance-shift: clamp(13px, calc(14.13vw - 114px), 26px);
+  }
+}
+
+@media (min-width: 48.0625rem) and (max-width: 56.25rem) {
+  .mk-root {
+    --marketing-nav-item-gap: 0px;
+    --marketing-nav-balance-shift: 0px;
+  }
+}
+
+/* Data-driven industry landing pages share one responsive, marketing-only composition. */
+.mk-root:has(.mk-industry-page) > .mk-cta {
+  display: none;
+}
+.mk-industry-section,
+.mk-industry-directory {
+  padding: clamp(4rem, 8vw, 7rem) 0;
+}
+.mk-industry-section--cream,
+.mk-industry-directory {
+  background: #f8f5ef;
+}
+.mk-industry-section--navy {
+  color: #fff;
+  background: var(--mk-ink);
+}
+.mk-industry-heading {
+  max-width: 44rem;
+  margin-bottom: clamp(2rem, 4vw, 3.5rem);
+}
+.mk-industry-heading.is-centered,
+.mk-industry-outcomes {
+  margin-right: auto;
+  margin-left: auto;
+  text-align: center;
+}
+.mk-industry-heading h1,
+.mk-industry-heading h2,
+.mk-industry-introduction h2,
+.mk-industry-feature-layout h2,
+.mk-industry-workflow h2,
+.mk-industry-outcomes h2,
+.mk-industry-faq-layout h2,
+.mk-industry-final-cta h2 {
+  margin: 0;
+  font-size: var(--mk-marketing-section-heading-size);
+  font-weight: 700;
+  line-height: 1.2;
+  letter-spacing: var(--mk-marketing-heading-tracking);
+}
+.mk-industry-heading .mk-eyebrow,
+.mk-industry-introduction .mk-eyebrow,
+.mk-industry-feature-layout .mk-eyebrow,
+.mk-industry-workflow .mk-eyebrow,
+.mk-industry-outcomes .mk-eyebrow,
+.mk-industry-faq-layout .mk-eyebrow {
+  margin: 0 0 0.75rem;
+  color: var(--mk-blue);
+}
+.mk-industry-introduction,
+.mk-industry-feature-layout,
+.mk-industry-workflow,
+.mk-industry-faq-layout {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: clamp(2rem, 6vw, 6rem);
+  align-items: center;
+}
+.mk-industry-introduction > div > p:not(.mk-eyebrow),
+.mk-industry-outcomes > p:not(.mk-eyebrow),
+.mk-industry-challenge-grid p,
+.mk-industry-benefit-grid p,
+.mk-industry-directory-card p {
+  margin: 1rem 0 0;
+  color: hsl(var(--rb-foreground) / 0.72);
+  font-size: var(--mk-marketing-body-size);
+  line-height: var(--mk-marketing-body-leading);
+}
+.mk-industry-introduction > div > p + p {
+  margin-top: 0.8rem;
+}
+.mk-industry-asset {
+  display: grid;
+  min-height: clamp(17rem, 28vw, 24rem);
+  padding: clamp(1.5rem, 3vw, 2.5rem);
+  align-content: end;
+  border: 1px dashed hsl(var(--rb-primary) / 0.35);
+  border-radius: 1rem;
+  color: hsl(var(--rb-foreground));
+  background: linear-gradient(145deg, hsl(var(--rb-primary) / 0.12), #fff 55%);
+}
+.mk-industry-photo {
+  position: relative;
+  min-height: clamp(17rem, 28vw, 24rem);
+  margin: 0;
+  overflow: hidden;
+  border-radius: 1rem;
+  background: hsl(var(--rb-secondary));
+}
+.mk-industry-photo img,
+.mk-industry-directory-card__image img {
+  object-fit: cover;
+}
+.mk-industry-asset span,
+.mk-industry-asset small {
+  color: hsl(var(--rb-foreground) / 0.63);
+  font-size: 0.72rem;
+  line-height: 1.4;
+}
+.mk-industry-asset strong {
+  max-width: 28ch;
+  margin: 0.4rem 0;
+  font-size: 1rem;
+  line-height: 1.45;
+}
+.mk-industry-challenge-grid,
+.mk-industry-benefit-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 1rem;
+}
+.mk-industry-challenge-grid article,
+.mk-industry-benefit-grid article {
+  min-height: 12rem;
+  padding: 1.5rem;
+  border-radius: 0.9rem;
+  background: #fff;
+}
+.mk-industry-challenge-grid h3,
+.mk-industry-benefit-grid h3,
+.mk-industry-directory-card h2 {
+  margin: 0;
+  color: var(--mk-ink);
+  font-size: 1rem;
+  font-weight: 600;
+  line-height: 1.4;
+}
+.mk-industry-benefit-grid article > svg {
+  width: 1.5rem;
+  height: 1.5rem;
+  margin-bottom: 1rem;
+  color: var(--mk-blue);
+}
+.mk-industry-feature-layout h2,
+.mk-industry-feature-layout .mk-eyebrow,
+.mk-industry-final-cta h2 {
+  color: #fff;
+}
+.mk-industry-feature-layout ul {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem 1rem;
+  padding: 0;
+  margin: 1.75rem 0 0;
+  list-style: none;
+}
+.mk-industry-feature-layout li {
+  display: flex;
+  gap: 0.55rem;
+  align-items: flex-start;
+  color: hsl(0 0% 100% / 0.88);
+  font-size: var(--mk-marketing-body-size);
+  line-height: 1.55;
+}
+.mk-industry-feature-layout li svg {
+  flex: 0 0 auto;
+  width: 1rem;
+  margin-top: 0.16rem;
+  color: hsl(184 96% 70%);
+}
+.mk-industry-asset--product {
+  color: #fff;
+  border-color: hsl(0 0% 100% / 0.3);
+  background: hsl(0 0% 100% / 0.08);
+}
+.mk-industry-asset--product span,
+.mk-industry-asset--product small {
+  color: hsl(0 0% 100% / 0.67);
+}
+.mk-industry-workflow > .mk-industry-asset {
+  order: 2;
+}
+.mk-industry-workflow ol {
+  display: grid;
+  gap: 1rem;
+  padding: 0;
+  margin: 1.75rem 0 0;
+  list-style: none;
+}
+.mk-industry-workflow li {
+  display: grid;
+  grid-template-columns: 1.75rem 1fr;
+  gap: 0.75rem;
+  align-items: start;
+}
+.mk-industry-workflow li > span {
+  display: grid;
+  width: 1.75rem;
+  height: 1.75rem;
+  place-items: center;
+  border-radius: 50%;
+  color: #fff;
+  background: var(--mk-blue);
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+.mk-industry-workflow li p {
+  margin: 0;
+  font-size: var(--mk-marketing-body-size);
+  line-height: var(--mk-marketing-body-leading);
+}
+.mk-industry-outcomes {
+  max-width: 46rem;
+}
+.mk-industry-outcomes > p:not(.mk-eyebrow) {
+  max-width: 58ch;
+  margin-right: auto;
+  margin-left: auto;
+}
+.mk-industry-faq-layout {
+  align-items: start;
+}
+.mk-industry-final-cta {
+  padding: clamp(4rem, 8vw, 6rem) 0;
+  color: #fff;
+  background: var(--mk-blue);
+  text-align: center;
+}
+.mk-industry-final-cta .mk-container {
+  display: grid;
+  justify-items: center;
+  max-width: 47rem;
+}
+.mk-industry-final-cta p {
+  max-width: 54ch;
+  margin: 1rem 0 1.5rem;
+  color: hsl(0 0% 100% / 0.9);
+  font-size: 1rem;
+  line-height: 1.6;
+}
+.mk-industry-final-cta .mk-button {
+  display: inline-flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+.mk-industry-final-cta small {
+  margin-top: 0.75rem;
+  color: hsl(0 0% 100% / 0.84);
+  font-size: 0.75rem;
+}
+.mk-industry-directory__grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1.25rem;
+}
+.mk-industry-directory-card {
+  overflow: hidden;
+  border-radius: 0.9rem;
+  background: #fff;
+  text-decoration: none;
+  transition:
+    transform 180ms ease,
+    box-shadow 180ms ease;
+}
+.mk-industry-directory-card:hover {
+  box-shadow: 0 0.85rem 1.75rem hsl(var(--rb-foreground) / 0.1);
+  transform: translateY(-0.2rem);
+}
+.mk-industry-directory-card:focus-visible,
+.mk-industries-menu a:focus-visible {
+  outline: 2px solid var(--mk-blue);
+  outline-offset: 3px;
+}
+.mk-industry-directory-card__image {
+  position: relative;
+  display: grid;
+  min-height: 9rem;
+  padding: 1rem;
+  align-items: end;
+  background: hsl(var(--rb-secondary));
+}
+.mk-industry-directory-card > div:last-child {
+  padding: 1.35rem;
+}
+.mk-industry-directory-card > div:last-child > span {
+  display: inline-flex;
+  gap: 0.35rem;
+  align-items: center;
+  margin-top: 1rem;
+  color: var(--mk-blue);
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+.mk-industry-directory-card svg {
+  width: 1rem;
+}
+.mk-root .mk-mega--industries {
+  max-width: 68rem;
+}
+.mk-root .mk-mega--industries > .mk-industries-menu {
+  width: min(100%, 66rem);
+}
+.mk-industries-menu {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1.25rem;
+}
+.mk-industries-menu .mk-industry-links {
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0.35rem;
+}
+.mk-industries-menu .mk-industry-links a {
+  min-width: 0;
+  white-space: nowrap;
+}
+.mk-industries-menu .mk-all-link {
+  grid-column: 1 / -1;
+}
+.mk-industries-menu__group .mk-mega__label {
+  min-height: 2.3rem;
+}
+
+@media (max-width: 64rem) {
+  .mk-industry-challenge-grid,
+  .mk-industry-benefit-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .mk-industry-directory__grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .mk-industries-menu {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (max-width: 48rem) {
+  .mk-industry-introduction,
+  .mk-industry-feature-layout,
+  .mk-industry-workflow,
+  .mk-industry-faq-layout {
+    grid-template-columns: 1fr;
+  }
+  .mk-industry-workflow > .mk-industry-asset {
+    order: initial;
+  }
+  .mk-industry-feature-layout ul,
+  .mk-industry-challenge-grid,
+  .mk-industry-benefit-grid,
+  .mk-industry-directory__grid,
+  .mk-industries-menu {
+    grid-template-columns: 1fr;
+  }
+  .mk-industry-challenge-grid article,
+  .mk-industry-benefit-grid article {
+    min-height: auto;
+  }
+  .mk-industry-asset,
+  .mk-industry-photo {
+    min-height: 15rem;
+  }
+}
+
+@media (max-width: 64rem) {
+  .mk-root .mk-mega__grid {
+    grid-template-columns: minmax(0, 1fr) 16rem;
+  }
+  .mk-root .mk-mega__section {
+    grid-column: auto;
+  }
+  .mk-root .mk-page-hero h1,
+  .mk-root .mk-pricing-hero h1 {
+    font-size: 40px;
+  }
+}
+@media (max-width: 48rem) {
+  .mk-root .mk-page-hero,
+  .mk-root .mk-pricing-hero {
+    min-height: 24rem;
+    padding: 4rem 1rem;
+  }
+  .mk-root .mk-page-hero h1,
+  .mk-root .mk-pricing-hero h1 {
+    font-size: 32px;
+  }
+  .mk-root .mk-page-hero .mk-copy,
+  .mk-root .mk-page-hero > div > p:not(.mk-kicker),
+  .mk-root .mk-pricing-hero__content > p {
+    font-size: var(--mk-marketing-hero-description-size);
+  }
+  .mk-root .mk-mobile-nav a {
+    font-size: var(--mk-marketing-nav-size);
+    font-weight: 450;
+  }
+  .mk-root .mk-footer__legal {
+    gap: 0.5rem;
+  }
+}

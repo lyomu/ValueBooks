@@ -531,21 +531,24 @@ svg.lucide {
 
 .rb-label {
   display: inline-block;
-  margin-bottom: 0.375rem;
-  color: hsl(var(--rb-foreground));
-  font-size: 0.8125rem;
-  font-weight: 600;
+  margin-bottom: 0;
+  color: hsl(var(--rb-field-label));
+  font-size: var(--rb-field-label-size);
+  font-weight: var(--rb-field-label-weight);
+  line-height: 1.25;
 }
 
 .rb-input,
 .rb-select,
 .rb-textarea {
   width: 100%;
-  color: hsl(var(--rb-foreground));
+  color: hsl(var(--rb-field-value));
   background: hsl(var(--rb-card));
-  border: 1px solid hsl(var(--rb-input));
-  border-radius: var(--rb-radius);
-  font-size: 0.875rem;
+  border: var(--rb-field-border-width) solid hsl(var(--rb-input));
+  border-radius: var(--rb-field-radius);
+  font-size: var(--rb-field-font-size);
+  font-weight: 400;
+  line-height: 1.4;
   transition:
     border-color var(--rb-duration-fast) ease,
     box-shadow var(--rb-duration-fast) ease;
@@ -553,19 +556,20 @@ svg.lucide {
 
 .rb-input,
 .rb-select {
-  height: 2.5rem;
-  padding: 0 var(--rb-space-3);
+  height: var(--rb-field-height);
+  padding: 0 var(--rb-field-padding-x);
 }
 
 .rb-textarea {
   min-height: 6rem;
-  padding: var(--rb-space-3);
+  padding: var(--rb-field-padding-x);
   resize: vertical;
 }
 
 .rb-input::placeholder,
-.rb-textarea::placeholder {
-  color: hsl(217 32% 45%);
+.rb-textarea::placeholder,
+.rb-select:invalid {
+  color: hsl(var(--rb-field-placeholder));
 }
 
 .rb-input:hover,
@@ -593,6 +597,89 @@ svg.lucide {
   color: hsl(var(--rb-muted-foreground));
   font-size: 0.75rem;
   line-height: 1.4;
+}
+
+.rb-form-field {
+  display: grid;
+  min-width: 0;
+  gap: 0.4375rem;
+}
+
+.rb-combobox {
+  position: relative;
+  min-width: 0;
+}
+
+.rb-combobox__input {
+  padding-right: 2.5rem;
+}
+
+.rb-combobox__clear {
+  position: absolute;
+  top: 50%;
+  right: var(--rb-space-2);
+  display: grid;
+  width: 1.5rem;
+  height: 1.5rem;
+  place-items: center;
+  padding: 0;
+  color: hsl(var(--rb-muted-foreground));
+  background: transparent;
+  border: 0;
+  border-radius: var(--rb-radius-sm);
+  font: inherit;
+  line-height: 1;
+  cursor: pointer;
+  transform: translateY(-50%);
+}
+
+.rb-combobox__clear:hover {
+  color: hsl(var(--rb-foreground));
+  background: hsl(var(--rb-muted));
+}
+.rb-combobox__clear:focus-visible {
+  outline: 2px solid hsl(var(--rb-ring) / 0.55);
+  outline-offset: 1px;
+}
+
+.rb-combobox__options {
+  position: absolute;
+  z-index: 70;
+  top: calc(100% + var(--rb-space-1));
+  right: 0;
+  left: 0;
+  max-height: min(18rem, calc(100dvh - 8rem));
+  margin: 0;
+  padding: var(--rb-space-1);
+  overflow: auto;
+  color: hsl(var(--rb-popover-foreground));
+  list-style: none;
+  background: hsl(var(--rb-popover));
+  border: 1px solid hsl(var(--rb-border));
+  border-radius: var(--rb-field-radius);
+  box-shadow: var(--rb-shadow-md);
+}
+
+.rb-combobox__option,
+.rb-combobox__empty {
+  display: flex;
+  min-height: 2.25rem;
+  align-items: center;
+  padding: 0 var(--rb-space-3);
+  border-radius: var(--rb-radius-sm);
+  font-size: var(--rb-dropdown-item-font-size);
+  font-weight: 400;
+  line-height: 1.35;
+}
+
+.rb-combobox__option {
+  cursor: pointer;
+}
+.rb-combobox__option:is(:hover, [data-active='true'], [aria-selected='true']) {
+  background: hsl(var(--rb-accent));
+}
+.rb-combobox__empty {
+  color: hsl(var(--rb-muted-foreground));
 }
 
 .rb-field-message--error {
