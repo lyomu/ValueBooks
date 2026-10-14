@@ -27,7 +27,7 @@
   },
   "devDependencies": {
     "@napi-rs/canvas": "^1.0.9",
-    "@playwright/test": "^1.62.1",
+    "@playwright/test": "^1.64.0",
     "@types/react": "^19.1.12",
     "@types/react-dom": "^19.1.9"
   }
