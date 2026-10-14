@@ -11,6 +11,8 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import { AiMockup, DashboardMockup, InvoiceMockup, ReconciliationMockup } from './mockups';
+import { Reveal } from './motion';
+import { revealDelay } from './reveal-delay';
 import { FeatureList, PageHero, Photo, SectionIntro } from './sections';
 
 type ProductDetail = {
@@ -89,7 +91,7 @@ export function ProductDetailPage({ page }: { page: ProductPageKey }) {
 
       <section className="mk-section mk-section--cream">
         <div className="mk-container mk-split">
-          <div>
+          <Reveal as="div">
             <span className="mk-eyebrow">THE DETAILS, MADE SIMPLE</span>
             <h2>
               {product
@@ -102,15 +104,19 @@ export function ProductDetailPage({ page }: { page: ProductPageKey }) {
                 : 'The small, considered details are where ValueBooks earns its keep: fewer tabs, fewer checks, and more confidence in the work.'}
             </p>
             <FeatureList items={data.features} />
-          </div>
-          <div className="mk-demo-frame">{data.mockup}</div>
+          </Reveal>
+          <Reveal as="div" variant="scale" delay={revealDelay(1)} className="mk-demo-frame">
+            {data.mockup}
+          </Reveal>
         </div>
       </section>
 
       <section className="mk-section mk-section--blue">
         <div className="mk-container mk-split mk-split--reverse">
-          <Photo src={data.photo} alt="Small business owner working with focus" />
-          <div>
+          <Reveal as="div" variant="scale">
+            <Photo src={data.photo} alt="Small business owner working with focus" />
+          </Reveal>
+          <Reveal as="div" delay={revealDelay(1)}>
             <span className="mk-eyebrow">A LITTLE MORE ROOM TO BREATHE</span>
             <h2>Less time untangling the work. More time building the work you love.</h2>
             <p className="mk-lead">
@@ -120,7 +126,7 @@ export function ProductDetailPage({ page }: { page: ProductPageKey }) {
             <Link className="mk-text-link" href="/contact">
               Talk to our team <span aria-hidden="true">→</span>
             </Link>
-          </div>
+          </Reveal>
         </div>
       </section>
     </>
@@ -172,8 +178,8 @@ export function CustomersPage() {
             text="Here are a few of the ways teams use ValueBooks to make their day-to-day feel lighter."
           />
           <div className="mk-story-grid">
-            {customerStories.map((story) => (
-              <article className="mk-story-card" key={story.name}>
+            {customerStories.map((story, index) => (
+              <Reveal as="article" delay={revealDelay(index)} className="mk-story-card" key={story.name}>
                 <Photo src={story.photo} alt="" />
                 <blockquote>“{story.quote}”</blockquote>
                 <p>
@@ -181,7 +187,7 @@ export function CustomersPage() {
                   <br />
                   {story.role}
                 </p>
-              </article>
+              </Reveal>
             ))}
           </div>
         </div>
@@ -189,21 +195,21 @@ export function CustomersPage() {
 
       <section className="mk-section mk-section--navy">
         <div className="mk-container mk-trust-grid">
-          <div>
+          <Reveal as="div">
             <Users aria-hidden="true" />
             <h3>Made for small teams</h3>
             <p>Helpful from day one, even if you are the whole finance department.</p>
-          </div>
-          <div>
+          </Reveal>
+          <Reveal as="div" delay={revealDelay(1)}>
             <BookOpen aria-hidden="true" />
             <h3>Clarity you can share</h3>
             <p>Keep your accountant, partner, or team aligned without extra work.</p>
-          </div>
-          <div>
+          </Reveal>
+          <Reveal as="div" delay={revealDelay(2)}>
             <TrendingUp aria-hidden="true" />
             <h3>Progress, not perfection</h3>
             <p>Start simply and add more structure as your business grows.</p>
-          </div>
+          </Reveal>
         </div>
       </section>
     </>
@@ -244,12 +250,12 @@ export function SecurityPage() {
             text="We pair practical protections with plain language, so you can understand how your information is handled."
           />
           <div className="mk-security-grid">
-            {securityPoints.map(({ Icon, title, text }) => (
-              <article className="mk-security-card" key={title}>
+            {securityPoints.map(({ Icon, title, text }, index) => (
+              <Reveal as="article" delay={revealDelay(index)} className="mk-security-card" key={title}>
                 <Icon aria-hidden="true" />
                 <h3>{title}</h3>
                 <p>{text}</p>
-              </article>
+              </Reveal>
             ))}
           </div>
         </div>
@@ -257,10 +263,10 @@ export function SecurityPage() {
 
       <section className="mk-section mk-section--blue">
         <div className="mk-container mk-split">
-          <div className="mk-demo-frame">
+          <Reveal as="div" variant="scale" className="mk-demo-frame">
             <DashboardMockup />
-          </div>
-          <div>
+          </Reveal>
+          <Reveal as="div" delay={revealDelay(1)}>
             <span className="mk-eyebrow">YOU STAY IN CONTROL</span>
             <h2>Clear access. Clear records. Clear choices.</h2>
             <p className="mk-lead">
@@ -274,7 +280,7 @@ export function SecurityPage() {
                 'Get help from a real person when you need it',
               ]}
             />
-          </div>
+          </Reveal>
         </div>
       </section>
     </>

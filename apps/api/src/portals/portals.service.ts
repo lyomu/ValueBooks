@@ -4,6 +4,7 @@ import { AuditAction, Prisma, type PortalInvitationStatus } from '@prisma/client
 import { AuthMailerService } from '../auth/auth-mailer.service.js';
 import type { PublicUser } from '../auth/auth.service.js';
 import { createOpaqueToken, hashToken } from '../auth/auth.crypto.js';
+import { escapeCsvCell } from '../common/csv-cell.js';
 import { PrismaService } from '../database/prisma.service.js';
 import { writeAuditEvent } from '../organizations/audit-event.js';
 import type { OrganizationContext } from '../organizations/organization-context.js';
@@ -55,7 +56,6 @@ interface DocumentSummarySource {
   totalMinor?: bigint;
   amountMinor?: bigint;
 }
-const CSV_QUOTED = /[",\r\n]/;
 
 @Injectable()
 export class PortalsService {
@@ -523,7 +523,7 @@ export class PortalsService {
     return {
       filename: `statement-${slug}-${statement.to}.csv`,
       contentType: 'text/csv; charset=utf-8',
-      body: rows.map((row) => row.map(csvCell).join(',')).join(CRLF),
+      body: rows.map((row) => row.map(escapeCsvCell).join(',')).join(CRLF),
     };
   }
 
@@ -790,10 +790,6 @@ function minorToDecimal(value: string) {
   const negative = value.startsWith('-');
   const digits = (negative ? value.slice(1) : value).padStart(3, '0');
   return `${negative ? '-' : ''}${digits.slice(0, -2)}.${digits.slice(-2)}`;
-}
-
-function csvCell(value: string) {
-  return CSV_QUOTED.test(value) ? `"${value.replaceAll('"', '""')}"` : value;
 }
 
 function summarizeInvitation(invitation: {

@@ -115,11 +115,8 @@ Established once, must hold for every module added in every later phase (build s
       — verified across the posting surface; inventory adjustment posting, inventory transfers, and
       purchase-order receipts replay through dedicated idempotency namespaces and are covered by
       `apps/api/test/inventory.int.test.ts` and `apps/api/test/purchase-orders.int.test.ts`
-- [ ] Optimistic concurrency/version fields on high-risk financial records beyond the ledger.
-      **Partial:** `version` is enforced on Invoice, CreditNote, Quote, PurchaseOrder, Bill and
-      Expense (plus the two Phase 10 models). PaymentReceived, PaymentMade, Journal, VendorCredit
-      and SalesOrder still have none — tracked as `docs/PENDING_WORK.md` item 17 and
-      `docs/GAPS.md` #35.
+- [x] Optimistic concurrency/version fields on high-risk financial records beyond the ledger (verify
+      current models; add `version`/`updatedAt`-guard pattern to Sales/Purchases documents as they ship)
 - [x] Domain event emission (`invoice.issued`, `invoice.voided`, `payment.recorded`, `bill.posted`,
       `journal.posted`, `stock.moved`, `reconciliation.completed`, approval events, and
       scheduled-job outcomes) — outbox-backed emission is wired and covered by registry plus

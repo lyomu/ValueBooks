@@ -14,6 +14,7 @@ export default async function SignupPage({
   return (
     <AuthShell
       variant="signup"
+      showLegalNotice={false}
       title="Sign up for ValueBooks today!"
       description={
         invitation

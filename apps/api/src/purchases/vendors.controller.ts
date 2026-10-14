@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Headers,
   Get,
   HttpCode,
   Param,
@@ -22,12 +23,17 @@ import {
 import { OrganizationGuard } from '../organizations/organization.guard.js';
 import { VendorsService } from './vendors.service.js';
 import { CreateVendorDto, ListVendorsQueryDto, UpdateVendorDto } from './vendors.dto.js';
+import { MasterDataImportService } from '../master-data-import/master-data-import.service.js';
+import type { UploadedFileLike } from '../attachments/attachments.service.js';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { UploadedFile, UseInterceptors } from '@nestjs/common';
 
 @Controller('organizations/:organizationId/vendors')
 @UseGuards(SessionGuard, OrganizationGuard)
 export class VendorsController {
   constructor(
     private readonly vendors: VendorsService,
+    private readonly imports: MasterDataImportService,
     private readonly auth: AuthService,
   ) {}
 
@@ -66,6 +72,32 @@ export class VendorsController {
     const metadata = requestMetadata(request, this.auth.pepper);
     return {
       data: await this.vendors.create(request.organization, request.auth.user, input, metadata),
+    };
+  }
+
+  @Post('import')
+  @RequirePermission('vendors.import')
+  @UseInterceptors(FileInterceptor('file', { limits: { fileSize: 8 * 1024 * 1024 } }))
+  async import(
+    @Body('mapping') mapping: string | undefined,
+    @Body('actions') actions: string | undefined,
+    @Body('dryRun') dryRun: string | undefined,
+    @Headers('idempotency-key') idempotencyKey: string | undefined,
+    @UploadedFile() file: UploadedFileLike,
+    @Req() request: OrganizationRequest,
+  ) {
+    return {
+      data: await this.imports.run(
+        'vendors',
+        request.organization,
+        request.auth.user,
+        file,
+        mapping,
+        actions,
+        dryRun !== 'false',
+        idempotencyKey,
+        requestMetadata(request, this.auth.pepper),
+      ),
     };
   }
 

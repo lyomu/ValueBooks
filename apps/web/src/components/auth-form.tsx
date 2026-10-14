@@ -308,6 +308,13 @@ export function AuthForm({
           {loading ? config.busy : config.submit}
         </Button>
 
+        {mode === 'signup' ? (
+          <p className="rb-auth__legal">
+            By signing up, you agree to the <Link href="/terms">Terms</Link> and{' '}
+            <Link href="/privacy">Privacy Policy</Link>.
+          </p>
+        ) : null}
+
         {socialOptions && (mode === 'login' || mode === 'signup') ? (
           <>
             <div className="rb-auth-divider">

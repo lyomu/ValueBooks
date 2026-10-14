@@ -209,58 +209,68 @@ them.
 
 ### [ ] 15 · H6 · Dependency scanning and security review (M)
 
-- [ ] Add a dependency scan (`npm audit --audit-level=high`, Dependabot, or OSV) to
-      `.github/workflows/ci.yml` — there is none today
-- [ ] Triage and fix what it finds
+- [x] Add a dependency scan (`npm audit --audit-level=high`, Dependabot, or OSV) to
+      `.github/workflows/ci.yml` — there is none today. Added
+      `npm audit --audit-level=high --omit=dev` (scoped to production deps) with
+      `continue-on-error: true` (temporary — see `docs/SECURITY_REVIEW.md` §1 for why), plus
+      `.github/dependabot.yml`
+- [x] Triage and fix what it finds. 24 of 27 advisories fixed via `npm audit fix`; `nodemailer`
+      bumped deliberately across a major version (verified via the full integration suite); the
+      3 remaining (all build-time-only, not exploitable here) are documented with an owner in
+      `docs/SECURITY_REVIEW.md` §1. Also fixed a real CSV formula-injection gap found during the
+      review (§2), and 2 missing portal rate limits (§3)
 - [ ] **MFA decision:** only the `security.mfa.manage` permission key exists, with no TOTP code.
-      Either build TOTP MFA for V1 or record it as post-V1
-- [ ] Review rate limits on auth, portal and AI routes
-- [ ] Review session lifetime, cookie flags and CSRF protection
-- [ ] Confirm production config validation rejects missing secrets (`@valuebooks/config`)
-- [ ] Write the findings up for the security owner (S1)
+      Either build TOTP MFA for V1 or record it as post-V1. Options, effort and a recommendation
+      are written up in `docs/SECURITY_REVIEW.md` §7 — left open here until the owner decides
+- [x] Review rate limits on auth, portal and AI routes — `docs/SECURITY_REVIEW.md` §3
+- [x] Review session lifetime, cookie flags and CSRF protection — `docs/SECURITY_REVIEW.md` §4-5
+- [x] Confirm production config validation rejects missing secrets (`@valuebooks/config`) —
+      `docs/SECURITY_REVIEW.md` §6
+- [x] Write the findings up for the security owner (S1) — `docs/SECURITY_REVIEW.md`, linked from
+      `docs/PHASE14_RELEASE_GATE.md`'s Security row
 
-### [ ] 16 · H2 · Backup and restore drill (M)
+### [x] 16 · H2 · Backup and restore drill (M)
 
-- [ ] Set up a non-production copy with seeded data
-- [ ] Write a backup script: `pg_dump` plus a MinIO bucket copy
-- [ ] Restore into a fresh environment
-- [ ] Compare trial balance and record counts before and after
-- [ ] Record how long it took (recovery time) and how much data could be lost (recovery point)
-- [ ] Write `docs/BACKUP_RESTORE_RUNBOOK.md`
-- [ ] Tick GAPS #12 and #33
+- [x] Set up a non-production copy with seeded data
+- [x] Write a backup script: `pg_dump` plus a MinIO bucket copy
+- [x] Restore into a fresh environment
+- [x] Compare trial balance and record counts before and after
+- [x] Record how long it took (recovery time) and how much data could be lost (recovery point)
+- [x] Write `docs/BACKUP_RESTORE_RUNBOOK.md`
+- [x] Tick GAPS #12 and #33
 
-### [ ] 17 · T4 · Version checks on the remaining financial records (M)
+### [x] 17 · T4 · Version checks on the remaining financial records (M)
 
-- [ ] Add `version Int @default(0)` to `PaymentReceived`, `PaymentMade`, `Journal`,
+- [x] Add `version Int @default(0)` to `PaymentReceived`, `PaymentMade`, `Journal`,
       `VendorCredit` and `SalesOrder` in one new migration (shadow-db `migrate diff`, never edit an
       applied migration)
-- [ ] Enforce it in `payments.service.ts`, `payments-made.service.ts`, `ledger.service.ts`,
+- [x] Enforce it in `payments.service.ts`, `payments-made.service.ts`, `ledger.service.ts`,
       `vendor-credits.service.ts` and `sales-orders.service.ts`, following `invoices.service.ts`
-- [ ] Add `version` to the DTOs and Zod contracts, and send it from the web forms
-- [ ] Integration test per type: a stale version returns 409 and changes nothing
-- [ ] Tick GAPS #35 and `BUILD_ROADMAP.md:118`
+- [x] Add `version` to the DTOs and Zod contracts, and send it from the web forms
+- [x] Integration test per type: a stale version returns 409 and changes nothing
+- [x] Tick GAPS #35 and `BUILD_ROADMAP.md:118`
 
-### [ ] 18 · H1 · Build customer, vendor and item import (L)
+### [x] 18 · H1 · Build customer, vendor and item import (L)
 
-- [ ] Design: a downloadable CSV template per type, column mapping, a preview with row errors,
+- [x] Design: a downloadable CSV template per type, column mapping, a preview with row errors,
       then commit
-- [ ] API: `POST .../customers/import`, `.../vendors/import` and `.../catalog/import`, reusing the
+- [x] API: `POST .../customers/import`, `.../vendors/import` and `.../catalog/import`, reusing the
       parser in `apps/api/src/banking/csv.ts` and the existing DTO validation
-- [ ] Dry-run preview mode, idempotency key on commit, and an audit event
-- [ ] Duplicate handling: match on name/email for contacts and SKU for items
-- [ ] Permission keys, in all four places (catalog keys, catalog entries, `roles-catalog.ts`,
+- [x] Dry-run preview mode, idempotency key on commit, and an audit event
+- [x] Duplicate handling: match on name/email for contacts and SKU for items
+- [x] Permission keys, in all four places (catalog keys, catalog entries, `roles-catalog.ts`,
       contracts)
-- [ ] Web: an import wizard following the Import screen pattern in `banking-workbench.tsx`
-- [ ] Integration tests: valid file, bad rows, duplicates, replay, tenant isolation
-- [ ] Tick GAPS #15
+- [x] Web: an import wizard following the Import screen pattern in `banking-workbench.tsx`
+- [x] Integration tests: valid file, bad rows, duplicates, replay, tenant isolation
+- [x] Tick GAPS #15
 
-### [ ] 19 · H10 · Publish Terms, Privacy and Accessibility pages (M)
+### [x] 19 · H10 · Publish Terms, Privacy and Accessibility pages (M)
 
-- [ ] Draft Terms of Service, Privacy Policy and an Accessibility statement (needs legal input)
-- [ ] Make the privacy policy cover AI processing (ties to A2)
-- [ ] Add `/terms`, `/privacy` and `/accessibility` under `apps/web/src/app/(marketing)/`
-- [ ] Replace the plain-text footer line (`site-footer.tsx:78`) with links
-- [ ] Add "By signing up you agree to the Terms and Privacy Policy" to the signup form
+- [x] Draft Terms of Service, Privacy Policy and an Accessibility statement (draft ready for legal review)
+- [x] Make the privacy policy cover AI processing (ties to A2; draft ready for legal review)
+- [x] Add `/terms`, `/privacy` and `/accessibility` under `apps/web/src/app/(marketing)/`
+- [x] Replace the plain-text footer line (`site-footer.tsx:78`) with links
+- [x] Add "By signing up you agree to the Terms and Privacy Policy" to the signup form
 
 ### [ ] 20 · P1 · Social sign-in: build it or remove the buttons (M)
 

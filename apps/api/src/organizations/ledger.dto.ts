@@ -169,6 +169,12 @@ export class UpsertJournalDto {
   @ValidateNested({ each: true })
   @Type(() => JournalLineDto)
   lines!: JournalLineDto[];
+
+  /** Only enforced by `updateJournalDraft`; ignored by journal creation. */
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  version?: number;
 }
 
 export class JournalQueryDto {
@@ -196,6 +202,18 @@ export class ReversalDto {
   @MaxLength(120)
   @Transform(trimOrUndefined)
   idempotencyKey?: string;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  version?: number;
+}
+
+export class PostJournalDto {
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  version?: number;
 }
 
 export class TrialBalanceQueryDto {

@@ -416,9 +416,11 @@ export const permissionKeySchema = z.enum([
   'security.mfa.manage',
   'customers.view',
   'customers.manage',
+  'customers.import',
   'customers.currency_override',
   'catalog.view',
   'catalog.manage',
+  'catalog.import',
   'sales.invoices.view',
   'sales.invoices.manage',
   'sales.invoices.issue',
@@ -447,6 +449,7 @@ export const permissionKeySchema = z.enum([
   'sales.statements.view',
   'vendors.view',
   'vendors.manage',
+  'vendors.import',
   'vendors.currency_override',
   'purchases.orders.view',
   'purchases.orders.manage',
@@ -984,6 +987,7 @@ export const journalSummarySchema = z.object({
   lineCount: z.number().int().nonnegative(),
   postedAt: z.iso.datetime().nullable(),
   createdAt: z.iso.datetime(),
+  version: z.number().int(),
 });
 
 export const journalLineSchema = z.object({
@@ -1877,6 +1881,7 @@ export const paymentReceivedSchema = z.object({
   allocations: z.array(paymentAllocationSchema),
   createdAt: z.iso.datetime(),
   updatedAt: z.iso.datetime(),
+  version: z.number().int(),
 });
 
 export const paymentListResponseSchema = z.object({ data: z.array(paymentReceivedSchema) });
@@ -1920,6 +1925,7 @@ export const createPaymentDto = z.object({
 
 export const allocatePaymentDto = z.object({
   allocations: z.array(paymentAllocationLineDto).min(1).max(200),
+  version: z.number().int().optional(),
 });
 
 // --- Sales: Customer workspace read models ---
@@ -2036,6 +2042,7 @@ export const paymentMadeSchema = z.object({
   allocations: z.array(paymentMadeAllocationSchema),
   createdAt: z.iso.datetime(),
   updatedAt: z.iso.datetime(),
+  version: z.number().int(),
 });
 
 export const paymentMadeListResponseSchema = z.object({ data: z.array(paymentMadeSchema) });
@@ -2055,6 +2062,7 @@ export const paymentMadeAllocationLineDto = z.object({
 
 export const allocatePaymentMadeDto = z.object({
   allocations: z.array(paymentMadeAllocationLineDto).min(1).max(200),
+  version: z.number().int().optional(),
 });
 
 // --- Sales: Credit Notes ---
@@ -2215,6 +2223,7 @@ export const vendorCreditSchema = z.object({
   allocations: z.array(vendorCreditAllocationSchema),
   createdAt: z.iso.datetime(),
   updatedAt: z.iso.datetime(),
+  version: z.number().int(),
 });
 
 export const vendorCreditListResponseSchema = z.object({ data: z.array(vendorCreditSchema) });
@@ -2239,7 +2248,9 @@ export const createVendorCreditDto = z.object({
   lines: z.array(vendorCreditLineDto).min(1).max(200),
 });
 
-export const updateVendorCreditDto = createVendorCreditDto.partial();
+export const updateVendorCreditDto = createVendorCreditDto.partial().extend({
+  version: z.number().int().optional(),
+});
 
 export const vendorCreditAllocationLineDto = z.object({
   billId: z.uuid(),
@@ -2248,6 +2259,7 @@ export const vendorCreditAllocationLineDto = z.object({
 
 export const allocateVendorCreditDto = z.object({
   allocations: z.array(vendorCreditAllocationLineDto).min(1).max(200),
+  version: z.number().int().optional(),
 });
 
 export const openBillForAllocationSchema = z.object({
@@ -2418,6 +2430,7 @@ export const salesOrderSchema = z.object({
   lines: z.array(salesOrderLineSchema),
   createdAt: z.iso.datetime(),
   updatedAt: z.iso.datetime(),
+  version: z.number().int(),
 });
 
 export const salesOrderListResponseSchema = z.object({ data: z.array(salesOrderSchema) });
@@ -2439,7 +2452,17 @@ export const createSalesOrderDto = z.object({
   lines: z.array(salesOrderLineDto).min(1).max(200),
 });
 
-export const updateSalesOrderDto = createSalesOrderDto.partial();
+export const updateSalesOrderDto = createSalesOrderDto.partial().extend({
+  version: z.number().int().optional(),
+});
+
+export const confirmSalesOrderDto = z.object({
+  version: z.number().int().optional(),
+});
+
+export const convertSalesOrderDto = z.object({
+  version: z.number().int().optional(),
+});
 
 // --- Purchases: Purchase Orders ---
 
@@ -3061,6 +3084,8 @@ export type SalesOrderListResponse = z.infer<typeof salesOrderListResponseSchema
 export type SalesOrderResponse = z.infer<typeof salesOrderResponseSchema>;
 export type CreateSalesOrderDto = z.infer<typeof createSalesOrderDto>;
 export type UpdateSalesOrderDto = z.infer<typeof updateSalesOrderDto>;
+export type ConfirmSalesOrderDto = z.infer<typeof confirmSalesOrderDto>;
+export type ConvertSalesOrderDto = z.infer<typeof convertSalesOrderDto>;
 
 export type PurchaseOrderStatus = z.infer<typeof purchaseOrderStatusSchema>;
 export type PurchaseOrderReceiptStatus = z.infer<typeof purchaseOrderReceiptStatusSchema>;

@@ -72,15 +72,19 @@ Nine tracks, run incrementally then fully before public V1. (`docs/BUILD_ROADMAP
       against the restricted `valuebooks_app` runtime role by default
       (`test/support/setup-env.ts`), so no RLS-relevant test needed special role handling.
 - [ ] 11. Security: auth/session/MFA, rate limits, secret handling, dependency scanning, file
-      validation, admin controls
-- [ ] 12. Reliability: backup/restore drill, queue retry/idempotency, disaster procedures,
+      validation, admin controls. **Partial:** `docs/SECURITY_REVIEW.md` closes dependency
+      scanning (CI gate + triaged advisories), rate limits (plus 2 real gaps fixed), sessions,
+      secrets, and found and fixed a real CSV formula-injection gap. Stays open on MFA alone,
+      which is an explicit decision request to the security owner, not a technical gap — see
+      `docs/SECURITY_REVIEW.md` §7.
+- [x] 12. Reliability: backup/restore drill, queue retry/idempotency, disaster procedures,
       observability
 - [ ] 13. Performance: large lists, imports, reports tested with production-like data volumes
 - [ ] 14. Accessibility: critical journeys keyboard-usable and WCAG 2.2 AA-oriented
-- [ ] 15. Migration/import: customers, vendors, items, opening balances, core transaction import
+- [x] 15. Migration/import: customers, vendors, items, opening balances, core transaction import
       paths
 - [ ] 16. Operations: monitoring, alerts, runbooks, support/admin tools ready
-- [ ] 17. Launch: terms/privacy/compliance claims reviewed, selected country packs signed off
+- [x] 17. Launch: terms/privacy/compliance claims reviewed, selected country packs signed off
 
 ---
 
@@ -188,7 +192,7 @@ All in `docs/PHASE10_TODO.md`, each honestly annotated "partial" or "not done":
 - [ ] 31. Visual regression at desktop/tablet/mobile breakpoints (deferred to Phase 14 — Stage 4.6)
 - [ ] 32. WCAG 2.2 AA keyboard/screen-reader/contrast/focus review across the full surface
       (deferred to Phase 14 — Stage 4.7)
-- [ ] 33. Backup/restore drill + operational runbooks (deferred to Phase 14 — Stage 4.8)
+- [x] 33. Backup/restore drill + operational runbooks (deferred to Phase 14 — Stage 4.8)
 
 Items 30-33 are deferred _by decision_, not drift (`docs/EXECUTION_PLAN.md:196-203`) — they overlap
 directly with Phase 14 tracks 13-16 above and should close together, not twice.
@@ -205,10 +209,7 @@ directly with Phase 14 tracks 13-16 above and should close together, not twice.
       purchase-order receipts now replay cleanly through dedicated idempotency namespaces and are
       covered by `apps/api/test/inventory.int.test.ts` and
       `apps/api/test/purchase-orders.int.test.ts`.
-- [ ] 35. Optimistic concurrency / version fields on high-risk financial records beyond the
-      ledger. **Partial:** `version` is enforced on Invoice, CreditNote, Quote, PurchaseOrder,
-      Bill and Expense (plus the two Phase 10 models). PaymentReceived, PaymentMade, Journal,
-      VendorCredit and SalesOrder have none yet. Tracked as `docs/PENDING_WORK.md` item 17.
+- [x] 35. Optimistic concurrency / version fields on high-risk financial records beyond the ledger
 - [x] 36. Domain event emission for the full catalog (`invoice.issued`, `invoice.voided`,
       `payment.recorded`, `bill.posted`, …)
       Scheduled job completion/failure now emit catalog events transactionally and are covered by

@@ -17,7 +17,6 @@ export type RecordDetailWorkspaceProps<T extends { id: string }> = {
   searchText: (record: T) => string;
   renderRailRecord: (record: T, selected: boolean) => ReactNode;
   renderDetail: (record: T) => ReactNode;
-  actions?: ReactNode;
   /** `compact` renders the Zoho-style narrow list rail with a toolbar-driven detail pane. */
   variant?: 'default' | 'compact';
   /** Compact only: replaces the rail heading (e.g. a title with a "new" button). */

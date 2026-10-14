@@ -371,6 +371,7 @@ export class PaymentsService {
         paymentId,
         input.allocations,
         metadata,
+        input.version,
       );
 
       await this.recordPaymentIdempotency(
@@ -398,6 +399,7 @@ export class PaymentsService {
     paymentId: string,
     allocations: readonly { invoiceId: string; amountMinor: string }[],
     metadata: RequestMetadata,
+    expectedVersion?: number,
   ): Promise<PaymentWithAllocations> {
     const requestedByInvoice = new Map<string, bigint>();
     for (const line of allocations) {
@@ -506,11 +508,15 @@ export class PaymentsService {
       const newAllocatedMinor = payment.allocatedMinor + totalRequestedMinor;
       const newUnappliedMinor = payment.unappliedMinor - totalRequestedMinor;
       const updatedPayment = await tx.paymentReceived.update({
-        where: { id: paymentId },
+        where: {
+          id: paymentId,
+          ...(expectedVersion !== undefined ? { version: expectedVersion } : {}),
+        },
         data: {
           allocatedMinor: newAllocatedMinor,
           unappliedMinor: newUnappliedMinor,
           status: newUnappliedMinor === 0n ? 'FULLY_ALLOCATED' : 'PARTIALLY_ALLOCATED',
+          version: { increment: 1 },
         },
         include: paymentDetailInclude,
       });
@@ -796,6 +802,7 @@ function summarizePayment(payment: PaymentWithAllocations) {
     })),
     createdAt: payment.createdAt.toISOString(),
     updatedAt: payment.updatedAt.toISOString(),
+    version: payment.version,
   };
 }
 

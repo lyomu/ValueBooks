@@ -48,6 +48,13 @@ test.describe('authentication journeys', () => {
     });
 
     await openAuth(page, '/signup');
+    const consent = page.getByText('By signing up, you agree to the', { exact: false });
+    await expect(consent).toBeVisible();
+    await expect(consent.getByRole('link', { name: 'Terms' })).toHaveAttribute('href', '/terms');
+    await expect(consent.getByRole('link', { name: 'Privacy Policy' })).toHaveAttribute(
+      'href',
+      '/privacy',
+    );
     await page.getByLabel('Email address').fill('not-an-email');
     await page.getByRole('textbox', { name: 'Password' }).fill('short');
     await page.getByRole('button', { name: 'Create account' }).click();
@@ -65,6 +72,26 @@ test.describe('authentication journeys', () => {
     await page.getByRole('textbox', { name: 'Password' }).fill('StrongerPassword12');
     await page.getByRole('button', { name: 'Create account' }).click();
     await expect(page.getByRole('status')).toContainText('Check your inbox');
+  });
+
+  test('publishes the draft legal documents with a clear review status', async ({ page }) => {
+    const documents: Array<[string, string]> = [
+      ['/terms', 'Terms of Service'],
+      ['/privacy', 'Privacy Policy'],
+      ['/accessibility', 'Accessibility Statement'],
+    ];
+
+    for (const [path, heading] of documents) {
+      await page.goto(path, { waitUntil: 'domcontentloaded' });
+      await expect(page.getByRole('heading', { level: 1, name: heading })).toBeVisible();
+      await expect(page.getByText('Draft — pending legal review')).toBeVisible();
+      await expect(page.getByRole('link', { name: 'Privacy' })).toHaveAttribute('href', '/privacy');
+      await expect(page.getByRole('link', { name: 'Terms' })).toHaveAttribute('href', '/terms');
+      await expect(page.getByRole('link', { name: 'Accessibility' })).toHaveAttribute(
+        'href',
+        '/accessibility',
+      );
+    }
   });
 
   test('sends an incomplete invited member to profile completion before acceptance', async ({

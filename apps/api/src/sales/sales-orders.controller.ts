@@ -21,6 +21,8 @@ import {
 } from '../organizations/organization-context.js';
 import { OrganizationGuard } from '../organizations/organization.guard.js';
 import {
+  ConfirmSalesOrderDto,
+  ConvertSalesOrderDto,
   CreateSalesOrderDto,
   ListSalesOrdersQueryDto,
   UpdateSalesOrderDto,
@@ -97,11 +99,18 @@ export class SalesOrdersController {
   @RequirePermission('sales.orders.manage')
   async confirm(
     @Param('orderId', new ParseUUIDPipe()) orderId: string,
+    @Body() input: ConfirmSalesOrderDto,
     @Req() request: OrganizationRequest,
   ) {
     const metadata = requestMetadata(request, this.auth.pepper);
     return {
-      data: await this.orders.confirm(request.organization, request.auth.user, orderId, metadata),
+      data: await this.orders.confirm(
+        request.organization,
+        request.auth.user,
+        orderId,
+        metadata,
+        input.version,
+      ),
     };
   }
 
@@ -159,6 +168,7 @@ export class SalesOrdersController {
   @RequirePermission('sales.orders.convert')
   async convert(
     @Param('orderId', new ParseUUIDPipe()) orderId: string,
+    @Body() input: ConvertSalesOrderDto,
     @Req() request: OrganizationRequest,
   ) {
     const metadata = requestMetadata(request, this.auth.pepper);
@@ -168,6 +178,7 @@ export class SalesOrdersController {
         request.auth.user,
         orderId,
         metadata,
+        input.version,
       ),
     };
   }

@@ -338,7 +338,8 @@ body {
 }
 
 .rb-auth-field__label-row a,
-.rb-auth-form__switch a {
+.rb-auth-form__switch a,
+.rb-auth__legal a {
   color: hsl(var(--rb-primary-mid));
   font-weight: 600;
   text-decoration: none;
@@ -349,7 +350,8 @@ body {
 }
 
 .rb-auth-field__label-row a:hover,
-.rb-auth-form__switch a:hover {
+.rb-auth-form__switch a:hover,
+.rb-auth__legal a:hover {
   text-decoration: underline;
   text-underline-offset: 0.2em;
 }

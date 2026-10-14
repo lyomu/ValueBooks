@@ -10,6 +10,8 @@ import {
 import Link from 'next/link';
 import type { ReactNode } from 'react';
 import { DashboardMockup, InvoiceMockup } from './mockups';
+import { Reveal } from './motion';
+import { revealDelay } from './reveal-delay';
 import { Photo } from './photo';
 
 export { Photo };
@@ -60,7 +62,7 @@ export function SectionIntro({
   centered?: boolean;
 }) {
   return (
-    <div className={centered ? 'mk-section-intro is-centered' : 'mk-section-intro'}>
+    <Reveal as="div" className={centered ? 'mk-section-intro is-centered' : 'mk-section-intro'}>
       {kicker ? <MarketingKicker>{kicker}</MarketingKicker> : null}
       <MarketingSectionHeading>{title}</MarketingSectionHeading>
       {text || action ? (
@@ -69,7 +71,7 @@ export function SectionIntro({
           {action}
         </div>
       ) : null}
-    </div>
+    </Reveal>
   );
 }
 export function FeatureList({ items }: { items: readonly string[] }) {
@@ -111,7 +113,7 @@ export function FeatureGrid() {
         title={<>Everything your business needs, in one place.</>}
       />
       <div className="mk-feature-grid__row mk-feature-grid__row--top">
-        <article className="mk-feature-card mk-feature-card--cream">
+        <Reveal as="article" variant="up" className="mk-feature-card mk-feature-card--cream">
           <div className="mk-feature-card__copy">
             <h3>Invoicing</h3>
             <p>
@@ -127,8 +129,13 @@ export function FeatureGrid() {
               <InvoiceMockup />
             </div>
           </div>
-        </article>
-        <article className="mk-feature-card mk-feature-card--blue">
+        </Reveal>
+        <Reveal
+          as="article"
+          variant="up"
+          delay={revealDelay(1)}
+          className="mk-feature-card mk-feature-card--blue"
+        >
           <div className="mk-feature-card__copy">
             <h3>Accounting</h3>
             <p>
@@ -144,10 +151,10 @@ export function FeatureGrid() {
               <DashboardMockup />
             </div>
           </div>
-        </article>
+        </Reveal>
       </div>
       <div className="mk-feature-grid__row mk-feature-grid__row--bottom">
-        <article className="mk-feature-card mk-feature-card--grey">
+        <Reveal as="article" variant="up" className="mk-feature-card mk-feature-card--grey">
           <span className="mk-feature-card__icon">
             <Bot aria-hidden="true" />
           </span>
@@ -156,8 +163,13 @@ export function FeatureGrid() {
           <Link className="mk-text-link" href="/ai">
             Learn about AI <ArrowRight />
           </Link>
-        </article>
-        <article className="mk-feature-card mk-feature-card--navy">
+        </Reveal>
+        <Reveal
+          as="article"
+          variant="up"
+          delay={revealDelay(1)}
+          className="mk-feature-card mk-feature-card--navy"
+        >
           <span className="mk-feature-card__icon">
             <LockKeyhole aria-hidden="true" />
           </span>
@@ -166,8 +178,13 @@ export function FeatureGrid() {
           <Link className="mk-text-link mk-text-link--on-dark" href="/security">
             Learn about Security <ArrowRight />
           </Link>
-        </article>
-        <article className="mk-feature-card mk-feature-card--gold">
+        </Reveal>
+        <Reveal
+          as="article"
+          variant="up"
+          delay={revealDelay(2)}
+          className="mk-feature-card mk-feature-card--gold"
+        >
           <h3>More features</h3>
           <ul className="mk-feature-card__links">
             {moreFeatureLinks.map((link) => (
@@ -178,7 +195,7 @@ export function FeatureGrid() {
               </li>
             ))}
           </ul>
-        </article>
+        </Reveal>
       </div>
     </section>
   );
@@ -202,8 +219,14 @@ export function IndustriesGrid() {
   ];
   return (
     <div className="mk-industries-grid">
-      {entries.map(([slug, title]) => (
-        <Link href={`/industries/${slug}`} className="mk-industry-card" key={slug}>
+      {entries.map(([slug, title], index) => (
+        <Reveal
+          as={Link}
+          href={`/industries/${slug}`}
+          delay={revealDelay(index)}
+          className="mk-industry-card"
+          key={slug}
+        >
           <Photo id={industryPhotos[slug] ?? ''} alt={`${title} business`} ratio="16 / 9" />
           <div>
             <h3>{title}</h3>
@@ -211,7 +234,7 @@ export function IndustriesGrid() {
               Explore solutions <ArrowRight />
             </span>
           </div>
-        </Link>
+        </Reveal>
       ))}
     </div>
   );
@@ -239,12 +262,17 @@ const businessBenefits = [
 export function BusinessValueGrid() {
   return (
     <div className="mk-business-value-grid">
-      {businessBenefits.map(({ Icon, title, description }) => (
-        <article className="mk-business-value-card" key={title}>
+      {businessBenefits.map(({ Icon, title, description }, index) => (
+        <Reveal
+          as="article"
+          delay={revealDelay(index)}
+          className="mk-business-value-card"
+          key={title}
+        >
           <Icon aria-hidden="true" />
           <h3>{title}</h3>
           <p>{description}</p>
-        </article>
+        </Reveal>
       ))}
     </div>
   );

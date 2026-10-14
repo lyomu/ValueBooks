@@ -12,6 +12,8 @@ import {
 } from '../../components/marketing/sections';
 import { Photo } from '../../components/marketing/photo';
 import { FaqAccordion, type FaqItem } from '../../components/marketing/faq-accordion';
+import { Reveal } from '../../components/marketing/motion';
+import { revealDelay } from '../../components/marketing/reveal-delay';
 import { PricingTeaserSection } from '../../components/marketing/pricing-section';
 
 const faqItems: FaqItem[] = [
@@ -132,18 +134,22 @@ export default function MarketingHomePage() {
             }
           />
         </div>
-        <Photo
-          id="photo-1551836022-d5d88e9218df"
-          alt="A business owner reviewing financial activity"
-          ratio="6 / 5"
-        />
+        <Reveal as="div" variant="scale">
+          <Photo
+            id="photo-1551836022-d5d88e9218df"
+            alt="A business owner reviewing financial activity"
+            ratio="6 / 5"
+          />
+        </Reveal>
       </section>
       <section className="mk-alternating">
-        <Photo
-          id="photo-1556761175-4b46a572b786"
-          alt="A small business owner preparing an invoice"
-          ratio="6 / 5"
-        />
+        <Reveal as="div" variant="scale">
+          <Photo
+            id="photo-1556761175-4b46a572b786"
+            alt="A small business owner preparing an invoice"
+            ratio="6 / 5"
+          />
+        </Reveal>
         <div>
           <SectionIntro
             kicker="Get paid"
@@ -170,29 +176,33 @@ export default function MarketingHomePage() {
             }
           />
         </div>
-        <Photo
-          id="photo-1554224155-6726b3ff858f"
-          alt="A business owner reviewing bank reconciliation"
-          ratio="6 / 5"
-        />
+        <Reveal as="div" variant="scale">
+          <Photo
+            id="photo-1554224155-6726b3ff858f"
+            alt="A business owner reviewing bank reconciliation"
+            ratio="6 / 5"
+          />
+        </Reveal>
       </section>
       <section className="mk-personas">
         <Photo id="photo-1552664730-d307ca884978" alt="Business owners meeting" ratio="21 / 9" />
         <div className="mk-personas__heading">
-          <MarketingKicker>Your way of working</MarketingKicker>
-          <h2>One financial home. Different kinds of momentum.</h2>
+          <Reveal as="div">
+            <MarketingKicker>Your way of working</MarketingKicker>
+            <h2>One financial home. Different kinds of momentum.</h2>
+          </Reveal>
         </div>
         <div className="mk-personas__list">
           {[
             ['Freelancers', 'Keep clients, invoices, and spending in one clear place.'],
             ['Retail teams', 'Stay closer to cash flow and daily operations.'],
             ['Growing businesses', 'Give the whole team the right financial view.'],
-          ].map(([title, text]) => (
-            <Link href="/industries" key={title}>
+          ].map(([title, text], index) => (
+            <Reveal as={Link} href="/industries" delay={revealDelay(index)} key={title}>
               <h3>{title}</h3>
               <MarketingCopy>{text}</MarketingCopy>
               <span>Learn more →</span>
-            </Link>
+            </Reveal>
           ))}
         </div>
       </section>
@@ -216,7 +226,9 @@ export default function MarketingHomePage() {
       </section>
       <section className="mk-faq-section">
         <SectionIntro centered title="Frequently asked questions" />
-        <FaqAccordion items={faqItems} />
+        <Reveal as="div">
+          <FaqAccordion items={faqItems} />
+        </Reveal>
       </section>
     </>
   );

@@ -26,6 +26,7 @@ import { SalesOrdersController } from './sales-orders.controller.js';
 import { SalesOrdersService } from './sales-orders.service.js';
 import { StatementsController } from './statements.controller.js';
 import { StatementsService } from './statements.service.js';
+import { MasterDataImportService } from '../master-data-import/master-data-import.service.js';
 
 @Module({
   imports: [
@@ -59,6 +60,7 @@ import { StatementsService } from './statements.service.js';
     DocumentRenderingService,
     RecurringInvoicesService,
     StatementsService,
+    MasterDataImportService,
   ],
   // Exported so Projects can bill through the one invoice path rather than forking a second one.
   exports: [

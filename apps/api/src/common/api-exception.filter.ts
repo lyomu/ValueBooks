@@ -6,11 +6,24 @@ import {
   Inject,
   type ExceptionFilter,
 } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import type { Request, Response } from 'express';
 import { InjectPinoLogger, PinoLogger } from 'nestjs-pino';
 
 import { ERROR_REPORTER, type ErrorReporter } from './logging/error-reporter.js';
 import { redactUrl } from './logging/redact.js';
+
+/**
+ * P2025 ("record to update/delete not found") is what an optimistic-concurrency `where: {
+ * id, version }` update throws when the version is stale, across every versioned model
+ * (Invoice, Bill, Expense, CreditNote, Quote, PurchaseOrder, PaymentReceived, PaymentMade,
+ * Journal, VendorCredit, SalesOrder) -- none of those services catches it themselves, so
+ * it otherwise falls through to a generic 500. Mapped centrally here rather than in each
+ * service so every versioned type gets the same 409 without a repeated catch block.
+ */
+function isStaleVersionConflict(exception: unknown): boolean {
+  return exception instanceof Prisma.PrismaClientKnownRequestError && exception.code === 'P2025';
+}
 
 @Catch()
 export class ApiExceptionFilter implements ExceptionFilter {
@@ -23,8 +36,13 @@ export class ApiExceptionFilter implements ExceptionFilter {
     const context = host.switchToHttp();
     const response = context.getResponse<Response>();
     const request = context.getRequest<Request>();
+    const staleVersion = !(exception instanceof HttpException) && isStaleVersionConflict(exception);
     const status =
-      exception instanceof HttpException ? exception.getStatus() : HttpStatus.INTERNAL_SERVER_ERROR;
+      exception instanceof HttpException
+        ? exception.getStatus()
+        : staleVersion
+          ? HttpStatus.CONFLICT
+          : HttpStatus.INTERNAL_SERVER_ERROR;
     const payload = exception instanceof HttpException ? exception.getResponse() : null;
     const messages =
       typeof payload === 'object' && payload && 'message' in payload
@@ -35,8 +53,9 @@ export class ApiExceptionFilter implements ExceptionFilter {
     const validationMessages = Array.isArray(messages)
       ? messages.filter((message): message is string => typeof message === 'string')
       : undefined;
-    const message =
-      status >= 500
+    const message = staleVersion
+      ? 'This record was changed by someone else. Reload and try again.'
+      : status >= 500
         ? 'Something went wrong. Please try again.'
         : validationMessages
           ? 'Some fields need your attention.'

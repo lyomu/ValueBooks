@@ -28,6 +28,46 @@ jobs:
           --health-timeout 5s
           --health-retries 5
 
+      # Attachment storage (uploads, OCR, exports, generated documents) needs a real S3-compatible
+      # endpoint. MinIO's own images now require a registry login to pull, so this uses Localstack's
+      # S3 service instead -- freely pullable, and its default entrypoint needs no command override.
+      localstack:
+        image: localstack/localstack:3
+        env:
+          SERVICES: s3
+        ports:
+          - 59000:4566
+        options: >-
+          --health-cmd "curl -sf http://localhost:4566/_localstack/health"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+      # BullMQ-backed job queues (email, automation, document extraction) need a real Redis.
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+      # Document extraction scans uploads for malware before processing them. CLAMAV_HOST/PORT
+      # default to localhost:53310 (see packages/config), matching docker-compose.yml's clamav
+      # service, so no extra env vars are needed in the steps below.
+      clamav:
+        image: clamav/clamav:1.4
+        ports:
+          - 53310:3310
+        options: >-
+          --health-cmd clamdcheck.sh
+          --health-interval 10s
+          --health-timeout 10s
+          --health-retries 30
+          --health-start-period 120s
+
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
@@ -41,26 +81,18 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      # Attachment storage (uploads, OCR, exports, generated documents) needs a real S3-compatible
-      # endpoint. GitHub Actions `services:` containers can't override `command`, and the official
-      # minio image needs an explicit `server /data` command to start, so it's launched by hand
-      # here instead -- the same image and startup command as docker-compose.yml's `minio` service.
-      - name: Start MinIO
-        run: |
-          docker run -d --name minio -p 59000:9000 \
-            -e MINIO_ROOT_USER=valuebooks \
-            -e MINIO_ROOT_PASSWORD=valuebooks-local \
-            quay.io/minio/minio:RELEASE.2025-07-23T15-54-02Z server /data --console-address ':9001'
-          for _ in $(seq 1 20); do
-            curl -sf http://localhost:59000/minio/health/live && exit 0
-            sleep 2
-          done
-          echo "MinIO did not become healthy in time" >&2
-          docker logs minio
-          exit 1
-
       - name: Generate Prisma client
         run: npm run db:generate --workspace @valuebooks/api
+
+      # Scoped to production dependencies (--omit=dev): dev/build-only tooling (vitest, the
+      # eslint-plugin-next chain) is never shipped, so scanning it adds noise, not signal.
+      # continue-on-error is temporary: one documented, owner-assigned advisory
+      # (deepmerge-ts via @prisma/config, no upstream fix yet -- see docs/SECURITY_REVIEW.md)
+      # has no fix available, which would otherwise make this step permanently red on every PR.
+      # Remove continue-on-error once that advisory is resolved.
+      - name: Dependency scan
+        run: npm audit --audit-level=high --omit=dev
+        continue-on-error: true
 
       - name: Check formatting
         run: npm run format:check
@@ -83,6 +115,12 @@ jobs:
       - name: Test
         run: npm test
 
+      # document-rendering.service.ts launches a real headless Chromium to render PDFs;
+      # npm ci installs the playwright package but not its browser binary.
+      - name: Install Playwright Chromium
+        working-directory: apps/api
+        run: npx playwright install --with-deps chromium
+
       - name: Integration test
         working-directory: apps/api
         env:
@@ -95,6 +133,7 @@ jobs:
           S3_REGION: us-east-1
           S3_ACCESS_KEY: valuebooks
           S3_SECRET_KEY: valuebooks-local
+          REDIS_URL: redis://localhost:6379
           S3_BUCKET: valuebooks-local
         run: npm run test:integration
 
