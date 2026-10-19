@@ -83,11 +83,36 @@ pipeline {
         }
 
         stage('Lint') {
-            // Root-level eslint covers every workspace in one pass -- the api
-            // CI image has prisma generate already run, so it's the superset
-            // both web and api lint checks can run from.
+            // Three sequential eslint passes instead of one root-level
+            // `eslint .`. The root config is recommendedTypeChecked +
+            // projectService, so a single pass builds one TS program for the
+            // whole monorepo and peaks at ~3.1 GiB RSS -- more than this box
+            // can spare (docs/CI_BOX_CAPACITY.md: ~4.0 GiB free of 7.6 GiB,
+            // and its 2 GiB swap is already full at idle). That OOM'd V8 at
+            // its ~2 GiB default heap ceiling on build #6.
+            //
+            // Measured peaks per pass: apps/api 1.9 GiB, apps/web 1.5 GiB,
+            // everything else 0.8 GiB -- so splitting caps exposure at
+            // ~1.9 GiB and is slightly faster overall (78s vs 100s).
+            //
+            // The last pass is a negative match, not an explicit list, so a
+            // new top-level directory can never silently escape linting --
+            // the union of the three passes is exactly `eslint .`.
+            //
+            // --memory is a hard kernel ceiling (container dies with 137 if
+            // hit) so a runaway lint can't take the shared CI box down with
+            // it; max-old-space-size keeps V8 bounded below that ceiling
+            // instead of letting it discover the limit by being killed.
             steps {
-                sh "docker run --rm ${env.API_CI_IMAGE} npm run lint"
+                script {
+                    [
+                        'apps/api',
+                        'apps/web',
+                        '. --ignore-pattern "apps/api/**" --ignore-pattern "apps/web/**"',
+                    ].each { target ->
+                        sh "docker run --rm --memory=3072m -e NODE_OPTIONS=--max-old-space-size=2560 ${env.API_CI_IMAGE} npx eslint ${target} --max-warnings=0"
+                    }
+                }
             }
         }
 
