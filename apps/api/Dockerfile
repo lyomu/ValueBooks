@@ -45,6 +45,18 @@ RUN npm run db:generate --workspace @valuebooks/api
 COPY . .
 RUN npm run build --workspace @valuebooks/api
 
+# CI runs lint/typecheck/test against THIS stage, and the integration suite
+# exercises the PDF-render path (document-rendering.service.ts launches a real
+# chromium), so the browser has to exist here too -- not only in runtime.
+# Build #10's integration run failed 28 tests on a missing browser executable.
+#
+# PLAYWRIGHT_BROWSERS_PATH pins an explicit, world-readable location instead of
+# the installing user's ~/.cache, so both stages agree on one path and a
+# non-root runtime user can actually read it (see the runtime stage).
+ENV PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
+RUN npx --prefix apps/api playwright install-deps chromium \
+  && npx --prefix apps/api playwright install chromium
+
 FROM node:24-bookworm-slim AS runtime
 
 WORKDIR /app
@@ -59,13 +71,31 @@ COPY --from=build /app/node_modules ./node_modules
 COPY --from=build /app/apps/api/dist ./apps/api/dist
 COPY --from=build /app/apps/api/prisma ./apps/api/prisma
 COPY --from=build /app/apps/api/package.json ./apps/api/package.json
-COPY --from=build /app/apps/api/eng.traineddata ./apps/api/eng.traineddata
 
 # Chromium for playwright's PDF-render path. `install-deps` installs this
-# Debian release's apt packages for the browser; `install chromium` fetches
-# the browser binary itself. Both run as root, before USER node below.
+# Debian release's apt packages for the browser; the browser binary itself is
+# copied from the build stage rather than downloaded a second time.
+#
+# The explicit PLAYWRIGHT_BROWSERS_PATH matters. Installing as root without it
+# lands the browser in /root/.cache/ms-playwright, and /root is mode 700 on
+# Debian -- so the `node` user this image drops to could not read it, and every
+# PDF render would fail at runtime while the image still built green.
+ENV PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
+COPY --from=build /ms-playwright /ms-playwright
 RUN npx --prefix apps/api playwright install-deps chromium \
-  && npx --prefix apps/api playwright install chromium
+  && chmod -R a+rX /ms-playwright
+
+# tesseract.js (ocr.service.ts) calls createWorker('eng') with no langPath, so
+# it caches eng.traineddata into the process CWD -- /app -- fetching it on
+# first use. /app is root-owned, so without this the OCR worker dies on EACCES
+# the first time it handles a document.
+#
+# This previously tried to COPY apps/api/eng.traineddata from the build stage,
+# which could never work: *.traineddata is in .gitignore so the file is never
+# in the build context, and /app/apps/api is not where tesseract.js looks
+# anyway. That broken COPY failed the production image build outright, which
+# went unnoticed because Docker Build & Push has never run.
+RUN chown node:node /app
 
 USER node
 EXPOSE 3001

@@ -95,15 +95,25 @@ for required_env_var in "${required_env_vars[@]}"; do
   require_env_var "$required_env_var"
 done
 
+# `git clone` refuses a non-empty target, and by the time we get here APP_DIR is
+# guaranteed non-empty: the check above requires .env.production to already live
+# in it. A plain clone therefore made the FIRST deploy to a fresh box impossible
+# -- populate the env file and the clone fails, skip it and the preflight fails.
+# Initialising in place sidesteps that, and is a no-op on an existing checkout.
 if [ ! -d "${APP_DIR}/.git" ]; then
   mkdir -p "${APP_DIR}"
-  git clone --branch "${BRANCH}" "${REPO_URL}" "${APP_DIR}"
+  git init "${APP_DIR}"
+  git -C "${APP_DIR}" remote add origin "${REPO_URL}"
 fi
 
 cd "${APP_DIR}"
 git fetch origin "${BRANCH}"
-git checkout "${BRANCH}"
-git pull --ff-only origin "${BRANCH}"
+# `checkout -B` rather than checkout + pull --ff-only: after a fresh `git init`
+# there is no local branch to check out or pull into, and on an existing
+# checkout this lands the box on exactly origin/${BRANCH} instead of failing on
+# a divergence nobody is going to resolve by hand on a production host. The
+# deployed tree should always be precisely what the branch says, never a merge.
+git checkout -B "${BRANCH}" "origin/${BRANCH}"
 
 export VALUEBOOKS_IMAGE_TAG
 docker compose -f docker-compose.prod.yml --env-file .env.production pull
