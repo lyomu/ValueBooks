@@ -50,9 +50,9 @@ services:
       retries: 10
     logging:
       driver: json-file
-      options: { max-size: "10m", max-file: "3" }
+      options: { max-size: '10m', max-file: '3' }
     mem_limit: 512m
-    cpus: "0.50"
+    cpus: '0.50'
 
   redis:
     image: redis:7.4-alpine
@@ -68,9 +68,9 @@ services:
       retries: 10
     logging:
       driver: json-file
-      options: { max-size: "10m", max-file: "3" }
+      options: { max-size: '10m', max-file: '3' }
     mem_limit: 128m
-    cpus: "0.25"
+    cpus: '0.25'
 
   # Signature-update spike measured directly (local isolation test, 2026-10-19):
   # settles to ~960 MiB steady, spikes to 1.83 GiB on every startup/freshclam
@@ -87,9 +87,9 @@ services:
       start_period: 120s
     logging:
       driver: json-file
-      options: { max-size: "10m", max-file: "3" }
+      options: { max-size: '10m', max-file: '3' }
     mem_limit: 2048m
-    cpus: "0.75"
+    cpus: '0.75'
 
   web:
     build:
@@ -105,18 +105,22 @@ services:
       PORT: 3000
       HOSTNAME: 0.0.0.0
     ports:
-      - "127.0.0.1:3001:3000"
+      - '127.0.0.1:3001:3000'
     healthcheck:
-      test: ["CMD-SHELL", "node -e \"fetch('http://127.0.0.1:3000/').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))\""]
+      test:
+        [
+          'CMD-SHELL',
+          'node -e "fetch(''http://127.0.0.1:3000/'').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"',
+        ]
       interval: 15s
       timeout: 5s
       retries: 10
       start_period: 20s
     logging:
       driver: json-file
-      options: { max-size: "10m", max-file: "3" }
+      options: { max-size: '10m', max-file: '3' }
     mem_limit: 384m
-    cpus: "0.50"
+    cpus: '0.50'
 
   # HTTP API. Padded above apps/api's own bare footprint to cover the
   # transient Chromium spike from document-rendering.service.ts
@@ -147,18 +151,22 @@ services:
       clamav:
         condition: service_healthy
     ports:
-      - "127.0.0.1:3002:3001"
+      - '127.0.0.1:3002:3001'
     healthcheck:
-      test: ["CMD-SHELL", "node -e \"fetch('http://127.0.0.1:3001/api/v1/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))\""]
+      test:
+        [
+          'CMD-SHELL',
+          'node -e "fetch(''http://127.0.0.1:3001/api/v1/health'').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"',
+        ]
       interval: 15s
       timeout: 5s
       retries: 10
       start_period: 30s
     logging:
       driver: json-file
-      options: { max-size: "10m", max-file: "3" }
+      options: { max-size: '10m', max-file: '3' }
     mem_limit: 768m
-    cpus: "0.50"
+    cpus: '0.50'
 
   # Generic BullMQ worker -- same image as `api`, different entry point, no
   # Chromium launches of its own (document-rendering.service.ts runs inside
@@ -168,7 +176,7 @@ services:
     image: ${DOCKERHUB_OWNER:-lyomu}/valuebooks-api:${VALUEBOOKS_IMAGE_TAG:-local}
     container_name: valuebooks-worker
     restart: unless-stopped
-    command: ["node", "apps/api/dist/src/worker.js"]
+    command: ['node', 'apps/api/dist/src/worker.js']
     env_file:
       - path: ./.env.production
         required: true
@@ -185,9 +193,9 @@ services:
         condition: service_healthy
     logging:
       driver: json-file
-      options: { max-size: "10m", max-file: "3" }
+      options: { max-size: '10m', max-file: '3' }
     mem_limit: 384m
-    cpus: "0.30"
+    cpus: '0.30'
 
   # OCR/PDF extraction worker. apps/api's own package.json already runs this
   # entry point with --max-old-space-size=384 (a deliberate V8 heap cap, not
@@ -200,7 +208,7 @@ services:
     image: ${DOCKERHUB_OWNER:-lyomu}/valuebooks-api:${VALUEBOOKS_IMAGE_TAG:-local}
     container_name: valuebooks-document-extraction-worker
     restart: unless-stopped
-    command: ["node", "--max-old-space-size=384", "apps/api/dist/src/document-extraction-worker.js"]
+    command: ['node', '--max-old-space-size=384', 'apps/api/dist/src/document-extraction-worker.js']
     env_file:
       - path: ./.env.production
         required: true
@@ -219,9 +227,9 @@ services:
         condition: service_healthy
     logging:
       driver: json-file
-      options: { max-size: "10m", max-file: "3" }
+      options: { max-size: '10m', max-file: '3' }
     mem_limit: 512m
-    cpus: "0.50"
+    cpus: '0.50'
 
 volumes:
   postgres_data:

@@ -43,6 +43,11 @@ const ENDPOINTS: readonly EndpointCase[] = [
   },
   { method: 'get', path: 'organizations/:organizationId', permission: 'organization.view' },
   {
+    method: 'get',
+    path: 'organizations/:organizationId/dashboard',
+    permission: 'reports.view',
+  },
+  {
     method: 'patch',
     path: 'organizations/:organizationId',
     permission: 'organization.update',
