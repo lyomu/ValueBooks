@@ -30,8 +30,19 @@ services:
       POSTGRES_DB: ${POSTGRES_DB}
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      # Consumed by the init script below, not by Postgres itself. This is the
+      # password half of DATABASE_URL -- the two must agree or the API cannot
+      # connect, and the database initializes exactly once.
+      VALUEBOOKS_APP_PASSWORD: ${VALUEBOOKS_APP_PASSWORD}
     volumes:
       - postgres_data:/var/lib/postgresql/data
+      # Creates the restricted runtime role the API connects as. Without this the
+      # only role that exists is POSTGRES_USER, which is the cluster superuser and
+      # owns every migrated table -- and database-role.guard.ts refuses to boot the
+      # API in production as a superuser, a BYPASSRLS role, or an owner of the
+      # ai_runs/ai_evidence RLS tables. Read infrastructure/postgres-init-prod.sh
+      # before changing anything here; the ordering is load-bearing.
+      - ./infrastructure/postgres-init-prod.sh:/docker-entrypoint-initdb.d/001-init.sh:ro
     healthcheck:
       test: ['CMD-SHELL', 'pg_isready -U "${POSTGRES_USER}" -d "${POSTGRES_DB}"']
       interval: 10s
