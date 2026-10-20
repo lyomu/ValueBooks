@@ -60,12 +60,21 @@ describe('identity and tenancy over HTTP', () => {
       .send({ email, password: PASSWORD })
       .expect(202);
     expect((signup.body as { data: { message: string } }).data.message).toBe(
-      'Check your email for the next step.',
+      'Check your email for the verification code.',
     );
 
-    const verificationToken = await queuedToken(email, '/verify-email?token=');
-    await agent.post(`${API}/auth/verify-email`).send({ token: verificationToken }).expect(200);
-    await agent.post(`${API}/auth/verify-email`).send({ token: verificationToken }).expect(400);
+    const verificationCode = await queuedCode(email);
+    // 201, not 200: auth.controller.ts's mfa/verify carries no @HttpCode override, so it
+    // keeps Nest's POST default, unlike the verify-email route next to it.
+    await agent.post(`${API}/auth/mfa/verify`).send({ code: verificationCode }).expect(201);
+    // Single-use: the challenge cookie is cleared on success, so a replay finds no
+    // active challenge rather than re-consuming the code.
+    await agent.post(`${API}/auth/mfa/verify`).send({ code: verificationCode }).expect(400);
+
+    // Verifying a SIGNUP challenge already establishes a session -- mfa/verify returns
+    // kind 'signup' and sets the session cookie. Drop it before exercising login on its
+    // own terms, or login has no new session to issue and sends no Set-Cookie back.
+    await agent.post(`${API}/auth/logout`).expect(204);
 
     const login = await agent
       .post(`${API}/auth/login`)
@@ -246,8 +255,8 @@ describe('identity and tenancy over HTTP', () => {
 
     const agent = harness.http();
     await agent.post(`${API}/auth/signup`).send({ email, password: PASSWORD }).expect(202);
-    const verificationToken = await queuedToken(email, '/verify-email?token=');
-    await agent.post(`${API}/auth/verify-email`).send({ token: verificationToken }).expect(200);
+    const verificationCode = await queuedCode(email);
+    await agent.post(`${API}/auth/mfa/verify`).send({ code: verificationCode }).expect(201);
     await agent.post(`${API}/auth/login`).send({ email, password: PASSWORD }).expect(200);
     await agent.patch(`${API}/auth/profile`).send({ displayName: 'New Invitee' }).expect(200);
     await agent.post(`${API}/invitations/accept`).send({ token: invitation.rawToken }).expect(200);
@@ -295,6 +304,24 @@ describe('identity and tenancy over HTTP', () => {
       { email, roleId: role.id },
       metadata,
     );
+  }
+
+  /**
+   * Signup verification is a 6-digit code, not a link. auth.service.ts's signup path issues an
+   * MfaChallengePurpose.SIGNUP challenge and mails the code via sendMfaCode, setting the
+   * challenge cookie on the response; the `/verify-email?token=` link is still real but is now
+   * only reached through resend-verification, which is why queuedToken below still serves the
+   * password-reset flow.
+   */
+  async function queuedCode(email: string): Promise<string> {
+    const jobs = await queue.getJobs(['wait', 'delayed']);
+    const job = jobs.find(
+      (candidate) =>
+        candidate.data.to === email && candidate.data.text.includes('verification code is'),
+    );
+    const code = /verification code is (\d{6})/.exec(job?.data.text ?? '')?.[1];
+    if (!code) throw new Error(`No queued verification code found for ${email}.`);
+    return code;
   }
 
   async function queuedToken(email: string, marker: string): Promise<string> {
