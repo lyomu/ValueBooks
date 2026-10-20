@@ -17,5 +17,10 @@ export default defineConfig({
     // real DATABASE_MIGRATION_URL is injected, so fall back to an empty
     // string rather than the strict `env()` helper.
     url: process.env.DATABASE_MIGRATION_URL ?? '',
+    // Prisma 7 reads the shadow connection from config, not the removed
+    // --shadow-database-url CLI flag. CI sets this for migration drift checks.
+    ...(process.env.SHADOW_DATABASE_URL
+      ? { shadowDatabaseUrl: process.env.SHADOW_DATABASE_URL }
+      : {}),
   },
 });

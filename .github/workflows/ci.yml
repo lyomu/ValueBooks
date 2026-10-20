@@ -107,10 +107,11 @@ jobs:
         working-directory: apps/api
         env:
           DATABASE_URL: postgresql://valuebooks:valuebooks@localhost:5432/valuebooks
+          DATABASE_MIGRATION_URL: postgresql://valuebooks:valuebooks@localhost:5432/valuebooks
           SHADOW_DATABASE_URL: postgresql://valuebooks:valuebooks@localhost:5432/valuebooks_shadow
         run: |
           psql "$DATABASE_URL" -c 'CREATE DATABASE valuebooks_shadow'
-          npx prisma migrate diff --from-migrations prisma/migrations --to-schema-datamodel prisma/schema.prisma --shadow-database-url "$SHADOW_DATABASE_URL" --exit-code
+          npx prisma migrate diff --from-migrations prisma/migrations --to-schema prisma/schema.prisma --exit-code
 
       - name: Test
         run: npm test
