@@ -1,6 +1,7 @@
 import { Canvas, createCanvas } from '@napi-rs/canvas';
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { dirname, join, sep } from 'node:path';
 // pdfjs-dist's default build targets a browser DOM; the legacy Node build accepts a canvas factory
 // instead, which is what lets this run without a real display or browser environment.
 import * as pdfjsLib from 'pdfjs-dist/legacy/build/pdf.mjs';
@@ -126,6 +127,11 @@ function remainingMs(deadline: number): number {
 export function hardenedPdfLoadOptions(maxPagePixels: number) {
   return {
     CanvasFactory: NodeCanvasFactory,
+    // Built-in PDF fonts such as Helvetica have no embedded font bytes. Without
+    // pdf.js's bundled standard fonts, a slim Linux image silently renders
+    // incomplete glyphs and OCR misses document text.
+    standardFontDataUrl:
+      join(dirname(require.resolve('pdfjs-dist/package.json')), 'standard_fonts') + sep,
     // Do not rely on the default: pdf.js otherwise enables eval where the runtime supports it.
     isEvalSupported: false,
     disableFontFace: true,
