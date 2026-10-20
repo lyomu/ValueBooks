@@ -18,7 +18,7 @@ if [ -z "${VALUEBOOKS_IMAGE_TAG:-}" ]; then
 fi
 
 if [ ! -f "${APP_DIR}/.env.production" ]; then
-  echo "Missing ${APP_DIR}/.env.production. Populate it from .env.example before deploying." >&2
+  echo "Missing ${APP_DIR}/.env.production. Populate it from .env.production.example before deploying." >&2
   exit 1
 fi
 
@@ -58,13 +58,37 @@ require_env_var() {
   fi
 }
 
+# Every one of these is required for a production boot, and the cheapest place
+# to find that out is here rather than from a crash-looping container.
+#
+# DATABASE_MIGRATION_URL is not optional despite never appearing in compose:
+# apps/api/prisma.config.ts reads it as the datasource for the CLI, and the
+# `prisma migrate deploy` below runs through that config. PR #25 made it fall
+# back to an empty string so `prisma generate` could run during the Docker
+# build -- which means a missing value here no longer throws early, it just
+# fails the migration with an unhelpful error.
+#
+# WEB_APP_URL / SMTP_HOST / EMAIL_FROM / the S3_* set have no production
+# defaults in packages/config/src/index.ts (its LOCAL_DEFAULTS apply only when
+# NODE_ENV != production), and StorageService calls getOrThrow on all five
+# S3_* vars at construction, so the API will not start without them.
 required_env_vars=(
   POSTGRES_DB
   POSTGRES_USER
   POSTGRES_PASSWORD
+  VALUEBOOKS_APP_PASSWORD
   DATABASE_URL
+  DATABASE_MIGRATION_URL
   SECURITY_PEPPER
   NEXT_PUBLIC_API_URL
+  WEB_APP_URL
+  SMTP_HOST
+  EMAIL_FROM
+  S3_ENDPOINT
+  S3_REGION
+  S3_ACCESS_KEY
+  S3_SECRET_KEY
+  S3_BUCKET
 )
 
 for required_env_var in "${required_env_vars[@]}"; do
