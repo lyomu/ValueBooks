@@ -68,6 +68,13 @@ RUN apt-get update \
 
 COPY --from=build /app/package.json /app/package-lock.json ./
 COPY --from=build /app/node_modules ./node_modules
+# node_modules/@valuebooks/* are workspace symlinks into packages/*; without
+# the real directories here they dangle and `require('@valuebooks/config')`
+# (loaded straight from its TS source -- Node 24 strips types natively) fails
+# with MODULE_NOT_FOUND. Only the packages apps/api actually depends on.
+COPY --from=build /app/packages/config ./packages/config
+COPY --from=build /app/packages/contracts ./packages/contracts
+COPY --from=build /app/packages/accounting-core ./packages/accounting-core
 COPY --from=build /app/apps/api/dist ./apps/api/dist
 COPY --from=build /app/apps/api/prisma ./apps/api/prisma
 COPY --from=build /app/apps/api/prisma.config.ts ./apps/api/prisma.config.ts
