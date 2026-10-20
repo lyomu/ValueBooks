@@ -117,6 +117,7 @@ git checkout -B "${BRANCH}" "origin/${BRANCH}"
 
 export VALUEBOOKS_IMAGE_TAG
 docker compose -f docker-compose.prod.yml --env-file .env.production pull
-docker compose -f docker-compose.prod.yml --env-file .env.production run --rm api npx prisma migrate deploy
+docker compose -f docker-compose.prod.yml --env-file .env.production run --rm \
+  --workdir /app/apps/api api npx prisma migrate deploy
 docker compose -f docker-compose.prod.yml --env-file .env.production up -d
 docker compose -f docker-compose.prod.yml --env-file .env.production ps
