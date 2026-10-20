@@ -131,34 +131,81 @@ pipeline {
         }
 
         stage('Test (integration)') {
+            // Needs three real backing services, not just Postgres. The suite talks to a live
+            // Redis (BullMQ email/automation queues) and a live S3 -- attachments.int.test.ts
+            // deliberately asserts StorageService wrote real bytes rather than mocking it.
+            // Build #8 started only Postgres, so every queue-backed spec hit ECONNREFUSED on
+            // localhost:56780 (the NODE_ENV=test default in packages/config/src/index.ts) and
+            // the storage specs would have failed right behind them.
+            //
+            // MinIO here is a CI stand-in for object storage ONLY. Production points S3_* at
+            // managed storage and docker-compose.prod.yml deliberately has no minio service --
+            // see devops-infra/docs/VALUEBOOKS_DEDICATED_BOX_PROVISIONING.md for why.
             steps {
                 script {
                     env.CI_NET = "valuebooks-ci-net-${env.SAFE_BRANCH_NAME}-${env.BUILD_NUMBER}"
                     env.CI_PG = "valuebooks-ci-postgres-${env.SAFE_BRANCH_NAME}-${env.BUILD_NUMBER}"
+                    env.CI_REDIS = "valuebooks-ci-redis-${env.SAFE_BRANCH_NAME}-${env.BUILD_NUMBER}"
+                    env.CI_MINIO = "valuebooks-ci-minio-${env.SAFE_BRANCH_NAME}-${env.BUILD_NUMBER}"
                 }
                 sh """
                     set -e
                     docker network create ${env.CI_NET}
-                    docker run -d --name ${env.CI_PG} --network ${env.CI_NET} \
+
+                    # --memory caps: this box runs 6 products on hardware provisioned for 3, and
+                    # its swap is full at idle (devops-infra/docs/CI_BOX_CAPACITY.md). These three
+                    # are small, well-understood services sized with headroom. The test runner
+                    # itself is left uncapped on purpose until its real peak is measured --
+                    # guessing a ceiling there turns an OOM-kill into a fake test failure, which
+                    # is exactly how build #6's lint OOM first presented.
+                    docker run -d --name ${env.CI_PG} --network ${env.CI_NET} --memory=512m \
                         -e POSTGRES_USER=valuebooks -e POSTGRES_PASSWORD=ci_pw -e POSTGRES_DB=valuebooks_test \
                         postgres:17-alpine
-                    ready=false
+                    docker run -d --name ${env.CI_REDIS} --network ${env.CI_NET} --memory=128m \
+                        redis:7.4-alpine redis-server --appendonly yes
+                    docker run -d --name ${env.CI_MINIO} --network ${env.CI_NET} --memory=512m \
+                        -e MINIO_ROOT_USER=valuebooks -e MINIO_ROOT_PASSWORD=valuebooks-local \
+                        quay.io/minio/minio:RELEASE.2025-07-23T15-54-02Z server /data
+
+                    wait_for_exec() {
+                        label="\$1"; container="\$2"; shift 2
+                        for i in \$(seq 1 60); do
+                            if docker exec "\$container" "\$@" >/dev/null 2>&1; then
+                                echo "\$label ready."; return 0
+                            fi
+                            echo "waiting for \$label..."; sleep 2
+                        done
+                        echo "\$label never became ready"; docker logs "\$container" || true; return 1
+                    }
+                    wait_for_exec postgres ${env.CI_PG} pg_isready -U valuebooks
+                    wait_for_exec redis ${env.CI_REDIS} redis-cli ping
+
+                    # minio/minio ships neither curl nor mc, so probe from the CI image (which has
+                    # node) over the CI network instead of exec-ing inside the container.
+                    minio_ready=false
                     for i in \$(seq 1 60); do
-                        if docker exec ${env.CI_PG} pg_isready -U valuebooks >/dev/null 2>&1; then
-                            ready=true
-                            break
+                        if docker run --rm --network ${env.CI_NET} ${env.API_CI_IMAGE} \
+                            node -e "fetch('http://${env.CI_MINIO}:9000/minio/health/live').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))" >/dev/null 2>&1; then
+                            minio_ready=true; echo "minio ready."; break
                         fi
-                        echo "waiting for postgres..."; sleep 2
+                        echo "waiting for minio..."; sleep 2
                     done
-                    if [ "\$ready" != "true" ]; then
-                        echo "postgres never became ready"
-                        docker logs ${env.CI_PG} || true
-                        exit 1
+                    if [ "\$minio_ready" != "true" ]; then
+                        echo "minio never became ready"; docker logs ${env.CI_MINIO} || true; exit 1
                     fi
+
+                    # StorageService.ensureBucket() creates S3_BUCKET lazily on first use, so the
+                    # bucket is deliberately not pre-created here.
                     docker run --rm --network ${env.CI_NET} \
                         -e NODE_ENV=test \
                         -e DATABASE_URL=postgresql://valuebooks:ci_pw@${env.CI_PG}:5432/valuebooks_test \
                         -e DATABASE_MIGRATION_URL=postgresql://valuebooks:ci_pw@${env.CI_PG}:5432/valuebooks_test \
+                        -e REDIS_URL=redis://${env.CI_REDIS}:6379 \
+                        -e S3_ENDPOINT=http://${env.CI_MINIO}:9000 \
+                        -e S3_REGION=us-east-1 \
+                        -e S3_ACCESS_KEY=valuebooks \
+                        -e S3_SECRET_KEY=valuebooks-local \
+                        -e S3_BUCKET=valuebooks-test \
                         -e SECURITY_PEPPER=ci-only-jenkins-pepper-value-not-used-anywhere-else-000000 \
                         -w /app/apps/api \
                         ${env.API_CI_IMAGE} sh -c "npx prisma migrate deploy && cd /app && npm run test:integration --workspace @valuebooks/api"
@@ -166,7 +213,10 @@ pipeline {
             }
             post {
                 always {
-                    sh "docker rm -f ${env.CI_PG} 2>/dev/null || true; docker network rm ${env.CI_NET} 2>/dev/null || true"
+                    sh """
+                        docker rm -f ${env.CI_PG} ${env.CI_REDIS} ${env.CI_MINIO} 2>/dev/null || true
+                        docker network rm ${env.CI_NET} 2>/dev/null || true
+                    """
                 }
             }
         }
