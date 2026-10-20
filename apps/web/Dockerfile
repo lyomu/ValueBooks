@@ -44,13 +44,13 @@ ENV HOSTNAME=0.0.0.0
 
 # `output: "standalone"` traces only the server bundle; in this monorepo the
 # standalone tree mirrors the workspace path from the repo root
-# (.next/standalone/apps/web/...), matching apps/web's own `start` script
+# (apps/web/.next/standalone/apps/web/...), matching apps/web's own `start` script
 # and its postbuild script (scripts/copy-standalone-static.mjs), which already
 # copied .next/static and public/ into that same standalone tree before this
 # COPY runs. `--chown=node:node` matters: Next's image optimizer writes to
 # .next/cache at runtime and fails EACCES without it (see drift/website's
 # Dockerfile, same fix, same reason).
-COPY --from=build --chown=node:node /app/.next/standalone ./
+COPY --from=build --chown=node:node /app/apps/web/.next/standalone ./
 COPY --from=build --chown=node:node /app/apps/web/.next/static ./apps/web/.next/static
 COPY --from=build --chown=node:node /app/apps/web/public ./apps/web/public
 
