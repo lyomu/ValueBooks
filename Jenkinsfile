@@ -138,34 +138,67 @@ pipeline {
             // localhost:56780 (the NODE_ENV=test default in packages/config/src/index.ts) and
             // the storage specs would have failed right behind them.
             //
-            // MinIO here is a CI stand-in for object storage ONLY. Production points S3_* at
-            // managed storage and docker-compose.prod.yml deliberately has no minio service --
+            // The full service set, established by running the suite locally against each
+            // candidate and reading what actually failed:
+            //   postgres  - the schema, plus a SEPARATE restricted role (see below)
+            //   redis     - BullMQ email/automation queues
+            //   s3        - attachments/document specs assert real stored bytes
+            //   clamav    - phase13 extraction specs scan with a real scanner
+            //   mailpit   - signup/invitation specs read the real queued verification mail
+            //
+            // LocalStack is the CI stand-in for object storage ONLY. Production points S3_*
+            // at Cloudflare R2, and docker-compose.prod.yml deliberately runs no S3 service --
             // see devops-infra/docs/VALUEBOOKS_DEDICATED_BOX_PROVISIONING.md for why.
+            //
+            // It is NOT MinIO, despite that being what docker-compose.yml gives developers
+            // locally. MinIO's images are no longer anonymously pullable from quay.io or
+            // Docker Hub (401 Unauthorized) -- that is what broke build #10; it works locally
+            // only because the image is already cached there. health.service.ts already names
+            // LocalStack as the intended CI target, and it covers the S3 surface these suites
+            // use: CreateBucket, HeadBucket, Put/Get/DeleteObject, ListBuckets, presigned GETs.
             steps {
                 script {
                     env.CI_NET = "valuebooks-ci-net-${env.SAFE_BRANCH_NAME}-${env.BUILD_NUMBER}"
                     env.CI_PG = "valuebooks-ci-postgres-${env.SAFE_BRANCH_NAME}-${env.BUILD_NUMBER}"
                     env.CI_REDIS = "valuebooks-ci-redis-${env.SAFE_BRANCH_NAME}-${env.BUILD_NUMBER}"
-                    env.CI_MINIO = "valuebooks-ci-minio-${env.SAFE_BRANCH_NAME}-${env.BUILD_NUMBER}"
+                    env.CI_S3 = "valuebooks-ci-s3-${env.SAFE_BRANCH_NAME}-${env.BUILD_NUMBER}"
+                    env.CI_CLAMAV = "valuebooks-ci-clamav-${env.SAFE_BRANCH_NAME}-${env.BUILD_NUMBER}"
+                    env.CI_MAIL = "valuebooks-ci-mailpit-${env.SAFE_BRANCH_NAME}-${env.BUILD_NUMBER}"
                 }
                 sh """
                     set -e
                     docker network create ${env.CI_NET}
 
-                    # --memory caps: this box runs 6 products on hardware provisioned for 3, and
-                    # its swap is full at idle (devops-infra/docs/CI_BOX_CAPACITY.md). These three
-                    # are small, well-understood services sized with headroom. The test runner
-                    # itself is left uncapped on purpose until its real peak is measured --
-                    # guessing a ceiling there turns an OOM-kill into a fake test failure, which
-                    # is exactly how build #6's lint OOM first presented.
+                    # --memory caps. READ devops-infra/docs/CI_BOX_CAPACITY.md BEFORE RAISING ANY
+                    # OF THESE. This box runs 6 products on hardware provisioned for 3 and its
+                    # 2 GiB swap is already full at idle, leaving ~4.0 GiB. The five services
+                    # below total ~3.5 GiB of caps, and clamav alone is 2 GiB of that -- an
+                    # explicit, informed decision to keep the malware-scan specs in CI rather
+                    # than exclude them, taken with those numbers on the table. It is the
+                    # tightest thing running on this box.
+                    #
+                    # The test runner itself is left uncapped on purpose until its real peak is
+                    # measured -- guessing a ceiling there turns an OOM-kill into what looks
+                    # like a test failure, which is exactly how build #6's lint OOM presented.
                     docker run -d --name ${env.CI_PG} --network ${env.CI_NET} --memory=512m \
                         -e POSTGRES_USER=valuebooks -e POSTGRES_PASSWORD=ci_pw -e POSTGRES_DB=valuebooks_test \
                         postgres:17-alpine
                     docker run -d --name ${env.CI_REDIS} --network ${env.CI_NET} --memory=128m \
                         redis:7.4-alpine redis-server --appendonly yes
-                    docker run -d --name ${env.CI_MINIO} --network ${env.CI_NET} --memory=512m \
-                        -e MINIO_ROOT_USER=valuebooks -e MINIO_ROOT_PASSWORD=valuebooks-local \
-                        quay.io/minio/minio:RELEASE.2025-07-23T15-54-02Z server /data
+                    docker run -d --name ${env.CI_S3} --network ${env.CI_NET} --memory=768m \
+                        -e SERVICES=s3 -e EAGER_SERVICE_LOADING=1 \
+                        localstack/localstack:3.8
+                    docker run -d --name ${env.CI_MAIL} --network ${env.CI_NET} --memory=64m \
+                        -e MP_SMTP_AUTH_ACCEPT_ANY=1 -e MP_SMTP_AUTH_ALLOW_INSECURE=1 \
+                        axllent/mailpit:v1.27.8
+                    # The named volume persists virus signatures ACROSS builds. Without it
+                    # freshclam re-downloads ~250 MB on every single build and clamd refuses
+                    # INSTREAM until it finishes -- minutes of wall clock and bandwidth per run.
+                    # It is intentionally not per-build, so do not add BUILD_NUMBER to it.
+                    docker volume create valuebooks-ci-clamav-db >/dev/null 2>&1 || true
+                    docker run -d --name ${env.CI_CLAMAV} --network ${env.CI_NET} --memory=2048m \
+                        -v valuebooks-ci-clamav-db:/var/lib/clamav \
+                        clamav/clamav:1.4
 
                     wait_for_exec() {
                         label="\$1"; container="\$2"; shift 2
@@ -180,31 +213,78 @@ pipeline {
                     wait_for_exec postgres ${env.CI_PG} pg_isready -U valuebooks
                     wait_for_exec redis ${env.CI_REDIS} redis-cli ping
 
-                    # minio/minio ships neither curl nor mc, so probe from the CI image (which has
-                    # node) over the CI network instead of exec-ing inside the container.
-                    minio_ready=false
+                    # The API must connect as a RESTRICTED role here, not as POSTGRES_USER.
+                    # ai.int.test.ts asserts the runtime role is not a superuser, cannot bypass
+                    # RLS and does not own the AI tables -- the same three conditions
+                    # database-role.guard.ts enforces in production -- because RLS is silently
+                    # bypassed by exactly those roles. Running CI as the superuser made that
+                    # spec fail and, worse, would have let a tenant-isolation regression pass.
+                    #
+                    # Only the role has to exist: test/support/database.ts does the GRANTs
+                    # itself (including TRUNCATE, which the harness needs between specs and
+                    # production deliberately does not grant), deriving the role name from
+                    # DATABASE_URL's username.
+                    docker exec ${env.CI_PG} psql -v ON_ERROR_STOP=1 -U valuebooks -d valuebooks_test \
+                        -c "CREATE ROLE valuebooks_app LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT NOBYPASSRLS PASSWORD 'ci_app_pw'"
+
+                    # Mailpit is distroless, so probe it over HTTP from the CI image.
+                    mail_ready=false
                     for i in \$(seq 1 60); do
                         if docker run --rm --network ${env.CI_NET} ${env.API_CI_IMAGE} \
-                            node -e "fetch('http://${env.CI_MINIO}:9000/minio/health/live').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))" >/dev/null 2>&1; then
-                            minio_ready=true; echo "minio ready."; break
+                            node -e "fetch('http://${env.CI_MAIL}:8025/readyz').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))" >/dev/null 2>&1; then
+                            mail_ready=true; echo "mailpit ready."; break
                         fi
-                        echo "waiting for minio..."; sleep 2
+                        echo "waiting for mailpit..."; sleep 2
                     done
-                    if [ "\$minio_ready" != "true" ]; then
-                        echo "minio never became ready"; docker logs ${env.CI_MINIO} || true; exit 1
+                    if [ "\$mail_ready" != "true" ]; then
+                        echo "mailpit never became ready"; docker logs ${env.CI_MAIL} || true; exit 1
+                    fi
+
+                    # clamd refuses INSTREAM until freshclam has a signature database, so a
+                    # port-open check is not enough -- clamdcheck.sh is what docker-compose.yml
+                    # uses too. Given a cold signature volume this genuinely can take minutes,
+                    # hence the much longer budget than the other services get.
+                    clamav_ready=false
+                    for i in \$(seq 1 180); do
+                        if docker exec ${env.CI_CLAMAV} clamdcheck.sh >/dev/null 2>&1; then
+                            clamav_ready=true; echo "clamav ready."; break
+                        fi
+                        echo "waiting for clamav (signature db)..."; sleep 2
+                    done
+                    if [ "\$clamav_ready" != "true" ]; then
+                        echo "clamav never became ready"; docker logs --tail 50 ${env.CI_CLAMAV} || true; exit 1
+                    fi
+
+                    # Probed from the CI image (which has node) over the CI network rather than
+                    # by exec-ing inside it, so this does not depend on what tooling the S3
+                    # image happens to ship.
+                    s3_ready=false
+                    for i in \$(seq 1 60); do
+                        if docker run --rm --network ${env.CI_NET} ${env.API_CI_IMAGE} \
+                            node -e "fetch('http://${env.CI_S3}:4566/_localstack/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))" >/dev/null 2>&1; then
+                            s3_ready=true; echo "s3 ready."; break
+                        fi
+                        echo "waiting for s3..."; sleep 2
+                    done
+                    if [ "\$s3_ready" != "true" ]; then
+                        echo "s3 never became ready"; docker logs ${env.CI_S3} || true; exit 1
                     fi
 
                     # StorageService.ensureBucket() creates S3_BUCKET lazily on first use, so the
                     # bucket is deliberately not pre-created here.
                     docker run --rm --network ${env.CI_NET} \
                         -e NODE_ENV=test \
-                        -e DATABASE_URL=postgresql://valuebooks:ci_pw@${env.CI_PG}:5432/valuebooks_test \
+                        -e DATABASE_URL=postgresql://valuebooks_app:ci_app_pw@${env.CI_PG}:5432/valuebooks_test \
                         -e DATABASE_MIGRATION_URL=postgresql://valuebooks:ci_pw@${env.CI_PG}:5432/valuebooks_test \
                         -e REDIS_URL=redis://${env.CI_REDIS}:6379 \
-                        -e S3_ENDPOINT=http://${env.CI_MINIO}:9000 \
+                        -e CLAMAV_HOST=${env.CI_CLAMAV} \
+                        -e CLAMAV_PORT=3310 \
+                        -e SMTP_HOST=${env.CI_MAIL} \
+                        -e SMTP_PORT=1025 \
+                        -e S3_ENDPOINT=http://${env.CI_S3}:4566 \
                         -e S3_REGION=us-east-1 \
-                        -e S3_ACCESS_KEY=valuebooks \
-                        -e S3_SECRET_KEY=valuebooks-local \
+                        -e S3_ACCESS_KEY=test \
+                        -e S3_SECRET_KEY=test \
                         -e S3_BUCKET=valuebooks-test \
                         -e SECURITY_PEPPER=ci-only-jenkins-pepper-value-not-used-anywhere-else-000000 \
                         -w /app/apps/api \
@@ -214,7 +294,7 @@ pipeline {
             post {
                 always {
                     sh """
-                        docker rm -f ${env.CI_PG} ${env.CI_REDIS} ${env.CI_MINIO} 2>/dev/null || true
+                        docker rm -f ${env.CI_PG} ${env.CI_REDIS} ${env.CI_S3} ${env.CI_CLAMAV} ${env.CI_MAIL} 2>/dev/null || true
                         docker network rm ${env.CI_NET} 2>/dev/null || true
                     """
                 }
