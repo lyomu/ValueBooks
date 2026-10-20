@@ -97,7 +97,7 @@ services:
       dockerfile: apps/web/Dockerfile
       args:
         NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL}
-    image: ${DOCKERHUB_OWNER:-lyomu}/valuebooks-web:${VALUEBOOKS_IMAGE_TAG:-local}
+    image: ${DOCKERHUB_OWNER:-glyomu}/valuebooks-web:${VALUEBOOKS_IMAGE_TAG:-local}
     container_name: valuebooks-web
     restart: unless-stopped
     environment:
@@ -130,7 +130,7 @@ services:
     build:
       context: .
       dockerfile: apps/api/Dockerfile
-    image: ${DOCKERHUB_OWNER:-lyomu}/valuebooks-api:${VALUEBOOKS_IMAGE_TAG:-local}
+    image: ${DOCKERHUB_OWNER:-glyomu}/valuebooks-api:${VALUEBOOKS_IMAGE_TAG:-local}
     container_name: valuebooks-api
     restart: unless-stopped
     env_file:
@@ -173,7 +173,7 @@ services:
   # the HTTP request path, not a queued job, as of this writing -- confirm
   # that hasn't changed before trusting this container's lower mem_limit).
   worker:
-    image: ${DOCKERHUB_OWNER:-lyomu}/valuebooks-api:${VALUEBOOKS_IMAGE_TAG:-local}
+    image: ${DOCKERHUB_OWNER:-glyomu}/valuebooks-api:${VALUEBOOKS_IMAGE_TAG:-local}
     container_name: valuebooks-worker
     restart: unless-stopped
     command: ['node', 'apps/api/dist/src/worker.js']
@@ -205,7 +205,7 @@ services:
   # lowering this to match, or raise this without checking whether the flag
   # should move too.
   document-extraction-worker:
-    image: ${DOCKERHUB_OWNER:-lyomu}/valuebooks-api:${VALUEBOOKS_IMAGE_TAG:-local}
+    image: ${DOCKERHUB_OWNER:-glyomu}/valuebooks-api:${VALUEBOOKS_IMAGE_TAG:-local}
     container_name: valuebooks-document-extraction-worker
     restart: unless-stopped
     command: ['node', '--max-old-space-size=384', 'apps/api/dist/src/document-extraction-worker.js']

@@ -28,8 +28,8 @@ pipeline {
     }
 
     environment {
-        WEB_IMAGE_NAME = 'lyomu/valuebooks-web'
-        API_IMAGE_NAME = 'lyomu/valuebooks-api'
+        WEB_IMAGE_NAME = 'glyomu/valuebooks-web'
+        API_IMAGE_NAME = 'glyomu/valuebooks-api'
         NEXT_PUBLIC_API_URL = 'https://api.valuebooks.co'
     }
 
