@@ -54,6 +54,16 @@ jobs:
           --health-timeout 5s
           --health-retries 10
 
+      # Signup and invitation integration specs queue real email delivery.
+      mailpit:
+        image: axllent/mailpit:v1.27.8
+        env:
+          MP_SMTP_AUTH_ACCEPT_ANY: '1'
+          MP_SMTP_AUTH_ALLOW_INSECURE: '1'
+        ports:
+          - 1025:1025
+          - 8025:8025
+
       # Document extraction scans uploads for malware before processing them. CLAMAV_HOST/PORT
       # default to localhost:53310 (see packages/config), matching docker-compose.yml's clamav
       # service, so no extra env vars are needed in the steps below.
@@ -125,21 +135,26 @@ jobs:
       - name: Integration test
         working-directory: apps/api
         env:
-          DATABASE_URL: postgresql://valuebooks:valuebooks@localhost:5432/valuebooks
-          # The CI postgres service has no separate restricted runtime role, so the migration-owner
-          # connection the integration harness provisions the test database with (see
-          # apps/api/test/support/database.ts) is the same superuser as DATABASE_URL.
+          DATABASE_URL: postgresql://valuebooks_app:ci_app_pw@localhost:5432/valuebooks
           DATABASE_MIGRATION_URL: postgresql://valuebooks:valuebooks@localhost:5432/valuebooks
+          SMTP_HOST: localhost
+          SMTP_PORT: 1025
           S3_ENDPOINT: http://localhost:59000
           S3_REGION: us-east-1
           S3_ACCESS_KEY: valuebooks
           S3_SECRET_KEY: valuebooks-local
           REDIS_URL: redis://localhost:6379
           S3_BUCKET: valuebooks-local
-        run: npm run test:integration
+        run: |
+          # The harness grants this role access after applying migrations. Running
+          # as the migration owner bypasses RLS and invalidates the isolation tests.
+          psql "$DATABASE_MIGRATION_URL" -v ON_ERROR_STOP=1 -c "CREATE ROLE valuebooks_app LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT NOBYPASSRLS PASSWORD 'ci_app_pw'"
+          npm run test:integration
 
       - name: Build
         run: npm run build
 
       - name: Validate Docker Compose
-        run: docker compose config --quiet
+        # Production secrets live only on the box; validate the checked-in
+        # structure without resolving its required .env.production file.
+        run: docker compose -f docker-compose.prod.yml config --no-env-resolution --no-interpolate --quiet
