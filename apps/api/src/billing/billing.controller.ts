@@ -24,6 +24,19 @@ export class BillingController {
   @Post('registration-intents') @HttpCode(201) intent(@Body() body: PlanIntentDto) {
     return this.billing.createIntent(body.planKey).then((data) => ({ data }));
   }
+  @Post('registration-intents/mine') @HttpCode(201) @UseGuards(SessionGuard) myIntent(
+    @Body() body: PlanIntentDto,
+    @Req() request: AuthenticatedRequest,
+  ) {
+    return this.billing
+      .createIntentForUser(body.planKey, request.auth.user.id, request.auth.user.email)
+      .then((data) => ({ data }));
+  }
+  @Get('registration-intents/mine') @UseGuards(SessionGuard) currentIntent(
+    @Req() request: AuthenticatedRequest,
+  ) {
+    return this.billing.currentIntentForUser(request.auth.user.id).then((data) => ({ data }));
+  }
   @Post('checkout') @UseGuards(SessionGuard) checkout(
     @Body() body: IntentDto,
     @Req() request: AuthenticatedRequest,

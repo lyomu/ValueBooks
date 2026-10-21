@@ -13,6 +13,7 @@ import Link from 'next/link';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { ApiError, apiDownload, apiRequest, apiUpload } from '../lib/api';
+import { BrandLogo } from './brand-logo';
 
 type PortalAccount = { id: string; organizationName: string; customerName: string };
 type PortalDocument = {
@@ -182,8 +183,9 @@ export function PortalWorkbench() {
   return (
     <main id="main-content" className="rb-portal">
       <header className="rb-portal__header">
-        <Link href="/portal" className="rb-portal__brand">
-          <ReceiptText aria-hidden="true" /> ValueBooks portal
+        <Link href="/portal" className="rb-portal__brand" aria-label="ValueBooks customer portal">
+          <BrandLogo height={26} alt="" priority />
+          <span>Customer portal</span>
         </Link>
         <a className="rb-portal__signout" href="/login">
           <LogOut aria-hidden="true" /> Sign out

@@ -9,6 +9,11 @@ import { BillingNotificationService } from './billing-notification.service.js';
 import { writeAuditEvent } from '../organizations/audit-event.js';
 
 const INTENT_TTL_MS = 24 * 60 * 60 * 1000;
+const USER_INTENT_SELECT = {
+  id: true,
+  expiresAt: true,
+  plan: { select: { key: true, tierKey: true, name: true, billingInterval: true } },
+} as const;
 
 /** Subscription billing only. Customer invoice payment collection never enters this service. */
 @Injectable()
@@ -84,6 +89,42 @@ export class BillingService {
           },
         },
       },
+    });
+  }
+
+  /**
+   * Records a signed-in user's plan choice before onboarding. Organization finalization picks the
+   * newest open unpaid intent, so earlier unpaid choices are retired in the same transaction to
+   * keep "newest" unambiguous. Payment-verified intents are never touched here.
+   */
+  async createIntentForUser(planKey: string, userId: string, email: string) {
+    const plan = await this.prisma.plan.findFirst({
+      where: { key: planKey, status: PlanStatus.ACTIVE },
+    });
+    if (!plan) throw new NotFoundException('This plan is no longer available.');
+    const now = new Date();
+    return this.prisma.$transaction(async (tx) => {
+      await tx.registrationIntent.updateMany({
+        where: { userId, paymentVerifiedAt: null, consumedAt: null },
+        data: { consumedAt: now },
+      });
+      return tx.registrationIntent.create({
+        data: {
+          planId: plan.id,
+          userId,
+          email,
+          expiresAt: new Date(now.getTime() + INTENT_TTL_MS),
+        },
+        select: USER_INTENT_SELECT,
+      });
+    });
+  }
+
+  currentIntentForUser(userId: string) {
+    return this.prisma.registrationIntent.findFirst({
+      where: { userId, consumedAt: null, expiresAt: { gt: new Date() } },
+      orderBy: { createdAt: 'desc' },
+      select: USER_INTENT_SELECT,
     });
   }
 

@@ -1628,8 +1628,12 @@ a.rb-nav-item:hover {
   text-decoration: none;
 }
 
-.rb-portal__brand svg {
-  color: hsl(var(--rb-primary));
+.rb-portal__brand span {
+  padding-left: 0.5rem;
+  border-left: 1px solid hsl(var(--rb-border));
+  color: hsl(var(--rb-muted-foreground));
+  font-size: 0.875rem;
+  font-weight: 600;
 }
 .rb-portal__signout {
   color: hsl(var(--rb-muted-foreground));
@@ -4482,35 +4486,26 @@ a.rb-nav-item:hover {
   text-decoration: none;
 }
 
-.rb-onboarding-page__brand > span {
-  display: flex;
-  flex-direction: column;
+.rb-onboarding__plan {
+  grid-column: 1 / -1;
+  margin: 0;
+  padding: 0.625rem 0.875rem;
+  color: hsl(var(--rb-foreground));
+  background: hsl(var(--rb-accent));
+  border-radius: var(--rb-radius);
+  font-size: 0.875rem;
 }
 
-.rb-onboarding-page__brand strong {
-  font-size: 1.0625rem;
-  letter-spacing: -0.02em;
+.rb-onboarding__plan a {
+  color: hsl(var(--rb-primary));
+  font-weight: 600;
 }
 
 .rb-onboarding-page__brand small {
+  padding-left: 0.75rem;
+  border-left: 1px solid hsl(var(--rb-border));
   color: hsl(var(--rb-muted-foreground));
   font-size: 0.8125rem;
-}
-
-.rb-onboarding-page__mark {
-  display: grid;
-  width: 2.5rem;
-  height: 2.5rem;
-  place-items: center;
-  color: hsl(var(--rb-primary-foreground));
-  background: #0274dc;
-  border-radius: var(--rb-radius);
-  box-shadow: var(--rb-shadow-action);
-}
-
-.rb-onboarding-page__mark svg {
-  width: 1.25rem;
-  height: 1.25rem;
 }
 
 .rb-onboarding-page__header p {
@@ -9466,5 +9461,260 @@ button.rb-customer-facts__heading {
   }
   .rb-platform-overview__attention {
     gap: 0.7rem;
+  }
+}
+
+/* ---------- Plan picker (/choose-plan, /upgrade) ---------- */
+.rb-plan-picker {
+  display: flex;
+  min-height: 100vh;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.5rem;
+  padding: 2.5rem clamp(1rem, 4vw, 3rem) 3rem;
+  background:
+    radial-gradient(60rem 28rem at 50% -8rem, hsl(var(--rb-accent)), transparent 70%),
+    hsl(var(--rb-background));
+}
+
+.rb-plan-picker__intro {
+  max-width: 40rem;
+  text-align: center;
+}
+
+.rb-plan-picker__intro h1 {
+  margin: 0 0 0.75rem;
+  color: hsl(var(--rb-foreground));
+  font-size: clamp(1.875rem, 4vw, 2.75rem);
+  letter-spacing: -0.03em;
+  line-height: 1.1;
+}
+
+.rb-plan-picker__intro p {
+  margin: 0;
+  color: hsl(var(--rb-muted-foreground));
+  font-size: 1.0625rem;
+  line-height: 1.55;
+}
+
+.rb-plan-picker__interval {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.rb-plan-picker__interval p {
+  margin: 0;
+  color: hsl(var(--rb-muted-foreground));
+  font-size: 0.8125rem;
+}
+
+.rb-plan-picker__toggle {
+  display: inline-flex;
+  padding: 0.25rem;
+  background: hsl(var(--rb-card));
+  border: 1px solid hsl(var(--rb-border));
+  border-radius: var(--rb-radius-full);
+  box-shadow: var(--rb-shadow-sm);
+}
+
+.rb-plan-picker__toggle button {
+  min-width: 6.5rem;
+  padding: 0.5rem 1rem;
+  color: hsl(var(--rb-muted-foreground));
+  font: inherit;
+  font-size: 0.875rem;
+  font-weight: 600;
+  background: transparent;
+  border: 0;
+  border-radius: var(--rb-radius-full);
+  cursor: pointer;
+  transition: background var(--rb-duration-fast) var(--rb-ease-out),
+    color var(--rb-duration-fast) var(--rb-ease-out);
+}
+
+.rb-plan-picker__toggle button.is-active {
+  color: hsl(var(--rb-primary-foreground));
+  background: hsl(var(--rb-primary));
+}
+
+.rb-plan-picker__toggle button:focus-visible {
+  outline: 2px solid hsl(var(--rb-ring));
+  outline-offset: 2px;
+}
+
+.rb-plan-picker__notice {
+  width: 100%;
+  max-width: 40rem;
+}
+
+.rb-plan-picker__notice--info {
+  padding: 0.75rem 0.875rem;
+  color: hsl(var(--rb-foreground));
+  background: hsl(var(--rb-info-surface));
+  border: 1px solid hsl(var(--rb-border));
+  border-radius: var(--rb-radius);
+  font-size: 0.875rem;
+  text-align: center;
+}
+
+.rb-plan-picker__grid {
+  display: grid;
+  width: 100%;
+  max-width: 76rem;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 1rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.rb-plan-picker__skeleton {
+  height: 26rem;
+  border-radius: var(--rb-radius-lg);
+}
+
+.rb-plan-card {
+  display: flex;
+  height: 100%;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 1.5rem;
+  color: hsl(var(--rb-card-foreground));
+  background: hsl(var(--rb-card));
+  border: 1px solid hsl(var(--rb-border));
+  border-radius: var(--rb-radius-lg);
+  box-shadow: var(--rb-shadow-sm);
+}
+
+.rb-plan-card--highlighted {
+  border-color: hsl(var(--rb-primary));
+  box-shadow: 0 0 0 1px hsl(var(--rb-primary)), var(--rb-shadow-md);
+}
+
+.rb-plan-card__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.rb-plan-card__head h2 {
+  margin: 0;
+  font-size: 1.125rem;
+  letter-spacing: -0.01em;
+}
+
+.rb-plan-card__tagline {
+  min-height: 2.75rem;
+  margin: 0;
+  color: hsl(var(--rb-muted-foreground));
+  font-size: 0.875rem;
+  line-height: 1.5;
+}
+
+.rb-plan-card__price {
+  display: flex;
+  align-items: baseline;
+  gap: 0.375rem;
+  margin: 0.75rem 0 0;
+}
+
+.rb-plan-card__price strong {
+  font-size: 2.25rem;
+  letter-spacing: -0.03em;
+  line-height: 1;
+}
+
+.rb-plan-card__price span,
+.rb-plan-card__price--missing {
+  color: hsl(var(--rb-muted-foreground));
+  font-size: 0.875rem;
+}
+
+.rb-plan-card__billing {
+  margin: 0 0 0.75rem;
+  color: hsl(var(--rb-muted-foreground));
+  font-size: 0.8125rem;
+}
+
+.rb-plan-card__cta {
+  width: 100%;
+}
+
+.rb-plan-card__features {
+  display: grid;
+  gap: 0.625rem;
+  margin: 1rem 0 0;
+  padding: 1rem 0 0;
+  border-top: 1px solid hsl(var(--rb-border));
+  list-style: none;
+  font-size: 0.875rem;
+}
+
+.rb-plan-card__features li {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  line-height: 1.4;
+}
+
+.rb-plan-card__features svg {
+  width: 1rem;
+  height: 1rem;
+  flex: none;
+  margin-top: 0.1rem;
+  color: hsl(var(--rb-success));
+}
+
+.rb-plan-picker__footer {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.375rem;
+  margin-top: 0.5rem;
+  color: hsl(var(--rb-muted-foreground));
+  font-size: 0.875rem;
+  text-align: center;
+}
+
+.rb-plan-picker__footer p {
+  margin: 0;
+}
+
+.rb-plan-picker__footer a,
+.rb-plan-picker__footer button {
+  padding: 0;
+  color: hsl(var(--rb-primary));
+  font: inherit;
+  font-weight: 600;
+  background: none;
+  border: 0;
+  cursor: pointer;
+  text-decoration: none;
+}
+
+.rb-plan-picker__footer a:hover,
+.rb-plan-picker__footer button:hover {
+  text-decoration: underline;
+}
+
+@media (max-width: 1080px) {
+  .rb-plan-picker__grid {
+    max-width: 44rem;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 600px) {
+  .rb-plan-picker {
+    padding-top: 1.75rem;
+  }
+  .rb-plan-picker__grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .rb-plan-card__tagline {
+    min-height: 0;
   }
 }

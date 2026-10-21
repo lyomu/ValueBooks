@@ -40,7 +40,7 @@ export function SiteFooter() {
       <div className="mk-footer__grid">
         <div className="mk-footer__brand">
           <Link className="mk-brand mk-brand--footer" href="/">
-            <Image src="/logo-full-white.png" alt="ValueBooks" height={26} width={129} />
+            <Image src="/logo-full-white.png" alt="ValueBooks" height={26} width={131} />
           </Link>
           <p>
             Clearer books, calmer decisions, and a capable AI partner when you need one. Built for
