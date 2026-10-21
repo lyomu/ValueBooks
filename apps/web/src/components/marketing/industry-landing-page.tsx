@@ -12,6 +12,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 
 import type { Industry, IndustryAsset } from '../../content/industries';
+import { appUrl } from '../../lib/site-hosts';
 import { FaqAccordion } from './faq-accordion';
 import { Reveal } from './motion';
 import { revealDelay } from './reveal-delay';
@@ -172,7 +173,7 @@ export function IndustryLandingPage({ industry }: { industry: Industry }) {
             Keep your financial work organized with ValueBooks. Start your 14-day free trial and
             explore a simpler way to manage your business.
           </p>
-          <Link className="mk-button mk-button--contrast" href="/signup">
+          <Link className="mk-button mk-button--contrast" href={appUrl('/signup')}>
             Try ValueBooks Free <ArrowRight aria-hidden="true" />
           </Link>
           <small>14 days free. No card required.</small>

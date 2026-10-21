@@ -31,6 +31,10 @@ pipeline {
         WEB_IMAGE_NAME = 'glyomu/valuebooks-web'
         API_IMAGE_NAME = 'glyomu/valuebooks-api'
         NEXT_PUBLIC_API_URL = 'https://api.valuebooks.co'
+        NEXT_PUBLIC_MARKETING_URL = 'https://valuebooks.co'
+        NEXT_PUBLIC_APP_URL = 'https://next.valuebooks.co'
+        NEXT_PUBLIC_CONSOLE_URL = 'https://console.valuebooks.co'
+        WEB_BUILD_ARGS = "--build-arg NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL} --build-arg NEXT_PUBLIC_MARKETING_URL=${NEXT_PUBLIC_MARKETING_URL} --build-arg NEXT_PUBLIC_APP_URL=${NEXT_PUBLIC_APP_URL} --build-arg NEXT_PUBLIC_CONSOLE_URL=${NEXT_PUBLIC_CONSOLE_URL}"
     }
 
     stages {
@@ -75,7 +79,7 @@ pipeline {
                     env.API_CI_IMAGE = "valuebooks-api-ci:${env.SAFE_BRANCH_NAME}-${env.BUILD_NUMBER}"
                     docker.build(
                         env.WEB_CI_IMAGE,
-                        "--target build --build-arg NEXT_PUBLIC_API_URL=${env.NEXT_PUBLIC_API_URL} -f apps/web/Dockerfile ."
+                        "--target build ${env.WEB_BUILD_ARGS} -f apps/web/Dockerfile ."
                     )
                     docker.build(env.API_CI_IMAGE, '--target build -f apps/api/Dockerfile .')
                 }
@@ -306,7 +310,7 @@ pipeline {
                 script {
                     docker.build(
                         "${WEB_IMAGE_NAME}:${env.IMAGE_TAG}",
-                        "--build-arg NEXT_PUBLIC_API_URL=${env.NEXT_PUBLIC_API_URL} -f apps/web/Dockerfile ."
+                        "${env.WEB_BUILD_ARGS} -f apps/web/Dockerfile ."
                     )
                     docker.build("${API_IMAGE_NAME}:${env.IMAGE_TAG}", '-f apps/api/Dockerfile .')
                 }

@@ -2,6 +2,8 @@ import { LockKeyhole } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
 
+import { appUrl } from '../../lib/site-hosts';
+
 const columns: ReadonlyArray<{ title: string; links: ReadonlyArray<readonly [string, string]> }> = [
   {
     title: 'Product',
@@ -28,7 +30,7 @@ const columns: ReadonlyArray<{ title: string; links: ReadonlyArray<readonly [str
       ['/customers', 'Customer stories'],
       ['/security', 'Security'],
       ['/contact', 'Contact sales'],
-      ['/login', 'Sign in'],
+      [appUrl('/login'), 'Sign in'],
     ],
   },
 ];

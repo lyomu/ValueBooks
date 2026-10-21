@@ -15,6 +15,7 @@ import { FaqAccordion, type FaqItem } from '../../components/marketing/faq-accor
 import { Reveal } from '../../components/marketing/motion';
 import { revealDelay } from '../../components/marketing/reveal-delay';
 import { PricingTeaserSection } from '../../components/marketing/pricing-section';
+import { appUrl } from '../../lib/site-hosts';
 
 const faqItems: FaqItem[] = [
   {
@@ -66,7 +67,7 @@ export default function MarketingHomePage() {
               into clear next steps, and stay in control of every decision.
             </MarketingCopy>
             <div className="mk-hero-actions">
-              <Link className="mk-button mk-button--hero" href="/signup">
+              <Link className="mk-button mk-button--hero" href={appUrl('/signup')}>
                 Try ValueBooks free
               </Link>
               <Link className="mk-text-link mk-text-link--on-dark" href="/product">

@@ -3,7 +3,10 @@ import type { MetadataRoute } from 'next';
 import { industries } from '../content/industries';
 
 export default function sitemap(): MetadataRoute.Sitemap {
-  const baseUrl = process.env.NEXT_PUBLIC_SITE_URL ?? 'http://localhost:3000';
+  const baseUrl =
+    process.env.NEXT_PUBLIC_MARKETING_URL ??
+    process.env.NEXT_PUBLIC_SITE_URL ??
+    'http://localhost:3000';
   const toUrl = (path: string) => new URL(path, baseUrl).toString();
 
   return [

@@ -20,6 +20,7 @@ import { usePathname } from 'next/navigation';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 
 import { usePlatformSession } from '../lib/platform';
+import { appUrl } from '../lib/site-hosts';
 import { BrandLogo } from './brand-logo';
 
 const NAV = [
@@ -226,7 +227,7 @@ export function PlatformShell({ children }: { children: ReactNode }) {
       <PlatformNotice
         title="Sign in to continue"
         copy="The platform console needs a signed-in ValueBooks account."
-        action={{ href: '/login', label: 'Sign in' }}
+        action={{ href: '/login?next=/platform', label: 'Sign in' }}
       />
     );
   }
@@ -235,7 +236,7 @@ export function PlatformShell({ children }: { children: ReactNode }) {
       <PlatformNotice
         title="You do not have platform access"
         copy="Platform administration is granted per person by an existing superadmin. If you expected access here, ask them to grant it."
-        action={{ href: '/dashboard', label: 'Back to ValueBooks' }}
+        action={{ href: appUrl('/dashboard'), label: 'Back to ValueBooks' }}
       />
     );
   }
@@ -268,7 +269,7 @@ export function PlatformShell({ children }: { children: ReactNode }) {
         <div className="rb-platform__identity">
           <span className="rb-platform__role">{session?.role.toLowerCase()}</span>
           <span>{session?.email}</span>
-          <Link href="/dashboard">Exit console</Link>
+          <Link href={appUrl('/dashboard')}>Exit console</Link>
         </div>
       </header>
       <div className="rb-platform__body">

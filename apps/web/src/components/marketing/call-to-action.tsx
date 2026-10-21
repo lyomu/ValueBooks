@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { appUrl } from '../../lib/site-hosts';
 import { Reveal } from './motion';
 
 /**
@@ -9,7 +10,7 @@ import { Reveal } from './motion';
 export function CallToAction({
   kicker = 'Ready when you are',
   title = 'Make room for the work that moves your business forward.',
-  action = { href: '/signup', label: 'Get started' },
+  action = { href: appUrl('/signup'), label: 'Get started' },
 }: {
   kicker?: string;
   title?: string;

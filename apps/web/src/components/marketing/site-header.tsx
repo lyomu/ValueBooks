@@ -15,6 +15,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
 import { industryBySlug, industryGroups } from '../../content/industries';
+import { appUrl } from '../../lib/site-hosts';
 
 const productLinks = [
   {
@@ -100,10 +101,10 @@ export function SiteHeader() {
           <Link href="/contact">Contact</Link>
         </nav>
         <div className="mk-header__actions">
-          <Link className="mk-link-button" href="/login">
+          <Link className="mk-link-button" href={appUrl('/login')}>
             Sign in
           </Link>
-          <Link className="mk-button mk-button--small" href="/signup">
+          <Link className="mk-button mk-button--small" href={appUrl('/signup')}>
             Try it free
           </Link>
         </div>
@@ -199,7 +200,7 @@ export function SiteHeader() {
           <Link href="/pricing">Pricing</Link>
           <Link href="/security">Security</Link>
           <Link href="/contact">Contact</Link>
-          <Link className="mk-button" href="/signup">
+          <Link className="mk-button" href={appUrl('/signup')}>
             Try it free
           </Link>
         </nav>

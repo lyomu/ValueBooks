@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useEffect, useState } from 'react';
 
 import { apiRequest } from '../lib/api';
+import { marketingUrl } from '../lib/site-hosts';
 import { hasPermission, useWorkspace } from '../lib/workspace';
 
 type BillingSummary = {
@@ -221,7 +222,7 @@ export function BillingSettings() {
               <p>{subscription.plan.name} · {subscription.plan.billingInterval.toLowerCase()} · {subscription.status.replaceAll('_', ' ').toLowerCase()}</p>
             ) : <p>No subscription is recorded for this organization.</p>}
           </div>
-          <Button asChild variant="outline"><Link href="/pricing">View plans</Link></Button>
+          <Button asChild variant="outline"><Link href={marketingUrl('/pricing')}>View plans</Link></Button>
         </div>
         {subscription ? (
           <ul className="rb-billing-facts">
