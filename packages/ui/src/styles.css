@@ -74,7 +74,7 @@ svg.lucide {
 
 .rb-button--primary {
   color: hsl(var(--rb-primary-foreground));
-  background: #0274dc;
+  background: #006ef5;
   box-shadow: var(--rb-shadow-action);
 }
 

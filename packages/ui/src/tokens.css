@@ -9,9 +9,10 @@
   --rb-popover-foreground: 217 82% 13%;
 
   --rb-brand-navy: 217 82% 13%;
-  --rb-primary: 209 98% 44%;
-  --rb-primary-mid: 209 98% 44%;
-  --rb-primary-glow: 209 98% 44%;
+  /* Logo blue (#0073FC) at 48% lightness, so white text keeps >= 4.5:1 contrast. */
+  --rb-primary: 213 100% 48%;
+  --rb-primary-mid: 213 100% 48%;
+  --rb-primary-glow: 213 100% 48%;
   --rb-primary-foreground: 0 0% 100%;
 
   --rb-secondary: 210 40% 96%;
