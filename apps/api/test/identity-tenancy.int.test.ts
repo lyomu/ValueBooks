@@ -333,10 +333,19 @@ describe('identity and tenancy over HTTP', () => {
     if (!encoded) throw new Error(`No queued token found for ${email} and ${marker}.`);
     return decodeURIComponent(encoded);
   }
+
+  async function queuedCode(email: string): Promise<string> {
+    const jobs = await queue.getJobs(['wait', 'delayed']);
+    const job = jobs.find((candidate) => candidate.data.to === email && candidate.data.subject === 'Your ValueBooks verification code');
+    const code = job?.data.text.match(/verification code is (\d{6})/i)?.[1];
+    if (!code) throw new Error(`No queued verification code found for ${email}.`);
+    return code;
+  }
 });
 
 function sessionCookie(header: string | string[] | undefined): string {
-  const value = Array.isArray(header) ? header[0] : header;
+  const values = Array.isArray(header) ? header : header ? [header] : [];
+  const value = values.find((candidate) => candidate.startsWith('rb_session='));
   if (!value) throw new Error('Expected a session Set-Cookie header.');
   return value.split(';', 1)[0] ?? value;
 }

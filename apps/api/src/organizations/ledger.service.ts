@@ -22,6 +22,7 @@ import { DomainEventsService } from '../automation/domain-events.service.js';
 import type { RequestMetadata } from '../auth/request-context.js';
 import { PrismaService } from '../database/prisma.service.js';
 import { writeAuditEvent } from './audit-event.js';
+import { UsageMeteringService } from '../billing/usage-metering.service.js';
 import { CurrencyService } from './currency.service.js';
 import { DocumentNumberingService } from './document-numbering.service.js';
 import {
@@ -48,6 +49,7 @@ export class LedgerService {
     private readonly tax: TaxService,
     private readonly currencies: CurrencyService,
     private readonly events: DomainEventsService,
+    private readonly usage: UsageMeteringService,
   ) {}
 
   async ensureStarterChart(
@@ -274,6 +276,7 @@ export class LedgerService {
     user: PublicUser,
     input: UpsertJournalDto,
   ) {
+    await this.usage.assertFeatureAvailable(context.id, 'manual_journals.enabled');
     const organization = await this.organizationForLedger(context.id);
     await this.validateJournalInput(context.id, organization.baseCurrency, input);
 

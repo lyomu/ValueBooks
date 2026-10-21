@@ -322,7 +322,7 @@ export class PlatformTenantsService {
         }),
         tx.plan.findUnique({
           where: { id: input.planId },
-          select: { id: true, key: true, trialDays: true },
+          select: { id: true, key: true, trialDays: true, priceMinor: true },
         }),
       ]);
       if (!organization) throw new NotFoundException('Organization not found.');

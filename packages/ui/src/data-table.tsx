@@ -21,6 +21,37 @@ export type DataTableColumn<T> = {
 };
 
 /**
+ * Keeps a record's primary label and supporting metadata legible in compact
+ * listing tables. Pass a Link as `primary` when the record has a detail route.
+ */
+export function PrimarySecondaryCell({
+  primary,
+  secondary,
+  primaryTitle,
+  secondaryTitle,
+  className,
+}: {
+  primary: ReactNode;
+  secondary?: ReactNode;
+  primaryTitle?: string;
+  secondaryTitle?: string;
+  className?: string;
+}) {
+  return (
+    <div className={cn('rb-table-primary-secondary', className)}>
+      <span className="rb-table-primary-secondary__primary" title={primaryTitle}>
+        {primary}
+      </span>
+      {secondary ? (
+        <span className="rb-table-primary-secondary__secondary" title={secondaryTitle}>
+          {secondary}
+        </span>
+      ) : null}
+    </div>
+  );
+}
+
+/**
  * The shared control strip for record lists. Screens provide their search and
  * context-specific filters, while the shell, result count, and responsive
  * behavior remain identical across the product.

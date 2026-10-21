@@ -12,6 +12,8 @@ export const EMAIL_JOB_NAMES = {
   scheduledReport: 'scheduled_report.send',
   invoiceReminder: 'invoice_reminder.send',
   automationNotification: 'automation_notification.send',
+  trialEndingTomorrow: 'billing.trial_ending_tomorrow',
+  billingNotice: 'billing.notice',
 } as const;
 
 export type EmailJobName = (typeof EMAIL_JOB_NAMES)[keyof typeof EMAIL_JOB_NAMES];

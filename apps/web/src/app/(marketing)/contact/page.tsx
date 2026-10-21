@@ -27,13 +27,13 @@ export default function ContactPage() {
             <MessageCircle />
             <h2>Talk to sales</h2>
             <p>See how ValueBooks can fit the way your team already works.</p>
-            <a href="mailto:sales@valuebooks.example">sales@valuebooks.example</a>
+            <a href="mailto:sales@valuebooks.co">sales@valuebooks.co</a>
           </Reveal>
           <Reveal as="article" delay={revealDelay(1)}>
             <Mail />
             <h2>Product support</h2>
             <p>Have a question about your workspace or an existing account?</p>
-            <a href="mailto:support@valuebooks.example">support@valuebooks.example</a>
+            <a href="mailto:support@valuebooks.co">support@valuebooks.co</a>
           </Reveal>
           <Reveal as="article" delay={revealDelay(2)}>
             <Phone />

@@ -29,7 +29,9 @@ export function SignupOtpForm({ email, intent }: { email: string; intent?: strin
       );
       if (!response.data.signupVerified)
         throw new Error('This verification code is not for a new account.');
-      router.replace(intent ? `/checkout?intent=${encodeURIComponent(intent)}` : '/pricing');
+      // The selected plan is already bound to the registration intent. Organization finalization
+      // starts the cardless trial and preserves that selection as the intended paid plan.
+      router.replace('/onboarding');
       router.refresh();
     } catch (caught) {
       setError(

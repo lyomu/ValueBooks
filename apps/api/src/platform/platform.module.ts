@@ -3,6 +3,7 @@ import { Module } from '@nestjs/common';
 import { AutomationModule } from '../automation/automation.module.js';
 import { AuthModule } from '../auth/auth.module.js';
 import { JobsModule } from '../jobs/jobs.module.js';
+import { BillingModule } from '../billing/billing.module.js';
 import { EntitlementsModule } from './entitlements.module.js';
 import { FeatureFlagGuard } from './feature-flag.guard.js';
 import { PlatformAccessModule } from './platform-access.module.js';
@@ -10,6 +11,8 @@ import { PlatformCatalogService } from './platform-catalog.service.js';
 import { PlatformOperationsService } from './platform-operations.service.js';
 import { PlatformTenantsService } from './platform-tenants.service.js';
 import { PlatformController } from './platform.controller.js';
+import { PlatformBillingController } from './platform-billing.controller.js';
+import { PlatformBillingService } from './platform-billing.service.js';
 
 /**
  * Platform administration. Imports `AutomationModule` and `JobsModule` for queue health and job
@@ -25,12 +28,13 @@ import { PlatformController } from './platform.controller.js';
  * injection to resolve) but does not need to import this whole module.
  */
 @Module({
-  imports: [AuthModule, AutomationModule, JobsModule, PlatformAccessModule, EntitlementsModule],
-  controllers: [PlatformController],
+  imports: [AuthModule, AutomationModule, JobsModule, PlatformAccessModule, EntitlementsModule, BillingModule],
+  controllers: [PlatformController, PlatformBillingController],
   providers: [
     PlatformTenantsService,
     PlatformCatalogService,
     PlatformOperationsService,
+    PlatformBillingService,
     FeatureFlagGuard,
   ],
   exports: [EntitlementsModule, FeatureFlagGuard],

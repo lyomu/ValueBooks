@@ -15,6 +15,7 @@ import {
 
 import type { RequestMetadata } from '../auth/request-context.js';
 import { PrismaService } from '../database/prisma.service.js';
+import { UsageMeteringService } from '../billing/usage-metering.service.js';
 import { writeAuditEvent } from '../organizations/audit-event.js';
 import { REPORT_DEFINITIONS, reportDefinitionFor } from './report-registry.js';
 import type {
@@ -52,7 +53,7 @@ interface QueryResult {
 
 @Injectable()
 export class ReportingService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly prisma: PrismaService, private readonly usage: UsageMeteringService) {}
 
   definitions(): readonly ReportDefinition[] {
     return REPORT_DEFINITIONS;
@@ -138,6 +139,9 @@ export class ReportingService {
     reportDefinitionFor(input.reportKey);
     const filters = reportFiltersSchema.partial().parse(input.filters);
     return this.prisma.$transaction(async (tx) => {
+      await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtext(${organization.id}), 112)::text AS locked`;
+      const existing = await tx.savedReport.count({ where: { organizationId: organization.id } });
+      await this.usage.assertWithinConcurrentLimit(organization.id, 'reports.saved.enabled', existing);
       const created = await tx.savedReport.create({
         data: {
           organizationId: organization.id,

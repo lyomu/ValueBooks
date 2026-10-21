@@ -81,10 +81,18 @@ export class ApiExceptionFilter implements ExceptionFilter {
       this.errorReporter.captureException(exception, detail);
     }
 
+    const billingLimit = payload && typeof payload === 'object' &&
+      (payload as { code?: unknown }).code === 'PLAN_LIMIT_REACHED'
+      ? payload as { code: string; feature: string; currentUsage: number; limit: number; upgradeRequired: boolean }
+      : null;
+    const readOnly = payload && typeof payload === 'object' &&
+      (payload as { code?: unknown }).code === 'SUBSCRIPTION_READ_ONLY';
     response.status(status).json({
       error: {
-        code: errorCode(status, Boolean(validationMessages)),
-        message,
+        code: billingLimit?.code ?? (readOnly ? 'SUBSCRIPTION_READ_ONLY' : errorCode(status, Boolean(validationMessages))),
+        message: billingLimit ? `You have reached the ${billingLimit.feature} limit for your plan.` : message,
+        ...(billingLimit ? { feature: billingLimit.feature, currentUsage: billingLimit.currentUsage,
+          limit: billingLimit.limit, upgradeRequired: true } : {}),
         ...(validationMessages ? { fieldErrors: validationMessages } : {}),
       },
     });

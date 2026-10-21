@@ -6,6 +6,7 @@ import type {
   PlatformQueueHealth,
   PlatformSecurityEvent,
 } from '@valuebooks/contracts';
+import { DataTable, PrimarySecondaryCell } from '@valuebooks/ui';
 import Link from 'next/link';
 import { useCallback, useEffect, useState, type FormEvent } from 'react';
 
@@ -112,59 +113,72 @@ export function PlatformJobs() {
         <p className="rb-platform__muted">Loading queue health…</p>
       )}
 
-      <section className="rb-platform__card" aria-label="Failed executions">
+      <section className="rb-platform__section" aria-label="Failed executions">
         <h2>Failed executions</h2>
-        {rows === null ? (
-          <p className="rb-platform__muted">Loading…</p>
-        ) : rows.length === 0 ? (
-          <p className="rb-platform__muted">Nothing has failed. </p>
-        ) : (
-          <div className="rb-platform__table-wrap">
-            <table className="rb-platform__table">
-              <thead>
-                <tr>
-                  <th scope="col">Handler</th>
-                  <th scope="col">Organization</th>
-                  <th scope="col">Attempts</th>
-                  <th scope="col">Error</th>
-                  <th scope="col">Failed</th>
-                  <th scope="col">
-                    <span className="rb-visually-hidden">Actions</span>
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {rows.map((row) => (
-                  <tr key={row.id}>
-                    <th scope="row">
-                      {row.handler}
-                      <small>{row.occurrenceKey}</small>
-                    </th>
-                    <td>
-                      <Link href={`/platform/organizations/${row.organizationId}`}>
-                        {row.organizationName}
-                      </Link>
-                    </td>
-                    <td>{row.attempts}</td>
-                    <td className="rb-platform__error">{row.error ?? '—'}</td>
-                    <td>{new Date(row.createdAt).toLocaleString()}</td>
-                    <td>
-                      {canRetry ? (
-                        <button
-                          type="button"
-                          disabled={busy === row.id}
-                          onClick={() => void retry(row.id)}
-                        >
-                          Retry
-                        </button>
-                      ) : null}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
+        <DataTable
+          caption="Failed executions"
+          rows={rows ?? []}
+          loading={rows === null}
+          emptyTitle="Nothing has failed"
+          columns={[
+            {
+              key: 'handler',
+              header: 'Handler',
+              cell: (row: PlatformFailedJob) => (
+                <PrimarySecondaryCell
+                  primary={row.handler}
+                  secondary={row.occurrenceKey}
+                  primaryTitle={row.handler}
+                  secondaryTitle={row.occurrenceKey}
+                />
+              ),
+            },
+            {
+              key: 'organization',
+              header: 'Organization',
+              cell: (row: PlatformFailedJob) => (
+                <Link href={`/platform/organizations/${row.organizationId}`}>
+                  {row.organizationName}
+                </Link>
+              ),
+            },
+            {
+              key: 'attempts',
+              header: 'Attempts',
+              cell: (row: PlatformFailedJob) => row.attempts,
+              align: 'right',
+            },
+            {
+              key: 'error',
+              header: 'Error',
+              cell: (row: PlatformFailedJob) => (
+                <span className="rb-platform__error">{row.error ?? '—'}</span>
+              ),
+            },
+            {
+              key: 'failed',
+              header: 'Failed',
+              cell: (row: PlatformFailedJob) => new Date(row.createdAt).toLocaleString(),
+              hideBelow: 'tablet',
+            },
+            {
+              key: 'action',
+              header: <span className="rb-visually-hidden">Actions</span>,
+              cell: (row: PlatformFailedJob) =>
+                canRetry ? (
+                  <button
+                    type="button"
+                    disabled={busy === row.id}
+                    onClick={() => void retry(row.id)}
+                  >
+                    Retry
+                  </button>
+                ) : (
+                  '—'
+                ),
+            },
+          ]}
+        />
         <Pager page={page} pageSize={25} totalRows={totalRows} onChange={setPage} />
       </section>
     </PlatformPage>
@@ -253,51 +267,48 @@ export function PlatformSecurityEvents() {
         </p>
       ) : null}
 
-      {rows === null ? (
-        <p className="rb-platform__muted">Loading…</p>
-      ) : rows.length === 0 ? (
-        <p className="rb-platform__muted">No events match these filters.</p>
-      ) : (
-        <div className="rb-platform__table-wrap">
-          <table className="rb-platform__table">
-            <caption className="rb-visually-hidden">Security events</caption>
-            <thead>
-              <tr>
-                <th scope="col">Event</th>
-                <th scope="col">Severity</th>
-                <th scope="col">User</th>
-                <th scope="col">Organization</th>
-                <th scope="col">When</th>
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map((row) => (
-                <tr key={row.id}>
-                  <th scope="row">{row.eventKey}</th>
-                  <td>
-                    <span
-                      className={`rb-platform__pill${row.severity === 'INFO' ? '' : ' is-warn'}`}
-                    >
-                      {row.severity.toLowerCase()}
-                    </span>
-                  </td>
-                  <td>{row.userEmail ?? '—'}</td>
-                  <td>
-                    {row.organizationId ? (
-                      <Link href={`/platform/organizations/${row.organizationId}`}>
-                        {row.organizationName}
-                      </Link>
-                    ) : (
-                      '—'
-                    )}
-                  </td>
-                  <td>{new Date(row.occurredAt).toLocaleString()}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
+      <DataTable
+        caption="Security events"
+        rows={rows ?? []}
+        loading={rows === null}
+        emptyTitle="No events match these filters"
+        columns={[
+          { key: 'event', header: 'Event', cell: (row: PlatformSecurityEvent) => row.eventKey },
+          {
+            key: 'severity',
+            header: 'Severity',
+            cell: (row: PlatformSecurityEvent) => (
+              <span className={`rb-platform__pill${row.severity === 'INFO' ? '' : ' is-warn'}`}>
+                {row.severity.toLowerCase()}
+              </span>
+            ),
+          },
+          {
+            key: 'user',
+            header: 'User',
+            cell: (row: PlatformSecurityEvent) => row.userEmail ?? '—',
+            hideBelow: 'tablet',
+          },
+          {
+            key: 'organization',
+            header: 'Organization',
+            cell: (row: PlatformSecurityEvent) =>
+              row.organizationId ? (
+                <Link href={`/platform/organizations/${row.organizationId}`}>
+                  {row.organizationName}
+                </Link>
+              ) : (
+                '—'
+              ),
+          },
+          {
+            key: 'when',
+            header: 'When',
+            cell: (row: PlatformSecurityEvent) => new Date(row.occurredAt).toLocaleString(),
+            hideBelow: 'tablet',
+          },
+        ]}
+      />
 
       <Pager page={page} pageSize={25} totalRows={totalRows} onChange={setPage} />
     </PlatformPage>
@@ -330,48 +341,53 @@ export function PlatformAudit() {
         </p>
       ) : null}
 
-      {rows === null ? (
-        <p className="rb-platform__muted">Loading…</p>
-      ) : rows.length === 0 ? (
-        <p className="rb-platform__muted">No platform actions recorded yet.</p>
-      ) : (
-        <div className="rb-platform__table-wrap">
-          <table className="rb-platform__table">
-            <caption className="rb-visually-hidden">Platform audit events</caption>
-            <thead>
-              <tr>
-                <th scope="col">Action</th>
-                <th scope="col">Target</th>
-                <th scope="col">Reason</th>
-                <th scope="col">Administrator</th>
-                <th scope="col">When</th>
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map((row) => (
-                <tr key={row.id}>
-                  <th scope="row">{row.eventKey}</th>
-                  <td>
-                    {row.targetType}
-                    {row.organizationId ? (
-                      <>
-                        {' · '}
-                        <Link href={`/platform/organizations/${row.organizationId}`}>tenant</Link>
-                      </>
-                    ) : null}
-                  </td>
-                  <td>{row.reason ?? '—'}</td>
-                  <td>
-                    {row.actorEmail}
-                    <small>{row.actorRole.toLowerCase()}</small>
-                  </td>
-                  <td>{new Date(row.occurredAt).toLocaleString()}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
+      <DataTable
+        caption="Platform audit events"
+        rows={rows ?? []}
+        loading={rows === null}
+        emptyTitle="No platform actions recorded yet"
+        columns={[
+          { key: 'action', header: 'Action', cell: (row: PlatformAuditEvent) => row.eventKey },
+          {
+            key: 'target',
+            header: 'Target',
+            cell: (row: PlatformAuditEvent) => (
+              <>
+                {row.targetType}
+                {row.organizationId ? (
+                  <>
+                    {' '}
+                    · <Link href={`/platform/organizations/${row.organizationId}`}>tenant</Link>
+                  </>
+                ) : null}
+              </>
+            ),
+          },
+          {
+            key: 'reason',
+            header: 'Reason',
+            cell: (row: PlatformAuditEvent) => row.reason ?? '—',
+            hideBelow: 'tablet',
+          },
+          {
+            key: 'administrator',
+            header: 'Administrator',
+            cell: (row: PlatformAuditEvent) => (
+              <PrimarySecondaryCell
+                primary={row.actorEmail}
+                secondary={row.actorRole.toLowerCase()}
+                primaryTitle={row.actorEmail}
+              />
+            ),
+          },
+          {
+            key: 'when',
+            header: 'When',
+            cell: (row: PlatformAuditEvent) => new Date(row.occurredAt).toLocaleString(),
+            hideBelow: 'tablet',
+          },
+        ]}
+      />
 
       <Pager page={page} pageSize={25} totalRows={totalRows} onChange={setPage} />
     </PlatformPage>

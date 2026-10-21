@@ -8,6 +8,7 @@ import { AuditAction, Prisma, TimeEntryStatus } from '@prisma/client';
 
 import type { PublicUser } from '../auth/auth.service.js';
 import type { RequestMetadata } from '../auth/request-context.js';
+import { UsageMeteringService } from '../billing/usage-metering.service.js';
 import { PrismaService } from '../database/prisma.service.js';
 import { writeAuditEvent } from '../organizations/audit-event.js';
 import type { OrganizationContext } from '../organizations/organization-context.js';
@@ -44,6 +45,7 @@ export class ProjectsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly invoices: InvoicesService,
+    private readonly usage: UsageMeteringService,
   ) {}
 
   // --- projects ---------------------------------------------------------------------------------
@@ -75,6 +77,9 @@ export class ProjectsService {
     });
 
     const created = await this.prisma.$transaction(async (tx) => {
+      await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtext(${context.id}), 116)::text AS locked`;
+      const active = await tx.project.count({ where: { organizationId: context.id, status: { notIn: ['COMPLETED', 'CANCELLED'] } } });
+      await this.usage.assertWithinConcurrentLimit(context.id, 'projects.enabled', active);
       const project = await tx.project.create({
         data: {
           organizationId: context.id,
@@ -179,6 +184,12 @@ export class ProjectsService {
     }
 
     const updated = await this.prisma.$transaction(async (tx) => {
+      if (input.status !== 'COMPLETED' && input.status !== 'CANCELLED' &&
+        (existing.status === 'COMPLETED' || existing.status === 'CANCELLED')) {
+        await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtext(${context.id}), 116)::text AS locked`;
+        const active = await tx.project.count({ where: { organizationId: context.id, status: { notIn: ['COMPLETED', 'CANCELLED'] } } });
+        await this.usage.assertWithinConcurrentLimit(context.id, 'projects.enabled', active);
+      }
       const project = await tx.project.update({
         where: { id: projectId },
         data: {
@@ -401,6 +412,7 @@ export class ProjectsService {
   ) {
     const project = await this.findProjectOrThrow(context.id, input.projectId);
     this.assertProjectOpen(project.status, 'record time against');
+    await this.usage.assertFeatureAvailable(context.id, 'timesheets.enabled');
     const task = await this.resolveTask(context.id, input.projectId, input.taskId);
     assertPositiveHours(input.hours);
 

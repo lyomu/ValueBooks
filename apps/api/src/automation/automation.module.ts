@@ -1,6 +1,7 @@
 import { forwardRef, Module } from '@nestjs/common';
 
 import { AuthModule } from '../auth/auth.module.js';
+import { BillingModule } from '../billing/billing.module.js';
 import { JobsModule } from '../jobs/jobs.module.js';
 import { OrganizationsModule } from '../organizations/organizations.module.js';
 import { EntitlementsModule } from '../platform/entitlements.module.js';
@@ -29,6 +30,7 @@ import { WorkflowsService } from './workflows.service.js';
     AuthModule,
     JobsModule,
     forwardRef(() => OrganizationsModule),
+    forwardRef(() => BillingModule),
     DomainEventsModule,
     EntitlementsModule,
   ],

@@ -1,7 +1,9 @@
 /**
- * Placeholder plan catalog for the public marketing site. Names, prices, and feature lists are
- * illustrative — swap this file's contents for real commercial figures when they're finalized.
- * Both the homepage pricing teaser and the /pricing page read from here so they can't drift.
+ * Approved commercial plan catalog for the public marketing site (billing/subscriptions spec
+ * Sections 3 and 10). `id` doubles as the tier key the real backend catalog groups monthly/yearly
+ * rows under (`${id}_monthly` / `${id}_yearly` — see `PlanCard`'s checkout call in `pricing.tsx`),
+ * so it must stay in sync with the `tierKey` column seeded onto the `Plan` table. Both the
+ * homepage pricing teaser and the /pricing page read from here so they can't drift.
  */
 
 export type Plan = {
@@ -11,6 +13,8 @@ export type Plan = {
   monthlyPriceUsd: number;
   /** Already-discounted annual total, not monthlyPriceUsd * 12. */
   yearlyPriceUsd: number;
+  /** Rounded public "Save N%" badge, shown only when the yearly interval is selected. */
+  yearlySavingsPercent: number;
   highlighted?: boolean;
   /** Shown on the homepage teaser card and as the lead bullets on the /pricing card. */
   topFeatures: string[];
@@ -23,13 +27,14 @@ export const PLANS: Plan[] = [
     id: 'starter',
     name: 'Starter',
     tagline: 'For solo owners getting invoices and expenses organized.',
-    monthlyPriceUsd: 9,
-    yearlyPriceUsd: 90,
+    monthlyPriceUsd: 1,
+    yearlyPriceUsd: 10,
+    yearlySavingsPercent: 17,
     topFeatures: [
       '1 user',
-      'Unlimited invoices & quotes',
+      '10 customers, 5 invoices/mo',
       'Expense tracking',
-      'Basic reports',
+      'Core financial reports',
       'Email support',
     ],
   },
@@ -37,14 +42,15 @@ export const PLANS: Plan[] = [
     id: 'growth',
     name: 'Growth',
     tagline: 'For small teams who need banking and multi-user access.',
-    monthlyPriceUsd: 19,
-    yearlyPriceUsd: 190,
+    monthlyPriceUsd: 4.99,
+    yearlyPriceUsd: 55,
+    yearlySavingsPercent: 8,
     topFeatures: [
-      'Up to 3 users',
-      'Bank feeds & reconciliation',
-      'Recurring invoices',
-      'Customer portal',
-      'Standard reports',
+      '2 users',
+      'Bills & purchase orders',
+      'Banking & reconciliation',
+      'Basic inventory',
+      '50 customers, 20 invoices/mo',
       'Chat support',
     ],
   },
@@ -52,15 +58,16 @@ export const PLANS: Plan[] = [
     id: 'professional',
     name: 'Professional',
     tagline: 'For growing businesses that need deeper reporting and roles.',
-    monthlyPriceUsd: 39,
-    yearlyPriceUsd: 390,
+    monthlyPriceUsd: 9.99,
+    yearlyPriceUsd: 100,
+    yearlySavingsPercent: 17,
     highlighted: true,
     topFeatures: [
-      'Up to 10 users',
-      'Role-based access & audit trail',
-      'Advanced reports & budgets',
-      'Multi-currency (140+)',
-      'ValueBooks AI assistant',
+      '5 users',
+      'Projects & timesheets',
+      'Advanced reporting & insights',
+      'Inventory & multi-currency',
+      '100 customers, 100 invoices/mo',
       'Priority support',
     ],
   },
@@ -68,18 +75,17 @@ export const PLANS: Plan[] = [
     id: 'advanced',
     name: 'Advanced',
     tagline: 'For established businesses with complex workflows.',
-    monthlyPriceUsd: 79,
-    yearlyPriceUsd: 790,
+    monthlyPriceUsd: 20,
+    yearlyPriceUsd: 220,
+    yearlySavingsPercent: 8,
     topFeatures: [
-      'Unlimited users',
-      'Custom roles & approvals',
-      'Advanced AI insights',
-      'Dedicated account manager',
-      'API access',
-      'Priority + phone support',
+      '10 users',
+      'Unlimited customers & invoices',
+      'Unlimited projects',
+      'Advanced automation & approvals',
+      'Custom roles',
+      'Priority support',
     ],
-    ctaLabel: 'Talk to sales',
-    ctaHref: '/contact',
   },
 ];
 
@@ -102,7 +108,7 @@ export const FEATURE_GROUPS: FeatureGroup[] = [
     rows: [
       {
         label: 'Users included',
-        values: { starter: '1', growth: '3', professional: '10', advanced: 'Unlimited' },
+        values: { starter: '1', growth: '2', professional: '5', advanced: '10' },
       },
       {
         label: 'Chart of accounts',

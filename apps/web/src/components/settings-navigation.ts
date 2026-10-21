@@ -63,6 +63,13 @@ export const settingsSections: readonly SettingsSection[] = [
         icon: Users,
         permission: 'members.view',
       },
+      {
+        href: '/settings/billing',
+        label: 'Billing & subscription',
+        description: 'Plan, trial, billing period, and payment history.',
+        icon: CircleDollarSign,
+        permission: 'organization.view',
+      },
     ],
   },
   {

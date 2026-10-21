@@ -275,11 +275,12 @@ export const platformAnalyticsSchema = z.object({
     active: z.number().int().nonnegative(),
     suspended: z.number().int().nonnegative(),
     draft: z.number().int().nonnegative(),
-    createdLast30Days: z.number().int().nonnegative(),
+    createdInPeriod: z.number().int().nonnegative(),
   }),
   users: z.object({
     total: z.number().int().nonnegative(),
     active: z.number().int().nonnegative(),
+    createdInPeriod: z.number().int().nonnegative(),
   }),
   activation: z.object({
     onboardingCompleted: z.number().int().nonnegative(),
@@ -308,6 +309,18 @@ export const platformAnalyticsSchema = z.object({
       z.object({ planId: z.uuid(), planName: z.string(), organizations: z.number().int() }),
     ),
   }),
+  reporting: z.object({
+    from: z.iso.datetime(),
+    to: z.iso.datetime(),
+    grouping: z.enum(['day', 'week', 'month']),
+    registrations: z.array(
+      z.object({ key: z.string(), label: z.string(), organizations: z.number().int() }),
+    ),
+  }),
+  attention: z.object({ failedJobsLast24Hours: z.number().int().nonnegative() }),
+  recentActivity: z.array(
+    z.object({ id: z.uuid(), eventKey: z.string(), occurredAt: z.iso.datetime() }),
+  ),
   observedAt: z.iso.datetime(),
 });
 

@@ -67,6 +67,8 @@ describe('AiOrchestrator', () => {
       gateway as never,
       store as never,
       access as never,
+      { consume: vi.fn() } as never,
+      {} as never,
     );
 
     await expect(ai.explainReport(organization, actor, input, metadata)).rejects.toMatchObject({
@@ -134,6 +136,8 @@ describe('AiOrchestrator', () => {
       gateway as never,
       store as never,
       access as never,
+      { consume: vi.fn() } as never,
+      {} as never,
     );
 
     await expect(ai.explainReport(organization, actor, input, metadata)).rejects.toMatchObject({
@@ -174,6 +178,8 @@ describe('AiOrchestrator', () => {
       gateway as never,
       store as never,
       access as never,
+      { consume: vi.fn() } as never,
+      {} as never,
     );
 
     await expect(ai.explainReport(organization, actor, input, metadata)).rejects.toMatchObject({
@@ -213,6 +219,8 @@ describe('AiOrchestrator', () => {
       gateway as never,
       store as never,
       access as never,
+      { consume: vi.fn() } as never,
+      {} as never,
     );
 
     await expect(ai.explainReport(organization, actor, input, metadata)).rejects.toMatchObject({

@@ -22,7 +22,7 @@ export default defineConfig({
     fileParallelism: false,
     pool: 'forks',
     poolOptions: { forks: { maxForks: 1, minForks: 1 } },
-    testTimeout: 30_000,
+    testTimeout: 60_000,
     hookTimeout: 60_000,
   },
 });

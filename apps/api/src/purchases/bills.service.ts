@@ -12,6 +12,7 @@ import { DomainEventsService } from '../automation/domain-events.service.js';
 import { ApprovalsService } from '../automation/approvals.service.js';
 import type { RequestMetadata } from '../auth/request-context.js';
 import { PrismaService } from '../database/prisma.service.js';
+import { UsageMeteringService } from '../billing/usage-metering.service.js';
 import { writeAuditEvent } from '../organizations/audit-event.js';
 import { BILL_DOCUMENT_TYPE } from '../organizations/document-numbering.js';
 import { DocumentNumberingService } from '../organizations/document-numbering.service.js';
@@ -40,6 +41,7 @@ export class BillsService {
     private readonly numbering: DocumentNumberingService,
     private readonly events: DomainEventsService,
     private readonly approvals: ApprovalsService,
+    private readonly usage: UsageMeteringService,
   ) {}
 
   async list(organizationId: string, status?: string) {
@@ -248,6 +250,7 @@ export class BillsService {
       if (bill.lines.length === 0) {
         throw new BadRequestException('A bill needs at least one line before it can be issued.');
       }
+      await this.usage.consume(context.id, 'bills.enabled', tx);
 
       const issueDate = businessDate ? dateOnly(isoDate(businessDate)) : dateOnly(new Date());
 

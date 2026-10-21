@@ -8,6 +8,7 @@ import { AuditAction, type Prisma } from '@prisma/client';
 
 import type { PublicUser } from '../auth/auth.service.js';
 import type { RequestMetadata } from '../auth/request-context.js';
+import { UsageMeteringService } from '../billing/usage-metering.service.js';
 import { PrismaService } from '../database/prisma.service.js';
 import { writeAuditEvent } from '../organizations/audit-event.js';
 import type { OrganizationContext } from '../organizations/organization-context.js';
@@ -20,7 +21,7 @@ import type {
 
 @Injectable()
 export class VendorsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly prisma: PrismaService, private readonly usage: UsageMeteringService) {}
 
   async list(organizationId: string, status?: 'ACTIVE' | 'INACTIVE') {
     const vendors = await this.prisma.vendor.findMany({
@@ -58,7 +59,6 @@ export class VendorsService {
     });
     const currency = input.currency ?? organization.baseCurrency;
     this.assertCurrencyAllowed(context, currency, organization.baseCurrency);
-
     if (!input.confirmDuplicate) {
       const matches = await this.findDuplicateMatches(
         context.id,
@@ -75,6 +75,9 @@ export class VendorsService {
     }
 
     const created = await this.prisma.$transaction(async (tx) => {
+      await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtext(${context.id}), 115)::text AS locked`;
+      const active = await tx.vendor.count({ where: { organizationId: context.id, status: 'ACTIVE' } });
+      await this.usage.assertWithinConcurrentLimit(context.id, 'vendors.max', active);
       const vendor = await tx.vendor.create({
         data: {
           organizationId: context.id,
@@ -204,6 +207,11 @@ export class VendorsService {
     if (existing.status === status) return summarize(existing);
 
     const updated = await this.prisma.$transaction(async (tx) => {
+      if (status === 'ACTIVE') {
+        await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtext(${context.id}), 115)::text AS locked`;
+        const active = await tx.vendor.count({ where: { organizationId: context.id, status: 'ACTIVE' } });
+        await this.usage.assertWithinConcurrentLimit(context.id, 'vendors.max', active);
+      }
       const vendor = await tx.vendor.update({
         where: { id: vendorId },
         data: { status },

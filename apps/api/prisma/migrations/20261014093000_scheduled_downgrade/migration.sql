@@ -1,0 +1,1 @@
+ALTER TYPE "SubscriptionChangeStatus" ADD VALUE IF NOT EXISTS 'SCHEDULED';

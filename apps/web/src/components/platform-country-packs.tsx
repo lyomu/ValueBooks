@@ -5,6 +5,7 @@ import type {
   PlatformCountryPackTier,
   PlatformTaxPack,
 } from '@valuebooks/contracts';
+import { DataTable, PrimarySecondaryCell } from '@valuebooks/ui';
 import {
   Archive,
   CirclePlus,
@@ -333,142 +334,167 @@ function CountryPackTable({
   onLifecycle: (action: LifecycleAction, pack: PlatformCountryPack) => void;
 }) {
   return (
-    <div className="rb-platform__table-wrap">
-      <table className="rb-platform__table rb-platform__catalog-table">
-        <caption className="rb-visually-hidden">Country pack versions and tax definitions</caption>
-        <thead>
-          <tr>
-            <th scope="col">Country pack</th>
-            <th scope="col">Version</th>
-            <th scope="col">Jurisdiction</th>
-            <th scope="col">Tax definitions</th>
-            <th scope="col">Updated</th>
-            <th scope="col">Actions</th>
-          </tr>
-        </thead>
-        <tbody>
-          {packs.map((pack) => (
-            <tr key={pack.id}>
-              <th scope="row">
-                {pack.name}
-                <small>{pack.code}</small>
-              </th>
-              <td>
-                <strong>{pack.version}</strong>
-                <small>
-                  <PackStatus status={pack.status} />
-                </small>
-              </td>
-              <td>
-                {pack.countryCode}
-                <small>{tierLabel(pack.tier)}</small>
-              </td>
-              <td className="rb-platform__tax-cell">
-                {pack.taxPacks.length === 0 ? (
-                  <span className="rb-platform__muted">None</span>
-                ) : (
-                  <ul className="rb-platform__tax-list">
-                    {pack.taxPacks.map((taxPack) => (
-                      <li key={taxPack.id}>
-                        <span>
-                          {taxPack.name}
-                          <small>
-                            {taxPack.version} - {taxPack.rates.length}{' '}
-                            {taxPack.rates.length === 1 ? 'rate' : 'rates'}
-                          </small>
-                        </span>
-                        {pack.status === 'DRAFT' ? (
-                          <button
-                            type="button"
-                            className="rb-platform__link is-neutral"
-                            disabled={busy}
-                            onClick={() => onEditTax(pack, taxPack)}
-                          >
-                            Edit
-                          </button>
-                        ) : null}
-                      </li>
-                    ))}
-                  </ul>
-                )}
-                {pack.status === 'DRAFT' ? (
-                  <button
-                    type="button"
-                    className="rb-platform__link is-neutral rb-platform__add-tax"
-                    disabled={busy}
-                    onClick={() => onEditTax(pack)}
-                  >
-                    <CirclePlus aria-hidden="true" />
-                    Add tax version
-                  </button>
-                ) : null}
-              </td>
-              <td>
-                {new Date(pack.updatedAt).toLocaleDateString()}
-                <small>{new Date(pack.updatedAt).toLocaleTimeString()}</small>
-              </td>
-              <td>
-                <div className="rb-platform__table-actions">
-                  {pack.status === 'DRAFT' ? (
-                    <>
-                      <button
-                        type="button"
-                        className="is-secondary"
-                        disabled={busy}
-                        onClick={() => onEdit(pack)}
-                      >
-                        <Pencil aria-hidden="true" />
-                        Edit
-                      </button>
-                      <button
-                        type="button"
-                        disabled={busy}
-                        onClick={() => onLifecycle('publish', pack)}
-                      >
-                        <Send aria-hidden="true" />
-                        Publish
-                      </button>
-                      <button
-                        type="button"
-                        className="is-danger is-quiet-danger"
-                        disabled={busy}
-                        onClick={() => onLifecycle('delete', pack)}
-                      >
-                        <Trash2 aria-hidden="true" />
-                        Delete
-                      </button>
-                    </>
-                  ) : (
-                    <>
-                      <button
-                        type="button"
-                        className="is-secondary"
-                        disabled={busy}
-                        onClick={() => onCreateVersion(pack)}
-                      >
-                        <CopyPlus aria-hidden="true" />
-                        Create version
-                      </button>
-                      {pack.status === 'PUBLISHED' ? (
+    <DataTable
+      caption="Country pack versions and tax definitions"
+      rows={packs}
+      emptyTitle="No country packs"
+      columns={[
+        {
+          key: 'pack',
+          header: 'Country pack',
+          cell: (pack) => (
+            <PrimarySecondaryCell
+              primary={pack.name}
+              secondary={pack.code}
+              primaryTitle={pack.name}
+              secondaryTitle={pack.code}
+            />
+          ),
+        },
+        {
+          key: 'version',
+          header: 'Version',
+          cell: (pack) => (
+            <PrimarySecondaryCell
+              primary={pack.version}
+              secondary={<PackStatus status={pack.status} />}
+              primaryTitle={pack.version}
+            />
+          ),
+        },
+        {
+          key: 'jurisdiction',
+          header: 'Jurisdiction',
+          cell: (pack) => (
+            <PrimarySecondaryCell
+              primary={pack.countryCode}
+              secondary={tierLabel(pack.tier)}
+              primaryTitle={pack.countryCode}
+              secondaryTitle={tierLabel(pack.tier)}
+            />
+          ),
+        },
+        {
+          key: 'taxes',
+          header: 'Tax definitions',
+          hideBelow: 'tablet',
+          cell: (pack) => (
+            <>
+              {pack.taxPacks.length === 0 ? (
+                <span className="rb-platform__muted">None</span>
+              ) : (
+                <ul className="rb-platform__tax-list">
+                  {pack.taxPacks.map((taxPack) => (
+                    <li key={taxPack.id}>
+                      <span>
+                        {taxPack.name}
+                        <small>
+                          {taxPack.version} - {taxPack.rates.length}{' '}
+                          {taxPack.rates.length === 1 ? 'rate' : 'rates'}
+                        </small>
+                      </span>
+                      {pack.status === 'DRAFT' ? (
                         <button
                           type="button"
-                          className="is-secondary"
+                          className="rb-platform__link is-neutral"
                           disabled={busy}
-                          onClick={() => onLifecycle('deprecate', pack)}
+                          onClick={() => onEditTax(pack, taxPack)}
                         >
-                          <Archive aria-hidden="true" />
-                          Deprecate
+                          Edit
                         </button>
                       ) : null}
-                    </>
-                  )}
-                </div>
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
+                    </li>
+                  ))}
+                </ul>
+              )}
+              {pack.status === 'DRAFT' ? (
+                <button
+                  type="button"
+                  className="rb-platform__link is-neutral rb-platform__add-tax"
+                  disabled={busy}
+                  onClick={() => onEditTax(pack)}
+                >
+                  <CirclePlus aria-hidden="true" />
+                  Add tax version
+                </button>
+              ) : null}
+            </>
+          ),
+        },
+        {
+          key: 'updated',
+          header: 'Updated',
+          cell: (pack) => (
+            <PrimarySecondaryCell
+              primary={new Date(pack.updatedAt).toLocaleDateString()}
+              secondary={new Date(pack.updatedAt).toLocaleTimeString()}
+            />
+          ),
+          hideBelow: 'tablet',
+        },
+        {
+          key: 'actions',
+          header: 'Actions',
+          cell: (pack) => (
+            <div className="rb-platform__table-actions">
+              {pack.status === 'DRAFT' ? (
+                <>
+                  <button
+                    type="button"
+                    className="is-secondary"
+                    disabled={busy}
+                    onClick={() => onEdit(pack)}
+                  >
+                    <Pencil aria-hidden="true" />
+                    Edit
+                  </button>
+                  <button
+                    type="button"
+                    disabled={busy}
+                    onClick={() => onLifecycle('publish', pack)}
+                  >
+                    <Send aria-hidden="true" />
+                    Publish
+                  </button>
+                  <button
+                    type="button"
+                    className="is-danger is-quiet-danger"
+                    disabled={busy}
+                    onClick={() => onLifecycle('delete', pack)}
+                  >
+                    <Trash2 aria-hidden="true" />
+                    Delete
+                  </button>
+                </>
+              ) : (
+                <>
+                  <button
+                    type="button"
+                    className="is-secondary"
+                    disabled={busy}
+                    onClick={() => onCreateVersion(pack)}
+                  >
+                    <CopyPlus aria-hidden="true" />
+                    Create version
+                  </button>
+                  {pack.status === 'PUBLISHED' ? (
+                    <button
+                      type="button"
+                      className="is-secondary"
+                      disabled={busy}
+                      onClick={() => onLifecycle('deprecate', pack)}
+                    >
+                      <Archive aria-hidden="true" />
+                      Deprecate
+                    </button>
+                  ) : null}
+                </>
+              )}
+            </div>
+          ),
+        },
+      ]}
+    />
   );
 }
 

@@ -6,6 +6,7 @@ import { PurchasesModule } from '../purchases/purchases.module.js';
 import { ReportingModule } from '../reporting/reporting.module.js';
 import { SalesModule } from '../sales/sales.module.js';
 import { StorageModule } from '../storage/storage.module.js';
+import { BillingModule } from '../billing/billing.module.js';
 import { AutomationQueueService } from './automation-queue.service.js';
 import { AutomationWorker } from './automation.worker.js';
 import { DomainEventsModule } from './domain-events.module.js';
@@ -27,6 +28,7 @@ import { WorkflowsService } from './workflows.service.js';
     StorageModule,
     JobsModule,
     DomainEventsModule,
+    BillingModule,
   ],
   providers: [
     AutomationQueueService,

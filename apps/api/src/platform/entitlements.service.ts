@@ -76,6 +76,13 @@ export class EntitlementsService {
     const subscription = organization.subscription;
     const plan = subscription?.plan ?? null;
 
+    const overrides = await this.prisma.billingEntitlementOverride.findMany({
+      where: { organizationId, status: 'ACTIVE', effectiveAt: { lte: new Date() }, expiresAt: { gt: new Date() } },
+      orderBy: { createdAt: 'desc' }, select: { entitlementKey: true, enabled: true, unlimited: true, limitValue: true },
+    });
+    const latestOverride = new Map<string, (typeof overrides)[number]>();
+    for (const override of overrides) if (!latestOverride.has(override.entitlementKey)) latestOverride.set(override.entitlementKey, override);
+
     const flags = await this.prisma.featureFlag.findMany({
       where: { status: 'ACTIVE' },
       select: {
@@ -108,8 +115,10 @@ export class EntitlementsService {
       entitlements: (plan?.entitlements ?? [])
         .map((entitlement) => ({
           key: entitlement.key,
-          enabled: entitlement.enabled,
-          limitValue: entitlement.limitValue,
+          enabled: latestOverride.get(entitlement.key)?.enabled ?? entitlement.enabled,
+          limitValue: latestOverride.has(entitlement.key)
+            ? latestOverride.get(entitlement.key)!.unlimited ? null : latestOverride.get(entitlement.key)!.limitValue
+            : entitlement.limitValue,
         }))
         .sort((a, b) => a.key.localeCompare(b.key)),
       flags: flags.map((flag) => resolveFlag(flag.key, flag.defaultEnabled, flag.rules)),

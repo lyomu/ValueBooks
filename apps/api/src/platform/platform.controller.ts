@@ -36,6 +36,7 @@ import {
   GrantPlatformAdminDto,
   OrganizationSearchDto,
   PlatformAuditSearchDto,
+  PlatformAnalyticsQueryDto,
   ReactivateOrganizationDto,
   RevokeHostedAiEgressApprovalDto,
   SecurityEventSearchDto,
@@ -468,7 +469,7 @@ export class PlatformController {
 
   @Get('analytics')
   @RequirePlatformRole('SUPPORT')
-  async analytics() {
-    return { data: await this.operations.analytics() };
+  async analytics(@Query() query: PlatformAnalyticsQueryDto) {
+    return { data: await this.operations.analytics(query) };
   }
 }

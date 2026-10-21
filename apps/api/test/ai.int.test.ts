@@ -129,7 +129,6 @@ describe('AI report explanation foundation against a real database', () => {
     expect(run).toMatchObject({
       organizationId: context.id,
       capability: 'REPORT_EXPLANATION',
-      provider: 'DISABLED',
       status: 'FAILED',
       failureCode: 'MODEL_DISABLED',
     });
@@ -466,7 +465,10 @@ describe('AI report explanation foundation against a real database', () => {
           outputTokens: 5,
         }),
     };
-    const crossTenantAi = new AiOrchestrator(reporting, fabricatingGateway as never, store, access);
+    const crossTenantAi = new AiOrchestrator(
+      reporting, fabricatingGateway as never, store, access,
+      { consume: () => Promise.resolve(undefined) } as never, {} as never,
+    );
 
     await expect(
       crossTenantAi.explainReport(

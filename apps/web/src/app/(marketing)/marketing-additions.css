@@ -38,6 +38,88 @@
   font-size: 0.92rem;
   line-height: 1.75;
 }
+
+/* === Scroll-entrance system ===
+   Shared by every public marketing page via components/marketing/motion.tsx `Reveal`. Content is
+   fully visible by default (`.mk-reveal` alone); `.is-pending` is only ever added client-side
+   after mount, so the server-rendered page and no-JS fallback are never hidden. */
+.mk-reveal {
+  opacity: 1;
+  transform: none;
+  transition:
+    opacity var(--rb-duration-slow) var(--rb-ease-out),
+    transform var(--rb-duration-slow) var(--rb-ease-out);
+}
+.mk-reveal--scale {
+  transition:
+    opacity var(--rb-duration-slower) var(--rb-ease-out),
+    transform var(--rb-duration-slower) var(--rb-ease-out);
+}
+.mk-reveal.is-pending {
+  opacity: 0;
+  transition: none;
+  transform: translateY(var(--rb-space-5));
+}
+.mk-reveal--scale.is-pending {
+  transform: scale(0.98);
+}
+
+/* === Hover micro-interactions ===
+   Cards that did not already have a hover treatment pick up the same restrained lift used by
+   `.mk-industry-card` elsewhere on the site. */
+.mk-business-value-card,
+.mk-feature-card,
+.mk-story-card,
+.mk-security-card,
+.mk-industry-challenge-grid article,
+.mk-industry-benefit-grid article {
+  transition:
+    transform var(--rb-duration-fast) var(--rb-ease-out),
+    box-shadow var(--rb-duration-fast);
+}
+.mk-business-value-card:hover,
+.mk-feature-card:hover,
+.mk-story-card:hover,
+.mk-security-card:hover,
+.mk-industry-challenge-grid article:hover,
+.mk-industry-benefit-grid article:hover {
+  transform: translateY(-3px);
+  box-shadow: var(--rb-shadow-md);
+}
+
+/* === Navigation entrances ===
+   Mega menus and the mobile nav mount and unmount with the open/closed state, so closing is
+   instant (never delayed waiting on an exit transition) while opening gets a brief, restrained
+   entrance. */
+@keyframes mk-nav-in {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.mk-mega {
+  animation: mk-nav-in var(--rb-duration-normal) var(--rb-ease-out) both;
+}
+.mk-mobile-nav {
+  animation: mk-nav-in var(--rb-duration-normal) var(--rb-ease-out) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mk-reveal,
+  .mk-reveal.is-pending {
+    transition: none;
+    transform: none;
+    opacity: 1;
+  }
+  .mk-mega,
+  .mk-mobile-nav {
+    animation: none;
+  }
+}
 .mk-split {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -393,6 +475,20 @@
 .mk-pricing-amount span {
   color: var(--mk-muted);
   font-size: 0.78rem;
+}
+.mk-pricing-trial-note {
+  margin: 1.5rem 0 0;
+  color: var(--mk-muted);
+  font-size: 0.8rem;
+  text-align: center;
+}
+.mk-pricing-amount__save {
+  padding: 0.1rem 0.4rem;
+  color: hsl(var(--rb-success));
+  background: hsl(var(--rb-success-surface));
+  border-radius: var(--rb-radius-sm);
+  font-size: 0.65rem;
+  font-weight: 700;
 }
 .mk-pricing-card .mk-button,
 .mk-pricing-card .mk-button--outline {

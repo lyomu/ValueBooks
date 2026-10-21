@@ -6,6 +6,8 @@ import type { RequestMetadata } from '../auth/request-context.js';
 import type { OrganizationContext } from '../organizations/organization-context.js';
 import { OrganizationAccessService } from '../organizations/organization-access.service.js';
 import { ReportingService } from '../reporting/reporting.service.js';
+import { UsageMeteringService } from '../billing/usage-metering.service.js';
+import { PrismaService } from '../database/prisma.service.js';
 import type { ReportRow } from '@valuebooks/contracts';
 
 import { AskReportDto, ExplainNumberDto } from './ai.dto.js';
@@ -22,6 +24,8 @@ export class AiOrchestrator {
     private readonly gateway: AiModelGateway,
     private readonly store: AiStore,
     private readonly access: OrganizationAccessService,
+    private readonly usage: UsageMeteringService,
+    private readonly prisma: PrismaService,
   ) {}
 
   async explainReport(
@@ -67,6 +71,7 @@ export class AiOrchestrator {
       })),
     };
     const descriptor = this.gateway.descriptor();
+    await this.usage.consume(organization.id, 'ai_insights.max', this.prisma);
     const run = await this.store.createRun({
       organizationId: organization.id,
       actorUserId: actor.id,
@@ -164,6 +169,8 @@ export class AiOrchestrator {
         explanation: { state: 'unavailable' as const, reason: 'MODEL_DISABLED' },
       };
     }
+
+    await this.usage.consume(organization.id, 'ai_insights.max', this.prisma);
 
     const question = input.resolvedQuestion();
     const evidence = drillDown.lines.map(toEvidenceReference);

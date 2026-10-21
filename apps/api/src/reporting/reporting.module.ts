@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 
 import { AuthModule } from '../auth/auth.module.js';
 import { AutomationModule } from '../automation/automation.module.js';
+import { BillingModule } from '../billing/billing.module.js';
 import { OrganizationsModule } from '../organizations/organizations.module.js';
 import { EntitlementsModule } from '../platform/entitlements.module.js';
 import { SalesModule } from '../sales/sales.module.js';
@@ -19,6 +20,7 @@ import { ReportingService } from './reporting.service.js';
     SalesModule,
     EntitlementsModule,
     AutomationModule,
+    BillingModule,
     StorageModule,
   ],
   controllers: [ReportingController],

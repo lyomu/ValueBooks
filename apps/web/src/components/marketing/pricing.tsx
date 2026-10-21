@@ -45,7 +45,7 @@ export function BillingToggle({
         aria-pressed={interval === 'yearly'}
         onClick={() => onChange('yearly')}
       >
-        Yearly <span className="mk-pricing-toggle__save">Save ~17%</span>
+        Yearly <span className="mk-pricing-toggle__save">Save up to 17%</span>
       </button>
     </div>
   );
@@ -57,7 +57,7 @@ function priceForInterval(
 ): { amountUsd: number; unit: string } {
   return interval === 'monthly'
     ? { amountUsd: plan.monthlyPriceUsd, unit: '/month' }
-    : { amountUsd: plan.yearlyPriceUsd, unit: '/year' };
+    : { amountUsd: plan.yearlyPriceUsd, unit: 'billed yearly' };
 }
 
 function PriceTag({
@@ -75,6 +75,9 @@ function PriceTag({
     <div className="mk-pricing-amount">
       <strong>{formatCurrency(display)}</strong>
       <span>{unit}</span>
+      {interval === 'yearly' ? (
+        <small className="mk-pricing-amount__save">Save {plan.yearlySavingsPercent}%</small>
+      ) : null}
     </div>
   );
 }
@@ -126,9 +129,13 @@ function PlanCard({
           className={plan.highlighted ? 'mk-button' : 'mk-button mk-button--outline'}
           type="button"
           onClick={() => {
+            // The real plan catalog carries one row per tier *and* billing interval (e.g.
+            // "starter_monthly"/"starter_yearly"), since each needs its own provider price id --
+            // `plan.id` here is the tier only, so the interval the toggle is set to completes the
+            // real key.
             void apiRequest<{ data: { id: string } }>('/billing/registration-intents', {
               method: 'POST',
-              body: JSON.stringify({ planKey: plan.id }),
+              body: JSON.stringify({ planKey: `${plan.id}_${interval}` }),
             })
               .then((response) =>
                 router.push(`/signup?intent=${encodeURIComponent(response.data.id)}`),

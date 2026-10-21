@@ -3,6 +3,7 @@ import { Module } from '@nestjs/common';
 import { AuthModule } from '../auth/auth.module.js';
 import { DomainEventsModule } from '../automation/domain-events.module.js';
 import { AutomationModule } from '../automation/automation.module.js';
+import { BillingModule } from '../billing/billing.module.js';
 import { InventoryModule } from '../inventory/inventory.module.js';
 import { JobsModule } from '../jobs/jobs.module.js';
 import { OrganizationsModule } from '../organizations/organizations.module.js';
@@ -37,6 +38,7 @@ import { MasterDataImportService } from '../master-data-import/master-data-impor
     InventoryModule,
     DomainEventsModule,
     AutomationModule,
+    BillingModule,
   ],
   controllers: [
     CustomersController,

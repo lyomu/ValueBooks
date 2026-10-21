@@ -5,7 +5,7 @@ export function apiDownloadUrl(path: string): string {
 }
 
 interface ApiErrorPayload {
-  error?: { code?: string; message?: string; fieldErrors?: string[] };
+  error?: { code?: string; message?: string; fieldErrors?: string[]; feature?: string; currentUsage?: number; limit?: number; upgradeRequired?: boolean };
 }
 
 export class ApiError extends Error {
@@ -31,6 +31,9 @@ export async function apiRequest<T>(path: string, init: RequestInit = {}): Promi
 
   if (!response.ok) {
     const payload = (await response.json().catch(() => ({}))) as ApiErrorPayload;
+    if (payload.error?.code === 'PLAN_LIMIT_REACHED' && typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('valuebooks:billing-limit', { detail: payload.error }));
+    }
     throw new ApiError(
       payload.error?.message ?? 'The request could not be completed.',
       response.status,

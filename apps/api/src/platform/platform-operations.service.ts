@@ -9,6 +9,7 @@ import { writePlatformAudit } from './platform-audit.js';
 import type { PlatformContext } from './platform-context.js';
 import type {
   FailedJobSearchDto,
+  PlatformAnalyticsQueryDto,
   PlatformAuditSearchDto,
   SecurityEventSearchDto,
 } from './platform.dto.js';
@@ -254,19 +255,27 @@ export class PlatformOperationsService {
    * exactly the question a platform console must not be able to answer casually. Adoption is
    * measured by whether a module has been used at all, which needs no amounts.
    */
-  async analytics() {
+  async analytics(query: PlatformAnalyticsQueryDto) {
     const now = Date.now();
     const thirtyDaysAgo = new Date(now - 30 * 86_400_000);
     const ninetyDaysAgo = new Date(now - 90 * 86_400_000);
+    const from = query.from ? new Date(`${query.from}T00:00:00.000Z`) : thirtyDaysAgo;
+    const to = query.to
+      ? new Date(new Date(`${query.to}T00:00:00.000Z`).getTime() + 86_400_000 - 1)
+      : new Date(now);
+    const createdInPeriod = { gte: from, lte: to };
+    const rangeDays = Math.max(1, Math.ceil((to.getTime() - from.getTime()) / 86_400_000));
+    const grouping = rangeDays <= 31 ? 'day' : rangeDays <= 120 ? 'week' : 'month';
 
     const [
       totalOrganizations,
       activeOrganizations,
       suspendedOrganizations,
       draftOrganizations,
-      newLast30,
+      newInPeriod,
       totalUsers,
       activeUsers,
+      newUsersInPeriod,
       activatedOrganizations,
       byCountry,
       byPlan,
@@ -278,14 +287,18 @@ export class PlatformOperationsService {
       automation,
       activeLast30,
       activeLast90,
+      registrationRows,
+      failedJobsLast24Hours,
+      recentActivity,
     ] = await Promise.all([
       this.prisma.organization.count(),
       this.prisma.organization.count({ where: { status: 'ACTIVE' } }),
       this.prisma.organization.count({ where: { status: 'SUSPENDED' } }),
       this.prisma.organization.count({ where: { status: 'DRAFT' } }),
-      this.prisma.organization.count({ where: { createdAt: { gte: thirtyDaysAgo } } }),
+      this.prisma.organization.count({ where: { createdAt: createdInPeriod } }),
       this.prisma.user.count(),
       this.prisma.user.count({ where: { status: 'ACTIVE' } }),
+      this.prisma.user.count({ where: { createdAt: createdInPeriod } }),
       // Activation: onboarding finished. The first real question about any tenant.
       this.prisma.organization.count({ where: { onboardingCompletedAt: { not: null } } }),
       this.prisma.organization.groupBy({ by: ['countryCode'], _count: { _all: true } }),
@@ -345,10 +358,25 @@ export class PlatformOperationsService {
           distinct: ['organizationId'],
         }),
       ),
+      this.prisma.organization.findMany({
+        where: { createdAt: createdInPeriod },
+        select: { createdAt: true },
+        orderBy: { createdAt: 'asc' },
+      }),
+      this.prisma.scheduledJobExecution.count({
+        where: { status: 'FAILED', createdAt: { gte: new Date(now - 86_400_000) } },
+      }),
+      this.prisma.platformAuditEvent.findMany({
+        orderBy: { occurredAt: 'desc' },
+        take: 6,
+        select: { id: true, eventKey: true, occurredAt: true },
+      }),
     ]);
 
     const plans = await this.prisma.plan.findMany({ select: { id: true, key: true, name: true } });
     const planName = new Map(plans.map((plan) => [plan.id, plan.name]));
+
+    const registrations = bucketRegistrations(registrationRows, grouping);
 
     return {
       organizations: {
@@ -356,9 +384,9 @@ export class PlatformOperationsService {
         active: activeOrganizations,
         suspended: suspendedOrganizations,
         draft: draftOrganizations,
-        createdLast30Days: newLast30,
+        createdInPeriod: newInPeriod,
       },
-      users: { total: totalUsers, active: activeUsers },
+      users: { total: totalUsers, active: activeUsers, createdInPeriod: newUsersInPeriod },
       activation: {
         onboardingCompleted: activatedOrganizations,
         onboardingCompletedRate: rate(activatedOrganizations, totalOrganizations),
@@ -390,9 +418,44 @@ export class PlatformOperationsService {
           }))
           .sort((a, b) => b.organizations - a.organizations),
       },
+      reporting: {
+        from: from.toISOString(),
+        to: to.toISOString(),
+        grouping,
+        registrations,
+      },
+      attention: { failedJobsLast24Hours },
+      recentActivity: recentActivity.map((event) => ({
+        id: event.id,
+        eventKey: event.eventKey,
+        occurredAt: event.occurredAt.toISOString(),
+      })),
       observedAt: new Date().toISOString(),
     };
   }
+}
+
+function bucketRegistrations(rows: Array<{ createdAt: Date }>, grouping: 'day' | 'week' | 'month') {
+  const counts = new Map<string, number>();
+  for (const { createdAt } of rows) {
+    const date = new Date(createdAt);
+    const key =
+      grouping === 'month'
+        ? date.toISOString().slice(0, 7)
+        : grouping === 'week'
+          ? weekStart(date).toISOString().slice(0, 10)
+          : date.toISOString().slice(0, 10);
+    counts.set(key, (counts.get(key) ?? 0) + 1);
+  }
+  return [...counts]
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([key, organizations]) => ({ key, label: key, organizations }));
+}
+
+function weekStart(value: Date) {
+  const date = new Date(Date.UTC(value.getUTCFullYear(), value.getUTCMonth(), value.getUTCDate()));
+  date.setUTCDate(date.getUTCDate() - ((date.getUTCDay() + 6) % 7));
+  return date;
 }
 
 async function distinctOrganizations(

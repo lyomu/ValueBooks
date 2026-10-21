@@ -3,6 +3,8 @@ import { forwardRef, Module } from '@nestjs/common';
 import { AuthModule } from '../auth/auth.module.js';
 import { AutomationModule } from '../automation/automation.module.js';
 import { DomainEventsModule } from '../automation/domain-events.module.js';
+import { BillingModule } from '../billing/billing.module.js';
+import { OrganizationBillingController } from '../billing/organization-billing.controller.js';
 import { PlatformAccessModule } from '../platform/platform-access.module.js';
 import { PostingRulesService } from '../posting-rules/posting-rules.service.js';
 import { AuditLogController } from './audit-log.controller.js';
@@ -43,8 +45,10 @@ import { TaxService } from './tax.service.js';
     DomainEventsModule,
     PlatformAccessModule,
     forwardRef(() => AutomationModule),
+    forwardRef(() => BillingModule),
   ],
   controllers: [
+    OrganizationBillingController,
     OrganizationsController,
     InvitationsController,
     PermissionsController,

@@ -8,6 +8,7 @@ import { AuditAction, type CollaborationTargetType, type Prisma } from '@prisma/
 
 import type { PublicUser } from '../auth/auth.service.js';
 import type { RequestMetadata } from '../auth/request-context.js';
+import { UsageMeteringService } from '../billing/usage-metering.service.js';
 import { PrismaService } from '../database/prisma.service.js';
 import { writeAuditEvent } from '../organizations/audit-event.js';
 import type { OrganizationContext } from '../organizations/organization-context.js';
@@ -20,7 +21,10 @@ import type {
 
 @Injectable()
 export class CustomersService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly usage: UsageMeteringService,
+  ) {}
 
   async list(organizationId: string, status?: 'ACTIVE' | 'INACTIVE') {
     const contacts = await this.prisma.contact.findMany({
@@ -49,6 +53,9 @@ export class CustomersService {
     const currency = input.currency ?? organization.baseCurrency;
     this.assertCurrencyAllowed(context, currency, organization.baseCurrency);
 
+    // Active-customer count is a standing cap, not a monthly flow: archived customers legitimately
+    // come back out of it (billing spec Section 4), so this counts live rows rather than an
+    // ever-incrementing counter.
     const existing = await this.prisma.contact.findUnique({
       where: {
         organizationId_displayName: { organizationId: context.id, displayName: input.displayName },
@@ -57,6 +64,9 @@ export class CustomersService {
     if (existing) throw new ConflictException('A customer with this name already exists.');
 
     const created = await this.prisma.$transaction(async (tx) => {
+      await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtext(${context.id}), 114)::text AS locked`;
+      const active = await tx.contact.count({ where: { organizationId: context.id, type: 'CUSTOMER', status: 'ACTIVE' } });
+      await this.usage.assertWithinConcurrentLimit(context.id, 'customers.active.max', active);
       const contact = await tx.contact.create({
         data: {
           organizationId: context.id,
@@ -184,6 +194,11 @@ export class CustomersService {
     if (existing.status === status) return summarize(existing);
 
     const updated = await this.prisma.$transaction(async (tx) => {
+      if (status === 'ACTIVE') {
+        await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtext(${context.id}), 114)::text AS locked`;
+        const active = await tx.contact.count({ where: { organizationId: context.id, type: 'CUSTOMER', status: 'ACTIVE' } });
+        await this.usage.assertWithinConcurrentLimit(context.id, 'customers.active.max', active);
+      }
       const contact = await tx.contact.update({
         where: { id: contactId },
         data: { status },

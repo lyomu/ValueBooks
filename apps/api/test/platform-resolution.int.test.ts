@@ -57,13 +57,23 @@ describe('platform entitlement and feature-flag resolution', () => {
     );
     organizationId = organization.id;
     const plan = await harness.prisma.plan.create({
-      data: { key: 'resolution', name: 'Resolution', status: 'ACTIVE', priceMinor: 0n },
+      data: { key: 'resolution', tierKey: 'resolution', name: 'Resolution', status: 'ACTIVE', priceMinor: 0n },
     });
     planId = plan.id;
-    await harness.prisma.organizationSubscription.create({
-      data: {
+    // `organizations.finalize()` above already starts the cardless trial (on the real seeded
+    // Professional plan); this test exercises resolution against its own throwaway plan, so it
+    // overwrites that row rather than assuming none exists.
+    await harness.prisma.organizationSubscription.upsert({
+      where: { organizationId },
+      create: {
         organizationId,
         planId,
+        status: 'TRIALING',
+        trialEndsAt: new Date('2099-01-01T00:00:00Z'),
+      },
+      update: {
+        planId,
+        intendedPlanId: null,
         status: 'TRIALING',
         trialEndsAt: new Date('2099-01-01T00:00:00Z'),
       },

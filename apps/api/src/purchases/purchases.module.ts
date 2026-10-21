@@ -3,6 +3,7 @@ import { Module } from '@nestjs/common';
 import { AiModule } from '../ai/ai.module.js';
 import { AttachmentsModule } from '../attachments/attachments.module.js';
 import { AuthModule } from '../auth/auth.module.js';
+import { BillingModule } from '../billing/billing.module.js';
 import { DomainEventsModule } from '../automation/domain-events.module.js';
 import { AutomationModule } from '../automation/automation.module.js';
 import { DocumentsModule } from '../documents/documents.module.js';
@@ -46,6 +47,7 @@ import { MasterDataImportService } from '../master-data-import/master-data-impor
     DocumentsModule,
     AiModule,
     EntitlementsModule,
+    BillingModule,
   ],
   controllers: [
     VendorsController,
