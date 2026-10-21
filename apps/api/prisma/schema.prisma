@@ -294,6 +294,10 @@ model User {
   auditEvents                      AuditEvent[]
   platformAdmin                    PlatformAdmin?             @relation("PlatformAdminUser")
   platformGrantsIssued             PlatformAdmin[]            @relation("PlatformAdminGrantedBy")
+  billingRefundsRequested          BillingRefund[]            @relation("BillingRefundRequestedBy")
+  billingRefundsApproved           BillingRefund[]            @relation("BillingRefundApprovedBy")
+  billingOverridesRequested        BillingEntitlementOverride[] @relation("BillingOverrideRequestedBy")
+  billingOverridesApproved         BillingEntitlementOverride[] @relation("BillingOverrideApprovedBy")
   platformAuditEvents              PlatformAuditEvent[]       @relation("PlatformAuditActor")
   portalGrantsInvited              PortalUser[]               @relation("PortalUserInvitedBy")
   organizationsSuspended           Organization[]             @relation("OrganizationSuspendedBy")
@@ -4142,7 +4146,7 @@ model BillingProfile {
   countryCode String @map("country_code") @db.Char(2)
   taxId String? @map("tax_id") @db.VarChar(100)
   updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
-  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
   @@map("billing_profiles")
 }
@@ -4171,8 +4175,10 @@ model BillingRefund {
   completedAt DateTime? @map("completed_at") @db.Timestamptz(6)
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
-  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  transaction BillingTransaction @relation(fields: [transactionId], references: [id], onDelete: Restrict)
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  transaction BillingTransaction @relation(fields: [transactionId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  requestedBy User @relation("BillingRefundRequestedBy", fields: [requestedByUserId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  approvedBy User? @relation("BillingRefundApprovedBy", fields: [approvedByUserId], references: [id], onDelete: SetNull, onUpdate: NoAction)
 
   @@index([status, createdAt])
   @@index([transactionId])
@@ -4203,9 +4209,11 @@ model BillingEntitlementOverride {
   expiresAt DateTime @map("expires_at") @db.Timestamptz(6)
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
-  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  requestedBy User @relation("BillingOverrideRequestedBy", fields: [requestedByUserId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  approvedBy User? @relation("BillingOverrideApprovedBy", fields: [approvedByUserId], references: [id], onDelete: SetNull, onUpdate: NoAction)
 
-  @@index([organizationId, entitlementKey, status, effectiveAt, expiresAt])
+  @@index([organizationId, entitlementKey, status, effectiveAt, expiresAt], map: "billing_entitlement_overrides_org_key_idx")
   @@map("billing_entitlement_overrides")
 }
 
@@ -4221,10 +4229,10 @@ model BillingNotice {
   attempts Int @default(0)
   lastError String? @map("last_error") @db.VarChar(1000)
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
-  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
-  @@unique([organizationId, eventKey, sourceId])
-  @@index([queuedAt, createdAt])
+  @@unique([organizationId, eventKey, sourceId], map: "billing_notices_org_event_source_key")
+  @@index([queuedAt, createdAt], map: "billing_notices_queued_created_idx")
   @@map("billing_notices")
 }
 

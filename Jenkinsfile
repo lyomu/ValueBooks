@@ -231,6 +231,18 @@ pipeline {
                     docker exec ${env.CI_PG} psql -v ON_ERROR_STOP=1 -U valuebooks -d valuebooks_test \
                         -c "CREATE ROLE valuebooks_app LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT NOBYPASSRLS PASSWORD 'ci_app_pw'"
 
+                    # Migration drift: fails when schema.prisma changed without a matching
+                    # migration, which would otherwise surface as a broken `prisma migrate deploy`
+                    # in deploy.sh. Runs before the slower services so drift fails fast.
+                    docker exec ${env.CI_PG} psql -v ON_ERROR_STOP=1 -U valuebooks -d valuebooks_test \
+                        -c "CREATE DATABASE valuebooks_shadow"
+                    docker run --rm --network ${env.CI_NET} \
+                        -e DATABASE_MIGRATION_URL=postgresql://valuebooks:ci_pw@${env.CI_PG}:5432/valuebooks_test \
+                        -e SHADOW_DATABASE_URL=postgresql://valuebooks:ci_pw@${env.CI_PG}:5432/valuebooks_shadow \
+                        -w /app/apps/api \
+                        ${env.API_CI_IMAGE} npx prisma migrate diff \
+                            --from-migrations prisma/migrations --to-schema prisma/schema.prisma --exit-code
+
                     # Mailpit is distroless, so probe it over HTTP from the CI image.
                     mail_ready=false
                     for i in \$(seq 1 60); do
