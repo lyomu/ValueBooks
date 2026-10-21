@@ -183,6 +183,20 @@ describe('validateApiEnvironment', () => {
     ).toThrow(/AI_HOSTED_PROVIDER/);
   });
 
+  it('requires SMTP_USER and SMTP_PASSWORD to be set together', () => {
+    expect(() =>
+      validateApiEnvironment({ NODE_ENV: 'test', SMTP_USER: 'no-reply@valuebooks.co' }),
+    ).toThrow(/SMTP_USER and SMTP_PASSWORD must be set together/);
+
+    expect(
+      validateApiEnvironment({
+        NODE_ENV: 'test',
+        SMTP_USER: 'no-reply@valuebooks.co',
+        SMTP_PASSWORD: 'secret',
+      }),
+    ).toMatchObject({ SMTP_USER: 'no-reply@valuebooks.co', SMTP_PASSWORD: 'secret' });
+  });
+
   it('requires AI_HOSTED_API_KEY when AI_MODE is hosted_limited in production', () => {
     expect(() =>
       validateApiEnvironment({

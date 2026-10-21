@@ -111,6 +111,10 @@ const apiEnvironmentSchema = z
     LOG_LEVEL: z.enum(['silent', 'fatal', 'error', 'warn', 'info', 'debug', 'trace']),
     SMTP_HOST: nonEmptyString,
     SMTP_PORT: portNumber,
+    // Optional: Mailpit (local/CI) accepts unauthenticated SMTP. A real mailbox (e.g. DirectAdmin's
+    // mail.valuebooks.co) requires AUTH, so EmailDeliveryService only sends `auth` when these are set.
+    SMTP_USER: optionalNonEmptyString,
+    SMTP_PASSWORD: optionalNonEmptyString,
     EMAIL_FROM: nonEmptyString,
     EMAIL_JOB_RETRY_DELAY_MS: positiveInteger,
     EMAIL_WORKER_CONCURRENCY: positiveInteger,
@@ -190,6 +194,14 @@ const apiEnvironmentSchema = z
     DOCUMENT_EXTRACTION_RETRY_DELAY_MS: positiveInteger,
   })
   .superRefine((value, context) => {
+    if (Boolean(value.SMTP_USER) !== Boolean(value.SMTP_PASSWORD)) {
+      context.addIssue({
+        code: 'custom',
+        path: ['SMTP_USER'],
+        message: 'SMTP_USER and SMTP_PASSWORD must be set together (or both left unset for an unauthenticated SMTP server like Mailpit)',
+      });
+    }
+
     const privateEndpoint = urlOrNull(value.AI_PRIVATE_ENDPOINT);
     if (value.AI_MODE === 'private') {
       if (!value.AI_PRIVATE_ENDPOINT) {
