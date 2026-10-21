@@ -107,7 +107,7 @@ body {
   margin: 0 auto;
   place-items: center;
   color: hsl(var(--rb-primary-foreground));
-  background: #0274dc;
+  background: #006ef5;
   border-radius: var(--rb-radius);
 }
 
@@ -4585,7 +4585,7 @@ a.rb-nav-item:hover {
 
 .rb-onboarding__steps li.is-current .rb-onboarding__step-icon {
   color: hsl(var(--rb-primary-foreground));
-  background: #0274dc;
+  background: #006ef5;
 }
 
 .rb-onboarding__steps li.is-done .rb-onboarding__step-icon {
