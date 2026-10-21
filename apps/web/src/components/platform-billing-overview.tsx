@@ -51,7 +51,9 @@ function RevenueCard({
 }) {
   const entries = Object.entries(amounts);
   return (
-    <div className="rb-platform__card rb-platform__revenue-card">
+    <div
+      className={`rb-platform__card rb-platform__revenue-card${entries.length ? '' : ' is-empty'}`}
+    >
       <h3>{title}</h3>
       {entries.length ? (
         <ul className="rb-platform__money-list">
@@ -168,7 +170,7 @@ export function PlatformBillingOverview() {
               <div>
                 <h2 id="billing-collections-heading">Verified collections</h2>
                 <p className="rb-platform__muted">
-                  Track confirmed subscription payments across Paddle and Paystack.
+                  Track confirmed subscription payments and retained historical records.
                 </p>
               </div>
               <label>

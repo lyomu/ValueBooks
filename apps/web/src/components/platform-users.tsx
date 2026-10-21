@@ -1,7 +1,7 @@
 'use client';
 
 import type { PlatformUser } from '@valuebooks/contracts';
-import { DataTable } from '@valuebooks/ui';
+import { DataTable, PrimarySecondaryCell } from '@valuebooks/ui';
 import Link from 'next/link';
 import { useCallback, useEffect, useState, type FormEvent } from 'react';
 
@@ -34,6 +34,19 @@ type UserDetail = {
   activeSessions: Array<{ createdAt: string; userAgent: string | null }>;
   securityEvents: Array<{ eventKey: string; severity: string; occurredAt: string }>;
 };
+
+function securityEventLabel(eventKey: string) {
+  const labels: Record<string, string> = {
+    'auth.bootstrap_verified': 'Account verification completed',
+    'auth.login_succeeded': 'Successful sign-in',
+    'auth.login_failed': 'Failed sign-in attempt',
+    'session.revoked': 'Session revoked',
+  };
+  return (
+    labels[eventKey] ??
+    eventKey.replace(/[._-]+/g, ' ').replace(/\b\w/g, (letter) => letter.toUpperCase())
+  );
+}
 
 export function PlatformUsers() {
   const [rows, setRows] = useState<PlatformUser[] | null>(null);
@@ -111,10 +124,12 @@ export function PlatformUsers() {
             key: 'person',
             header: 'Person',
             cell: (row: PlatformUser) => (
-              <>
-                <Link href={`/platform/users/${row.id}`}>{row.displayName}</Link>
-                <small>{row.email}</small>
-              </>
+              <PrimarySecondaryCell
+                primary={<Link href={`/platform/users/${row.id}`}>{row.displayName}</Link>}
+                secondary={row.email}
+                primaryTitle={row.displayName}
+                secondaryTitle={row.email}
+              />
             ),
           },
           {
@@ -222,59 +237,26 @@ export function PlatformUserDetail({ userId }: { userId: string }) {
         </p>
       ) : null}
 
-      <div className="rb-platform__grid">
-        <section className="rb-platform__card" aria-label="Account">
-          <h2>Account</h2>
+      <div className="rb-platform-user__summary-grid">
+        <section className="rb-platform__card" aria-label="Account information">
+          <h2>Account information</h2>
           <dl>
             <Row label="Email verified" value={user.emailVerified ? 'Yes' : 'No'} />
             <Row label="Joined" value={new Date(user.createdAt).toLocaleDateString()} />
             <Row label="Platform role" value={user.platformRole ?? 'None'} />
             <Row label="Active sessions" value={user.activeSessions.length} />
           </dl>
-          {canOperate ? (
-            <>
-              <label>
-                Status
-                <select value={status} onChange={(event) => setStatus(event.target.value)}>
-                  <option value="ACTIVE">Active</option>
-                  <option value="SUSPENDED">Suspended</option>
-                  <option value="CLOSED">Closed</option>
-                </select>
-              </label>
-              <label>
-                Reason
-                <input
-                  value={reason}
-                  minLength={4}
-                  maxLength={500}
-                  onChange={(event) => setReason(event.target.value)}
-                />
-              </label>
-              <p className="rb-platform__muted">
-                Anything other than Active revokes this person&apos;s live sessions immediately.
-              </p>
-              <div className="rb-platform__actions">
-                <button
-                  type="button"
-                  disabled={busy || status === user.status || reason.trim().length < 4}
-                  onClick={() => void save()}
-                >
-                  Update status
-                </button>
-              </div>
-            </>
-          ) : null}
         </section>
 
         <section className="rb-platform__card" aria-label="Recent security events">
           <h2>Recent security events</h2>
           {user.securityEvents.length === 0 ? (
-            <p className="rb-platform__muted">Nothing recorded.</p>
+            <p className="rb-platform__muted">No recent security events.</p>
           ) : (
             <ul className="rb-platform__list">
               {user.securityEvents.map((event, index) => (
                 <li key={`${event.eventKey}-${index}`}>
-                  <span>{event.eventKey}</span>
+                  <span title={event.eventKey}>{securityEventLabel(event.eventKey)}</span>
                   <time dateTime={event.occurredAt}>
                     {new Date(event.occurredAt).toLocaleString()}
                   </time>
@@ -285,6 +267,43 @@ export function PlatformUserDetail({ userId }: { userId: string }) {
         </section>
       </div>
 
+      {canOperate ? (
+        <section className="rb-platform__card rb-platform-user__administration">
+          <h2>Account administration</h2>
+          <div className="rb-platform-user__administration-form">
+            <label>
+              Status
+              <select value={status} onChange={(event) => setStatus(event.target.value)}>
+                <option value="ACTIVE">Active</option>
+                <option value="SUSPENDED">Suspended</option>
+                <option value="CLOSED">Closed</option>
+              </select>
+            </label>
+            <label>
+              Reason
+              <input
+                value={reason}
+                minLength={4}
+                maxLength={500}
+                onChange={(event) => setReason(event.target.value)}
+              />
+            </label>
+            <p className="rb-platform__muted">
+              Anything other than Active revokes this person&apos;s live sessions immediately.
+            </p>
+            <div className="rb-platform__actions">
+              <button
+                type="button"
+                disabled={busy || status === user.status || reason.trim().length < 4}
+                onClick={() => void save()}
+              >
+                Update status
+              </button>
+            </div>
+          </div>
+        </section>
+      ) : null}
+
       <section className="rb-platform__section" aria-label="Memberships">
         <h2>Memberships</h2>
         <DataTable
@@ -293,22 +312,29 @@ export function PlatformUserDetail({ userId }: { userId: string }) {
             ...membership,
             id: membership.organizationId,
           }))}
-          emptyTitle="This account belongs to no organization"
+          emptyTitle="No organization memberships"
+          emptyDescription="This user is not currently associated with any organization."
+          emptyState={{ variant: 'inline' }}
           columns={[
             {
               key: 'organization',
               header: 'Organization',
               cell: (membership) => (
-                <Link href={`/platform/organizations/${membership.organizationId}`}>
-                  {membership.organizationName}
-                </Link>
+                <PrimarySecondaryCell
+                  primary={
+                    <Link href={`/platform/organizations/${membership.organizationId}`}>
+                      {membership.organizationName}
+                    </Link>
+                  }
+                  primaryTitle={membership.organizationName}
+                />
               ),
             },
             { key: 'role', header: 'Role', cell: (membership) => membership.roleName },
             {
               key: 'membership',
               header: 'Membership',
-              cell: (membership) => membership.membershipStatus,
+              cell: (membership) => <StatusPill status={membership.membershipStatus} />,
             },
             {
               key: 'organization-status',

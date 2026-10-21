@@ -5,7 +5,7 @@ import type {
   PlatformCountryPackTier,
   PlatformTaxPack,
 } from '@valuebooks/contracts';
-import { DataTable } from '@valuebooks/ui';
+import { DataTable, PrimarySecondaryCell } from '@valuebooks/ui';
 import {
   Archive,
   CirclePlus,
@@ -343,32 +343,35 @@ function CountryPackTable({
           key: 'pack',
           header: 'Country pack',
           cell: (pack) => (
-            <>
-              {pack.name}
-              <small>{pack.code}</small>
-            </>
+            <PrimarySecondaryCell
+              primary={pack.name}
+              secondary={pack.code}
+              primaryTitle={pack.name}
+              secondaryTitle={pack.code}
+            />
           ),
         },
         {
           key: 'version',
           header: 'Version',
           cell: (pack) => (
-            <>
-              <strong>{pack.version}</strong>
-              <small>
-                <PackStatus status={pack.status} />
-              </small>
-            </>
+            <PrimarySecondaryCell
+              primary={pack.version}
+              secondary={<PackStatus status={pack.status} />}
+              primaryTitle={pack.version}
+            />
           ),
         },
         {
           key: 'jurisdiction',
           header: 'Jurisdiction',
           cell: (pack) => (
-            <>
-              {pack.countryCode}
-              <small>{tierLabel(pack.tier)}</small>
-            </>
+            <PrimarySecondaryCell
+              primary={pack.countryCode}
+              secondary={tierLabel(pack.tier)}
+              primaryTitle={pack.countryCode}
+              secondaryTitle={tierLabel(pack.tier)}
+            />
           ),
         },
         {
@@ -422,10 +425,10 @@ function CountryPackTable({
           key: 'updated',
           header: 'Updated',
           cell: (pack) => (
-            <>
-              {new Date(pack.updatedAt).toLocaleDateString()}
-              <small>{new Date(pack.updatedAt).toLocaleTimeString()}</small>
-            </>
+            <PrimarySecondaryCell
+              primary={new Date(pack.updatedAt).toLocaleDateString()}
+              secondary={new Date(pack.updatedAt).toLocaleTimeString()}
+            />
           ),
           hideBelow: 'tablet',
         },

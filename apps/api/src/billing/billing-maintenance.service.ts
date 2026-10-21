@@ -3,7 +3,6 @@ import { Injectable, Logger } from '@nestjs/common';
 import { SchedulerService } from '../automation/scheduler.service.js';
 import { PrismaService } from '../database/prisma.service.js';
 import { BillingNotificationService } from './billing-notification.service.js';
-import { PaddleBillingAdapter } from './paddle-billing.adapter.js';
 import { PaystackBillingAdapter } from './paystack-billing.adapter.js';
 
 /** Daily provider-aware recovery on the existing durable scheduler. It never creates a charge or
@@ -12,8 +11,7 @@ import { PaystackBillingAdapter } from './paystack-billing.adapter.js';
 export class BillingMaintenanceService {
   private readonly logger = new Logger(BillingMaintenanceService.name);
   constructor(private readonly prisma: PrismaService, private readonly scheduler: SchedulerService,
-    private readonly notices: BillingNotificationService, private readonly paddle: PaddleBillingAdapter,
-    private readonly paystack: PaystackBillingAdapter) {}
+    private readonly notices: BillingNotificationService, private readonly paystack: PaystackBillingAdapter) {}
 
   async execute(executionId: string) {
     const execution = await this.scheduler.beginExecution(executionId);
@@ -38,9 +36,9 @@ export class BillingMaintenanceService {
         await this.notices.notify({ organizationId, eventKey: 'billing.renewal_upcoming', sourceId: subscription.currentPeriodEnd.toISOString(),
           subject: 'Your ValueBooks renewal is coming up', body: `Your current paid term ends ${await this.notices.localDate(organizationId, subscription.currentPeriodEnd)}. Review your subscription and payment method in billing settings.` });
       }
-      if (subscription.billingProvider && subscription.providerSubscriptionId && ['ACTIVE', 'PAST_DUE', 'CANCEL_SCHEDULED'].includes(subscription.status)) {
+      if (subscription.billingProvider === 'PAYSTACK' && subscription.providerSubscriptionId && ['ACTIVE', 'PAST_DUE', 'CANCEL_SCHEDULED'].includes(subscription.status)) {
         try {
-          const remote = await (subscription.billingProvider === 'PADDLE' ? this.paddle : this.paystack).getSubscription(subscription.providerSubscriptionId);
+          const remote = await this.paystack.getSubscription(subscription.providerSubscriptionId);
           if (remote.status === 'past_due' && subscription.status === 'ACTIVE') {
             await this.prisma.organizationSubscription.updateMany({ where: { id: subscription.id, status: 'ACTIVE' }, data: { status: 'PAST_DUE', pastDueSince: now } });
             await this.notices.notify({ organizationId, eventKey: 'billing.payment_method_required', sourceId: `${subscription.id}:${subscription.currentPeriodEnd?.toISOString() ?? ''}`,
@@ -55,11 +53,11 @@ export class BillingMaintenanceService {
     for (const change of changes) {
       if (!change.priorProviderSubscriptionId || !change.fromProvider) continue;
       try {
-        const adapter = change.fromProvider === 'PADDLE' ? this.paddle : this.paystack;
-        const remote = await adapter.getSubscription(change.priorProviderSubscriptionId);
+        if (change.fromProvider !== 'PAYSTACK') continue;
+        const remote = await this.paystack.getSubscription(change.priorProviderSubscriptionId);
         if (!remote.cancelAtPeriodEnd && remote.status !== 'cancelled') {
-          await adapter.cancelSubscription({ providerSubscriptionId: change.priorProviderSubscriptionId,
-            ...(change.fromProvider === 'PAYSTACK' ? { emailToken: remote.emailToken } : {}) });
+          await this.paystack.cancelSubscription({ providerSubscriptionId: change.priorProviderSubscriptionId,
+            emailToken: remote.emailToken });
         }
         await this.prisma.subscriptionChange.update({ where: { id: change.id }, data: { status: 'COMPLETED', completedAt: new Date(), oldCancellationStatus: 'CONFIRMED', errorMessage: null } });
         await this.notices.notify({ organizationId, eventKey: 'billing.migration_completed', sourceId: change.id,

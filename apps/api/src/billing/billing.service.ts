@@ -2,7 +2,6 @@ import { BadRequestException, Injectable, NotFoundException } from '@nestjs/comm
 import { PlanStatus, type OrganizationSubscription } from '@prisma/client';
 
 import { PrismaService } from '../database/prisma.service.js';
-import { PaddleBillingAdapter } from './paddle-billing.adapter.js';
 import { PaystackBillingAdapter } from './paystack-billing.adapter.js';
 import { BILLING_PROVIDER_ROUTING } from './billing-provider.js';
 import { UsageMeteringService } from './usage-metering.service.js';
@@ -16,7 +15,6 @@ const INTENT_TTL_MS = 24 * 60 * 60 * 1000;
 export class BillingService {
   constructor(
     private readonly prisma: PrismaService,
-    private readonly paddle: PaddleBillingAdapter,
     private readonly paystack: PaystackBillingAdapter,
     private readonly usage: UsageMeteringService,
     private readonly notices: BillingNotificationService,
@@ -59,7 +57,7 @@ export class BillingService {
       trialDays: plan.trialDays,
       // Whether this plan can actually be checked out yet (a provider price is configured), not
       // the provider identifiers themselves -- those stay internal.
-      checkoutAvailable: Boolean(plan.billingProvider && plan.providerProductId && plan.providerPriceId &&
+      checkoutAvailable: Boolean(plan.billingProvider === 'PAYSTACK' && plan.providerPriceId &&
         (process.env.NODE_ENV !== 'production' || process.env.BILLING_LIVE_CHECKOUT_ENABLED === 'true')),
       entitlements: plan.entitlements,
     }));
@@ -111,7 +109,6 @@ export class BillingService {
     if (
       intent.plan.billingProvider &&
       intent.plan.providerPriceId &&
-      intent.plan.providerProductId &&
       successUrl &&
       cancelUrl
     ) {
@@ -120,13 +117,11 @@ export class BillingService {
       if (BILLING_PROVIDER_ROUTING[intent.plan.tierKey] !== intent.plan.billingProvider)
         throw new BadRequestException('This plan has an invalid payment provider configuration.');
       this.validateCheckoutUrls(successUrl, cancelUrl);
-      const adapter = intent.plan.billingProvider === 'PADDLE' ? this.paddle : this.paystack;
-      const result = await adapter.createCheckout({
+      const result = await this.paystack.createCheckout({
         organizationId: '', // not yet created at signup time; clientReference carries the intent id
         providerCustomerId: null,
         customerEmail: userEmail,
         plan: {
-          providerProductId: intent.plan.providerProductId,
           providerPriceId: intent.plan.providerPriceId,
           priceMinor: intent.plan.priceMinor,
           currency: intent.plan.currency,
@@ -163,7 +158,7 @@ export class BillingService {
     if (!subscription || !plan) throw new NotFoundException('Subscription or selected plan not found.');
     if (process.env.NODE_ENV === 'production' && process.env.BILLING_LIVE_CHECKOUT_ENABLED !== 'true')
       throw new BadRequestException('Live subscription checkout is awaiting merchant readiness approval.');
-    if (!plan.billingProvider || !plan.providerProductId || !plan.providerPriceId ||
+    if (plan.billingProvider !== 'PAYSTACK' || !plan.providerPriceId ||
       BILLING_PROVIDER_ROUTING[plan.tierKey] !== plan.billingProvider)
       throw new BadRequestException('This plan is not ready for secure checkout.');
     if (subscription.status === 'ACTIVE' && subscription.planId === plan.id)
@@ -203,12 +198,11 @@ export class BillingService {
       },
     });
     try {
-      const adapter = plan.billingProvider === 'PADDLE' ? this.paddle : this.paystack;
-      const checkout = await adapter.createCheckout({
+      const checkout = await this.paystack.createCheckout({
         organizationId: input.organizationId,
         providerCustomerId: subscription.billingProvider === plan.billingProvider ? subscription.providerCustomerId : null,
         customerEmail: input.userEmail,
-        plan: { providerProductId: plan.providerProductId, providerPriceId: plan.providerPriceId, priceMinor: plan.priceMinor, currency: plan.currency, billingInterval: plan.billingInterval },
+        plan: { providerPriceId: plan.providerPriceId, priceMinor: plan.priceMinor, currency: plan.currency, billingInterval: plan.billingInterval },
         successUrl: input.successUrl,
         cancelUrl: input.cancelUrl,
         clientReference: change.id,
@@ -227,10 +221,10 @@ export class BillingService {
   private async scheduleDowngrade(subscription: OrganizationSubscription, plan: { id: string; billingProvider: 'PADDLE' | 'PAYSTACK' | null }, userId: string, idempotencyKey: string) {
     if (!subscription?.billingProvider || !subscription.providerSubscriptionId || !subscription.currentPeriodEnd || !plan.billingProvider)
       throw new BadRequestException('A linked paid subscription is required to schedule a downgrade.');
-    const adapter = subscription.billingProvider === 'PADDLE' ? this.paddle : this.paystack;
-    const remote = await adapter.getSubscription(subscription.providerSubscriptionId);
-    await adapter.cancelSubscription({ providerSubscriptionId: subscription.providerSubscriptionId,
-      ...(subscription.billingProvider === 'PAYSTACK' ? { emailToken: remote.emailToken } : {}) });
+    if (subscription.billingProvider !== 'PAYSTACK')
+      throw new BadRequestException('Historical subscriptions cannot be changed through the active Paystack billing service.');
+    const remote = await this.paystack.getSubscription(subscription.providerSubscriptionId);
+    await this.paystack.cancelSubscription({ providerSubscriptionId: subscription.providerSubscriptionId, emailToken: remote.emailToken });
     const change = await this.prisma.$transaction(async (tx) => {
       const created = await tx.subscriptionChange.create({ data: { organizationId: subscription.organizationId,
         fromPlanId: subscription.planId, toPlanId: plan.id, fromProvider: subscription.billingProvider,
@@ -341,9 +335,7 @@ export class BillingService {
       where: { id: transactionId, organizationId, status: { in: ['SUCCESSFUL', 'REFUNDED', 'PARTIALLY_REFUNDED'] } },
     });
     if (!transaction) throw new NotFoundException('A verified payment document is unavailable.');
-    const url = transaction.billingProvider === 'PADDLE'
-      ? await this.paddle.getTransactionInvoiceUrl(transaction.providerTransactionId)
-      : transaction.receiptUrl;
+    const url = transaction.receiptUrl;
     if (!url || new URL(url).protocol !== 'https:')
       throw new NotFoundException('The provider has not supplied a receipt for this payment.');
     return { url, issuer: transaction.billingProvider };
@@ -371,11 +363,9 @@ export class BillingService {
     const subscription = await this.prisma.organizationSubscription.findUnique({ where: { organizationId } });
     if (!subscription?.billingProvider || !subscription.providerSubscriptionId)
       throw new BadRequestException('No paid subscription payment method is available yet.');
-    const url = subscription.billingProvider === 'PADDLE'
-      ? subscription.providerCustomerId
-        ? await this.paddle.getCustomerPortalUrl({ providerCustomerId: subscription.providerCustomerId })
-        : null
-      : await this.paystack.getPaymentMethodUrl(subscription.providerSubscriptionId);
+    if (subscription.billingProvider !== 'PAYSTACK')
+      throw new BadRequestException('Payment-method management is only available for active Paystack subscriptions.');
+    const url = await this.paystack.getPaymentMethodUrl(subscription.providerSubscriptionId);
     if (!url || new URL(url).protocol !== 'https:') throw new BadRequestException('A secure payment method link is unavailable.');
     return { url, provider: subscription.billingProvider };
   }
@@ -385,12 +375,10 @@ export class BillingService {
     if (!subscription || !['ACTIVE', 'PAST_DUE'].includes(subscription.status) ||
       !subscription.billingProvider || !subscription.providerSubscriptionId || !subscription.currentPeriodEnd)
       throw new BadRequestException('This subscription cannot be cancelled from billing settings.');
-    const adapter = subscription.billingProvider === 'PADDLE' ? this.paddle : this.paystack;
-    const remote = await adapter.getSubscription(subscription.providerSubscriptionId);
-    await adapter.cancelSubscription({
-      providerSubscriptionId: subscription.providerSubscriptionId,
-      ...(subscription.billingProvider === 'PAYSTACK' ? { emailToken: remote.emailToken } : {}),
-    });
+    if (subscription.billingProvider !== 'PAYSTACK')
+      throw new BadRequestException('Historical subscriptions cannot be canceled through the active Paystack billing service.');
+    const remote = await this.paystack.getSubscription(subscription.providerSubscriptionId);
+    await this.paystack.cancelSubscription({ providerSubscriptionId: subscription.providerSubscriptionId, emailToken: remote.emailToken });
     await this.prisma.$transaction(async (tx) => {
       await tx.organizationSubscription.update({
         where: { id: subscription.id },
@@ -415,10 +403,10 @@ export class BillingService {
     if (!subscription || subscription.status !== 'CANCEL_SCHEDULED' || !subscription.billingProvider ||
       !subscription.providerSubscriptionId || !subscription.currentPeriodEnd || subscription.currentPeriodEnd <= new Date())
       throw new BadRequestException('This cancellation cannot be resumed. Choose a new plan after the paid term ends.');
-    const remote = await (subscription.billingProvider === 'PADDLE' ? this.paddle : this.paystack).getSubscription(subscription.providerSubscriptionId);
-    if (subscription.billingProvider === 'PADDLE')
-      await this.paddle.removeScheduledCancellation(subscription.providerSubscriptionId);
-    else await this.paystack.enableSubscription(subscription.providerSubscriptionId, remote.emailToken);
+    if (subscription.billingProvider !== 'PAYSTACK')
+      throw new BadRequestException('Historical subscriptions cannot be reactivated through the active Paystack billing service.');
+    const remote = await this.paystack.getSubscription(subscription.providerSubscriptionId);
+    await this.paystack.enableSubscription(subscription.providerSubscriptionId, remote.emailToken);
     await this.prisma.$transaction(async (tx) => {
       await tx.organizationSubscription.update({ where: { id: subscription.id }, data: { status: 'ACTIVE', cancelAtPeriodEnd: false, cancelledAt: null } });
       await tx.subscriptionChange.updateMany({ where: { organizationId, status: 'SCHEDULED' }, data: { status: 'FAILED', errorMessage: 'Customer resumed prior subscription.' } });

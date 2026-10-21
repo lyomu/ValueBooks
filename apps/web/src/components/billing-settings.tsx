@@ -229,7 +229,7 @@ export function BillingSettings() {
             {subscription.trialEndsAt && subscription.status === 'TRIALING' ? <li><span>Trial ends</span><strong>{formatDate(subscription.trialEndsAt)}</strong></li> : null}
             {subscription.intendedPlan && subscription.status === 'TRIALING' ? <li><span>Selected plan after trial</span><strong>{subscription.intendedPlan.name} · {subscription.intendedPlan.billingInterval.toLowerCase()}</strong></li> : null}
             {subscription.currentPeriodEnd ? <li><span>{subscription.cancelAtPeriodEnd ? 'Access ends' : 'Current period ends'}</span><strong>{formatDate(subscription.currentPeriodEnd)}</strong></li> : null}
-            {subscription.billingProvider ? <li><span>Payment provider</span><strong>{subscription.billingProvider === 'PADDLE' ? 'Paddle' : 'Paystack'}</strong></li> : null}
+            {subscription.billingProvider ? <li><span>Payment provider</span><strong>{subscription.billingProvider === 'PADDLE' ? 'Legacy provider' : 'Paystack'}</strong></li> : null}
           </ul>
         ) : null}
         {subscription?.billingProvider && hasPermission(organization, 'organization.update') ? (
@@ -304,7 +304,7 @@ export function BillingSettings() {
             { key: 'amount', header: 'Amount', cell: (row) => formatMoney(row.amountMinor, row.currency), align: 'right' as const },
             { key: 'provider', header: 'Provider', cell: (row) => row.billingProvider, hideBelow: 'tablet' as const },
             { key: 'status', header: 'Status', cell: (row) => row.status.replaceAll('_', ' ').toLowerCase() },
-            { key: 'receipt', header: 'Provider document', cell: (row) => row.billingProvider === 'PADDLE' && row.status === 'SUCCESSFUL' ? 'Paddle invoice' : row.receiptUrl ? 'Provider receipt' : '—' },
+            { key: 'receipt', header: 'Provider document', cell: (row) => row.billingProvider === 'PADDLE' && row.status === 'SUCCESSFUL' ? 'Historical provider invoice' : row.receiptUrl ? 'Provider receipt' : '—' },
           ]}
           loading={historyLoading}
           toolbar={<DataTableToolbar resultLabel={`${historyTotal} payments`}><DataTableSearch label="Search payments on this page" placeholder="Search this page" value={search} onChange={(event) => setSearch(event.target.value)} /><select aria-label="Payment status" value={historyStatus} onChange={(event) => { setHistoryStatus(event.target.value); setHistoryPage(1); }}><option value="">All statuses</option><option value="SUCCESSFUL">Successful</option><option value="FAILED">Failed</option><option value="REFUNDED">Refunded</option><option value="PARTIALLY_REFUNDED">Partially refunded</option></select></DataTableToolbar>}

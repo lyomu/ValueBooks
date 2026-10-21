@@ -1,0 +1,72 @@
+# Monorepo-aware: build context is the REPO ROOT, not apps/api (see
+# apps/web/Dockerfile for why). Build with:
+#   docker build -f apps/api/Dockerfile -t valuebooks-api .
+#
+# One image serves THREE processes (same dist/ output, different CMD at the
+# compose layer): the HTTP API (dist/src/main.js), the generic BullMQ worker
+# (dist/src/worker.js), and the document-extraction worker
+# (dist/src/document-extraction-worker.js, which the app's own package.json
+# already runs with --max-old-space-size=384 -- OCR/PDF work capped
+# deliberately). Do not build three separate images for this.
+#
+# NEEDS A REAL BUILD+RUN TEST BEFORE TRUSTING THIS: two dependencies here are
+# notoriously fragile in Docker --
+#   - `playwright` (prod dependency, apps/api/src/sales/document-rendering.service.ts
+#     launches a fresh `chromium` per PDF render, not a persistent browser) needs
+#     Chromium's own apt dependencies, installed below via `playwright install-deps`.
+#   - `@napi-rs/canvas` is a native addon; node:24-bookworm-slim (glibc) was chosen
+#     over alpine specifically so its prebuilt binary has a target to match.
+# If either breaks at runtime, check `playwright install-deps` actually covered
+# this Debian version's library names before assuming the image itself is wrong.
+
+FROM node:24-bookworm-slim AS build
+
+WORKDIR /app
+ENV NODE_ENV=development
+
+RUN apt-get update \
+  && apt-get install -y --no-install-recommends openssl ca-certificates \
+  && rm -rf /var/lib/apt/lists/*
+
+COPY package.json package-lock.json ./
+COPY apps/web/package.json apps/web/package.json
+COPY apps/api/package.json apps/api/package.json
+COPY packages/ui/package.json packages/ui/package.json
+COPY packages/contracts/package.json packages/contracts/package.json
+COPY packages/localization/package.json packages/localization/package.json
+COPY packages/accounting-core/package.json packages/accounting-core/package.json
+COPY packages/config/package.json packages/config/package.json
+COPY packages/test-utils/package.json packages/test-utils/package.json
+RUN npm ci
+
+COPY apps/api/prisma apps/api/prisma
+RUN npm run db:generate --workspace @valuebooks/api
+
+COPY . .
+RUN npm run build --workspace @valuebooks/api
+
+FROM node:24-bookworm-slim AS runtime
+
+WORKDIR /app
+ENV NODE_ENV=production
+
+RUN apt-get update \
+  && apt-get install -y --no-install-recommends openssl ca-certificates \
+  && rm -rf /var/lib/apt/lists/*
+
+COPY --from=build /app/package.json /app/package-lock.json ./
+COPY --from=build /app/node_modules ./node_modules
+COPY --from=build /app/apps/api/dist ./apps/api/dist
+COPY --from=build /app/apps/api/prisma ./apps/api/prisma
+COPY --from=build /app/apps/api/package.json ./apps/api/package.json
+COPY --from=build /app/apps/api/eng.traineddata ./apps/api/eng.traineddata
+
+# Chromium for playwright's PDF-render path. `install-deps` installs this
+# Debian release's apt packages for the browser; `install chromium` fetches
+# the browser binary itself. Both run as root, before USER node below.
+RUN npx --prefix apps/api playwright install-deps chromium \
+  && npx --prefix apps/api playwright install chromium
+
+USER node
+EXPOSE 3001
+CMD ["node", "apps/api/dist/src/main.js"]

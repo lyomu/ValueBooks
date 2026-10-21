@@ -6,7 +6,7 @@ import type {
   PlatformQueueHealth,
   PlatformSecurityEvent,
 } from '@valuebooks/contracts';
-import { DataTable } from '@valuebooks/ui';
+import { DataTable, PrimarySecondaryCell } from '@valuebooks/ui';
 import Link from 'next/link';
 import { useCallback, useEffect, useState, type FormEvent } from 'react';
 
@@ -125,10 +125,12 @@ export function PlatformJobs() {
               key: 'handler',
               header: 'Handler',
               cell: (row: PlatformFailedJob) => (
-                <>
-                  <strong>{row.handler}</strong>
-                  <small>{row.occurrenceKey}</small>
-                </>
+                <PrimarySecondaryCell
+                  primary={row.handler}
+                  secondary={row.occurrenceKey}
+                  primaryTitle={row.handler}
+                  secondaryTitle={row.occurrenceKey}
+                />
               ),
             },
             {
@@ -371,10 +373,11 @@ export function PlatformAudit() {
             key: 'administrator',
             header: 'Administrator',
             cell: (row: PlatformAuditEvent) => (
-              <>
-                {row.actorEmail}
-                <small>{row.actorRole.toLowerCase()}</small>
-              </>
+              <PrimarySecondaryCell
+                primary={row.actorEmail}
+                secondary={row.actorRole.toLowerCase()}
+                primaryTitle={row.actorEmail}
+              />
             ),
           },
           {

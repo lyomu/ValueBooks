@@ -1,6 +1,6 @@
 /**
- * Common contract both payment processors implement. Backend-owned routing (Section 5 of the
- * billing spec) picks which adapter handles a given plan; neither the client nor the plan's own
+ * Common contract for the active payment processor. Backend-owned routing picks which adapter
+ * handles a given plan; neither the client nor the plan's own
  * row is trusted to assert which provider it is, only the server-side routing table
  * (`BILLING_PROVIDER_ROUTING` below) is.
  */
@@ -11,7 +11,6 @@ export interface CheckoutInput {
   providerCustomerId: string | null;
   customerEmail: string;
   plan: {
-    providerProductId: string;
     providerPriceId: string;
     priceMinor: bigint;
     currency: string;
@@ -61,7 +60,7 @@ export interface VerifiedWebhookEvent {
 }
 
 export interface BillingProvider {
-  readonly name: 'PADDLE' | 'PAYSTACK';
+  readonly name: 'PAYSTACK';
   createCheckout(input: CheckoutInput): Promise<CheckoutResult>;
   getSubscription(providerSubscriptionId: string): Promise<ProviderSubscription>;
   cancelSubscription(input: CancelSubscriptionInput): Promise<void>;
@@ -76,8 +75,8 @@ export interface BillingProvider {
  * the plan row's own `billingProvider` column must agree with this table or checkout refuses to
  * proceed, so a misconfigured plan fails closed rather than silently routing to the wrong
  * processor. */
-export const BILLING_PROVIDER_ROUTING: Record<string, 'PADDLE' | 'PAYSTACK'> = {
-  starter: 'PADDLE',
+export const BILLING_PROVIDER_ROUTING: Record<string, 'PAYSTACK'> = {
+  starter: 'PAYSTACK',
   growth: 'PAYSTACK',
   professional: 'PAYSTACK',
   advanced: 'PAYSTACK',

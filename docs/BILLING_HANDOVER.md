@@ -4,6 +4,10 @@ Written for: whoever picks up migrations, full test runs, and the remaining buil
 ValueBooks subscription/billing system (`VALUEBOOKS_BILLING_MASTER_UPDATED.md` is the authoritative
 spec this work implements).
 
+> Provider consolidation update (2026-10-16): Paystack is now the sole active payment provider.
+> Older Paddle references below describe the retired implementation only; historical database rows
+> remain for audit and reconciliation and are not active checkout or webhook configuration.
+
 ## 1. Run this first
 
 ```bash

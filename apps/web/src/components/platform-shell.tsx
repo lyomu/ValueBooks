@@ -45,6 +45,7 @@ const BILLING_NAV = [
   { href: '/platform/billing/webhooks', label: 'Webhook events' },
   { href: '/platform/billing/audit', label: 'Billing audit logs' },
 ] as const;
+const BILLING_NAV_ID = 'platform-billing-navigation';
 
 /**
  * The platform console shell — a separate surface from the tenant app, with its own boundary.
@@ -73,7 +74,7 @@ export function PlatformShell({ children }: { children: ReactNode }) {
     }
   }, []);
   useEffect(() => {
-    if (billingRoute) setBillingOpen(true);
+    setBillingOpen(billingRoute);
     setMobileOpen(false);
   }, [billingRoute, pathname]);
   useEffect(() => {
@@ -118,6 +119,10 @@ export function PlatformShell({ children }: { children: ReactNode }) {
     });
   }
 
+  function toggleBillingNavigation() {
+    setBillingOpen((current) => !current);
+  }
+
   const navigation = (mobile = false) => (
     <nav className="rb-app-sidebar__nav rb-platform__nav" aria-label="Platform console">
       <div className="rb-platform__nav-section">
@@ -151,11 +156,14 @@ export function PlatformShell({ children }: { children: ReactNode }) {
           title={collapsed && !mobile ? 'Billing & subscriptions' : undefined}
           aria-label={collapsed && !mobile ? 'Billing & subscriptions' : undefined}
           aria-expanded={billingOpen && (!collapsed || mobile)}
+          aria-controls={
+            collapsed && !mobile ? undefined : mobile ? `${BILLING_NAV_ID}-mobile` : BILLING_NAV_ID
+          }
           onClick={() => {
             if (collapsed && !mobile) {
               setCollapsed(false);
               setBillingOpen(true);
-            } else setBillingOpen((value) => !value);
+            } else toggleBillingNavigation();
           }}
         >
           <CreditCard className="rb-nav-group__icon" aria-hidden="true" />
@@ -168,7 +176,7 @@ export function PlatformShell({ children }: { children: ReactNode }) {
         {billingOpen && (!collapsed || mobile) ? (
           <div
             className="rb-platform__nav-children"
-            id={mobile ? 'platform-billing-mobile' : 'platform-billing-desktop'}
+            id={mobile ? `${BILLING_NAV_ID}-mobile` : BILLING_NAV_ID}
           >
             {BILLING_NAV.map((item) => {
               const active =
@@ -254,9 +262,8 @@ export function PlatformShell({ children }: { children: ReactNode }) {
         >
           <Menu aria-hidden="true" />
         </button>
-        <Link href="/platform" className="rb-platform__brand" aria-label="ValueBooks Platform">
-          <BrandLogo variant="full" height={26} alt="ValueBooks Platform" priority />
-          <span className="rb-platform__badge">Platform</span>
+        <Link href="/platform" className="rb-platform__brand" aria-label="ValueBooks">
+          <BrandLogo variant="full" height={26} alt="ValueBooks" priority />
         </Link>
         <div className="rb-platform__identity">
           <span className="rb-platform__role">{session?.role.toLowerCase()}</span>
@@ -273,28 +280,15 @@ export function PlatformShell({ children }: { children: ReactNode }) {
           }
         >
           <div className="rb-app-sidebar__brand">
-            {collapsed ? (
-              <button
-                type="button"
-                className="rb-brand-mark"
-                aria-label="Expand platform sidebar"
-                onClick={toggleCollapsed}
-              >
-                <BrandLogo variant="mark" height={28} alt="ValueBooks" />
-              </button>
-            ) : (
-              <strong>Platform navigation</strong>
-            )}
-            {!collapsed ? (
-              <button
-                type="button"
-                className="rb-app-sidebar__toggle"
-                aria-label="Collapse platform sidebar"
-                onClick={toggleCollapsed}
-              >
-                <ChevronLeft aria-hidden="true" />
-              </button>
-            ) : null}
+            <span className="rb-visually-hidden">Platform navigation</span>
+            <button
+              type="button"
+              className="rb-app-sidebar__toggle"
+              aria-label={collapsed ? 'Expand platform sidebar' : 'Collapse platform sidebar'}
+              onClick={toggleCollapsed}
+            >
+              {collapsed ? <ChevronRight aria-hidden="true" /> : <ChevronLeft aria-hidden="true" />}
+            </button>
           </div>
           {navigation()}
         </aside>
@@ -314,7 +308,7 @@ export function PlatformShell({ children }: { children: ReactNode }) {
             />
             <aside className="rb-app-sidebar rb-platform__sidebar rb-platform__mobile-sidebar">
               <div className="rb-app-sidebar__brand">
-                <strong>Platform navigation</strong>
+                <span className="rb-visually-hidden">Platform navigation</span>
                 <button
                   type="button"
                   className="rb-app-sidebar__toggle"

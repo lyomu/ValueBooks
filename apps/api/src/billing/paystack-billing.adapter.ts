@@ -13,7 +13,7 @@ import type {
 } from './billing-provider.js';
 
 /**
- * Paystack REST adapter (api.paystack.co). Paystack routes Growth, Professional and Advanced.
+ * Paystack REST adapter (api.paystack.co), the sole active subscription provider.
  * ValueBooks is the merchant of record for these; Paystack's customer-facing documents are its own
  * payment receipts, not a ValueBooks tax invoice (billing spec Section 7.2/16).
  *
@@ -31,7 +31,7 @@ export class PaystackBillingAdapter implements BillingProvider {
     const key = process.env.PAYSTACK_SECRET_KEY;
     if (!key) {
       throw new BadGatewayException(
-        'Paystack is not configured. Set PAYSTACK_SECRET_KEY before enabling checkout for Growth, Professional or Advanced.',
+        'Paystack is not configured. Set PAYSTACK_SECRET_KEY before enabling subscription checkout.',
       );
     }
     return key;

@@ -5,7 +5,7 @@ import type {
   PlatformOrganization,
   PlatformUsage,
 } from '@valuebooks/contracts';
-import { DataTable } from '@valuebooks/ui';
+import { DataTable, PrimarySecondaryCell } from '@valuebooks/ui';
 import Link from 'next/link';
 import { useCallback, useEffect, useState, type FormEvent } from 'react';
 
@@ -132,10 +132,12 @@ export function PlatformOrganizations() {
             key: 'organization',
             header: 'Organization',
             cell: (row: PlatformOrganization) => (
-              <>
-                <Link href={`/platform/organizations/${row.id}`}>{row.name}</Link>
-                <small>{row.slug}</small>
-              </>
+              <PrimarySecondaryCell
+                primary={<Link href={`/platform/organizations/${row.id}`}>{row.name}</Link>}
+                secondary={row.slug}
+                primaryTitle={row.name}
+                secondaryTitle={row.slug}
+              />
             ),
           },
           {
@@ -462,10 +464,14 @@ export function PlatformOrganizationDetail({ organizationId }: { organizationId:
               key: 'person',
               header: 'Person',
               cell: (member) => (
-                <>
-                  <Link href={`/platform/users/${member.userId}`}>{member.displayName}</Link>
-                  <small>{member.email}</small>
-                </>
+                <PrimarySecondaryCell
+                  primary={
+                    <Link href={`/platform/users/${member.userId}`}>{member.displayName}</Link>
+                  }
+                  secondary={member.email}
+                  primaryTitle={member.displayName}
+                  secondaryTitle={member.email}
+                />
               ),
             },
             { key: 'role', header: 'Role', cell: (member) => member.roleName },

@@ -11,10 +11,10 @@ INSERT INTO "plans"
 VALUES
   ('starter_monthly', 'starter', 'Starter',
    'For solo owners getting invoices and expenses organized.',
-   'ACTIVE', true, false, 14, 100, 'USD', 'MONTHLY', 'PADDLE', 10),
+   'ACTIVE', true, false, 14, 100, 'USD', 'MONTHLY', 'PAYSTACK', 10),
   ('starter_yearly', 'starter', 'Starter',
    'For solo owners getting invoices and expenses organized.',
-   'ACTIVE', false, false, 14, 1000, 'USD', 'YEARLY', 'PADDLE', 11),
+   'ACTIVE', false, false, 14, 1000, 'USD', 'YEARLY', 'PAYSTACK', 11),
   ('growth_monthly', 'growth', 'Growth',
    'For small teams who need banking and multi-user access.',
    'ACTIVE', false, false, 14, 499, 'USD', 'MONTHLY', 'PAYSTACK', 20),

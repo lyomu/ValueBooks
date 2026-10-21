@@ -9,7 +9,6 @@ import { BillingMaintenanceService } from './billing-maintenance.service.js';
 import { BillingService } from './billing.service.js';
 import { BillingWebhookController } from './billing-webhook.controller.js';
 import { BillingWebhookService } from './billing-webhook.service.js';
-import { PaddleBillingAdapter } from './paddle-billing.adapter.js';
 import { PaystackBillingAdapter } from './paystack-billing.adapter.js';
 import { TrialLifecycleService } from './trial-lifecycle.service.js';
 import { UsageMeteringService } from './usage-metering.service.js';
@@ -19,7 +18,6 @@ import { UsageMeteringService } from './usage-metering.service.js';
   providers: [
     BillingService,
     UsageMeteringService,
-    PaddleBillingAdapter,
     PaystackBillingAdapter,
     BillingWebhookService,
     BillingMailerService,
@@ -30,7 +28,6 @@ import { UsageMeteringService } from './usage-metering.service.js';
   exports: [
     BillingService,
     UsageMeteringService,
-    PaddleBillingAdapter,
     PaystackBillingAdapter,
     TrialLifecycleService,
     BillingWebhookService,

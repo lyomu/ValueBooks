@@ -41,6 +41,16 @@ export class PlatformPageDto {
   pageSize?: number;
 }
 
+export class PlatformAnalyticsQueryDto {
+  @IsOptional()
+  @Matches(ISO_DATE)
+  from?: string;
+
+  @IsOptional()
+  @Matches(ISO_DATE)
+  to?: string;
+}
+
 export class GrantPlatformAdminDto {
   @IsEmail()
   @Transform(lower)
@@ -184,8 +194,8 @@ export class CreatePlanDto {
   billingInterval?: 'MONTHLY' | 'YEARLY';
 
   @IsOptional()
-  @IsIn(['PADDLE', 'PAYSTACK'])
-  billingProvider?: 'PADDLE' | 'PAYSTACK';
+  @IsIn(['PAYSTACK'])
+  billingProvider?: 'PAYSTACK';
 
   @IsOptional()
   @IsString()
@@ -261,8 +271,8 @@ export class UpdatePlanDto {
   billingInterval?: 'MONTHLY' | 'YEARLY';
 
   @IsOptional()
-  @IsIn(['PADDLE', 'PAYSTACK'])
-  billingProvider?: 'PADDLE' | 'PAYSTACK';
+  @IsIn(['PAYSTACK'])
+  billingProvider?: 'PAYSTACK';
 
   @IsOptional()
   @IsString()

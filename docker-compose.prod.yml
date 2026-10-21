@@ -1,0 +1,217 @@
+# Runs the ValueBooks production stack on its own dedicated box
+# (161.97.140.207, Contabo) -- not the shared box (46.225.106.43): see
+# devops-infra/docs/VALUEBOOKS_DEDICATED_BOX_PROVISIONING.md for why.
+#
+# `api`, `worker`, and `document-extraction-worker` share ONE built image
+# (valuebooks-api) with different `command:` overrides -- apps/api has three
+# entry points (dist/src/main.js, worker.js, document-extraction-worker.js)
+# from the same build, not three separate apps.
+#
+# Object storage is deliberately NOT self-hosted here (no minio service) --
+# point S3_* in .env.production at managed object storage. Self-hosting it
+# would mean this platform's own financial documents exist in exactly one
+# place with no real backup story, the same gap already flagged for
+# harusi-ke's MinIO on the shared box.
+#
+# mem_limit values: see devops-infra/docs/VALUEBOOKS_DEDICATED_BOX_PROVISIONING.md
+# §1 for the sizing (api/worker/document-extraction-worker split and clamav's
+# measured spike are both accounted for there -- re-read that doc before
+# changing any of these numbers, the rationale isn't obvious from the number
+# alone).
+
+name: valuebooks-prod
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    container_name: valuebooks-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U "${POSTGRES_USER}" -d "${POSTGRES_DB}"']
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    logging:
+      driver: json-file
+      options: { max-size: "10m", max-file: "3" }
+    mem_limit: 512m
+    cpus: "0.50"
+
+  redis:
+    image: redis:7.4-alpine
+    container_name: valuebooks-redis
+    restart: unless-stopped
+    command: ['redis-server', '--appendonly', 'yes']
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    logging:
+      driver: json-file
+      options: { max-size: "10m", max-file: "3" }
+    mem_limit: 128m
+    cpus: "0.25"
+
+  # Signature-update spike measured directly (local isolation test, 2026-10-19):
+  # settles to ~960 MiB steady, spikes to 1.83 GiB on every startup/freshclam
+  # update. 2048m clears that spike; do not shrink this without re-measuring.
+  clamav:
+    image: clamav/clamav:1.4
+    container_name: valuebooks-clamav
+    restart: unless-stopped
+    healthcheck:
+      test: ['CMD-SHELL', 'clamdcheck.sh']
+      interval: 10s
+      timeout: 10s
+      retries: 30
+      start_period: 120s
+    logging:
+      driver: json-file
+      options: { max-size: "10m", max-file: "3" }
+    mem_limit: 2048m
+    cpus: "0.75"
+
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+      args:
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL}
+    image: ${DOCKERHUB_OWNER:-lyomu}/valuebooks-web:${VALUEBOOKS_IMAGE_TAG:-local}
+    container_name: valuebooks-web
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      HOSTNAME: 0.0.0.0
+    ports:
+      - "127.0.0.1:3001:3000"
+    healthcheck:
+      test: ["CMD-SHELL", "node -e \"fetch('http://127.0.0.1:3000/').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))\""]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+    logging:
+      driver: json-file
+      options: { max-size: "10m", max-file: "3" }
+    mem_limit: 384m
+    cpus: "0.50"
+
+  # HTTP API. Padded above apps/api's own bare footprint to cover the
+  # transient Chromium spike from document-rendering.service.ts
+  # (playwright.chromium.launch() per PDF render -- not a persistent
+  # browser, but still a real spike while one is open).
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    image: ${DOCKERHUB_OWNER:-lyomu}/valuebooks-api:${VALUEBOOKS_IMAGE_TAG:-local}
+    container_name: valuebooks-api
+    restart: unless-stopped
+    env_file:
+      - path: ./.env.production
+        required: true
+    environment:
+      NODE_ENV: production
+      API_PORT: 3001
+      DATABASE_URL: ${DATABASE_URL}
+      REDIS_URL: redis://redis:6379
+      CLAMAV_HOST: clamav
+      CLAMAV_PORT: 3310
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      clamav:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:3002:3001"
+    healthcheck:
+      test: ["CMD-SHELL", "node -e \"fetch('http://127.0.0.1:3001/api/v1/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))\""]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+    logging:
+      driver: json-file
+      options: { max-size: "10m", max-file: "3" }
+    mem_limit: 768m
+    cpus: "0.50"
+
+  # Generic BullMQ worker -- same image as `api`, different entry point, no
+  # Chromium launches of its own (document-rendering.service.ts runs inside
+  # the HTTP request path, not a queued job, as of this writing -- confirm
+  # that hasn't changed before trusting this container's lower mem_limit).
+  worker:
+    image: ${DOCKERHUB_OWNER:-lyomu}/valuebooks-api:${VALUEBOOKS_IMAGE_TAG:-local}
+    container_name: valuebooks-worker
+    restart: unless-stopped
+    command: ["node", "apps/api/dist/src/worker.js"]
+    env_file:
+      - path: ./.env.production
+        required: true
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: ${DATABASE_URL}
+      REDIS_URL: redis://redis:6379
+      CLAMAV_HOST: clamav
+      CLAMAV_PORT: 3310
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    logging:
+      driver: json-file
+      options: { max-size: "10m", max-file: "3" }
+    mem_limit: 384m
+    cpus: "0.30"
+
+  # OCR/PDF extraction worker. apps/api's own package.json already runs this
+  # entry point with --max-old-space-size=384 (a deliberate V8 heap cap, not
+  # this file's invention) -- mem_limit here is that heap cap plus headroom
+  # for non-heap memory (tesseract.js WASM buffers, @napi-rs/canvas), not a
+  # number picked independently of it. Don't lower the heap flag without
+  # lowering this to match, or raise this without checking whether the flag
+  # should move too.
+  document-extraction-worker:
+    image: ${DOCKERHUB_OWNER:-lyomu}/valuebooks-api:${VALUEBOOKS_IMAGE_TAG:-local}
+    container_name: valuebooks-document-extraction-worker
+    restart: unless-stopped
+    command: ["node", "--max-old-space-size=384", "apps/api/dist/src/document-extraction-worker.js"]
+    env_file:
+      - path: ./.env.production
+        required: true
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: ${DATABASE_URL}
+      REDIS_URL: redis://redis:6379
+      CLAMAV_HOST: clamav
+      CLAMAV_PORT: 3310
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      clamav:
+        condition: service_healthy
+    logging:
+      driver: json-file
+      options: { max-size: "10m", max-file: "3" }
+    mem_limit: 512m
+    cpus: "0.50"
+
+volumes:
+  postgres_data:
+  redis_data:

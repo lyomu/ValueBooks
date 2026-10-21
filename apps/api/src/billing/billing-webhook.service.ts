@@ -3,7 +3,6 @@ import type { BillingProviderName } from '@prisma/client';
 
 import { PrismaService } from '../database/prisma.service.js';
 import type { VerifiedWebhookEvent } from './billing-provider.js';
-import { PaddleBillingAdapter } from './paddle-billing.adapter.js';
 import { PaystackBillingAdapter } from './paystack-billing.adapter.js';
 import { BillingNotificationService } from './billing-notification.service.js';
 
@@ -40,7 +39,7 @@ interface NormalizedBillingEvent {
  * `PROCESSED`/`FAILED`), and makes processing idempotent on `(billingProvider, providerEventId)`:
  * a duplicate delivery is recognized and skipped rather than reapplied (Section 15/27).
  *
- * Event-shape normalization lives in `normalizePaddleEvent`/`normalizePaystackEvent` below; this
+ * Event-shape normalization lives in `normalizePaystackEvent`; this
  * class owns only what every provider's events have in common: record, deduplicate, apply to
  * `OrganizationSubscription`/`BillingTransaction`, never let a webhook failure throw past the
  * controller that called it (a 5xx causes the provider to retry, which is correct, but the retry
@@ -52,7 +51,6 @@ export class BillingWebhookService {
 
   constructor(
     private readonly prisma: PrismaService,
-    private readonly paddle: PaddleBillingAdapter,
     private readonly paystack: PaystackBillingAdapter,
     private readonly notices: BillingNotificationService,
   ) {}
@@ -325,13 +323,15 @@ export class BillingWebhookService {
     });
 
     if (change && normalized.transaction?.status === 'SUCCESSFUL' &&
-      change.priorProviderSubscriptionId && change.fromProvider && change.oldCancellationStatus !== 'CONFIRMED') {
-      const oldAdapter = change.fromProvider === 'PADDLE' ? this.paddle : this.paystack;
+      change.priorProviderSubscriptionId && change.fromProvider === 'PAYSTACK' && change.oldCancellationStatus !== 'CONFIRMED') {
+      // Provider consolidation does not mutate historical subscriptions. New and replacement
+      // subscriptions are Paystack-only; a legacy record is left for controlled reconciliation.
+      const oldAdapter = this.paystack;
       try {
         const old = await oldAdapter.getSubscription(change.priorProviderSubscriptionId);
         await oldAdapter.cancelSubscription({
           providerSubscriptionId: change.priorProviderSubscriptionId,
-          ...(change.fromProvider === 'PAYSTACK' ? { emailToken: old.emailToken } : {}),
+          emailToken: old.emailToken,
         });
         await this.prisma.subscriptionChange.update({
           where: { id: change.id },

@@ -3,10 +3,9 @@ import type { Prisma } from '@prisma/client';
 
 import { PrismaService } from '../database/prisma.service.js';
 import { TrialLifecycleService } from '../billing/trial-lifecycle.service.js';
-import { PaddleBillingAdapter } from '../billing/paddle-billing.adapter.js';
 import { PaystackBillingAdapter } from '../billing/paystack-billing.adapter.js';
 import { BillingWebhookService } from '../billing/billing-webhook.service.js';
-import { normalizePaddleEvent, normalizePaystackEvent } from '../billing/billing-webhook.controller.js';
+import { normalizePaystackEvent } from '../billing/billing-webhook.controller.js';
 import { writePlatformAudit } from './platform-audit.js';
 import type { PlatformContext } from './platform-context.js';
 
@@ -21,7 +20,7 @@ function pagination(page?: string, pageSize?: string) {
 @Injectable()
 export class PlatformBillingService {
   constructor(private readonly prisma: PrismaService, private readonly trialLifecycle: TrialLifecycleService,
-    private readonly paddle: PaddleBillingAdapter, private readonly paystack: PaystackBillingAdapter,
+    private readonly paystack: PaystackBillingAdapter,
     private readonly webhooksService: BillingWebhookService) {}
 
   async overview() {
@@ -216,13 +215,13 @@ export class PlatformBillingService {
   async providers() {
     const plans = await this.prisma.plan.findMany({ where: { status: 'ACTIVE' }, select: { key: true, tierKey: true, billingProvider: true, providerProductId: true, providerPriceId: true } });
     const latest = await this.prisma.billingWebhookEvent.findMany({ orderBy: { receivedAt: 'desc' }, distinct: ['billingProvider'], take: 2, select: { billingProvider: true, receivedAt: true, processingState: true } });
-    return ['PADDLE', 'PAYSTACK'].map((provider) => ({
-      provider,
-      environment: provider === 'PADDLE' ? process.env.PADDLE_ENVIRONMENT ?? 'sandbox' : process.env.PAYSTACK_ENVIRONMENT ?? 'test',
-      credentialsConfigured: provider === 'PADDLE' ? Boolean(process.env.PADDLE_API_KEY && process.env.PADDLE_WEBHOOK_SECRET) : Boolean(process.env.PAYSTACK_SECRET_KEY),
-      plans: plans.filter((plan) => plan.billingProvider === provider).map((plan) => ({ key: plan.key, configured: Boolean(plan.providerProductId && plan.providerPriceId) })),
-      lastWebhook: latest.find((row) => row.billingProvider === provider) ?? null,
-    }));
+    return [{
+      provider: 'PAYSTACK',
+      environment: process.env.PAYSTACK_ENVIRONMENT ?? 'test',
+      credentialsConfigured: Boolean(process.env.PAYSTACK_SECRET_KEY),
+      plans: plans.filter((plan) => plan.billingProvider === 'PAYSTACK').map((plan) => ({ key: plan.key, configured: Boolean(plan.providerPriceId) })),
+      lastWebhook: latest.find((row) => row.billingProvider === 'PAYSTACK') ?? null,
+    }];
   }
 
   async webhooks(query: { page?: string; pageSize?: string; state?: string }) {
@@ -241,8 +240,9 @@ export class PlatformBillingService {
     if (!event || !event.signatureVerified || !['FAILED', 'VERIFIED'].includes(event.processingState))
       throw new BadRequestException('Only previously verified, unprocessed events may be retried.');
     const verified = { providerEventId: event.providerEventId, eventType: event.eventType, payload: event.payload };
-    await this.webhooksService.recordAndProcess(event.billingProvider, verified,
-      event.billingProvider === 'PADDLE' ? normalizePaddleEvent(verified) : normalizePaystackEvent(verified));
+    if (event.billingProvider !== 'PAYSTACK')
+      throw new BadRequestException('Historical provider webhooks are retained for audit and cannot be replayed.');
+    await this.webhooksService.recordAndProcess(event.billingProvider, verified, normalizePaystackEvent(verified));
     await this.prisma.$transaction((tx) => writePlatformAudit(tx, actor, { eventKey: 'billing.webhook_retried',
       targetType: 'billing_webhook_event', targetId: id, reason, before: { state: event.processingState }, after: { state: 'PROCESSED' } }));
     return { processed: true };
@@ -254,7 +254,9 @@ export class PlatformBillingService {
     } });
     if (!local) throw new NotFoundException('Subscription not found.');
     if (!local.billingProvider || !local.providerSubscriptionId) return { local, remote: null, discrepancies: ['No linked provider subscription.'] };
-    const remote = await (local.billingProvider === 'PADDLE' ? this.paddle : this.paystack).getSubscription(local.providerSubscriptionId);
+    if (local.billingProvider !== 'PAYSTACK')
+      return { local, remote: null, discrepancies: ['Historical provider subscription retained for audit; remote reconciliation is retired.'] };
+    const remote = await this.paystack.getSubscription(local.providerSubscriptionId);
     return { local, remote, discrepancies: [
       ...(remote.status === 'unknown' ? ['Remote status is unknown.'] : []),
       ...(remote.status === 'cancelled' && local.status === 'ACTIVE' ? ['Provider is canceled while local subscription is active.'] : []),
@@ -293,8 +295,8 @@ export class PlatformBillingService {
       await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtext(${transactionId}), 119)::text AS locked`;
       const transaction = await tx.billingTransaction.findUnique({ where: { id: transactionId } });
       if (!transaction || transaction.status !== 'SUCCESSFUL') throw new BadRequestException('Only verified successful payments can be refunded.');
-      if (transaction.billingProvider === 'PADDLE' && amountMinor !== transaction.amountMinor)
-        throw new BadRequestException('Paddle partial refunds need transaction-item review; request the full amount here.');
+      if (transaction.billingProvider !== 'PAYSTACK')
+        throw new BadRequestException('Historical provider transactions are retained for audit and cannot be refunded through Paystack.');
       const existing = await tx.billingRefund.findMany({ where: { transactionId, status: { in: ['REQUESTED', 'SUBMITTED', 'COMPLETED'] } }, select: { amountMinor: true } });
       const reserved = existing.reduce((sum, row) => sum + row.amountMinor, 0n);
       if (amountMinor + reserved > transaction.amountMinor) throw new BadRequestException('Refund requests exceed the original verified payment.');
@@ -318,9 +320,9 @@ export class PlatformBillingService {
         organizationId: refund.organizationId, reason, before: { status: 'REQUESTED' }, after: { status: 'SUBMITTED' } });
     });
     try {
-      const provider = refund.transaction.billingProvider === 'PADDLE'
-        ? await this.paddle.requestFullRefund(refund.transaction.providerTransactionId, refund.reason)
-        : await this.paystack.requestRefund(refund.transaction.providerTransactionId, refund.amountMinor, refund.currency, refund.reason);
+      if (refund.transaction.billingProvider !== 'PAYSTACK')
+        throw new BadRequestException('Historical provider refunds require controlled reconciliation outside Paystack.');
+      const provider = await this.paystack.requestRefund(refund.transaction.providerTransactionId, refund.amountMinor, refund.currency, refund.reason);
       await this.prisma.billingRefund.update({ where: { id }, data: { providerReference: provider.reference, providerStatus: provider.status } });
     } catch {
       // A network timeout is ambiguous: the provider may have accepted the request. Do not

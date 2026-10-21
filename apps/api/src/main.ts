@@ -8,7 +8,7 @@ async function bootstrap(): Promise<void> {
   // bufferLogs holds startup output until the pino logger is attached, so nothing is emitted in the
   // default format first.
   // rawBody: true preserves the exact request bytes on `req.rawBody` alongside the parsed body, so
-  // Paddle/Paystack webhook signature verification can hash what the provider actually signed
+  // Paystack webhook signature verification hashes the exact bytes the provider signed.
   // rather than a re-serialized JSON object.
   const app = await NestFactory.create(AppModule, { bufferLogs: true, rawBody: true });
   const port = Number(process.env.API_PORT ?? 3001);

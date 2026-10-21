@@ -3963,7 +3963,7 @@ enum BillingInterval {
 }
 
 /// The two subscription payment processors ValueBooks integrates with. Starter is routed to
-/// PADDLE; every other paid tier is routed to PAYSTACK. This routing is backend-owned and never
+/// PADDLE is retained only for historical records; all active paid tiers route to PAYSTACK. This routing is backend-owned and never
 /// derived from client input.
 enum BillingProviderName {
   PADDLE
@@ -3996,7 +3996,7 @@ model Plan {
   /// internal bookkeeping purposes before this is set, but checkout is blocked without it.
   billingProvider     BillingProviderName?       @map("billing_provider")
   providerProductId   String?                    @map("provider_product_id") @db.VarChar(160)
-  /// Paddle calls this a price ID; Paystack calls it a plan code. Same column, provider decides
+  /// Active Paystack plans use this as their plan code; legacy values are retained only for audit.
   /// the shape.
   providerPriceId     String?                    @map("provider_price_id") @db.VarChar(160)
   sortOrder           Int                        @default(0) @map("sort_order") @db.SmallInt
