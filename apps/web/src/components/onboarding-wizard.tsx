@@ -75,6 +75,8 @@ function stepFromOnboarding(step: OrganizationDetail['onboardingStep']): WizardS
   return step === 'COMPLETE' ? 'REVIEW' : step;
 }
 
+type ChosenPlan = { name: string; billingInterval: 'MONTHLY' | 'YEARLY' };
+
 export function OnboardingWizard() {
   const router = useRouter();
   const [reference, setReference] = useState<OrganizationReferenceData | null>(null);
@@ -86,14 +88,24 @@ export function OnboardingWizard() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<string[]>([]);
+  const [chosenPlan, setChosenPlan] = useState<ChosenPlan | null>(null);
 
   useEffect(() => {
+    let redirecting = false;
     async function bootstrap() {
       try {
-        const [referenceResponse, listResponse] = await Promise.all([
+        const [referenceResponse, listResponse, intentResponse] = await Promise.all([
           apiRequest<{ data: OrganizationReferenceData }>('/organizations/reference-data'),
           apiRequest<{ data: { organizations: OrganizationSummary[] } }>('/organizations'),
+          apiRequest<{ data: { plan: ChosenPlan } | null }>('/billing/registration-intents/mine'),
         ]);
+        // Choosing a plan is required before setup; finalization starts its trial.
+        if (!intentResponse.data) {
+          redirecting = true;
+          router.replace('/choose-plan');
+          return;
+        }
+        setChosenPlan(intentResponse.data.plan);
         setReference(referenceResponse.data);
 
         const draft = listResponse.data.organizations.find(
@@ -116,7 +128,7 @@ export function OnboardingWizard() {
         }
         setError(caught instanceof Error ? caught.message : 'Setup could not be loaded.');
       } finally {
-        setLoading(false);
+        if (!redirecting) setLoading(false);
       }
     }
 
@@ -213,6 +225,13 @@ export function OnboardingWizard() {
 
   return (
     <div className="rb-onboarding">
+      {chosenPlan ? (
+        <p className="rb-onboarding__plan">
+          {chosenPlan.name} plan, billed {chosenPlan.billingInterval === 'YEARLY' ? 'annually' : 'monthly'}
+          {' · '}14-day free trial.{' '}
+          <Link href="/choose-plan">Change plan</Link>
+        </p>
+      ) : null}
       <nav className="rb-onboarding__steps" aria-label="Setup progress">
         <ol>
           {STEPS.map((entry, index) => {

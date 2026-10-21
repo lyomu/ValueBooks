@@ -29,9 +29,9 @@ export function SignupOtpForm({ email, intent }: { email: string; intent?: strin
       );
       if (!response.data.signupVerified)
         throw new Error('This verification code is not for a new account.');
-      // The selected plan is already bound to the registration intent. Organization finalization
-      // starts the cardless trial and preserves that selection as the intended paid plan.
-      router.replace('/onboarding');
+      // A plan picked on the marketing pricing page is already bound to the registration intent;
+      // everyone else chooses one in-app before organization setup.
+      router.replace(intent ? '/onboarding' : '/choose-plan');
       router.refresh();
     } catch (caught) {
       setError(

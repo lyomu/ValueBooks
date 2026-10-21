@@ -23,8 +23,7 @@ export function BrandLogo({
   priority = false,
 }: BrandLogoProps) {
   if (variant === 'mark') {
-    // The supplied sidebar icon is cropped to its 374 x 374 artwork bounds.
-    const width = Math.round((height * 374) / 374);
+    const width = height;
     return (
       <Image
         src="/logo-mark-sidebar.png"
@@ -38,9 +37,8 @@ export function BrandLogo({
     );
   }
 
-  // Full logo aspect ratio: dark-surface asset is tightly cropped to 1797 x 363.
-  const width =
-    tone === 'inverse' ? Math.round((height * 1797) / 363) : Math.round((height * 842) / 166);
+  // Both full-logo files share the same 1200 x 238 crop; only the wordmark colour differs.
+  const width = Math.round((height * 1200) / 238);
   return (
     <Image
       src={tone === 'inverse' ? '/logo-full-white.png' : '/logo-full.png'}
