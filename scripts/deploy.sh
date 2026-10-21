@@ -115,9 +115,43 @@ git fetch origin "${BRANCH}"
 # deployed tree should always be precisely what the branch says, never a merge.
 git checkout -B "${BRANCH}" "origin/${BRANCH}"
 
+# Last known good marker, not `docker inspect` on the running container -- survives the
+# containers being replaced below and works the same for a break-glass deploy as for Jenkins.
+LAST_GOOD_FILE="${APP_DIR}/.last_deployed_tag"
+PREVIOUS_TAG=""
+[ -f "${LAST_GOOD_FILE}" ] && PREVIOUS_TAG="$(cat "${LAST_GOOD_FILE}")"
+
 export VALUEBOOKS_IMAGE_TAG
 docker compose -f docker-compose.prod.yml --env-file .env.production pull
 docker compose -f docker-compose.prod.yml --env-file .env.production run --rm \
   --workdir /app/apps/api api npx prisma migrate deploy
 docker compose -f docker-compose.prod.yml --env-file .env.production up -d
 docker compose -f docker-compose.prod.yml --env-file .env.production ps
+
+# Same two checks as the Jenkinsfile's Smoke Tests (Prod) stage -- a deploy that brings up
+# containers which never pass them is exactly what happened with sha-64891966aadb
+# (apps/api/Dockerfile missing packages/*, fixed in PR #47), just caught here instead of there.
+health_check() {
+  label="$1"; url="$2"
+  for i in 1 2 3 4 5 6 7 8 9 10; do
+    if curl -sf -o /dev/null "$url"; then return 0; fi
+    echo "${label} not ready yet, retrying..." >&2
+    sleep 5
+  done
+  echo "${label} never became ready" >&2
+  return 1
+}
+
+if health_check web http://127.0.0.1:3001/ && health_check api http://127.0.0.1:3002/api/v1/health; then
+  echo "${VALUEBOOKS_IMAGE_TAG}" > "${LAST_GOOD_FILE}"
+  echo "Deploy of ${VALUEBOOKS_IMAGE_TAG} is healthy -- recorded as last known good."
+else
+  echo "Health check failed for ${VALUEBOOKS_IMAGE_TAG}." >&2
+  if [ -n "${PREVIOUS_TAG}" ] && [ "${PREVIOUS_TAG}" != "${VALUEBOOKS_IMAGE_TAG}" ]; then
+    echo "Rolling back to last known good tag ${PREVIOUS_TAG}..." >&2
+    VALUEBOOKS_IMAGE_TAG="${PREVIOUS_TAG}" bash "$0"
+  else
+    echo "No previous known-good tag recorded (first-ever deploy, same situation as the sha-64891966aadb incident) -- leaving the broken containers up for manual inspection rather than guessing." >&2
+  fi
+  exit 1
+fi

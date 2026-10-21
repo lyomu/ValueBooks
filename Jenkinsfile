@@ -301,18 +301,112 @@ pipeline {
             }
         }
 
-        stage('Docker Build & Push') {
+        stage('Docker Build') {
             steps {
                 script {
-                    def webImage = docker.build(
+                    docker.build(
                         "${WEB_IMAGE_NAME}:${env.IMAGE_TAG}",
                         "--build-arg NEXT_PUBLIC_API_URL=${env.NEXT_PUBLIC_API_URL} -f apps/web/Dockerfile ."
                     )
-                    def apiImage = docker.build("${API_IMAGE_NAME}:${env.IMAGE_TAG}", '-f apps/api/Dockerfile .')
+                    docker.build("${API_IMAGE_NAME}:${env.IMAGE_TAG}", '-f apps/api/Dockerfile .')
+                }
+            }
+        }
 
+        // Catches "image builds green but the container doesn't actually boot" --
+        // the first prod deploy (sha-64891966aadb) crash-looped api/worker/
+        // document-extraction-worker with "Cannot find module '@valuebooks/config'"
+        // because apps/api/Dockerfile's runtime stage copied node_modules but not the
+        // packages/* dirs its workspace symlinks pointed to (fixed in PR #47).
+        // `docker build --target build` already validates the Next/Nest build compiles
+        // (see 'Build CI images' above) but never actually runs the runtime image, so
+        // it couldn't have caught this. Runs before Docker Push so a bad image never
+        // reaches Docker Hub or prod.
+        stage('Smoke Test (Image Boot)') {
+            steps {
+                script {
+                    env.SMOKE_NET = "valuebooks-smoke-net-${env.SAFE_BRANCH_NAME}-${env.BUILD_NUMBER}"
+                    env.SMOKE_PG = "valuebooks-smoke-postgres-${env.SAFE_BRANCH_NAME}-${env.BUILD_NUMBER}"
+                    env.SMOKE_REDIS = "valuebooks-smoke-redis-${env.SAFE_BRANCH_NAME}-${env.BUILD_NUMBER}"
+                    env.SMOKE_API = "valuebooks-smoke-api-${env.SAFE_BRANCH_NAME}-${env.BUILD_NUMBER}"
+                    env.SMOKE_WEB = "valuebooks-smoke-web-${env.SAFE_BRANCH_NAME}-${env.BUILD_NUMBER}"
+                }
+                sh """
+                    set -e
+                    docker network create ${env.SMOKE_NET}
+                    docker run -d --name ${env.SMOKE_PG} --network ${env.SMOKE_NET} \
+                        -e POSTGRES_USER=valuebooks -e POSTGRES_PASSWORD=smoke_pw -e POSTGRES_DB=valuebooks_smoke \
+                        postgres:17-alpine
+                    docker run -d --name ${env.SMOKE_REDIS} --network ${env.SMOKE_NET} redis:7.4-alpine
+
+                    ready=false
+                    for i in \$(seq 1 60); do
+                        if docker exec ${env.SMOKE_PG} pg_isready -U valuebooks >/dev/null 2>&1; then ready=true; break; fi
+                        echo "waiting for smoke postgres..."; sleep 2
+                    done
+                    if [ "\$ready" != "true" ]; then
+                        echo "smoke postgres never became ready"; docker logs ${env.SMOKE_PG} || true; exit 1
+                    fi
+
+                    ready=false
+                    for i in \$(seq 1 30); do
+                        if docker exec ${env.SMOKE_REDIS} redis-cli ping 2>/dev/null | grep -q PONG; then ready=true; break; fi
+                        echo "waiting for smoke redis..."; sleep 1
+                    done
+                    if [ "\$ready" != "true" ]; then
+                        echo "smoke redis never became ready"; docker logs ${env.SMOKE_REDIS} || true; exit 1
+                    fi
+
+                    # NODE_ENV=test, not production -- @valuebooks/config's LOCAL_DEFAULTS then fill
+                    # every other required var (SECURITY_PEPPER, S3_*, SMTP_*, CLAMAV_HOST,
+                    # WEB_APP_URL); only DATABASE_URL/REDIS_URL need overriding, to point at these
+                    # throwaway containers instead of the config package's literal localhost default.
+                    docker run -d --name ${env.SMOKE_API} --network ${env.SMOKE_NET} \
+                        -e NODE_ENV=test \
+                        -e DATABASE_URL=postgresql://valuebooks:smoke_pw@${env.SMOKE_PG}:5432/valuebooks_smoke \
+                        -e REDIS_URL=redis://${env.SMOKE_REDIS}:6379 \
+                        -e SECURITY_PEPPER=smoke-only-jenkins-pepper-value-not-used-anywhere-else-000000 \
+                        -e NEXT_PUBLIC_API_URL=${env.NEXT_PUBLIC_API_URL} \
+                        ${API_IMAGE_NAME}:${env.IMAGE_TAG}
+
+                    docker run -d --name ${env.SMOKE_WEB} --network ${env.SMOKE_NET} ${WEB_IMAGE_NAME}:${env.IMAGE_TAG}
+
+                    retry_check() {
+                        label="\$1"; container="\$2"; url="\$3"
+                        for i in 1 2 3 4 5 6 7 8 9 10; do
+                            if docker run --rm --network ${env.SMOKE_NET} curlimages/curl:8.11.0 -sf -o /dev/null "\$url"; then
+                                return 0
+                            fi
+                            echo "\$label not up yet, retrying..."; sleep 3
+                        done
+                        echo "\$label never came up -- image builds but the container doesn't boot (see PR #47 incident notes above)"
+                        docker logs "\$container" || true
+                        return 1
+                    }
+
+                    retry_check api ${env.SMOKE_API} "http://${env.SMOKE_API}:3001/api/v1/health"
+                    retry_check web ${env.SMOKE_WEB} "http://${env.SMOKE_WEB}:3000/"
+                    echo "Image boot smoke test passed."
+                """
+            }
+            post {
+                always {
+                    sh """
+                        docker rm -f ${env.SMOKE_API} ${env.SMOKE_WEB} ${env.SMOKE_PG} ${env.SMOKE_REDIS} 2>/dev/null || true
+                        docker network rm ${env.SMOKE_NET} 2>/dev/null || true
+                    """
+                }
+            }
+        }
+
+        stage('Docker Push') {
+            steps {
+                script {
                     docker.withRegistry('https://index.docker.io/v1/', 'dockerhub-credentials') {
-                        webImage.push(env.IMAGE_TAG)
-                        apiImage.push(env.IMAGE_TAG)
+                        sh """
+                            docker push ${WEB_IMAGE_NAME}:${env.IMAGE_TAG}
+                            docker push ${API_IMAGE_NAME}:${env.IMAGE_TAG}
+                        """
                     }
                     sh """
                         docker rmi ${WEB_IMAGE_NAME}:${env.IMAGE_TAG} ${API_IMAGE_NAME}:${env.IMAGE_TAG} 2>/dev/null || true
@@ -350,6 +444,15 @@ Review and approve (Jenkins login required):
             // and a Jenkins deploy are the same code path (same reasoning as
             // drift's Deploy Prod stage).
             steps {
+                script {
+                    // Build #16 failed here with "ssh: Could not resolve hostname null" --
+                    // VALUEBOOKS_PROD_HOST was never set as a Jenkins global env var, so it
+                    // interpolated as the literal string "null". Fail fast with a clear message
+                    // instead of letting it reach ssh ...@null.
+                    if (!env.VALUEBOOKS_PROD_HOST?.trim()) {
+                        error("VALUEBOOKS_PROD_HOST is not set — configure it under Manage Jenkins > System before deploying.")
+                    }
+                }
                 retry(2) {
                     withCredentials([
                         sshUserPrivateKey(credentialsId: 'valuebooks-deploy-key', keyFileVariable: 'SSH_KEY', usernameVariable: 'SSH_USER'),
