@@ -28,14 +28,21 @@ separate ValueBooks identity and accounting-focused information architecture.
 3. Run `docker compose up -d`.
 4. Run `npm.cmd run db:deploy --workspace @valuebooks/api`.
 5. Run `npm.cmd run dev`.
-6. Open `http://localhost:3000`; API health is at `http://localhost:3001/api/v1/health`.
+6. In a separate terminal, run `npm.cmd run dev:worker --workspace @valuebooks/api`. This is
+   required for any transactional email (signup verification codes, password resets, invitations)
+   to actually send -- `npm run dev` only starts `web` and `api`; the worker that drains the email
+   queue is a separate process.
+7. Open `http://localhost:3000`; API health is at `http://localhost:3001/api/v1/health`.
 
 Mailpit is available at `http://localhost:58025`; MinIO Console is at
 `http://localhost:59001`.
 
-Identity routes are available at `/signup`, `/login`, `/verify-email`, `/forgot-password`, and
-`/reset-password`. Mailpit captures verification and reset messages locally. Set a strong,
-environment-specific `SECURITY_PEPPER` before using non-local environments.
+Identity routes are available at `/signup`, `/verify-email-code`, `/login`, `/verify-email`,
+`/forgot-password`, and `/reset-password`. Signup verification is a 6-digit code entered at
+`/verify-email-code`, not the `/verify-email` link -- that route still exists for
+resend-verification but is no longer the primary signup path. Mailpit captures verification and
+reset messages locally (step 6 above must be running or nothing arrives, even in Mailpit). Set a
+strong, environment-specific `SECURITY_PEPPER` before using non-local environments.
 
 ## Verification
 

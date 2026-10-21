@@ -333,14 +333,6 @@ describe('identity and tenancy over HTTP', () => {
     if (!encoded) throw new Error(`No queued token found for ${email} and ${marker}.`);
     return decodeURIComponent(encoded);
   }
-
-  async function queuedCode(email: string): Promise<string> {
-    const jobs = await queue.getJobs(['wait', 'delayed']);
-    const job = jobs.find((candidate) => candidate.data.to === email && candidate.data.subject === 'Your ValueBooks verification code');
-    const code = job?.data.text.match(/verification code is (\d{6})/i)?.[1];
-    if (!code) throw new Error(`No queued verification code found for ${email}.`);
-    return code;
-  }
 });
 
 function sessionCookie(header: string | string[] | undefined): string {
