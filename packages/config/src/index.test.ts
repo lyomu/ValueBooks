@@ -183,6 +183,31 @@ describe('validateApiEnvironment', () => {
     ).toThrow(/AI_HOSTED_PROVIDER/);
   });
 
+  it('accepts optional marketing and console origins and requires https in production', () => {
+    const local = validateApiEnvironment({ NODE_ENV: 'test' });
+    expect(local.MARKETING_SITE_URL).toBeUndefined();
+    expect(local.CONSOLE_APP_URL).toBeUndefined();
+    expect(
+      validateApiEnvironment({
+        ...productionEnvironment,
+        MARKETING_SITE_URL: 'https://example.com',
+        CONSOLE_APP_URL: 'https://console.example.com',
+      }),
+    ).toMatchObject({
+      MARKETING_SITE_URL: 'https://example.com',
+      CONSOLE_APP_URL: 'https://console.example.com',
+    });
+    expect(() =>
+      validateApiEnvironment({
+        ...productionEnvironment,
+        CONSOLE_APP_URL: 'http://console.example.com',
+      }),
+    ).toThrow(/CONSOLE_APP_URL must use https in production/);
+    expect(() =>
+      validateApiEnvironment({ NODE_ENV: 'test', MARKETING_SITE_URL: 'not-a-url' }),
+    ).toThrow(/MARKETING_SITE_URL/);
+  });
+
   it('requires SMTP_USER and SMTP_PASSWORD to be set together', () => {
     expect(() =>
       validateApiEnvironment({ NODE_ENV: 'test', SMTP_USER: 'no-reply@valuebooks.co' }),

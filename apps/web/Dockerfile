@@ -33,6 +33,13 @@ ENV NODE_ENV=production
 # club-admin/platform-admin Dockerfiles (NEXT_PUBLIC_API_URL build-arg).
 ARG NEXT_PUBLIC_API_URL
 ENV NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
+# Host split (marketing / app / console). Left empty, the app serves every area on one host.
+ARG NEXT_PUBLIC_MARKETING_URL
+ARG NEXT_PUBLIC_APP_URL
+ARG NEXT_PUBLIC_CONSOLE_URL
+ENV NEXT_PUBLIC_MARKETING_URL=${NEXT_PUBLIC_MARKETING_URL}
+ENV NEXT_PUBLIC_APP_URL=${NEXT_PUBLIC_APP_URL}
+ENV NEXT_PUBLIC_CONSOLE_URL=${NEXT_PUBLIC_CONSOLE_URL}
 RUN npm run build --workspace @valuebooks/web
 
 FROM node:24-bookworm-slim AS runtime

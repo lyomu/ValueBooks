@@ -107,6 +107,8 @@ const apiEnvironmentSchema = z
     S3_BUCKET: nonEmptyString,
     SECURITY_PEPPER: nonEmptyString,
     WEB_APP_URL: connectionUrl(['http:', 'https:']),
+    MARKETING_SITE_URL: optionalConnectionUrl(['http:', 'https:']),
+    CONSOLE_APP_URL: optionalConnectionUrl(['http:', 'https:']),
     QUEUE_PREFIX: nonEmptyString,
     LOG_LEVEL: z.enum(['silent', 'fatal', 'error', 'warn', 'info', 'debug', 'trace']),
     SMTP_HOST: nonEmptyString,
@@ -250,6 +252,13 @@ const apiEnvironmentSchema = z
         path: ['SECURITY_PEPPER'],
         message: 'must be replaced before production boot',
       });
+    }
+
+    for (const key of ['MARKETING_SITE_URL', 'CONSOLE_APP_URL'] as const) {
+      const url = urlOrNull(value[key]);
+      if (value[key] && url?.protocol !== 'https:') {
+        context.addIssue({ code: 'custom', path: [key], message: 'must use https in production' });
+      }
     }
 
     rejectLocalEndpoint(context, 'DATABASE_URL', value.DATABASE_URL);

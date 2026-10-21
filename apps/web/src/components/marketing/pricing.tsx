@@ -3,9 +3,9 @@
 import { Check, Plus, X } from 'lucide-react';
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
 import { apiRequest } from '../../lib/api';
 import { convertUsd, detectLikelyCurrency, formatCurrency } from '../../lib/currency';
+import { appUrl } from '../../lib/site-hosts';
 import { FEATURE_GROUPS, PLANS, type Plan } from './pricing-data';
 
 export type BillingInterval = 'monthly' | 'yearly';
@@ -103,7 +103,6 @@ function PlanCard({
   currencyCode: string;
   variant: 'compact' | 'full';
 }) {
-  const router = useRouter();
   const cardClasses = [
     'mk-pricing-card',
     plan.highlighted && 'mk-pricing-card--highlighted',
@@ -138,9 +137,11 @@ function PlanCard({
               body: JSON.stringify({ planKey: `${plan.id}_${interval}` }),
             })
               .then((response) =>
-                router.push(`/signup?intent=${encodeURIComponent(response.data.id)}`),
+                window.location.assign(
+                  appUrl(`/signup?intent=${encodeURIComponent(response.data.id)}`),
+                ),
               )
-              .catch(() => router.push('/signup'));
+              .catch(() => window.location.assign(appUrl('/signup')));
           }}
         >
           {plan.ctaLabel ?? 'Start free trial'}

@@ -9,12 +9,14 @@ import { EmailQueueService } from '../jobs/email-queue.service.js';
 @Injectable()
 export class BillingMailerService {
   private readonly webUrl: string;
+  private readonly marketingUrl: string;
 
   constructor(
     config: ConfigService,
     private readonly emailQueue: EmailQueueService,
   ) {
     this.webUrl = (config.get<string>('WEB_APP_URL') ?? 'http://localhost:3000').replace(/\/$/, '');
+    this.marketingUrl = (config.get<string>('MARKETING_SITE_URL') || this.webUrl).replace(/\/$/, '');
   }
 
   /** Exact copy from billing spec Section 6.1, sent once, roughly 24 hours before trial expiry. */
@@ -24,7 +26,7 @@ export class BillingMailerService {
     trialEndsAt: Date;
     timeZone: string;
   }): Promise<void> {
-    const url = `${this.webUrl}/pricing`;
+    const url = `${this.marketingUrl}/pricing`;
     const expiry = formatInTimeZone(input.trialEndsAt, input.timeZone);
     await this.send(EMAIL_JOB_NAMES.trialEndingTomorrow, {
       to: input.to,
