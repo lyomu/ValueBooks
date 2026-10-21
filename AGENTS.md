@@ -74,7 +74,7 @@ For accounting, billing, security, authorization, and tenant isolation changes, 
 
 ## 4. CI Is the Full Verification Executor
 
-Inspect existing `.github/workflows/` and package scripts before creating or editing CI. Reuse established workflows and project commands; do not guess package managers, scripts, working directories, or service requirements.
+CI and deployment run on Jenkins (`Jenkinsfile`); there are no GitHub Actions workflows. Inspect the `Jenkinsfile` and package scripts before creating or editing CI. Reuse established workflows and project commands; do not guess package managers, scripts, working directories, or service requirements.
 
 Prefer independent CI jobs for:
 - Frontend linting, type checking, and unit tests.
@@ -85,7 +85,7 @@ Prefer independent CI jobs for:
 
 Use dependency caching, concurrency cancellation for superseded runs, reasonable timeouts, and reusable workflows where appropriate. Run lightweight verification on pull requests and run expensive integration/E2E/build checks on the appropriate merge, release, protected-branch, or manual workflow events. **Required checks for high-risk changes must run before those changes can merge or deploy**, not only after merge. Keep detailed logs as CI artifacts and expose concise summaries for review.
 
-GitHub Actions execution is separate from Codex conversation usage, but may consume CI runner resources and incur costs.
+Jenkins execution is separate from Codex conversation usage, but consumes the shared CI box's resources (see `devops-infra/docs/CI_BOX_CAPACITY.md`).
 
 ## 5. High-Risk ValueBooks Areas
 
