@@ -198,11 +198,13 @@ export default function MarketingHomePage() {
             ['Retail teams', 'Stay closer to cash flow and daily operations.'],
             ['Growing businesses', 'Give the whole team the right financial view.'],
           ].map(([title, text], index) => (
-            <Reveal as={Link} href="/industries" delay={revealDelay(index)} key={title}>
-              <h3>{title}</h3>
-              <MarketingCopy>{text}</MarketingCopy>
-              <span>Learn more →</span>
-            </Reveal>
+            <Link href="/industries" key={title}>
+              <Reveal delay={revealDelay(index)}>
+                <h3>{title}</h3>
+                <MarketingCopy>{text}</MarketingCopy>
+                <span>Learn more →</span>
+              </Reveal>
+            </Link>
           ))}
         </div>
       </section>

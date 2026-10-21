@@ -179,7 +179,12 @@ export function CustomersPage() {
           />
           <div className="mk-story-grid">
             {customerStories.map((story, index) => (
-              <Reveal as="article" delay={revealDelay(index)} className="mk-story-card" key={story.name}>
+              <Reveal
+                as="article"
+                delay={revealDelay(index)}
+                className="mk-story-card"
+                key={story.name}
+              >
                 <Photo src={story.photo} alt="" />
                 <blockquote>“{story.quote}”</blockquote>
                 <p>
@@ -251,7 +256,12 @@ export function SecurityPage() {
           />
           <div className="mk-security-grid">
             {securityPoints.map(({ Icon, title, text }, index) => (
-              <Reveal as="article" delay={revealDelay(index)} className="mk-security-card" key={title}>
+              <Reveal
+                as="article"
+                delay={revealDelay(index)}
+                className="mk-security-card"
+                key={title}
+              >
                 <Icon aria-hidden="true" />
                 <h3>{title}</h3>
                 <p>{text}</p>

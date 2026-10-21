@@ -63,10 +63,18 @@ describe('identity and tenancy over HTTP', () => {
       'Check your email for the verification code.',
     );
 
-    const verificationCode = await queuedVerificationCode(email);
-    const verified = await agent.post(`${API}/auth/mfa/verify`).send({ code: verificationCode }).expect(201);
-    const originalCookie = sessionCookie(verified.headers['set-cookie']);
+    const verificationCode = await queuedCode(email);
+    // 201, not 200: auth.controller.ts's mfa/verify carries no @HttpCode override, so it
+    // keeps Nest's POST default, unlike the verify-email route next to it.
+    await agent.post(`${API}/auth/mfa/verify`).send({ code: verificationCode }).expect(201);
+    // Single-use: the challenge cookie is cleared on success, so a replay finds no
+    // active challenge rather than re-consuming the code.
     await agent.post(`${API}/auth/mfa/verify`).send({ code: verificationCode }).expect(400);
+
+    // Verifying a SIGNUP challenge already establishes a session -- mfa/verify returns
+    // kind 'signup' and sets the session cookie. Drop it before exercising login on its
+    // own terms, or login has no new session to issue and sends no Set-Cookie back.
+    await agent.post(`${API}/auth/logout`).expect(204);
 
     const login = await agent
       .post(`${API}/auth/login`)
@@ -80,6 +88,7 @@ describe('identity and tenancy over HTTP', () => {
     expect((await agent.get(`${API}/me`).expect(200)).body).toMatchObject({
       data: { displayName: 'Identity User', profileComplete: true },
     });
+    const originalCookie = sessionCookie(login.headers['set-cookie']);
     const user = await harness.prisma.user.findUniqueOrThrow({ where: { email } });
     const originalSession = await harness.prisma.session.findFirstOrThrow({
       where: { userId: user.id, status: 'ACTIVE' },
@@ -246,7 +255,7 @@ describe('identity and tenancy over HTTP', () => {
 
     const agent = harness.http();
     await agent.post(`${API}/auth/signup`).send({ email, password: PASSWORD }).expect(202);
-    const verificationCode = await queuedVerificationCode(email);
+    const verificationCode = await queuedCode(email);
     await agent.post(`${API}/auth/mfa/verify`).send({ code: verificationCode }).expect(201);
     await agent.post(`${API}/auth/login`).send({ email, password: PASSWORD }).expect(200);
     await agent.patch(`${API}/auth/profile`).send({ displayName: 'New Invitee' }).expect(200);
@@ -297,6 +306,24 @@ describe('identity and tenancy over HTTP', () => {
     );
   }
 
+  /**
+   * Signup verification is a 6-digit code, not a link. auth.service.ts's signup path issues an
+   * MfaChallengePurpose.SIGNUP challenge and mails the code via sendMfaCode, setting the
+   * challenge cookie on the response; the `/verify-email?token=` link is still real but is now
+   * only reached through resend-verification, which is why queuedToken below still serves the
+   * password-reset flow.
+   */
+  async function queuedCode(email: string): Promise<string> {
+    const jobs = await queue.getJobs(['wait', 'delayed']);
+    const job = jobs.find(
+      (candidate) =>
+        candidate.data.to === email && candidate.data.text.includes('verification code is'),
+    );
+    const code = /verification code is (\d{6})/.exec(job?.data.text ?? '')?.[1];
+    if (!code) throw new Error(`No queued verification code found for ${email}.`);
+    return code;
+  }
+
   async function queuedToken(email: string, marker: string): Promise<string> {
     const jobs = await queue.getJobs(['wait', 'delayed']);
     const job = jobs.find(
@@ -307,7 +334,7 @@ describe('identity and tenancy over HTTP', () => {
     return decodeURIComponent(encoded);
   }
 
-  async function queuedVerificationCode(email: string): Promise<string> {
+  async function queuedCode(email: string): Promise<string> {
     const jobs = await queue.getJobs(['wait', 'delayed']);
     const job = jobs.find((candidate) => candidate.data.to === email && candidate.data.subject === 'Your ValueBooks verification code');
     const code = job?.data.text.match(/verification code is (\d{6})/i)?.[1];

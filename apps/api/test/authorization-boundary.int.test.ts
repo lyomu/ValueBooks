@@ -52,6 +52,11 @@ const ENDPOINTS: readonly EndpointCase[] = [
   { method: 'post', path: 'organizations/:organizationId/billing/cancel', permission: 'organization.update', body: {} },
   { method: 'post', path: 'organizations/:organizationId/billing/resume', permission: 'organization.update' },
   {
+    method: 'get',
+    path: 'organizations/:organizationId/dashboard',
+    permission: 'reports.view',
+  },
+  {
     method: 'patch',
     path: 'organizations/:organizationId',
     permission: 'organization.update',

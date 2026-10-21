@@ -28,8 +28,8 @@ pipeline {
     }
 
     environment {
-        WEB_IMAGE_NAME = 'lyomu/valuebooks-web'
-        API_IMAGE_NAME = 'lyomu/valuebooks-api'
+        WEB_IMAGE_NAME = 'glyomu/valuebooks-web'
+        API_IMAGE_NAME = 'glyomu/valuebooks-api'
         NEXT_PUBLIC_API_URL = 'https://api.valuebooks.co'
     }
 
@@ -83,11 +83,36 @@ pipeline {
         }
 
         stage('Lint') {
-            // Root-level eslint covers every workspace in one pass -- the api
-            // CI image has prisma generate already run, so it's the superset
-            // both web and api lint checks can run from.
+            // Three sequential eslint passes instead of one root-level
+            // `eslint .`. The root config is recommendedTypeChecked +
+            // projectService, so a single pass builds one TS program for the
+            // whole monorepo and peaks at ~3.1 GiB RSS -- more than this box
+            // can spare (docs/CI_BOX_CAPACITY.md: ~4.0 GiB free of 7.6 GiB,
+            // and its 2 GiB swap is already full at idle). That OOM'd V8 at
+            // its ~2 GiB default heap ceiling on build #6.
+            //
+            // Measured peaks per pass: apps/api 1.9 GiB, apps/web 1.5 GiB,
+            // everything else 0.8 GiB -- so splitting caps exposure at
+            // ~1.9 GiB and is slightly faster overall (78s vs 100s).
+            //
+            // The last pass is a negative match, not an explicit list, so a
+            // new top-level directory can never silently escape linting --
+            // the union of the three passes is exactly `eslint .`.
+            //
+            // --memory is a hard kernel ceiling (container dies with 137 if
+            // hit) so a runaway lint can't take the shared CI box down with
+            // it; max-old-space-size keeps V8 bounded below that ceiling
+            // instead of letting it discover the limit by being killed.
             steps {
-                sh "docker run --rm ${env.API_CI_IMAGE} npm run lint"
+                script {
+                    [
+                        'apps/api',
+                        'apps/web',
+                        '. --ignore-pattern "apps/api/**" --ignore-pattern "apps/web/**"',
+                    ].each { target ->
+                        sh "docker run --rm --memory=3072m -e NODE_OPTIONS=--max-old-space-size=2560 ${env.API_CI_IMAGE} npx eslint ${target} --max-warnings=0"
+                    }
+                }
             }
         }
 
@@ -106,34 +131,161 @@ pipeline {
         }
 
         stage('Test (integration)') {
+            // Needs three real backing services, not just Postgres. The suite talks to a live
+            // Redis (BullMQ email/automation queues) and a live S3 -- attachments.int.test.ts
+            // deliberately asserts StorageService wrote real bytes rather than mocking it.
+            // Build #8 started only Postgres, so every queue-backed spec hit ECONNREFUSED on
+            // localhost:56780 (the NODE_ENV=test default in packages/config/src/index.ts) and
+            // the storage specs would have failed right behind them.
+            //
+            // The full service set, established by running the suite locally against each
+            // candidate and reading what actually failed:
+            //   postgres  - the schema, plus a SEPARATE restricted role (see below)
+            //   redis     - BullMQ email/automation queues
+            //   s3        - attachments/document specs assert real stored bytes
+            //   clamav    - phase13 extraction specs scan with a real scanner
+            //   mailpit   - signup/invitation specs read the real queued verification mail
+            //
+            // LocalStack is the CI stand-in for object storage ONLY. Production points S3_*
+            // at Cloudflare R2, and docker-compose.prod.yml deliberately runs no S3 service --
+            // see devops-infra/docs/VALUEBOOKS_DEDICATED_BOX_PROVISIONING.md for why.
+            //
+            // It is NOT MinIO, despite that being what docker-compose.yml gives developers
+            // locally. MinIO's images are no longer anonymously pullable from quay.io or
+            // Docker Hub (401 Unauthorized) -- that is what broke build #10; it works locally
+            // only because the image is already cached there. health.service.ts already names
+            // LocalStack as the intended CI target, and it covers the S3 surface these suites
+            // use: CreateBucket, HeadBucket, Put/Get/DeleteObject, ListBuckets, presigned GETs.
             steps {
                 script {
                     env.CI_NET = "valuebooks-ci-net-${env.SAFE_BRANCH_NAME}-${env.BUILD_NUMBER}"
                     env.CI_PG = "valuebooks-ci-postgres-${env.SAFE_BRANCH_NAME}-${env.BUILD_NUMBER}"
+                    env.CI_REDIS = "valuebooks-ci-redis-${env.SAFE_BRANCH_NAME}-${env.BUILD_NUMBER}"
+                    env.CI_S3 = "valuebooks-ci-s3-${env.SAFE_BRANCH_NAME}-${env.BUILD_NUMBER}"
+                    env.CI_CLAMAV = "valuebooks-ci-clamav-${env.SAFE_BRANCH_NAME}-${env.BUILD_NUMBER}"
+                    env.CI_MAIL = "valuebooks-ci-mailpit-${env.SAFE_BRANCH_NAME}-${env.BUILD_NUMBER}"
                 }
                 sh """
                     set -e
                     docker network create ${env.CI_NET}
-                    docker run -d --name ${env.CI_PG} --network ${env.CI_NET} \
+
+                    # --memory caps. READ devops-infra/docs/CI_BOX_CAPACITY.md BEFORE RAISING ANY
+                    # OF THESE. This box runs 6 products on hardware provisioned for 3 and its
+                    # 2 GiB swap is already full at idle, leaving ~4.0 GiB. The five services
+                    # below total ~3.5 GiB of caps, and clamav alone is 2 GiB of that -- an
+                    # explicit, informed decision to keep the malware-scan specs in CI rather
+                    # than exclude them, taken with those numbers on the table. It is the
+                    # tightest thing running on this box.
+                    #
+                    # The test runner itself is left uncapped on purpose until its real peak is
+                    # measured -- guessing a ceiling there turns an OOM-kill into what looks
+                    # like a test failure, which is exactly how build #6's lint OOM presented.
+                    docker run -d --name ${env.CI_PG} --network ${env.CI_NET} --memory=512m \
                         -e POSTGRES_USER=valuebooks -e POSTGRES_PASSWORD=ci_pw -e POSTGRES_DB=valuebooks_test \
                         postgres:17-alpine
-                    ready=false
+                    docker run -d --name ${env.CI_REDIS} --network ${env.CI_NET} --memory=128m \
+                        redis:7.4-alpine redis-server --appendonly yes
+                    docker run -d --name ${env.CI_S3} --network ${env.CI_NET} --memory=768m \
+                        -e SERVICES=s3 -e EAGER_SERVICE_LOADING=1 \
+                        localstack/localstack:3.8
+                    docker run -d --name ${env.CI_MAIL} --network ${env.CI_NET} --memory=64m \
+                        -e MP_SMTP_AUTH_ACCEPT_ANY=1 -e MP_SMTP_AUTH_ALLOW_INSECURE=1 \
+                        axllent/mailpit:v1.27.8
+                    # The named volume persists virus signatures ACROSS builds. Without it
+                    # freshclam re-downloads ~250 MB on every single build and clamd refuses
+                    # INSTREAM until it finishes -- minutes of wall clock and bandwidth per run.
+                    # It is intentionally not per-build, so do not add BUILD_NUMBER to it.
+                    docker volume create valuebooks-ci-clamav-db >/dev/null 2>&1 || true
+                    docker run -d --name ${env.CI_CLAMAV} --network ${env.CI_NET} --memory=2048m \
+                        -v valuebooks-ci-clamav-db:/var/lib/clamav \
+                        clamav/clamav:1.4
+
+                    wait_for_exec() {
+                        label="\$1"; container="\$2"; shift 2
+                        for i in \$(seq 1 60); do
+                            if docker exec "\$container" "\$@" >/dev/null 2>&1; then
+                                echo "\$label ready."; return 0
+                            fi
+                            echo "waiting for \$label..."; sleep 2
+                        done
+                        echo "\$label never became ready"; docker logs "\$container" || true; return 1
+                    }
+                    wait_for_exec postgres ${env.CI_PG} pg_isready -U valuebooks
+                    wait_for_exec redis ${env.CI_REDIS} redis-cli ping
+
+                    # The API must connect as a RESTRICTED role here, not as POSTGRES_USER.
+                    # ai.int.test.ts asserts the runtime role is not a superuser, cannot bypass
+                    # RLS and does not own the AI tables -- the same three conditions
+                    # database-role.guard.ts enforces in production -- because RLS is silently
+                    # bypassed by exactly those roles. Running CI as the superuser made that
+                    # spec fail and, worse, would have let a tenant-isolation regression pass.
+                    #
+                    # Only the role has to exist: test/support/database.ts does the GRANTs
+                    # itself (including TRUNCATE, which the harness needs between specs and
+                    # production deliberately does not grant), deriving the role name from
+                    # DATABASE_URL's username.
+                    docker exec ${env.CI_PG} psql -v ON_ERROR_STOP=1 -U valuebooks -d valuebooks_test \
+                        -c "CREATE ROLE valuebooks_app LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT NOBYPASSRLS PASSWORD 'ci_app_pw'"
+
+                    # Mailpit is distroless, so probe it over HTTP from the CI image.
+                    mail_ready=false
                     for i in \$(seq 1 60); do
-                        if docker exec ${env.CI_PG} pg_isready -U valuebooks >/dev/null 2>&1; then
-                            ready=true
-                            break
+                        if docker run --rm --network ${env.CI_NET} ${env.API_CI_IMAGE} \
+                            node -e "fetch('http://${env.CI_MAIL}:8025/readyz').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))" >/dev/null 2>&1; then
+                            mail_ready=true; echo "mailpit ready."; break
                         fi
-                        echo "waiting for postgres..."; sleep 2
+                        echo "waiting for mailpit..."; sleep 2
                     done
-                    if [ "\$ready" != "true" ]; then
-                        echo "postgres never became ready"
-                        docker logs ${env.CI_PG} || true
-                        exit 1
+                    if [ "\$mail_ready" != "true" ]; then
+                        echo "mailpit never became ready"; docker logs ${env.CI_MAIL} || true; exit 1
                     fi
+
+                    # clamd refuses INSTREAM until freshclam has a signature database, so a
+                    # port-open check is not enough -- clamdcheck.sh is what docker-compose.yml
+                    # uses too. Given a cold signature volume this genuinely can take minutes,
+                    # hence the much longer budget than the other services get.
+                    clamav_ready=false
+                    for i in \$(seq 1 180); do
+                        if docker exec ${env.CI_CLAMAV} clamdcheck.sh >/dev/null 2>&1; then
+                            clamav_ready=true; echo "clamav ready."; break
+                        fi
+                        echo "waiting for clamav (signature db)..."; sleep 2
+                    done
+                    if [ "\$clamav_ready" != "true" ]; then
+                        echo "clamav never became ready"; docker logs --tail 50 ${env.CI_CLAMAV} || true; exit 1
+                    fi
+
+                    # Probed from the CI image (which has node) over the CI network rather than
+                    # by exec-ing inside it, so this does not depend on what tooling the S3
+                    # image happens to ship.
+                    s3_ready=false
+                    for i in \$(seq 1 60); do
+                        if docker run --rm --network ${env.CI_NET} ${env.API_CI_IMAGE} \
+                            node -e "fetch('http://${env.CI_S3}:4566/_localstack/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))" >/dev/null 2>&1; then
+                            s3_ready=true; echo "s3 ready."; break
+                        fi
+                        echo "waiting for s3..."; sleep 2
+                    done
+                    if [ "\$s3_ready" != "true" ]; then
+                        echo "s3 never became ready"; docker logs ${env.CI_S3} || true; exit 1
+                    fi
+
+                    # StorageService.ensureBucket() creates S3_BUCKET lazily on first use, so the
+                    # bucket is deliberately not pre-created here.
                     docker run --rm --network ${env.CI_NET} \
                         -e NODE_ENV=test \
-                        -e DATABASE_URL=postgresql://valuebooks:ci_pw@${env.CI_PG}:5432/valuebooks_test \
+                        -e DATABASE_URL=postgresql://valuebooks_app:ci_app_pw@${env.CI_PG}:5432/valuebooks_test \
                         -e DATABASE_MIGRATION_URL=postgresql://valuebooks:ci_pw@${env.CI_PG}:5432/valuebooks_test \
+                        -e REDIS_URL=redis://${env.CI_REDIS}:6379 \
+                        -e CLAMAV_HOST=${env.CI_CLAMAV} \
+                        -e CLAMAV_PORT=3310 \
+                        -e SMTP_HOST=${env.CI_MAIL} \
+                        -e SMTP_PORT=1025 \
+                        -e S3_ENDPOINT=http://${env.CI_S3}:4566 \
+                        -e S3_REGION=us-east-1 \
+                        -e S3_ACCESS_KEY=test \
+                        -e S3_SECRET_KEY=test \
+                        -e S3_BUCKET=valuebooks-test \
                         -e SECURITY_PEPPER=ci-only-jenkins-pepper-value-not-used-anywhere-else-000000 \
                         -w /app/apps/api \
                         ${env.API_CI_IMAGE} sh -c "npx prisma migrate deploy && cd /app && npm run test:integration --workspace @valuebooks/api"
@@ -141,7 +293,10 @@ pipeline {
             }
             post {
                 always {
-                    sh "docker rm -f ${env.CI_PG} 2>/dev/null || true; docker network rm ${env.CI_NET} 2>/dev/null || true"
+                    sh """
+                        docker rm -f ${env.CI_PG} ${env.CI_REDIS} ${env.CI_S3} ${env.CI_CLAMAV} ${env.CI_MAIL} 2>/dev/null || true
+                        docker network rm ${env.CI_NET} 2>/dev/null || true
+                    """
                 }
             }
         }

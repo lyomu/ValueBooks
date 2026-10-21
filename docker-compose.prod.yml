@@ -30,8 +30,19 @@ services:
       POSTGRES_DB: ${POSTGRES_DB}
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      # Consumed by the init script below, not by Postgres itself. This is the
+      # password half of DATABASE_URL -- the two must agree or the API cannot
+      # connect, and the database initializes exactly once.
+      VALUEBOOKS_APP_PASSWORD: ${VALUEBOOKS_APP_PASSWORD}
     volumes:
       - postgres_data:/var/lib/postgresql/data
+      # Creates the restricted runtime role the API connects as. Without this the
+      # only role that exists is POSTGRES_USER, which is the cluster superuser and
+      # owns every migrated table -- and database-role.guard.ts refuses to boot the
+      # API in production as a superuser, a BYPASSRLS role, or an owner of the
+      # ai_runs/ai_evidence RLS tables. Read infrastructure/postgres-init-prod.sh
+      # before changing anything here; the ordering is load-bearing.
+      - ./infrastructure/postgres-init-prod.sh:/docker-entrypoint-initdb.d/001-init.sh:ro
     healthcheck:
       test: ['CMD-SHELL', 'pg_isready -U "${POSTGRES_USER}" -d "${POSTGRES_DB}"']
       interval: 10s
@@ -39,9 +50,9 @@ services:
       retries: 10
     logging:
       driver: json-file
-      options: { max-size: "10m", max-file: "3" }
+      options: { max-size: '10m', max-file: '3' }
     mem_limit: 512m
-    cpus: "0.50"
+    cpus: '0.50'
 
   redis:
     image: redis:7.4-alpine
@@ -57,9 +68,9 @@ services:
       retries: 10
     logging:
       driver: json-file
-      options: { max-size: "10m", max-file: "3" }
+      options: { max-size: '10m', max-file: '3' }
     mem_limit: 128m
-    cpus: "0.25"
+    cpus: '0.25'
 
   # Signature-update spike measured directly (local isolation test, 2026-10-19):
   # settles to ~960 MiB steady, spikes to 1.83 GiB on every startup/freshclam
@@ -76,9 +87,9 @@ services:
       start_period: 120s
     logging:
       driver: json-file
-      options: { max-size: "10m", max-file: "3" }
+      options: { max-size: '10m', max-file: '3' }
     mem_limit: 2048m
-    cpus: "0.75"
+    cpus: '0.75'
 
   web:
     build:
@@ -86,7 +97,7 @@ services:
       dockerfile: apps/web/Dockerfile
       args:
         NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL}
-    image: ${DOCKERHUB_OWNER:-lyomu}/valuebooks-web:${VALUEBOOKS_IMAGE_TAG:-local}
+    image: ${DOCKERHUB_OWNER:-glyomu}/valuebooks-web:${VALUEBOOKS_IMAGE_TAG:-local}
     container_name: valuebooks-web
     restart: unless-stopped
     environment:
@@ -94,18 +105,22 @@ services:
       PORT: 3000
       HOSTNAME: 0.0.0.0
     ports:
-      - "127.0.0.1:3001:3000"
+      - '127.0.0.1:3001:3000'
     healthcheck:
-      test: ["CMD-SHELL", "node -e \"fetch('http://127.0.0.1:3000/').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))\""]
+      test:
+        [
+          'CMD-SHELL',
+          'node -e "fetch(''http://127.0.0.1:3000/'').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"',
+        ]
       interval: 15s
       timeout: 5s
       retries: 10
       start_period: 20s
     logging:
       driver: json-file
-      options: { max-size: "10m", max-file: "3" }
+      options: { max-size: '10m', max-file: '3' }
     mem_limit: 384m
-    cpus: "0.50"
+    cpus: '0.50'
 
   # HTTP API. Padded above apps/api's own bare footprint to cover the
   # transient Chromium spike from document-rendering.service.ts
@@ -115,7 +130,7 @@ services:
     build:
       context: .
       dockerfile: apps/api/Dockerfile
-    image: ${DOCKERHUB_OWNER:-lyomu}/valuebooks-api:${VALUEBOOKS_IMAGE_TAG:-local}
+    image: ${DOCKERHUB_OWNER:-glyomu}/valuebooks-api:${VALUEBOOKS_IMAGE_TAG:-local}
     container_name: valuebooks-api
     restart: unless-stopped
     env_file:
@@ -136,28 +151,32 @@ services:
       clamav:
         condition: service_healthy
     ports:
-      - "127.0.0.1:3002:3001"
+      - '127.0.0.1:3002:3001'
     healthcheck:
-      test: ["CMD-SHELL", "node -e \"fetch('http://127.0.0.1:3001/api/v1/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))\""]
+      test:
+        [
+          'CMD-SHELL',
+          'node -e "fetch(''http://127.0.0.1:3001/api/v1/health'').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"',
+        ]
       interval: 15s
       timeout: 5s
       retries: 10
       start_period: 30s
     logging:
       driver: json-file
-      options: { max-size: "10m", max-file: "3" }
+      options: { max-size: '10m', max-file: '3' }
     mem_limit: 768m
-    cpus: "0.50"
+    cpus: '0.50'
 
   # Generic BullMQ worker -- same image as `api`, different entry point, no
   # Chromium launches of its own (document-rendering.service.ts runs inside
   # the HTTP request path, not a queued job, as of this writing -- confirm
   # that hasn't changed before trusting this container's lower mem_limit).
   worker:
-    image: ${DOCKERHUB_OWNER:-lyomu}/valuebooks-api:${VALUEBOOKS_IMAGE_TAG:-local}
+    image: ${DOCKERHUB_OWNER:-glyomu}/valuebooks-api:${VALUEBOOKS_IMAGE_TAG:-local}
     container_name: valuebooks-worker
     restart: unless-stopped
-    command: ["node", "apps/api/dist/src/worker.js"]
+    command: ['node', 'apps/api/dist/src/worker.js']
     env_file:
       - path: ./.env.production
         required: true
@@ -174,9 +193,9 @@ services:
         condition: service_healthy
     logging:
       driver: json-file
-      options: { max-size: "10m", max-file: "3" }
+      options: { max-size: '10m', max-file: '3' }
     mem_limit: 384m
-    cpus: "0.30"
+    cpus: '0.30'
 
   # OCR/PDF extraction worker. apps/api's own package.json already runs this
   # entry point with --max-old-space-size=384 (a deliberate V8 heap cap, not
@@ -186,10 +205,10 @@ services:
   # lowering this to match, or raise this without checking whether the flag
   # should move too.
   document-extraction-worker:
-    image: ${DOCKERHUB_OWNER:-lyomu}/valuebooks-api:${VALUEBOOKS_IMAGE_TAG:-local}
+    image: ${DOCKERHUB_OWNER:-glyomu}/valuebooks-api:${VALUEBOOKS_IMAGE_TAG:-local}
     container_name: valuebooks-document-extraction-worker
     restart: unless-stopped
-    command: ["node", "--max-old-space-size=384", "apps/api/dist/src/document-extraction-worker.js"]
+    command: ['node', '--max-old-space-size=384', 'apps/api/dist/src/document-extraction-worker.js']
     env_file:
       - path: ./.env.production
         required: true
@@ -208,9 +227,9 @@ services:
         condition: service_healthy
     logging:
       driver: json-file
-      options: { max-size: "10m", max-file: "3" }
+      options: { max-size: '10m', max-file: '3' }
     mem_limit: 512m
-    cpus: "0.50"
+    cpus: '0.50'
 
 volumes:
   postgres_data:
