@@ -53,11 +53,11 @@ The admin routes add `PlatformGuard` with SUPERADMIN.
 
 | Endpoint | Audited event |
 |---|---|
-| GET `admin/all` | — |
+| GET `admin/all` (with pinned-organization counts and the current version), GET `admin/:code/versions/:version` (with versions and audit history) | — |
 | POST create | `platform.country_pack_created` |
 | PATCH a version | `platform.country_pack_updated` |
-| POST `publish` / `deprecate` | `platform.country_pack_published` / `_deprecated` |
-| DELETE a draft | `platform.country_pack_deleted` |
+| POST `publish` / `deprecate` (reason required) | `platform.country_pack_published` / `_deprecated` |
+| DELETE a draft (reason required) | `platform.country_pack_deleted` |
 
 ## Gaps (tracked)
 

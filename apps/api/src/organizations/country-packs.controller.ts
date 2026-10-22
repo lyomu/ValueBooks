@@ -16,7 +16,11 @@ import { AuthService } from '../auth/auth.service.js';
 import { requestMetadata } from '../auth/request-context.js';
 import { SessionGuard } from '../auth/session.guard.js';
 import { CountryPackAdminService } from './country-pack.admin.service.js';
-import { CreateCountryPackDto, UpdateCountryPackDto } from './country-pack.dto.js';
+import {
+  CountryPackLifecycleDto,
+  CreateCountryPackDto,
+  UpdateCountryPackDto,
+} from './country-pack.dto.js';
 import { CountryPackStore } from './country-pack.store.js';
 import { RequirePlatformRole, type PlatformRequest } from '../platform/platform-context.js';
 import { PlatformGuard } from '../platform/platform.guard.js';
@@ -52,6 +56,13 @@ export class CountryPacksController {
   @RequirePlatformRole('SUPERADMIN')
   async listAll() {
     return { data: await this.admin.listAll() };
+  }
+
+  @Get('admin/:code/versions/:version')
+  @UseGuards(PlatformGuard)
+  @RequirePlatformRole('SUPERADMIN')
+  async version(@Param('code') code: string, @Param('version') version: string) {
+    return { data: await this.admin.getVersion(code, version) };
   }
 
   @Get(':code')
@@ -98,10 +109,17 @@ export class CountryPacksController {
   async publish(
     @Param('code') code: string,
     @Param('version') version: string,
+    @Body() input: CountryPackLifecycleDto,
     @Req() request: PlatformRequest,
   ) {
     return {
-      data: await this.admin.publish(request.platform, code, version, this.ipHash(request)),
+      data: await this.admin.publish(
+        request.platform,
+        code,
+        version,
+        input.reason,
+        this.ipHash(request),
+      ),
     };
   }
 
@@ -112,10 +130,17 @@ export class CountryPacksController {
   async deprecate(
     @Param('code') code: string,
     @Param('version') version: string,
+    @Body() input: CountryPackLifecycleDto,
     @Req() request: PlatformRequest,
   ) {
     return {
-      data: await this.admin.deprecate(request.platform, code, version, this.ipHash(request)),
+      data: await this.admin.deprecate(
+        request.platform,
+        code,
+        version,
+        input.reason,
+        this.ipHash(request),
+      ),
     };
   }
 
@@ -125,9 +150,16 @@ export class CountryPacksController {
   async deleteDraft(
     @Param('code') code: string,
     @Param('version') version: string,
+    @Body() input: CountryPackLifecycleDto,
     @Req() request: PlatformRequest,
   ) {
-    await this.admin.deleteDraft(request.platform, code, version, this.ipHash(request));
+    await this.admin.deleteDraft(
+      request.platform,
+      code,
+      version,
+      input.reason,
+      this.ipHash(request),
+    );
     return { data: { deleted: true } };
   }
 }

@@ -262,11 +262,13 @@ describe('platform mutation audit coverage', () => {
       .http()
       .post(`${API}/localization/country-packs/AUDIT/versions/1/publish`)
       .set('Cookie', superadminCookie)
+      .send({ reason: 'Audit publish evidence.' })
       .expect(200);
     await harness
       .http()
       .post(`${API}/localization/country-packs/AUDIT/versions/1/deprecate`)
       .set('Cookie', superadminCookie)
+      .send({ reason: 'Audit deprecate evidence.' })
       .expect(200);
     const deletedPack = await harness
       .http()
@@ -279,6 +281,7 @@ describe('platform mutation audit coverage', () => {
       .http()
       .delete(`${API}/localization/country-packs/AUDDEL/versions/1`)
       .set('Cookie', superadminCookie)
+      .send({ reason: 'Audit delete evidence.' })
       .expect(200);
 
     const events = await harness.prisma.platformAuditEvent.findMany({
@@ -329,10 +332,25 @@ describe('platform mutation audit coverage', () => {
         audit('platform.country_pack_created', 'country_pack', createdPack.id),
         audit('platform.country_pack_updated', 'country_pack', createdPack.id),
         audit('platform.country_pack_tax_definition_upserted', 'tax_pack', taxPack.id),
-        audit('platform.country_pack_published', 'country_pack', createdPack.id),
-        audit('platform.country_pack_deprecated', 'country_pack', createdPack.id),
+        audit(
+          'platform.country_pack_published',
+          'country_pack',
+          createdPack.id,
+          'Audit publish evidence.',
+        ),
+        audit(
+          'platform.country_pack_deprecated',
+          'country_pack',
+          createdPack.id,
+          'Audit deprecate evidence.',
+        ),
         audit('platform.country_pack_created', 'country_pack', deletedPack.id),
-        audit('platform.country_pack_deleted', 'country_pack', deletedPack.id),
+        audit(
+          'platform.country_pack_deleted',
+          'country_pack',
+          deletedPack.id,
+          'Audit delete evidence.',
+        ),
       ]),
     );
     expect(events).toEqual(

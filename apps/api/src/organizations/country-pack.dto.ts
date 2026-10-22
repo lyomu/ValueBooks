@@ -114,6 +114,17 @@ export class CreateCountryPackDto {
   taxPack?: TaxPackInputDto;
 }
 
+/**
+ * Publishing, deprecating and deleting change what every tenant of that country receives, so each
+ * records why. Draft edits reach no tenant and need no reason.
+ */
+export class CountryPackLifecycleDto {
+  @IsString()
+  @Length(10, 500)
+  @Transform(trim)
+  reason!: string;
+}
+
 export class UpdateCountryPackDto {
   @IsOptional()
   @IsString()
