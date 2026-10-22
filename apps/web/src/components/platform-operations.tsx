@@ -879,87 +879,384 @@ function SecurityEventDetail({
   );
 }
 
+/**
+ * Readable names for platform audit actions (master plan §14.2), grouped as the filter shows them.
+ * Unknown keys still appear, as the key made readable; the raw key always stays visible.
+ */
+const AUDIT_ACTION_GROUPS: Array<{ label: string; actions: Record<string, string> }> = [
+  {
+    label: 'Organizations and users',
+    actions: {
+      'platform.organization_suspended': 'Organization suspended',
+      'platform.organization_reactivated': 'Organization reactivated',
+      'platform.user_status_changed': 'User status changed',
+    },
+  },
+  {
+    label: 'Plans and subscriptions',
+    actions: {
+      'platform.plan_assigned': 'Plan assigned',
+      'platform.plan_created': 'Plan created',
+      'platform.plan_updated': 'Plan changed',
+      'platform.plan_provider_code_changed': 'Plan provider code changed',
+      'platform.entitlement_updated': 'Entitlement set',
+      'platform.entitlement_removed': 'Entitlement removed',
+      'billing.trial_extended': 'Trial extended',
+      'billing.override_requested': 'Billing override requested',
+      'billing.override_approved': 'Billing override approved',
+      'billing.override_revoked': 'Billing override revoked',
+      'billing.refund_requested': 'Refund requested',
+      'billing.refund_approved': 'Refund approved',
+      'billing.webhook_retried': 'Payment webhook reprocessed',
+    },
+  },
+  {
+    label: 'Configuration',
+    actions: {
+      'platform.feature_flag_created': 'Feature flag created',
+      'platform.feature_flag_updated': 'Feature flag changed',
+      'platform.feature_flag_rule_set': 'Feature flag rule set',
+      'platform.feature_flag_rule_removed': 'Feature flag rule removed',
+      'platform.country_pack_created': 'Country pack draft created',
+      'platform.country_pack_published': 'Country pack published',
+      'platform.country_pack_deprecated': 'Country pack deprecated',
+      'platform.country_pack_deleted': 'Country pack draft deleted',
+      'platform.hosted_ai_egress_approved': 'Hosted AI data sharing approved',
+      'platform.hosted_ai_egress_revoked': 'Hosted AI data sharing revoked',
+    },
+  },
+  {
+    label: 'Operations and access',
+    actions: {
+      'platform.job_retried': 'Scheduled job retried',
+      'platform.admin_granted': 'Platform access granted',
+      'platform.admin_revoked': 'Platform access revoked',
+    },
+  },
+];
+const AUDIT_ACTION_LABEL: Record<string, string> = Object.fromEntries(
+  AUDIT_ACTION_GROUPS.flatMap((group) => Object.entries(group.actions)),
+);
+const auditActionLabel = (key: string) => AUDIT_ACTION_LABEL[key] ?? readable(key);
+
+const EMPTY_AUDIT_FILTERS = { eventKey: '', actor: '', from: '', to: '' };
+
 export function PlatformAudit() {
   const [rows, setRows] = useState<PlatformAuditEvent[] | null>(null);
+  const [failed, setFailed] = useState(false);
   const [totalRows, setTotalRows] = useState(0);
   const [page, setPage] = useState(1);
-  const [error, setError] = useState('');
-
+  const [filters, setFilters] = useState(EMPTY_AUDIT_FILTERS);
+  const [actorInput, setActorInput] = useState('');
+  const [inspecting, setInspecting] = useState<PlatformAuditEvent | null>(null);
   const scope = useLinkedScope();
 
+  // The administrator search is typed; query once typing pauses rather than on every keystroke.
   useEffect(() => {
-    void apiRequest<Paginated<PlatformAuditEvent>>(
-      `/platform/audit${platformQuery({ ...scope.query, page })}`,
+    const actor = actorInput.trim();
+    const timer = window.setTimeout(() => {
+      setFilters((current) => (current.actor === actor ? current : { ...current, actor }));
+      setPage((current) => (filters.actor === actor ? current : 1));
+    }, 300);
+    return () => window.clearTimeout(timer);
+  }, [actorInput, filters.actor]);
+
+  const load = useCallback(() => {
+    setFailed(false);
+    setRows(null);
+    apiRequest<Paginated<PlatformAuditEvent>>(
+      `/platform/audit${platformQuery({ ...filters, ...scope.query, page })}`,
     )
       .then((response) => {
         setRows(response.data);
         setTotalRows(response.pagination.totalRows);
       })
-      .catch(() => setError('The platform audit log could not be loaded.'));
-  }, [page, scope.query]);
+      .catch(() => setFailed(true));
+  }, [filters, page, scope.query]);
+  useEffect(() => load(), [load]);
+
+  function setFilter(key: keyof typeof EMPTY_AUDIT_FILTERS, value: string) {
+    setFilters((current) => ({ ...current, [key]: value }));
+    setPage(1);
+  }
+  const filtered = Object.values(filters).some(Boolean);
 
   return (
     <PlatformPage
       title="Platform audit"
-      description="Every mutating action taken in this console. Kept separately from tenant audit logs, because most of these actions are cross-tenant and none of them were taken by the tenant."
+      description="Every change made in this console: who made it, to what, why, and what it was before and after. Kept apart from tenant audit logs, because these actions were not taken by the tenant."
     >
       <LinkedScopeNote scope={scope} href="/platform/audit" />
-      {error ? (
-        <p className="rb-platform__alert" role="alert">
-          {error}
-        </p>
+      {failed ? (
+        <ErrorState
+          title="The platform audit log could not be loaded"
+          description="This is a loading failure, not an empty log."
+          action={
+            <Button variant="secondary" size="sm" onClick={load}>
+              Try again
+            </Button>
+          }
+        />
+      ) : (
+        <>
+          <DataTable
+            caption="Platform audit events"
+            toolbar={
+              <DataTableToolbar
+                resultLabel={rows ? `${totalRows.toLocaleString()} actions` : undefined}
+              >
+                <DataTableSearch
+                  label="Search by administrator email"
+                  placeholder="Administrator email"
+                  value={actorInput}
+                  onChange={(event) => setActorInput(event.target.value)}
+                />
+                <DataTableFilters>
+                  <Select
+                    aria-label="Action"
+                    value={filters.eventKey}
+                    onChange={(event) => setFilter('eventKey', event.target.value)}
+                  >
+                    <option value="">Any action</option>
+                    {AUDIT_ACTION_GROUPS.map((group) => (
+                      <optgroup key={group.label} label={group.label}>
+                        {Object.entries(group.actions).map(([key, label]) => (
+                          <option key={key} value={key}>
+                            {label}
+                          </option>
+                        ))}
+                      </optgroup>
+                    ))}
+                  </Select>
+                  <DataTableFilterField>
+                    <Label htmlFor="audit-from">From</Label>
+                    <Input
+                      id="audit-from"
+                      type="date"
+                      title="UTC date"
+                      value={filters.from}
+                      max={filters.to || undefined}
+                      onChange={(event) => setFilter('from', event.target.value)}
+                    />
+                  </DataTableFilterField>
+                  <DataTableFilterField>
+                    <Label htmlFor="audit-to">To</Label>
+                    <Input
+                      id="audit-to"
+                      type="date"
+                      title="UTC date"
+                      value={filters.to}
+                      min={filters.from || undefined}
+                      onChange={(event) => setFilter('to', event.target.value)}
+                    />
+                  </DataTableFilterField>
+                  {filtered || actorInput ? (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => {
+                        setFilters(EMPTY_AUDIT_FILTERS);
+                        setActorInput('');
+                        setPage(1);
+                      }}
+                    >
+                      Clear
+                    </Button>
+                  ) : null}
+                </DataTableFilters>
+              </DataTableToolbar>
+            }
+            rows={rows ?? []}
+            loading={rows === null}
+            emptyTitle={
+              filtered ? 'No actions match these filters' : 'No platform actions recorded yet'
+            }
+            columns={[
+              {
+                key: 'action',
+                header: 'Action',
+                cell: (row: PlatformAuditEvent) => (
+                  <PrimarySecondaryCell
+                    primary={auditActionLabel(row.eventKey)}
+                    secondary={row.eventKey}
+                    primaryTitle={row.eventKey}
+                  />
+                ),
+              },
+              {
+                key: 'organization',
+                header: 'Organization',
+                cell: (row: PlatformAuditEvent) =>
+                  row.organizationId ? (
+                    <Link href={`/platform/organizations/${row.organizationId}`}>
+                      {row.organizationName ?? 'Organization'}
+                    </Link>
+                  ) : (
+                    <span className="rb-platform__muted">Platform-wide</span>
+                  ),
+                hideBelow: 'tablet',
+              },
+              {
+                key: 'reason',
+                header: 'Reason',
+                cell: (row: PlatformAuditEvent) =>
+                  row.reason ?? <span className="rb-platform__muted">None recorded</span>,
+                hideBelow: 'desktop',
+              },
+              {
+                key: 'administrator',
+                header: 'Administrator',
+                cell: (row: PlatformAuditEvent) => (
+                  <PrimarySecondaryCell
+                    primary={row.actorEmail}
+                    secondary={readable(row.actorRole.toLowerCase())}
+                    primaryTitle={row.actorEmail}
+                  />
+                ),
+                hideBelow: 'tablet',
+              },
+              {
+                key: 'when',
+                header: 'When',
+                cell: (row: PlatformAuditEvent) => (
+                  <span title={row.occurredAt}>{dateTime(row.occurredAt)}</span>
+                ),
+                hideBelow: 'tablet',
+              },
+              {
+                key: 'details',
+                header: <span className="rb-visually-hidden">Actions</span>,
+                align: 'right',
+                cell: (row: PlatformAuditEvent) => (
+                  <Button variant="ghost" size="sm" onClick={() => setInspecting(row)}>
+                    Details
+                  </Button>
+                ),
+              },
+            ]}
+          />
+          <DataTablePagination
+            page={page}
+            pageSize={25}
+            totalRows={totalRows}
+            onPageChange={setPage}
+          />
+        </>
+      )}
+
+      {inspecting ? (
+        <Dialog open onOpenChange={(open) => (open ? undefined : setInspecting(null))}>
+          <AuditEventDetail event={inspecting} />
+        </Dialog>
       ) : null}
-
-      <DataTable
-        caption="Platform audit events"
-        rows={rows ?? []}
-        loading={rows === null}
-        emptyTitle="No platform actions recorded yet"
-        columns={[
-          { key: 'action', header: 'Action', cell: (row: PlatformAuditEvent) => row.eventKey },
-          {
-            key: 'target',
-            header: 'Target',
-            cell: (row: PlatformAuditEvent) => (
-              <>
-                {row.targetType}
-                {row.organizationId ? (
-                  <>
-                    {' '}
-                    · <Link href={`/platform/organizations/${row.organizationId}`}>tenant</Link>
-                  </>
-                ) : null}
-              </>
-            ),
-          },
-          {
-            key: 'reason',
-            header: 'Reason',
-            cell: (row: PlatformAuditEvent) => row.reason ?? '—',
-            hideBelow: 'tablet',
-          },
-          {
-            key: 'administrator',
-            header: 'Administrator',
-            cell: (row: PlatformAuditEvent) => (
-              <PrimarySecondaryCell
-                primary={row.actorEmail}
-                secondary={row.actorRole.toLowerCase()}
-                primaryTitle={row.actorEmail}
-              />
-            ),
-          },
-          {
-            key: 'when',
-            header: 'When',
-            cell: (row: PlatformAuditEvent) => new Date(row.occurredAt).toLocaleString(),
-            hideBelow: 'tablet',
-          },
-        ]}
-      />
-
-      <DataTablePagination page={page} pageSize={25} totalRows={totalRows} onPageChange={setPage} />
     </PlatformPage>
+  );
+}
+
+function AuditEventDetail({ event }: { event: PlatformAuditEvent }) {
+  const label = auditActionLabel(event.eventKey);
+  return (
+    <DrawerContent side="right" size="wide" title={label} description={event.eventKey}>
+      <div className="rb-explain-panel rb-explain-panel--surface">
+        <h2>{label}</h2>
+        <p className="rb-platform__muted">{event.eventKey}</p>
+        <dl>
+          <Row label="Administrator" value={`${event.actorName} (${event.actorEmail})`} />
+          <Row label="Role at the time" value={readable(event.actorRole.toLowerCase())} />
+          <Row label="When (UTC)" value={event.occurredAt} />
+          <Row label="When (your time)" value={dateTime(event.occurredAt)} />
+          <Row label="Target" value={`${readable(event.targetType)} ${event.targetId ?? ''}`} />
+          <Row label="Organization" value={event.organizationName ?? 'Platform-wide'} />
+          <Row label="Audit record" value={event.id} />
+        </dl>
+        <h3>Reason</h3>
+        <p>{event.reason ?? 'No reason was recorded for this action.'}</p>
+        <h3>What changed</h3>
+        <AuditDiff before={event.before} after={event.after} />
+        {event.organizationId ? (
+          <>
+            <h3>Related</h3>
+            <ul>
+              <li>
+                <Link href={`/platform/audit?organizationId=${event.organizationId}`}>
+                  All platform actions for this organization
+                </Link>
+              </li>
+              <li>
+                <Link href={`/platform/security?organizationId=${event.organizationId}`}>
+                  Security events for this organization
+                </Link>
+              </li>
+            </ul>
+          </>
+        ) : null}
+      </div>
+    </DrawerContent>
+  );
+}
+
+const asRecord = (value: unknown): Record<string, unknown> | null =>
+  value && typeof value === 'object' && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : null;
+const diffValue = (value: unknown) =>
+  value === undefined ? '—' : typeof value === 'string' ? value : JSON.stringify(value);
+const fieldLabel = (key: string) => readable(key.replace(/([a-z])([A-Z])/g, '$1 $2').toLowerCase());
+
+/**
+ * A field-by-field comparison of an audit row's stored before and after states. It shows what was
+ * recorded and nothing more: actions that recorded no state say so instead of implying no change.
+ */
+function AuditDiff({ before, after }: { before: unknown; after: unknown }) {
+  const beforeRecord = asRecord(before);
+  const afterRecord = asRecord(after);
+  if (!beforeRecord && !afterRecord) {
+    if (before == null && after == null) {
+      return <p className="rb-platform__muted">No before or after state was recorded.</p>;
+    }
+    return (
+      <dl>
+        <Row label="Before" value={before == null ? '—' : diffValue(before)} />
+        <Row label="After" value={after == null ? '—' : diffValue(after)} />
+      </dl>
+    );
+  }
+  const keys = [
+    ...new Set([...Object.keys(beforeRecord ?? {}), ...Object.keys(afterRecord ?? {})]),
+  ];
+  const changed = keys.filter(
+    (key) => JSON.stringify(beforeRecord?.[key]) !== JSON.stringify(afterRecord?.[key]),
+  );
+  const unchanged = keys.filter((key) => !changed.includes(key));
+  const note = !beforeRecord
+    ? 'Created: there was no earlier state.'
+    : !afterRecord
+      ? 'Removed: there is no later state.'
+      : null;
+  return (
+    <>
+      {note ? <p className="rb-platform__muted">{note}</p> : null}
+      {changed.length ? (
+        <DataTable
+          caption="Changed fields"
+          rows={changed.map((key) => ({ id: key, key }))}
+          columns={[
+            { key: 'field', header: 'Field', cell: (row) => fieldLabel(row.key) },
+            {
+              key: 'before',
+              header: 'Before',
+              cell: (row) => diffValue(beforeRecord?.[row.key]),
+            },
+            { key: 'after', header: 'After', cell: (row) => diffValue(afterRecord?.[row.key]) },
+          ]}
+        />
+      ) : (
+        <p className="rb-platform__muted">The recorded states are identical.</p>
+      )}
+      {unchanged.length ? (
+        <p className="rb-platform__muted">Unchanged: {unchanged.map(fieldLabel).join(', ')}.</p>
+      ) : null}
+    </>
   );
 }
 

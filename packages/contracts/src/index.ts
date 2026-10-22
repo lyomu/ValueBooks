@@ -301,6 +301,8 @@ export const platformAuditEventSchema = z.object({
   targetType: z.string().min(1),
   targetId: z.string().nullable(),
   organizationId: z.uuid().nullable(),
+  /** Trading name, else legal name; null for changes that concern no single tenant. */
+  organizationName: z.string().nullable(),
   reason: z.string().nullable(),
   before: z.unknown(),
   after: z.unknown(),

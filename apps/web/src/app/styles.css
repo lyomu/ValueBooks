@@ -5517,6 +5517,8 @@ a.rb-nav-item:hover {
 }
 .rb-platform__row dt {
   color: hsl(var(--rb-muted-foreground));
+  /* Labels wrap between words only, even inside a drawer that breaks long values anywhere. */
+  overflow-wrap: normal;
 }
 .rb-platform__row dd {
   margin: 0;

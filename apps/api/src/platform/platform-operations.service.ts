@@ -24,6 +24,17 @@ const SCHEDULER_OVERDUE_MS = 15 * 60_000;
  */
 const SESSION_METADATA_KEYS = ['sessionId'];
 
+/** `from`/`to` are UTC calendar dates; `to` includes its whole day. */
+function occurredWithin(from?: string, to?: string) {
+  if (!from && !to) return {};
+  return {
+    occurredAt: {
+      ...(from ? { gte: new Date(`${from}T00:00:00.000Z`) } : {}),
+      ...(to ? { lt: new Date(new Date(`${to}T00:00:00.000Z`).getTime() + 86_400_000) } : {}),
+    },
+  };
+}
+
 function withoutSessionDetail(metadata: Prisma.JsonValue): Prisma.JsonValue {
   if (!metadata || typeof metadata !== 'object' || Array.isArray(metadata)) return metadata;
   return Object.fromEntries(
@@ -220,16 +231,7 @@ export class PlatformOperationsService {
       ...(query.actor
         ? { user: { email: { contains: query.actor, mode: 'insensitive' as const } } }
         : {}),
-      ...(query.from || query.to
-        ? {
-            occurredAt: {
-              ...(query.from ? { gte: new Date(`${query.from}T00:00:00.000Z`) } : {}),
-              ...(query.to
-                ? { lt: new Date(new Date(`${query.to}T00:00:00.000Z`).getTime() + 86_400_000) }
-                : {}),
-            },
-          }
-        : {}),
+      ...occurredWithin(query.from, query.to),
     };
     const [totalRows, rows] = await Promise.all([
       this.prisma.securityEvent.count({ where }),
@@ -274,6 +276,10 @@ export class PlatformOperationsService {
     const where: Prisma.PlatformAuditEventWhereInput = {
       ...(query.eventKey ? { eventKey: query.eventKey } : {}),
       ...(query.organizationId ? { organizationId: query.organizationId } : {}),
+      ...(query.actor
+        ? { actor: { email: { contains: query.actor, mode: 'insensitive' as const } } }
+        : {}),
+      ...occurredWithin(query.from, query.to),
     };
     const [totalRows, rows] = await Promise.all([
       this.prisma.platformAuditEvent.count({ where }),
@@ -294,6 +300,7 @@ export class PlatformOperationsService {
           occurredAt: true,
           actor: { select: { email: true, displayName: true } },
           platformAdmin: { select: { role: true } },
+          organization: { select: { legalName: true, tradingName: true } },
         },
       }),
     ]);
@@ -304,6 +311,9 @@ export class PlatformOperationsService {
         targetType: row.targetType,
         targetId: row.targetId,
         organizationId: row.organizationId,
+        organizationName: row.organization
+          ? (row.organization.tradingName ?? row.organization.legalName)
+          : null,
         reason: row.reason,
         before: row.before,
         after: row.after,

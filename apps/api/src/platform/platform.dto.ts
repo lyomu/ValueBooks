@@ -621,6 +621,21 @@ export class PlatformAuditSearchDto extends PlatformPageDto {
   @IsOptional()
   @IsUUID()
   organizationId?: string;
+
+  /** Part of the administrator's email address, case-insensitive. */
+  @IsOptional()
+  @IsString()
+  @MaxLength(254)
+  @Transform(trim)
+  actor?: string;
+
+  @IsOptional()
+  @Matches(ISO_DATE)
+  from?: string;
+
+  @IsOptional()
+  @Matches(ISO_DATE)
+  to?: string;
 }
 
 export class FailedJobSearchDto extends PlatformPageDto {
