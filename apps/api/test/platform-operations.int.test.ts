@@ -126,6 +126,57 @@ describe('platform operations acceptance', () => {
     expect(forbiddenMoneyKeys(data)).toEqual([]);
   });
 
+  it('filters organizations by subscription and setup state and reports last activity', async () => {
+    // A second tenant that never finishes setup.
+    const draft = await organizations.create(
+      owner,
+      { legalName: 'Unfinished Books Ltd', businessType: 'LIMITED_COMPANY', countryCode: 'KE' },
+      metadata,
+    );
+    type Listed = { id: string; memberCount: number; lastActivityAt: string | null };
+    const list = async (query: string) => {
+      const response = await harness
+        .http()
+        .get(`${API}/platform/organizations?${query}`)
+        .set('Cookie', operationsCookie)
+        .expect(200);
+      return (response.body as { data: Listed[] }).data;
+    };
+    const ids = (rows: Listed[]) => rows.map((row) => row.id).sort();
+
+    expect(ids(await list('onboarding=COMPLETE'))).toEqual([organizationId]);
+    expect(ids(await list('onboarding=INCOMPLETE'))).toEqual([draft.id]);
+
+    const unsubscribed = await harness.prisma.organization.findMany({
+      where: { subscription: { is: null } },
+      select: { id: true },
+    });
+    expect(unsubscribed.length).toBeGreaterThan(0);
+    expect(ids(await list('subscriptionStatus=NONE'))).toEqual(
+      unsubscribed.map((row) => row.id).sort(),
+    );
+    // Plan and subscription state constrain the same relation: they must combine, not replace.
+    expect(await list('subscriptionStatus=NONE&planKey=professional')).toEqual([]);
+    await harness
+      .http()
+      .get(`${API}/platform/organizations?subscriptionStatus=PAID`)
+      .set('Cookie', operationsCookie)
+      .expect(400);
+
+    const [listed] = (await list('onboarding=COMPLETE')) as [Listed];
+    const latest = await harness.prisma.auditEvent.findFirst({
+      where: { organizationId },
+      orderBy: { occurredAt: 'desc' },
+      select: { occurredAt: true },
+    });
+    expect(listed.lastActivityAt).toBe(latest?.occurredAt.toISOString() ?? null);
+    expect(listed.memberCount).toBe(
+      await harness.prisma.organizationMember.count({
+        where: { organizationId, status: 'ACTIVE' },
+      }),
+    );
+  });
+
   it('reports period comparison, growth series and attention counts honestly', async () => {
     // A stalled signup (older than 7 days, setup never finished) and a failed scheduled job, so
     // the attention queue has something real to report.

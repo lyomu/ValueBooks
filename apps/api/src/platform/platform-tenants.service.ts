@@ -39,13 +39,26 @@ export class PlatformTenantsService {
   async searchOrganizations(query: OrganizationSearchDto) {
     const page = query.page ?? 1;
     const pageSize = query.pageSize ?? DEFAULT_PAGE_SIZE;
+    // Plan and subscription state both constrain the same relation, so they are ANDed rather than
+    // spread into one `subscription` key where the second would silently replace the first.
+    const subscriptionFilters: Prisma.OrganizationWhereInput[] = [
+      // Accepts a tier ("growth") as well as an exact plan key ("growth_monthly").
+      ...(query.planKey
+        ? [{ subscription: { plan: { OR: [{ key: query.planKey }, { tierKey: query.planKey }] } } }]
+        : []),
+      ...(query.subscriptionStatus === 'NONE'
+        ? [{ subscription: { is: null } }]
+        : query.subscriptionStatus
+          ? [{ subscription: { status: query.subscriptionStatus } }]
+          : []),
+    ];
     const where: Prisma.OrganizationWhereInput = {
       ...(query.status ? { status: query.status } : {}),
       ...(query.countryCode ? { countryCode: query.countryCode } : {}),
-      // Accepts a tier ("growth") as well as an exact plan key ("growth_monthly").
-      ...(query.planKey
-        ? { subscription: { plan: { OR: [{ key: query.planKey }, { tierKey: query.planKey }] } } }
+      ...(query.onboarding
+        ? { onboardingCompletedAt: query.onboarding === 'COMPLETE' ? { not: null } : null }
         : {}),
+      ...(subscriptionFilters.length ? { AND: subscriptionFilters } : {}),
       ...(query.query
         ? {
             OR: [
@@ -97,10 +110,11 @@ export class PlatformTenantsService {
               plan: { select: { key: true, name: true, status: true } },
             },
           },
-          _count: { select: { members: true } },
+          _count: { select: { members: { where: { status: 'ACTIVE' } } } },
         },
       }),
     ]);
+    const lastActivity = await this.lastActivity(rows.map((row) => row.id));
 
     return {
       data: rows.map((row) => ({
@@ -121,6 +135,7 @@ export class PlatformTenantsService {
         complimentary: row.subscription?.complimentary ?? false,
         subscriptionStatus: row.subscription?.status ?? null,
         memberCount: row._count.members,
+        lastActivityAt: lastActivity.get(row.id) ?? null,
         createdAt: row.createdAt.toISOString(),
       })),
       pagination: { page, pageSize, totalRows },
@@ -181,6 +196,7 @@ export class PlatformTenantsService {
       createdAt: organization.createdAt.toISOString(),
       owner: organization.createdBy,
       memberCount: organization._count.members,
+      lastActivityAt: (await this.lastActivity([organization.id])).get(organization.id) ?? null,
       members: organization.members.map((member) => ({
         userId: member.user.id,
         email: member.user.email,
@@ -193,6 +209,27 @@ export class PlatformTenantsService {
       usage: await this.usage(organizationId),
       entitlements: await this.entitlements.forOrganization(organizationId),
     };
+  }
+
+  /**
+   * The latest tenant audit event per organization: the same heartbeat behind "Recently engaged"
+   * in the metric dictionary. It records state changes, not sign-ins, so a tenant that only reads
+   * its books looks idle. Only the timestamp leaves this method, never the event itself.
+   */
+  private async lastActivity(organizationIds: string[]): Promise<Map<string, string>> {
+    if (organizationIds.length === 0) return new Map();
+    const rows = await this.prisma.auditEvent.groupBy({
+      by: ['organizationId'],
+      where: { organizationId: { in: organizationIds } },
+      _max: { occurredAt: true },
+    });
+    return new Map(
+      rows.flatMap((row) =>
+        row.organizationId && row._max.occurredAt
+          ? [[row.organizationId, row._max.occurredAt.toISOString()] as const]
+          : [],
+      ),
+    );
   }
 
   /**

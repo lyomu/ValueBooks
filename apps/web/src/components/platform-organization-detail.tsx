@@ -210,6 +210,14 @@ export function PlatformOrganizationDetail({ organizationId }: { organizationId:
                   }
                 />
                 <Row label="Active members" value={detail.memberCount} />
+                <Row
+                  label="Last activity"
+                  value={
+                    detail.lastActivityAt
+                      ? new Date(detail.lastActivityAt).toLocaleString()
+                      : 'None recorded'
+                  }
+                />
               </dl>
               {!detail.onboardingCompletedAt ? (
                 <p className="rb-platform__muted">

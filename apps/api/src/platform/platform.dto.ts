@@ -67,6 +67,15 @@ export class GrantPlatformAdminDto {
   note?: string;
 }
 
+const SUBSCRIPTION_STATUSES = [
+  'TRIALING',
+  'TRIAL_EXPIRED',
+  'ACTIVE',
+  'PAST_DUE',
+  'CANCEL_SCHEDULED',
+  'CANCELLED',
+] as const;
+
 export class OrganizationSearchDto extends PlatformPageDto {
   @IsOptional()
   @IsString()
@@ -89,6 +98,16 @@ export class OrganizationSearchDto extends PlatformPageDto {
   @MaxLength(40)
   @Transform(lower)
   planKey?: string;
+
+  /** A subscription state, or NONE for organizations that have never held one. */
+  @IsOptional()
+  @IsIn([...SUBSCRIPTION_STATUSES, 'NONE'])
+  subscriptionStatus?: (typeof SUBSCRIPTION_STATUSES)[number] | 'NONE';
+
+  /** Setup finished (`onboardingCompletedAt` set) or not, independent of tenant status. */
+  @IsOptional()
+  @IsIn(['COMPLETE', 'INCOMPLETE'])
+  onboarding?: 'COMPLETE' | 'INCOMPLETE';
 
   @IsOptional()
   @Matches(ISO_DATE)

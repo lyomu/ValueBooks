@@ -135,7 +135,10 @@ export const platformOrganizationSchema = z.object({
   /** Unpaid access granted by a platform administrator; never counted as revenue. */
   complimentary: z.boolean().optional(),
   subscriptionStatus: subscriptionStatusSchema.nullable(),
+  /** Members whose membership is ACTIVE; suspended memberships are excluded. */
   memberCount: z.number().int().nonnegative(),
+  /** Latest tenant audit event (state changes, not sign-ins); null when none was ever recorded. */
+  lastActivityAt: z.iso.datetime().nullable(),
   createdAt: z.iso.datetime(),
 });
 

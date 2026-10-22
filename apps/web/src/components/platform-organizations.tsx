@@ -10,14 +10,21 @@ import {
 } from '@valuebooks/contracts';
 import {
   Badge,
+  Button,
   DataTable,
+  DataTableFilters,
   DataTablePagination,
+  DataTableSearch,
+  DataTableToolbar,
+  ErrorState,
+  Input,
   PrimarySecondaryCell,
+  Select,
   StatusBadge,
 } from '@valuebooks/ui';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
-import { useCallback, useEffect, useState, type FormEvent } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 
 import { apiRequest } from '../lib/api';
 import { platformQuery, type Paginated } from '../lib/platform';
@@ -43,18 +50,32 @@ export type OrganizationDetail = PlatformOrganization & {
   entitlements: OrganizationEntitlements;
 };
 
+const SUBSCRIPTION_FILTERS: Array<[string, string]> = [
+  ['TRIALING', 'Trialing'],
+  ['TRIAL_EXPIRED', 'Trial expired'],
+  ['ACTIVE', 'Active'],
+  ['PAST_DUE', 'Past due'],
+  ['CANCEL_SCHEDULED', 'Cancel scheduled'],
+  ['CANCELLED', 'Cancelled'],
+  ['NONE', 'Never subscribed'],
+];
+
 export function PlatformOrganizations() {
   const [rows, setRows] = useState<PlatformOrganization[] | null>(null);
-  const [totalRows, setTotalRows] = useState(0);
+  const [totalRows, setTotalRows] = useState<number | null>(null);
   const [page, setPage] = useState(1);
   // Overview drilldowns link here with a filter already chosen, e.g. ?status=SUSPENDED.
   const searchParams = useSearchParams();
   const [filters, setFilters] = useState({
     query: searchParams.get('query') ?? '',
     status: searchParams.get('status') ?? '',
+    subscriptionStatus: searchParams.get('subscriptionStatus') ?? '',
+    onboarding: searchParams.get('onboarding') ?? '',
     countryCode: searchParams.get('countryCode') ?? '',
     planKey: searchParams.get('planKey') ?? '',
   });
+  // Typed filters settle before they query; a one-letter country code is never sent.
+  const [draft, setDraft] = useState({ query: filters.query, countryCode: filters.countryCode });
   const [error, setError] = useState('');
 
   const load = useCallback(async () => {
@@ -74,139 +95,187 @@ export function PlatformOrganizations() {
     void load();
   }, [load]);
 
-  function search(event: FormEvent) {
-    event.preventDefault();
+  useEffect(() => {
+    if (draft.countryCode.length === 1) return;
+    const timer = setTimeout(() => {
+      setFilters((current) =>
+        current.query === draft.query && current.countryCode === draft.countryCode
+          ? current
+          : { ...current, ...draft },
+      );
+      setPage(1);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [draft]);
+
+  function filter(key: keyof typeof filters, value: string) {
     setPage(1);
-    void load();
+    setFilters((current) => ({ ...current, [key]: value }));
   }
+
+  const toolbar = (
+    <DataTableToolbar
+      resultLabel={
+        totalRows === null
+          ? undefined
+          : `${totalRows.toLocaleString()} organization${totalRows === 1 ? '' : 's'}`
+      }
+    >
+      <DataTableSearch
+        label="Search organizations"
+        placeholder="Name or slug"
+        value={draft.query}
+        onChange={(event) => setDraft({ ...draft, query: event.target.value })}
+      />
+      <DataTableFilters>
+        <Select
+          aria-label="Tenant status"
+          value={filters.status}
+          onChange={(event) => filter('status', event.target.value)}
+        >
+          <option value="">Any tenant status</option>
+          <option value="ACTIVE">Active</option>
+          <option value="DRAFT">In setup</option>
+          <option value="SUSPENDED">Suspended</option>
+        </Select>
+        <Select
+          aria-label="Subscription"
+          value={filters.subscriptionStatus}
+          onChange={(event) => filter('subscriptionStatus', event.target.value)}
+        >
+          <option value="">Any subscription</option>
+          {SUBSCRIPTION_FILTERS.map(([value, label]) => (
+            <option key={value} value={value}>
+              {label}
+            </option>
+          ))}
+        </Select>
+        <Select
+          aria-label="Plan"
+          value={filters.planKey}
+          onChange={(event) => filter('planKey', event.target.value)}
+        >
+          <option value="">All plans</option>
+          {OFFICIAL_PLAN_TIERS.map((tier) => (
+            <option key={tier} value={tier}>
+              {OFFICIAL_PLAN_CATALOG[tier].name}
+            </option>
+          ))}
+        </Select>
+        <Select
+          aria-label="Setup"
+          value={filters.onboarding}
+          onChange={(event) => filter('onboarding', event.target.value)}
+        >
+          <option value="">Any setup state</option>
+          <option value="COMPLETE">Setup finished</option>
+          <option value="INCOMPLETE">Setup not finished</option>
+        </Select>
+        <Input
+          aria-label="Country code"
+          className="rb-platform__country-filter"
+          value={draft.countryCode}
+          maxLength={2}
+          placeholder="Country"
+          onChange={(event) =>
+            setDraft({ ...draft, countryCode: event.target.value.toUpperCase() })
+          }
+        />
+      </DataTableFilters>
+    </DataTableToolbar>
+  );
 
   return (
     <PlatformPage
       title="Organizations"
-      description={`${totalRows.toLocaleString()} tenant${totalRows === 1 ? '' : 's'} on this deployment.`}
+      description="Every tenant on this deployment, with lifecycle, subscription and setup state kept separate."
     >
-      <form className="rb-platform__filters" onSubmit={search}>
-        <label>
-          Search
-          <input
-            value={filters.query}
-            placeholder="Name or slug"
-            onChange={(event) => setFilters({ ...filters, query: event.target.value })}
-          />
-        </label>
-        <label>
-          Status
-          <select
-            value={filters.status}
-            onChange={(event) => setFilters({ ...filters, status: event.target.value })}
-          >
-            <option value="">Any</option>
-            <option value="ACTIVE">Active</option>
-            <option value="DRAFT">In setup</option>
-            <option value="SUSPENDED">Suspended</option>
-          </select>
-        </label>
-        <label>
-          Country
-          <input
-            value={filters.countryCode}
-            maxLength={2}
-            placeholder="KE"
-            onChange={(event) =>
-              setFilters({ ...filters, countryCode: event.target.value.toUpperCase() })
-            }
-          />
-        </label>
-        <label>
-          Plan
-          <select
-            value={filters.planKey}
-            onChange={(event) => setFilters({ ...filters, planKey: event.target.value })}
-          >
-            <option value="">All plans</option>
-            {OFFICIAL_PLAN_TIERS.map((tier) => (
-              <option key={tier} value={tier}>
-                {OFFICIAL_PLAN_CATALOG[tier].name}
-              </option>
-            ))}
-          </select>
-        </label>
-        <button type="submit">Apply</button>
-      </form>
-
       {error ? (
-        <p className="rb-platform__alert" role="alert">
-          {error}
-        </p>
-      ) : null}
-
-      <DataTable
-        caption="Organizations"
-        rows={rows ?? []}
-        loading={rows === null}
-        emptyTitle="No organizations match these filters"
-        columns={[
-          {
-            key: 'organization',
-            header: 'Organization',
-            cell: (row: PlatformOrganization) => (
-              <PrimarySecondaryCell
-                primary={<Link href={`/platform/organizations/${row.id}`}>{row.name}</Link>}
-                secondary={row.slug}
-                primaryTitle={row.name}
-                secondaryTitle={row.slug}
-              />
-            ),
-          },
-          {
-            key: 'status',
-            header: 'Status',
-            cell: (row: PlatformOrganization) => <StatusBadge status={row.status} />,
-          },
-          {
-            key: 'country',
-            header: 'Country',
-            cell: (row: PlatformOrganization) => row.countryCode,
-          },
-          {
-            key: 'plan',
-            header: 'Plan',
-            cell: (row: PlatformOrganization) => {
-              const plan = describeOrganizationPlan(row);
-              return <Badge tone={plan.tone}>{plan.label}</Badge>;
+        <ErrorState
+          title="Organizations could not be loaded"
+          description="This is a loading failure, not an empty list."
+          action={
+            <Button variant="secondary" size="sm" onClick={() => void load()}>
+              Try again
+            </Button>
+          }
+        />
+      ) : (
+        <DataTable
+          caption="Organizations"
+          toolbar={toolbar}
+          rows={rows ?? []}
+          loading={rows === null}
+          emptyTitle="No organizations match these filters"
+          columns={[
+            {
+              key: 'organization',
+              header: 'Organization',
+              cell: (row: PlatformOrganization) => (
+                <PrimarySecondaryCell
+                  primary={<Link href={`/platform/organizations/${row.id}`}>{row.name}</Link>}
+                  secondary={`${row.slug} · ${row.countryCode}`}
+                  primaryTitle={row.name}
+                  secondaryTitle={row.slug}
+                />
+              ),
             },
-          },
-          {
-            key: 'members',
-            header: 'Members',
-            cell: (row: PlatformOrganization) => row.memberCount,
-            align: 'right',
-          },
-          {
-            key: 'owner',
-            header: 'Owner',
-            cell: (row: PlatformOrganization) => row.ownerEmail,
-            hideBelow: 'tablet',
-          },
-          {
-            key: 'created',
-            header: 'Created',
-            cell: (row: PlatformOrganization) => new Date(row.createdAt).toLocaleDateString(),
-            hideBelow: 'tablet',
-          },
-        ]}
+            {
+              key: 'status',
+              header: 'Status',
+              cell: (row: PlatformOrganization) => <StatusBadge status={row.status} />,
+            },
+            {
+              key: 'plan',
+              header: 'Subscription',
+              cell: (row: PlatformOrganization) => {
+                const plan = describeOrganizationPlan(row);
+                return <Badge tone={plan.tone}>{plan.label}</Badge>;
+              },
+            },
+            {
+              key: 'members',
+              header: 'Active members',
+              cell: (row: PlatformOrganization) => row.memberCount.toLocaleString(),
+              align: 'right',
+              hideBelow: 'tablet',
+            },
+            {
+              key: 'activity',
+              header: 'Last activity',
+              cell: (row: PlatformOrganization) =>
+                row.lastActivityAt ? (
+                  new Date(row.lastActivityAt).toLocaleDateString()
+                ) : (
+                  <span className="rb-table-secondary">None recorded</span>
+                ),
+            },
+            {
+              key: 'owner',
+              header: 'Owner',
+              cell: (row: PlatformOrganization) => row.ownerEmail,
+              hideBelow: 'desktop',
+            },
+            {
+              key: 'created',
+              header: 'Created',
+              cell: (row: PlatformOrganization) => new Date(row.createdAt).toLocaleDateString(),
+              hideBelow: 'desktop',
+            },
+          ]}
+        />
+      )}
+      <p className="rb-platform__muted rb-platform__footnote">
+        Last activity is the latest recorded change in the tenant&apos;s books or settings. Sign-ins
+        and read-only use are not recorded, so an idle date does not prove nobody logged in.
+      </p>
+
+      <DataTablePagination
+        page={page}
+        pageSize={25}
+        totalRows={totalRows ?? 0}
+        onPageChange={setPage}
       />
-
-      <DataTablePagination page={page} pageSize={25} totalRows={totalRows} onPageChange={setPage} />
     </PlatformPage>
-  );
-}
-
-export function Row({ label, value }: { label: string; value: string | number }) {
-  return (
-    <div className="rb-platform__row">
-      <dt>{label}</dt>
-      <dd>{typeof value === 'number' ? value.toLocaleString() : value}</dd>
-    </div>
   );
 }

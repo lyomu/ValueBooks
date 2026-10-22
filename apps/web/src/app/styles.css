@@ -5151,6 +5151,21 @@ a.rb-nav-item:hover {
 .rb-platform__tabs .rb-platform__card > * + .rb-platform__muted {
   margin-top: 0.75rem;
 }
+/* Console lists carry more filters than tenant lists; let the shared filter group wrap. */
+.rb-platform__page .rb-data-table-toolbar__filter {
+  flex-wrap: wrap;
+}
+.rb-platform__page .rb-data-table-toolbar__filter .rb-select {
+  width: auto;
+}
+.rb-platform__country-filter {
+  width: 6.5rem;
+}
+/* Methodology note under a console table. */
+.rb-platform__footnote {
+  margin-top: 0.75rem;
+  font-size: 0.8125rem;
+}
 /* AdminActionDialog (admin-action-dialog.tsx): impact, audited reason, typed confirmation. */
 .rb-admin-action {
   display: grid;
@@ -5582,7 +5597,9 @@ a.rb-nav-item:hover {
   padding-top: 1rem;
   border-top: 1px solid hsl(var(--rb-border));
 }
-.rb-platform label {
+/* Legacy console form styling. Like the raw-button rule below, it skips the shared primitives
+   (`Label`, `Input`, `Select`, `Textarea`, the table-toolbar search) and keeps (0,1,1) via :where. */
+:where(.rb-platform) label:not(.rb-label, .rb-data-table-toolbar__search) {
   display: grid;
   gap: 0.3rem;
   color: hsl(var(--rb-muted-foreground));
@@ -5595,9 +5612,9 @@ a.rb-nav-item:hover {
   gap: 0.4rem;
   min-height: 2.4rem;
 }
-.rb-platform input,
-.rb-platform select,
-.rb-platform textarea {
+:where(.rb-platform) input:not(.rb-input),
+:where(.rb-platform) select:not(.rb-select),
+:where(.rb-platform) textarea:not(.rb-textarea) {
   min-height: var(--rb-field-height);
   padding: 0 var(--rb-field-padding-x);
   color: hsl(var(--rb-field-value));
@@ -5607,13 +5624,13 @@ a.rb-nav-item:hover {
   font-size: var(--rb-field-font-size);
   font-weight: 400;
 }
-.rb-platform textarea {
+:where(.rb-platform) textarea:not(.rb-textarea) {
   width: 100%;
   padding: var(--rb-field-padding-x);
   line-height: 1.45;
   resize: vertical;
 }
-.rb-platform input[readonly] {
+:where(.rb-platform) input[readonly]:not(.rb-input) {
   color: hsl(var(--rb-muted-foreground));
   background: hsl(var(--rb-muted));
 }

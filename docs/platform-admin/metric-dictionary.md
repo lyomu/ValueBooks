@@ -41,6 +41,8 @@ Every figure on the Platform Admin overview, with its exact definition, source a
 | Reached first invoice | Distinct organizations with at least one non-draft invoice. | Counting the **existence** of an issued invoice, never its amount. |
 | Module adoption (invoicing, banking, inventory, projects, portals, automation) | Distinct organizations that have performed a qualifying action in that module, all time. | Measures whether a module has been **used**, not whether the plan entitles it. |
 | Recently engaged (30 / 90 days) | Distinct organizations with an audit event in the window. | A heartbeat proxy. The audit trail is the closest existing usage signal; it records state changes, not sign-ins. |
+| Last activity (organization list and detail) | Latest tenant `AuditEvent.occurredAt` for the organization; null shows as "None recorded". | The same heartbeat as "Recently engaged": state changes only, so read-only use and sign-ins never move it. |
+| Active members | `OrganizationMember` rows with `status = ACTIVE`; uncapped, unlike the detail's member table (first 100). | Same figure on the list and the detail. |
 
 ## Growth series
 
