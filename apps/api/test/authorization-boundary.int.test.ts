@@ -42,7 +42,6 @@ const ENDPOINTS: readonly EndpointCase[] = [
     body: {},
   },
   { method: 'get', path: 'organizations/:organizationId', permission: 'organization.view' },
-  { method: 'get', path: 'organizations/:organizationId/dashboard', permission: 'reports.view' },
   { method: 'get', path: 'organizations/:organizationId/billing', permission: 'organization.view' },
   { method: 'get', path: 'organizations/:organizationId/billing/transactions', permission: 'organization.view' },
   { method: 'get', path: 'organizations/:organizationId/billing/transactions/:transactionId/document', permission: 'organization.view' },
