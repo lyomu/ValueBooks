@@ -3943,7 +3943,9 @@ model PlatformAuditEvent {
   after           Json?         @map("after_json") @db.JsonB
   ipHash          String?       @map("ip_hash") @db.Char(64)
   occurredAt      DateTime      @default(now()) @map("occurred_at") @db.Timestamptz(6)
-  platformAdmin   PlatformAdmin @relation(fields: [platformAdminId], references: [id], onDelete: Cascade)
+  /// Restrict, not Cascade (D9): deleting a grant must not delete its audit history. The table is
+  /// also append-only in the database (trigger `platform_audit_events_append_only`).
+  platformAdmin   PlatformAdmin @relation(fields: [platformAdminId], references: [id], onDelete: Restrict)
   actor           User          @relation("PlatformAuditActor", fields: [actorUserId], references: [id], onDelete: Restrict)
   organization    Organization? @relation(fields: [organizationId], references: [id], onDelete: SetNull)
 
