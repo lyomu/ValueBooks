@@ -12,6 +12,8 @@ interface NormalizedBillingEvent {
   /** The provider's own subscription id, when the event concerns one. */
   providerSubscriptionId?: string;
   providerCustomerId?: string;
+  /** The provider plan a charge was for. Renewals carry this but not a subscription id. */
+  providerPlanCode?: string;
   /** Present on a payment event. */
   transaction?: {
     providerTransactionId: string;
@@ -229,7 +231,9 @@ export class BillingWebhookService {
         ? await this.prisma.organizationSubscription.findFirst({
             where: { billingProvider: provider, providerCustomerId: normalized.providerCustomerId, providerSubscriptionId: null },
           }) : null)
-      ?? (normalized.clientReference ? await this.findByClientReference(normalized.clientReference) : null);
+      ?? (normalized.clientReference ? await this.findByClientReference(normalized.clientReference) : null)
+      ?? (!change && !signupIntent && normalized.transaction?.status === 'SUCCESSFUL'
+        ? await this.findRenewedSubscription(provider, normalized) : null);
 
     if (!subscription) {
       this.logger.warn(
@@ -246,6 +250,17 @@ export class BillingWebhookService {
         throw new Error('Verified renewal charge does not match the current plan, currency and amount.');
       }
     }
+
+    // Paystack reports one renewal twice (`charge.success`, then `invoice.update`) under the same
+    // charge reference. The second report must not move a period the first already set unless it
+    // states the period itself.
+    const alreadyRecorded = normalized.transaction
+      ? await this.prisma.billingTransaction.findUnique({
+          where: { billingProvider_providerTransactionId: { billingProvider: provider,
+            providerTransactionId: normalized.transaction.providerTransactionId } },
+          select: { id: true },
+        })
+      : null;
 
     await this.prisma.$transaction(async (tx) => {
       const data: Parameters<typeof tx.organizationSubscription.update>[0]['data'] = {};
@@ -287,8 +302,10 @@ export class BillingWebhookService {
         const paidAt = normalized.transaction.paidAt ?? new Date();
         data.lastPaymentAt = paidAt;
         const paidPlan = change?.toPlan ?? (signupIntent?.plan ?? await tx.plan.findUniqueOrThrow({ where: { id: subscription.planId } }));
-        data.currentPeriodStart = normalized.transaction.periodStart ?? paidAt;
-        data.currentPeriodEnd = normalized.transaction.periodEnd ?? addBillingMonths(paidAt, paidPlan.billingInterval === 'YEARLY' ? 12 : 1);
+        if (!alreadyRecorded || normalized.transaction.periodEnd) {
+          data.currentPeriodStart = normalized.transaction.periodStart ?? paidAt;
+          data.currentPeriodEnd = normalized.transaction.periodEnd ?? addBillingMonths(paidAt, paidPlan.billingInterval === 'YEARLY' ? 12 : 1);
+        }
         // A successful payment is itself proof of an active, paid subscription — this is the
         // "verified payment, not a redirect" activation the spec requires (Section 7).
         data.status = 'ACTIVE';
@@ -395,6 +412,25 @@ export class BillingWebhookService {
       await this.notices.notify({ organizationId: subscription.organizationId, eventKey: message.key,
         sourceId: noticeSource, subject: message.subject, body: message.body }).catch((error) => this.logger.error('Billing notice queue failed', error));
     }
+  }
+
+  /**
+   * A renewal `charge.success` names the customer and the plan but not the subscription (D12).
+   * It is applied only to the one already-linked subscription of that customer on that plan; when
+   * several fit, the event fails rather than guess which organization paid.
+   */
+  private async findRenewedSubscription(provider: BillingProviderName, normalized: NormalizedBillingEvent) {
+    if (!normalized.providerCustomerId || !normalized.providerPlanCode) return null;
+    const candidates = await this.prisma.organizationSubscription.findMany({
+      where: { billingProvider: provider, providerCustomerId: normalized.providerCustomerId,
+        providerSubscriptionId: { not: null }, plan: { providerPriceId: normalized.providerPlanCode } },
+      take: 2,
+    });
+    if (candidates.length > 1) {
+      throw new Error(`Renewal charge for customer ${normalized.providerCustomerId} on plan ${normalized.providerPlanCode} ` +
+        'matches more than one subscription; not applied. Resolve it from the subscription record.');
+    }
+    return candidates[0] ?? null;
   }
 
   private async findByClientReference(clientReference: string) {
