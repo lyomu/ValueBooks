@@ -1848,24 +1848,13 @@ FORM: Wave-like breathing room with a QuickBooks-scale menu, alternating proof, 
 .mk-legal__hero {
   padding-bottom: clamp(2.5rem, 5vw, 4rem);
 }
-.mk-legal__draft {
-  display: inline-block;
-  margin: 0 0 1.25rem;
-  padding: 0.4rem 0.7rem;
-  color: hsl(30 69% 24%);
-  background: hsl(40 100% 92%);
-  border: 1px solid hsl(40 85% 69%);
-  border-radius: 0.45rem;
-  font-size: 0.85rem;
-  font-weight: 700;
-}
 .mk-legal__hero h1 {
-  max-width: 14ch;
+  max-width: 28ch;
   margin: 0.65rem 0 1rem;
   color: var(--mk-ink);
-  font-size: clamp(2.75rem, 6vw, 4.7rem);
-  line-height: 1.02;
-  letter-spacing: -0.05em;
+  font-size: var(--mk-marketing-hero-heading-size);
+  line-height: 1.12;
+  letter-spacing: var(--mk-marketing-heading-tracking);
   text-wrap: balance;
 }
 .mk-legal__hero > p:last-child {
