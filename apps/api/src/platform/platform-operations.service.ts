@@ -17,6 +17,19 @@ import type {
 const DEFAULT_PAGE_SIZE = 25;
 /** A job due for longer than this is overdue: the scheduler is not picking work up. */
 const SCHEDULER_OVERDUE_MS = 15 * 60_000;
+/**
+ * Security event metadata that identifies a sign-in session. It is not the session token, but it
+ * is session detail, so only superadmins see it (master plan §14.1). The network hash is never
+ * returned at all.
+ */
+const SESSION_METADATA_KEYS = ['sessionId'];
+
+function withoutSessionDetail(metadata: Prisma.JsonValue): Prisma.JsonValue {
+  if (!metadata || typeof metadata !== 'object' || Array.isArray(metadata)) return metadata;
+  return Object.fromEntries(
+    Object.entries(metadata).filter(([key]) => !SESSION_METADATA_KEYS.includes(key)),
+  );
+}
 
 /**
  * Operational visibility across every tenant: queue health, failed scheduled work, the security
@@ -196,7 +209,7 @@ export class PlatformOperationsService {
     return result;
   }
 
-  async securityEvents(query: SecurityEventSearchDto) {
+  async securityEvents(actor: PlatformContext, query: SecurityEventSearchDto) {
     const page = query.page ?? 1;
     const pageSize = query.pageSize ?? DEFAULT_PAGE_SIZE;
     const where: Prisma.SecurityEventWhereInput = {
@@ -204,6 +217,9 @@ export class PlatformOperationsService {
       ...(query.severity ? { severity: query.severity } : {}),
       ...(query.organizationId ? { organizationId: query.organizationId } : {}),
       ...(query.userId ? { userId: query.userId } : {}),
+      ...(query.actor
+        ? { user: { email: { contains: query.actor, mode: 'insensitive' as const } } }
+        : {}),
       ...(query.from || query.to
         ? {
             occurredAt: {
@@ -239,7 +255,7 @@ export class PlatformOperationsService {
         eventKey: row.eventKey,
         severity: row.severity,
         occurredAt: row.occurredAt.toISOString(),
-        metadata: row.metadata,
+        metadata: actor.role === 'SUPERADMIN' ? row.metadata : withoutSessionDetail(row.metadata),
         userId: row.user?.id ?? null,
         userEmail: row.user?.email ?? null,
         organizationId: row.organization?.id ?? null,

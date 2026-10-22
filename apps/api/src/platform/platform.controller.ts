@@ -506,8 +506,8 @@ export class PlatformController {
 
   @Get('security-events')
   @RequirePlatformRole('SUPPORT')
-  async securityEvents(@Query() query: SecurityEventSearchDto) {
-    return this.operations.securityEvents(query);
+  async securityEvents(@Query() query: SecurityEventSearchDto, @Req() request: PlatformRequest) {
+    return this.operations.securityEvents(request.platform, query);
   }
 
   @Get('audit')

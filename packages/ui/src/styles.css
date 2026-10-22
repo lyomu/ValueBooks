@@ -808,6 +808,19 @@ svg.lucide {
   min-width: 10rem;
 }
 
+/* A visible label kept together with its filter control when the toolbar wraps. */
+.rb-data-table-toolbar__field {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--rb-space-2);
+}
+
+/* Date range filters keep their natural width instead of the field default of 100%. */
+.rb-data-table-toolbar__filter .rb-input[type='date'] {
+  width: auto;
+  min-width: 9.5rem;
+}
+
 .rb-data-table-toolbar__filter .rb-label {
   color: inherit;
   font-size: 0.8125rem;
@@ -1153,6 +1166,10 @@ svg.lucide {
 .rb-drawer--right {
   right: 0;
   animation-name: rb-drawer-right-in;
+}
+
+.rb-drawer--wide {
+  width: min(28rem, 92vw);
 }
 
 .rb-dropdown__content {
@@ -1681,6 +1698,9 @@ svg.lucide {
   height: 100%;
   /* Full height for the surface, but short content stays packed at the top, not spread out. */
   align-content: start;
+  /* Long ids, emails and timestamps wrap inside the drawer instead of widening it. */
+  grid-template-columns: minmax(0, 1fr);
+  overflow-wrap: anywhere;
   padding: var(--rb-space-5);
   overflow-y: auto;
   color: hsl(var(--rb-foreground));

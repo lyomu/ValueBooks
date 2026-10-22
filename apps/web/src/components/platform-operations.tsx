@@ -12,12 +12,16 @@ import {
   Button,
   CardSkeleton,
   DataTable,
+  DataTableFilterField,
   DataTableFilters,
   DataTablePagination,
+  DataTableSearch,
   DataTableToolbar,
   Dialog,
   DrawerContent,
   ErrorState,
+  Input,
+  Label,
   PrimarySecondaryCell,
   Select,
   StatusBadge,
@@ -28,7 +32,7 @@ import {
 } from '@valuebooks/ui';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
-import { useCallback, useEffect, useMemo, useState, type FormEvent } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import { apiRequest } from '../lib/api';
 import {
@@ -383,6 +387,7 @@ export function PlatformJobs() {
         <Dialog open onOpenChange={(open) => (open ? undefined : setInspecting(null))}>
           <DrawerContent
             side="right"
+            size="wide"
             title={handlerLabel(inspecting.handler)}
             description={`${inspecting.organizationName} · occurrence ${inspecting.occurrenceKey}`}
           >
@@ -494,131 +499,383 @@ function QueueFailures({ queue }: { queue: QueueKey }) {
   );
 }
 
+/**
+ * Readable names for security event keys (master plan §14.1), grouped as the filter shows them.
+ * Unknown keys still appear, as the key made readable; the raw key always stays visible.
+ */
+const SECURITY_EVENT_GROUPS: Array<{ label: string; events: Record<string, string> }> = [
+  {
+    label: 'Sign-in and account security',
+    events: {
+      'auth.login_succeeded': 'Signed in',
+      'auth.login_failed': 'Failed sign-in attempt',
+      'auth.mfa_challenge_issued': 'Sign-in code sent',
+      'auth.mfa_login_succeeded': 'Signed in with a sign-in code',
+      'auth.mfa_verification_failed': 'Wrong sign-in code entered',
+      'auth.mfa_step_up_succeeded': 'Identity re-confirmed with a code',
+      'auth.mfa_enabled': 'Email sign-in codes turned on',
+      'auth.mfa_disabled': 'Email sign-in codes turned off',
+      'auth.password_reset': 'Password reset',
+      'auth.signup': 'Account created',
+      'auth.signup_email_verified': 'Email verified during sign-up',
+      'auth.email_verified': 'Email address verified',
+      'auth.bootstrap_verified': 'Account provisioned by system setup',
+    },
+  },
+  {
+    label: 'Team access',
+    events: {
+      'organization.invitation_sent': 'Invitation sent',
+      'organization.invitation_accepted': 'Invitation accepted',
+      'organization.invitation_revoked': 'Invitation revoked',
+      'organization.member_updated': 'Member role or status changed',
+      'organization.member_removed': 'Member removed',
+    },
+  },
+  {
+    label: 'Organization and books activity',
+    events: {
+      'organization.created': 'Organization created',
+      'organization.finalized': 'Organization setup completed',
+      'organization.section_updated': 'Organization settings changed',
+      'billing.trial_started': 'Trial started',
+      'currency.base_changed': 'Base currency changed',
+      'currency.enabled': 'Currency enabled',
+      'currency.disabled': 'Currency disabled',
+      'currency.exchange_rate_created': 'Exchange rate added',
+      'currency.exchange_rate_updated': 'Exchange rate changed',
+      'ledger.account_created': 'Ledger account created',
+      'ledger.account_updated': 'Ledger account changed',
+      'ledger.account_archived': 'Ledger account archived',
+      'ledger.journal_posted': 'Journal posted',
+      'ledger.journal_reversed': 'Journal reversed',
+      'numbering.document_config_updated': 'Document numbering changed',
+      'numbering.journal_config_updated': 'Journal numbering changed',
+      'periods.fiscal_year_created': 'Fiscal year created',
+      'periods.period_closed': 'Period closed',
+      'periods.period_locked': 'Period locked',
+      'periods.period_reopened': 'Period reopened',
+      'periods.period_unlocked': 'Period unlocked',
+      'tax.code_created': 'Tax code created',
+      'tax.code_updated': 'Tax code changed',
+      'tax.code_archived': 'Tax code archived',
+      'tax.rate_added': 'Tax rate added',
+    },
+  },
+];
+const SECURITY_EVENT_LABEL: Record<string, string> = Object.fromEntries(
+  SECURITY_EVENT_GROUPS.flatMap((group) => Object.entries(group.events)),
+);
+const securityEventLabel = (key: string) => SECURITY_EVENT_LABEL[key] ?? readable(key);
+
+const SEVERITIES = [
+  ['INFO', 'Info'],
+  ['WARNING', 'Warning'],
+  ['ERROR', 'Error'],
+  ['CRITICAL', 'Critical'],
+] as const;
+
+/** Labels for recorded detail fields. Minor-unit amounts say so; they are never shown as money. */
+const METADATA_LABEL: Record<string, string> = {
+  sessionId: 'Session record',
+  debitMinor: 'Debit (minor units)',
+  creditMinor: 'Credit (minor units)',
+};
+const metadataLabel = (key: string) =>
+  METADATA_LABEL[key] ?? readable(key.replace(/([a-z])([A-Z])/g, '$1 $2').toLowerCase());
+const metadataValue = (value: unknown) =>
+  typeof value === 'string' ? value : value === null ? '—' : JSON.stringify(value);
+
+const EMPTY_SECURITY_FILTERS = { eventKey: '', severity: '', actor: '', from: '', to: '' };
+
 export function PlatformSecurityEvents() {
+  const { session } = usePlatformSession();
+  const seesSessionDetail = session?.role === 'SUPERADMIN';
   const [rows, setRows] = useState<PlatformSecurityEvent[] | null>(null);
+  const [failed, setFailed] = useState(false);
   const [totalRows, setTotalRows] = useState(0);
   const [page, setPage] = useState(1);
-  const [filters, setFilters] = useState({ eventKey: '', severity: '', from: '', to: '' });
-  const [error, setError] = useState('');
+  const [filters, setFilters] = useState(EMPTY_SECURITY_FILTERS);
+  const [actorInput, setActorInput] = useState('');
+  const [inspecting, setInspecting] = useState<PlatformSecurityEvent | null>(null);
   const scope = useLinkedScope();
 
-  const load = useCallback(async () => {
-    setError('');
-    try {
-      const response = await apiRequest<Paginated<PlatformSecurityEvent>>(
-        `/platform/security-events${platformQuery({ ...filters, ...scope.query, page })}`,
-      );
-      setRows(response.data);
-      setTotalRows(response.pagination.totalRows);
-    } catch {
-      setError('Security events could not be loaded.');
-    }
-  }, [filters, page, scope.query]);
-
+  // The account search is typed; query once typing pauses rather than on every keystroke.
   useEffect(() => {
-    void load();
-  }, [load]);
+    const actor = actorInput.trim();
+    const timer = window.setTimeout(() => {
+      setFilters((current) => (current.actor === actor ? current : { ...current, actor }));
+      setPage((current) => (filters.actor === actor ? current : 1));
+    }, 300);
+    return () => window.clearTimeout(timer);
+  }, [actorInput, filters.actor]);
 
-  function search(event: FormEvent) {
-    event.preventDefault();
+  const load = useCallback(() => {
+    setFailed(false);
+    setRows(null);
+    apiRequest<Paginated<PlatformSecurityEvent>>(
+      `/platform/security-events${platformQuery({ ...filters, ...scope.query, page })}`,
+    )
+      .then((response) => {
+        setRows(response.data);
+        setTotalRows(response.pagination.totalRows);
+      })
+      .catch(() => setFailed(true));
+  }, [filters, page, scope.query]);
+  useEffect(() => load(), [load]);
+
+  function setFilter(key: keyof typeof EMPTY_SECURITY_FILTERS, value: string) {
+    setFilters((current) => ({ ...current, [key]: value }));
     setPage(1);
-    void load();
   }
+  const filtered = Object.values(filters).some(Boolean);
 
   return (
     <PlatformPage
       title="Security events"
-      description="Across every tenant, plus events with no tenant at all."
+      description="Sign-ins, account security and team access across every tenant, plus events that belong to no tenant. This is evidence: nothing here can be edited or deleted."
     >
       <LinkedScopeNote scope={scope} href="/platform/security" />
-      <form className="rb-platform__filters" onSubmit={search}>
-        <label>
-          Event key
-          <input
-            value={filters.eventKey}
-            placeholder="auth.login_failed"
-            onChange={(event) => setFilters({ ...filters, eventKey: event.target.value })}
+      {failed ? (
+        <ErrorState
+          title="Security events could not be loaded"
+          description="This is a loading failure, not an empty log."
+          action={
+            <Button variant="secondary" size="sm" onClick={load}>
+              Try again
+            </Button>
+          }
+        />
+      ) : (
+        <>
+          <DataTable
+            caption="Security events"
+            toolbar={
+              <DataTableToolbar
+                resultLabel={rows ? `${totalRows.toLocaleString()} events` : undefined}
+              >
+                <DataTableSearch
+                  label="Search by account email"
+                  placeholder="Account email"
+                  value={actorInput}
+                  onChange={(event) => setActorInput(event.target.value)}
+                />
+                <DataTableFilters>
+                  <Select
+                    aria-label="Event"
+                    value={filters.eventKey}
+                    onChange={(event) => setFilter('eventKey', event.target.value)}
+                  >
+                    <option value="">Any event</option>
+                    {SECURITY_EVENT_GROUPS.map((group) => (
+                      <optgroup key={group.label} label={group.label}>
+                        {Object.entries(group.events).map(([key, label]) => (
+                          <option key={key} value={key}>
+                            {label}
+                          </option>
+                        ))}
+                      </optgroup>
+                    ))}
+                  </Select>
+                  <Select
+                    aria-label="Severity"
+                    value={filters.severity}
+                    onChange={(event) => setFilter('severity', event.target.value)}
+                  >
+                    <option value="">Any severity</option>
+                    {SEVERITIES.map(([value, label]) => (
+                      <option key={value} value={value}>
+                        {label}
+                      </option>
+                    ))}
+                  </Select>
+                  <DataTableFilterField>
+                    <Label htmlFor="security-from">From</Label>
+                    <Input
+                      id="security-from"
+                      type="date"
+                      title="UTC date"
+                      value={filters.from}
+                      max={filters.to || undefined}
+                      onChange={(event) => setFilter('from', event.target.value)}
+                    />
+                  </DataTableFilterField>
+                  <DataTableFilterField>
+                    <Label htmlFor="security-to">To</Label>
+                    <Input
+                      id="security-to"
+                      type="date"
+                      title="UTC date"
+                      value={filters.to}
+                      min={filters.from || undefined}
+                      onChange={(event) => setFilter('to', event.target.value)}
+                    />
+                  </DataTableFilterField>
+                  {filtered || actorInput ? (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => {
+                        setFilters(EMPTY_SECURITY_FILTERS);
+                        setActorInput('');
+                        setPage(1);
+                      }}
+                    >
+                      Clear
+                    </Button>
+                  ) : null}
+                </DataTableFilters>
+              </DataTableToolbar>
+            }
+            rows={rows ?? []}
+            loading={rows === null}
+            emptyTitle={filtered ? 'No events match these filters' : 'No security events recorded'}
+            columns={[
+              {
+                key: 'event',
+                header: 'Event',
+                cell: (row: PlatformSecurityEvent) => (
+                  <PrimarySecondaryCell
+                    primary={securityEventLabel(row.eventKey)}
+                    secondary={row.eventKey}
+                    primaryTitle={row.eventKey}
+                  />
+                ),
+              },
+              {
+                key: 'severity',
+                header: 'Severity',
+                cell: (row: PlatformSecurityEvent) => <StatusBadge status={row.severity} />,
+              },
+              {
+                key: 'account',
+                header: 'Account',
+                cell: (row: PlatformSecurityEvent) =>
+                  row.userId ? (
+                    <Link href={`/platform/users/${row.userId}`}>{row.userEmail}</Link>
+                  ) : (
+                    <span className="rb-platform__muted">No account</span>
+                  ),
+                hideBelow: 'tablet',
+              },
+              {
+                key: 'organization',
+                header: 'Organization',
+                cell: (row: PlatformSecurityEvent) =>
+                  row.organizationId ? (
+                    <Link href={`/platform/organizations/${row.organizationId}`}>
+                      {row.organizationName}
+                    </Link>
+                  ) : (
+                    <span className="rb-platform__muted">Platform-wide</span>
+                  ),
+                hideBelow: 'tablet',
+              },
+              {
+                key: 'when',
+                header: 'When',
+                cell: (row: PlatformSecurityEvent) => (
+                  <span title={row.occurredAt}>{dateTime(row.occurredAt)}</span>
+                ),
+                hideBelow: 'tablet',
+              },
+              {
+                key: 'action',
+                header: <span className="rb-visually-hidden">Actions</span>,
+                align: 'right',
+                cell: (row: PlatformSecurityEvent) => (
+                  <Button variant="ghost" size="sm" onClick={() => setInspecting(row)}>
+                    Details
+                  </Button>
+                ),
+              },
+            ]}
           />
-        </label>
-        <label>
-          Severity
-          <select
-            value={filters.severity}
-            onChange={(event) => setFilters({ ...filters, severity: event.target.value })}
-          >
-            <option value="">Any</option>
-            <option value="INFO">Info</option>
-            <option value="WARN">Warn</option>
-            <option value="ERROR">Error</option>
-            <option value="CRITICAL">Critical</option>
-          </select>
-        </label>
-        <label>
-          From
-          <input
-            type="date"
-            value={filters.from}
-            onChange={(event) => setFilters({ ...filters, from: event.target.value })}
+          <DataTablePagination
+            page={page}
+            pageSize={25}
+            totalRows={totalRows}
+            onPageChange={setPage}
           />
-        </label>
-        <label>
-          To
-          <input
-            type="date"
-            value={filters.to}
-            onChange={(event) => setFilters({ ...filters, to: event.target.value })}
-          />
-        </label>
-        <button type="submit">Apply</button>
-      </form>
+        </>
+      )}
 
-      {error ? (
-        <p className="rb-platform__alert" role="alert">
-          {error}
-        </p>
+      {inspecting ? (
+        <Dialog open onOpenChange={(open) => (open ? undefined : setInspecting(null))}>
+          <SecurityEventDetail event={inspecting} seesSessionDetail={seesSessionDetail} />
+        </Dialog>
       ) : null}
-
-      <DataTable
-        caption="Security events"
-        rows={rows ?? []}
-        loading={rows === null}
-        emptyTitle="No events match these filters"
-        columns={[
-          { key: 'event', header: 'Event', cell: (row: PlatformSecurityEvent) => row.eventKey },
-          {
-            key: 'severity',
-            header: 'Severity',
-            cell: (row: PlatformSecurityEvent) => <StatusBadge status={row.severity} />,
-          },
-          {
-            key: 'user',
-            header: 'User',
-            cell: (row: PlatformSecurityEvent) => row.userEmail ?? '—',
-            hideBelow: 'tablet',
-          },
-          {
-            key: 'organization',
-            header: 'Organization',
-            cell: (row: PlatformSecurityEvent) =>
-              row.organizationId ? (
-                <Link href={`/platform/organizations/${row.organizationId}`}>
-                  {row.organizationName}
-                </Link>
-              ) : (
-                '—'
-              ),
-          },
-          {
-            key: 'when',
-            header: 'When',
-            cell: (row: PlatformSecurityEvent) => new Date(row.occurredAt).toLocaleString(),
-            hideBelow: 'tablet',
-          },
-        ]}
-      />
-
-      <DataTablePagination page={page} pageSize={25} totalRows={totalRows} onPageChange={setPage} />
     </PlatformPage>
+  );
+}
+
+function SecurityEventDetail({
+  event,
+  seesSessionDetail,
+}: {
+  event: PlatformSecurityEvent;
+  seesSessionDetail: boolean;
+}) {
+  const label = securityEventLabel(event.eventKey);
+  const details =
+    event.metadata && typeof event.metadata === 'object' && !Array.isArray(event.metadata)
+      ? Object.entries(event.metadata as Record<string, unknown>)
+      : [];
+  return (
+    <DrawerContent side="right" size="wide" title={label} description={event.eventKey}>
+      <div className="rb-explain-panel rb-explain-panel--surface">
+        <h2>{label}</h2>
+        <p className="rb-platform__muted">{event.eventKey}</p>
+        <dl>
+          <Row label="Severity" value={readable(event.severity.toLowerCase())} />
+          <Row label="When (UTC)" value={event.occurredAt} />
+          <Row label="When (your time)" value={dateTime(event.occurredAt)} />
+          <Row label="Account" value={event.userEmail ?? 'No account'} />
+          <Row label="Organization" value={event.organizationName ?? 'Platform-wide'} />
+          <Row label="Event ID" value={event.id} />
+        </dl>
+        <h3>Recorded details</h3>
+        {details.length ? (
+          <dl>
+            {details.map(([key, value]) => (
+              <Row key={key} label={metadataLabel(key)} value={metadataValue(value)} />
+            ))}
+          </dl>
+        ) : (
+          <p className="rb-platform__muted">No further details were recorded.</p>
+        )}
+        <p className="rb-platform__muted">
+          {seesSessionDetail
+            ? 'Network addresses are stored only as a hash and are not shown.'
+            : 'Session details are shown to superadmins only. Network addresses are stored only as a hash and are not shown.'}
+        </p>
+        <h3>Related</h3>
+        <ul>
+          {event.userId ? (
+            <li>
+              <Link href={`/platform/security?userId=${event.userId}`}>
+                All events for this account
+              </Link>
+            </li>
+          ) : null}
+          {event.organizationId ? (
+            <>
+              <li>
+                <Link href={`/platform/security?organizationId=${event.organizationId}`}>
+                  All events for this organization
+                </Link>
+              </li>
+              <li>
+                <Link href={`/platform/audit?organizationId=${event.organizationId}`}>
+                  Platform audit for this organization
+                </Link>
+              </li>
+            </>
+          ) : null}
+          {event.userId || event.organizationId ? null : <li>None: no account or tenant.</li>}
+        </ul>
+      </div>
+    </DrawerContent>
   );
 }
 

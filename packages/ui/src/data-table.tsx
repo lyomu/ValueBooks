@@ -85,6 +85,11 @@ export function DataTableSearch({
   );
 }
 
+/** One labelled control inside `DataTableFilters`; the label stays with it when the row wraps. */
+export function DataTableFilterField({ className, ...props }: HTMLAttributes<HTMLDivElement>) {
+  return <div className={cn('rb-data-table-toolbar__field', className)} {...props} />;
+}
+
 /** Standard filter group for listing and report toolbars. */
 export function DataTableFilters({
   children,

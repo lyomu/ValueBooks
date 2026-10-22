@@ -582,9 +582,10 @@ export class SecurityEventSearchDto extends PlatformPageDto {
   @Transform(trim)
   eventKey?: string;
 
+  /** Emitters write `WARNING`; `WARN` is still accepted so older links keep validating. */
   @IsOptional()
-  @IsIn(['INFO', 'WARN', 'ERROR', 'CRITICAL'])
-  severity?: 'INFO' | 'WARN' | 'ERROR' | 'CRITICAL';
+  @IsIn(['INFO', 'WARNING', 'WARN', 'ERROR', 'CRITICAL'])
+  severity?: 'INFO' | 'WARNING' | 'WARN' | 'ERROR' | 'CRITICAL';
 
   @IsOptional()
   @IsUUID()
@@ -593,6 +594,13 @@ export class SecurityEventSearchDto extends PlatformPageDto {
   @IsOptional()
   @IsUUID()
   userId?: string;
+
+  /** Part of the affected account's email address, case-insensitive. */
+  @IsOptional()
+  @IsString()
+  @MaxLength(254)
+  @Transform(trim)
+  actor?: string;
 
   @IsOptional()
   @Matches(ISO_DATE)
