@@ -132,6 +132,8 @@ export const platformOrganizationSchema = z.object({
   planName: z.string().nullable(),
   /** RETIRED/DRAFT here means the organization sits on a legacy tier that needs review. */
   planStatus: planStatusSchema.nullable(),
+  /** Unpaid access granted by a platform administrator; never counted as revenue. */
+  complimentary: z.boolean().optional(),
   subscriptionStatus: subscriptionStatusSchema.nullable(),
   memberCount: z.number().int().nonnegative(),
   createdAt: z.iso.datetime(),
@@ -4183,6 +4185,27 @@ export const OFFICIAL_ENTITLEMENT_KEYS = [
 ] as const;
 export type OfficialEntitlementKey = (typeof OFFICIAL_ENTITLEMENT_KEYS)[number];
 
+/** On/off capabilities the catalog sells (seeded as `<key>` entitlements with a NULL limit). */
+export const OFFICIAL_FEATURE_KEYS = [
+  'recurring_invoices.enabled',
+  'manual_journals.enabled',
+  'bank_reconciliation.enabled',
+  'multi_currency.enabled',
+  'stock_tracking.enabled',
+  'multiple_warehouses.enabled',
+  'timesheets.enabled',
+  'custom_roles.enabled',
+  'cash_flow_reporting.enabled',
+  'advanced_financial_reports.enabled',
+] as const;
+export type OfficialFeatureKey = (typeof OFFICIAL_FEATURE_KEYS)[number];
+
+const features = (enabled: readonly OfficialFeatureKey[]): Record<OfficialFeatureKey, boolean> =>
+  Object.fromEntries(OFFICIAL_FEATURE_KEYS.map((key) => [key, enabled.includes(key)])) as Record<
+    OfficialFeatureKey,
+    boolean
+  >;
+
 export type OfficialPlan = {
   tierKey: OfficialPlanTier;
   name: string;
@@ -4192,6 +4215,7 @@ export type OfficialPlan = {
   yearlyPriceMinor: number;
   mostPopular: boolean;
   limits: Record<OfficialEntitlementKey, number | null>;
+  features: Record<OfficialFeatureKey, boolean>;
 };
 
 export const OFFICIAL_PLAN_CATALOG: Record<OfficialPlanTier, OfficialPlan> = {
@@ -4221,6 +4245,7 @@ export const OFFICIAL_PLAN_CATALOG: Record<OfficialPlanTier, OfficialPlan> = {
       'sales_orders.enabled': 0,
       'approval_workflows.enabled': 0,
     },
+    features: features([]),
   },
   growth: {
     tierKey: 'growth',
@@ -4248,6 +4273,13 @@ export const OFFICIAL_PLAN_CATALOG: Record<OfficialPlanTier, OfficialPlan> = {
       'sales_orders.enabled': 50,
       'approval_workflows.enabled': 0,
     },
+    features: features([
+      'recurring_invoices.enabled',
+      'manual_journals.enabled',
+      'bank_reconciliation.enabled',
+      'stock_tracking.enabled',
+      'cash_flow_reporting.enabled',
+    ]),
   },
   professional: {
     tierKey: 'professional',
@@ -4275,6 +4307,17 @@ export const OFFICIAL_PLAN_CATALOG: Record<OfficialPlanTier, OfficialPlan> = {
       'sales_orders.enabled': null,
       'approval_workflows.enabled': 0,
     },
+    features: features([
+      'recurring_invoices.enabled',
+      'manual_journals.enabled',
+      'bank_reconciliation.enabled',
+      'multi_currency.enabled',
+      'stock_tracking.enabled',
+      'multiple_warehouses.enabled',
+      'timesheets.enabled',
+      'cash_flow_reporting.enabled',
+      'advanced_financial_reports.enabled',
+    ]),
   },
   advanced: {
     tierKey: 'advanced',
@@ -4302,6 +4345,7 @@ export const OFFICIAL_PLAN_CATALOG: Record<OfficialPlanTier, OfficialPlan> = {
       'sales_orders.enabled': null,
       'approval_workflows.enabled': null,
     },
+    features: features([...OFFICIAL_FEATURE_KEYS]),
   },
 };
 
@@ -4330,8 +4374,9 @@ export function describeOrganizationPlan(input: {
   planName: string | null;
   planStatus: PlanStatus | null;
   subscriptionStatus: SubscriptionStatus | null;
+  complimentary?: boolean;
 }): { label: string; tone: OrganizationPlanTone } {
-  const { planName, planStatus, subscriptionStatus } = input;
+  const { planName, planStatus, subscriptionStatus, complimentary } = input;
   if (!subscriptionStatus) return { label: 'Not subscribed', tone: 'neutral' };
   if (planStatus && planStatus !== 'ACTIVE') {
     return { label: `Legacy — review${planName ? ` (${planName})` : ''}`, tone: 'warning' };
@@ -4349,6 +4394,8 @@ export function describeOrganizationPlan(input: {
     case 'CANCELLED':
       return { label: `${name} · Cancelled`, tone: 'neutral' };
     case 'ACTIVE':
-      return { label: name, tone: 'success' };
+      return complimentary
+        ? { label: `${name} · Complimentary`, tone: 'info' }
+        : { label: name, tone: 'success' };
   }
 }

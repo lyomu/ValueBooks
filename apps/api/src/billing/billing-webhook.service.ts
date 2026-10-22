@@ -293,6 +293,8 @@ export class BillingWebhookService {
         // "verified payment, not a redirect" activation the spec requires (Section 7).
         data.status = 'ACTIVE';
         data.pastDueSince = null;
+        // A verified payment turns any complimentary grant into an ordinary paid subscription.
+        data.complimentary = false;
       }
       if (Object.keys(data).length > 0) {
         await tx.organizationSubscription.update({ where: { id: subscription.id }, data });

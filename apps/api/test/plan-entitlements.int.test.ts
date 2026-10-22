@@ -3,10 +3,12 @@ import { resolve } from 'node:path';
 
 import {
   OFFICIAL_ENTITLEMENT_KEYS,
+  OFFICIAL_FEATURE_KEYS,
   OFFICIAL_PLAN_CATALOG,
   OFFICIAL_PLAN_TIERS,
   OFFICIAL_TRIAL,
   type OfficialEntitlementKey,
+  type OfficialFeatureKey,
   type OfficialPlanTier,
 } from '@valuebooks/contracts';
 import { Client } from 'pg';
@@ -16,6 +18,7 @@ import { UsageMeteringService } from '../src/billing/usage-metering.service.js';
 import { OrganizationAccessService } from '../src/organizations/organization-access.service.js';
 import { OrganizationService } from '../src/organizations/organization.service.js';
 import type { PlatformContext } from '../src/platform/platform-context.js';
+import { PlatformBillingService } from '../src/platform/platform-billing.service.js';
 import { PlatformTenantsService } from '../src/platform/platform-tenants.service.js';
 import { createTestHarness, type TestHarness } from './support/app.js';
 import { apiRoot, testRuntimeDatabaseUrl } from './support/database.js';
@@ -25,10 +28,17 @@ import { apiRoot, testRuntimeDatabaseUrl } from './support/database.js';
  * `@valuebooks/contracts` as `OFFICIAL_PLAN_CATALOG`; this spec proves the migrations produce it,
  * resolved through the real `UsageMeteringService`. `null` = unlimited, `0` = not included.
  */
-const KEYS = OFFICIAL_ENTITLEMENT_KEYS;
-type Key = OfficialEntitlementKey;
+/** Quantitative limits plus on/off features; an enabled feature resolves to null (no cap). */
+const KEYS = [...OFFICIAL_ENTITLEMENT_KEYS, ...OFFICIAL_FEATURE_KEYS] as const;
+type Key = OfficialEntitlementKey | OfficialFeatureKey;
 const MATRIX = Object.fromEntries(
-  OFFICIAL_PLAN_TIERS.map((tier) => [tier, OFFICIAL_PLAN_CATALOG[tier].limits]),
+  OFFICIAL_PLAN_TIERS.map((tier) => {
+    const plan = OFFICIAL_PLAN_CATALOG[tier];
+    const features = Object.fromEntries(
+      OFFICIAL_FEATURE_KEYS.map((key) => [key, plan.features[key] ? null : 0]),
+    );
+    return [tier, { ...plan.limits, ...features }];
+  }),
 ) as Record<OfficialPlanTier, Record<Key, number | null>>;
 
 /** The trial runs on Professional with a reduced AI allowance (master plan §4.3). */
@@ -223,7 +233,7 @@ describe('official plan catalog entitlements', () => {
         tenants.assignPlan(
           await actor(),
           organizationId,
-          { planId: retired.id, reason: 'spec' },
+          { planId: retired.id, reason: 'Retired plan assignment check' },
           null,
         ),
       ).rejects.toThrow('Only an active catalog plan can be assigned.');
@@ -250,12 +260,95 @@ describe('official plan catalog entitlements', () => {
             role: grant.role,
           })),
         organizationId,
-        { planId: plan.id, status: 'TRIALING', reason: 'spec' },
+        { planId: plan.id, status: 'TRIALING', reason: 'Assigned trial length check' },
         null,
       );
       const hours = (new Date(result.trialEndsAt!).getTime() - started) / 3_600_000;
       expect(hours).toBeGreaterThanOrEqual(OFFICIAL_TRIAL.hours - 0.01);
       expect(hours).toBeLessThan(OFFICIAL_TRIAL.hours + 0.1);
+    });
+  });
+
+  describe('complimentary access', () => {
+    const superadmin = async (): Promise<PlatformContext> => {
+      const grant = await harness.prisma.platformAdmin.findFirstOrThrow({
+        include: { user: true },
+      });
+      return {
+        id: grant.id,
+        userId: grant.userId,
+        email: grant.user.email,
+        displayName: grant.user.displayName,
+        role: grant.role,
+      };
+    };
+
+    it('refuses to mark a plan paid without a verified payment', async () => {
+      const tenants = harness.app.get(PlatformTenantsService);
+      const plan = await harness.prisma.plan.findUniqueOrThrow({
+        where: { key: 'growth_monthly' },
+      });
+      await expect(
+        tenants.assignPlan(
+          await superadmin(),
+          organizationId,
+          { planId: plan.id, status: 'ACTIVE', reason: 'Attempted paid activation' },
+          null,
+        ),
+      ).rejects.toThrow('Paid plans are activated only by a verified payment');
+    });
+
+    it('grants complimentary access that never counts as revenue', async () => {
+      const tenants = harness.app.get(PlatformTenantsService);
+      const billing = harness.app.get(PlatformBillingService);
+      const plan = await harness.prisma.plan.findUniqueOrThrow({
+        where: { key: 'advanced_monthly' },
+      });
+      const before = await billing.overview();
+      const result = await tenants.assignPlan(
+        await superadmin(),
+        organizationId,
+        {
+          planId: plan.id,
+          status: 'ACTIVE',
+          complimentary: true,
+          reason: 'Partner programme grant',
+        },
+        null,
+      );
+      expect(result).toMatchObject({ status: 'ACTIVE', complimentary: true });
+      const after = await billing.overview();
+      expect(after.activePaid).toBe(before.activePaid);
+      expect(after.mrrMinorByCurrency).toEqual(before.mrrMinorByCurrency);
+      expect(after.complimentary).toBe(before.complimentary + 1);
+    });
+
+    it('will not overwrite a provider-billed subscription', async () => {
+      const tenants = harness.app.get(PlatformTenantsService);
+      await harness.prisma.organizationSubscription.update({
+        where: { organizationId },
+        data: {
+          status: 'ACTIVE',
+          complimentary: false,
+          billingProvider: 'PAYSTACK',
+          providerSubscriptionId: 'SUB_spec',
+        },
+      });
+      const plan = await harness.prisma.plan.findUniqueOrThrow({
+        where: { key: 'starter_monthly' },
+      });
+      await expect(
+        tenants.assignPlan(
+          await superadmin(),
+          organizationId,
+          { planId: plan.id, status: 'TRIALING', reason: 'Attempted provider override' },
+          null,
+        ),
+      ).rejects.toThrow('provider-billed subscription');
+      await harness.prisma.organizationSubscription.update({
+        where: { organizationId },
+        data: { billingProvider: null, providerSubscriptionId: null },
+      });
     });
   });
 

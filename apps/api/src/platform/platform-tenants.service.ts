@@ -1,4 +1,9 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import type { Prisma } from '@prisma/client';
 import { OFFICIAL_TRIAL } from '@valuebooks/contracts';
 
@@ -86,7 +91,11 @@ export class PlatformTenantsService {
           createdAt: true,
           createdBy: { select: { email: true, displayName: true } },
           subscription: {
-            select: { status: true, plan: { select: { key: true, name: true, status: true } } },
+            select: {
+              status: true,
+              complimentary: true,
+              plan: { select: { key: true, name: true, status: true } },
+            },
           },
           _count: { select: { members: true } },
         },
@@ -109,6 +118,7 @@ export class PlatformTenantsService {
         planKey: row.subscription?.plan.key ?? null,
         planName: row.subscription?.plan.name ?? null,
         planStatus: row.subscription?.plan.status ?? null,
+        complimentary: row.subscription?.complimentary ?? false,
         subscriptionStatus: row.subscription?.status ?? null,
         memberCount: row._count.members,
         createdAt: row.createdAt.toISOString(),
@@ -325,7 +335,18 @@ export class PlatformTenantsService {
       const [organization, plan] = await Promise.all([
         tx.organization.findUnique({
           where: { id: organizationId },
-          select: { id: true, subscription: { select: { planId: true, status: true } } },
+          select: {
+            id: true,
+            subscription: {
+              select: {
+                planId: true,
+                status: true,
+                complimentary: true,
+                billingProvider: true,
+                providerSubscriptionId: true,
+              },
+            },
+          },
         }),
         tx.plan.findUnique({
           where: { id: input.planId },
@@ -340,7 +361,25 @@ export class PlatformTenantsService {
         throw new BadRequestException('Only an active catalog plan can be assigned.');
       }
 
-      const status = input.status ?? 'ACTIVE';
+      const status = input.status ?? 'TRIALING';
+      if (status === 'ACTIVE' && input.complimentary !== true) {
+        // Spec §4.4: the console never mints a paid subscription. Paid access starts only from a
+        // verified Paystack payment; an operator can grant a trial or explicit complimentary access.
+        throw new BadRequestException(
+          'Paid plans are activated only by a verified payment. Start a trial, or grant complimentary access.',
+        );
+      }
+      const current = organization.subscription;
+      if (
+        current?.providerSubscriptionId &&
+        ['ACTIVE', 'PAST_DUE', 'CANCEL_SCHEDULED'].includes(current.status)
+      ) {
+        // Overwriting a provider-managed subscription would leave Paystack billing a plan the
+        // organization no longer has. Plan changes for paying customers go through checkout.
+        throw new ConflictException(
+          'This organization has an active provider-billed subscription. Change its plan through checkout.',
+        );
+      }
       // A trial assigned here follows the same cardless-trial policy as signup (336 hours), not the
       // per-row `trialDays` column, which the official catalog does not use for trial length.
       const trialEndsAt = input.trialEndsAt
@@ -351,9 +390,21 @@ export class PlatformTenantsService {
 
       const subscription = await tx.organizationSubscription.upsert({
         where: { organizationId },
-        update: { planId: plan.id, status, trialEndsAt, cancelledAt: null },
-        create: { organizationId, planId: plan.id, status, trialEndsAt },
-        select: { planId: true, status: true, trialEndsAt: true },
+        update: {
+          planId: plan.id,
+          status,
+          trialEndsAt,
+          cancelledAt: null,
+          complimentary: status === 'ACTIVE',
+        },
+        create: {
+          organizationId,
+          planId: plan.id,
+          status,
+          trialEndsAt,
+          complimentary: status === 'ACTIVE',
+        },
+        select: { planId: true, status: true, trialEndsAt: true, complimentary: true },
       });
       await writePlatformAudit(tx, actor, {
         eventKey: 'platform.plan_assigned',
@@ -362,12 +413,17 @@ export class PlatformTenantsService {
         organizationId,
         reason: input.reason ?? null,
         before: organization.subscription ?? undefined,
-        after: { planId: subscription.planId, status: subscription.status },
+        after: {
+          planId: subscription.planId,
+          status: subscription.status,
+          complimentary: subscription.complimentary,
+        },
         ipHash,
       });
       return {
         planId: subscription.planId,
         status: subscription.status,
+        complimentary: subscription.complimentary,
         trialEndsAt: subscription.trialEndsAt?.toISOString() ?? null,
       };
     });

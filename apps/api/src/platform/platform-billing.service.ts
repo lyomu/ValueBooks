@@ -27,7 +27,7 @@ export class PlatformBillingService {
   async overview() {
     const [subscriptions, transactions, failedWebhooks, unresolvedChanges, failedPayments] = await Promise.all([
       this.prisma.organizationSubscription.findMany({
-        select: { status: true, trialEndsAt: true, plan: { select: { priceMinor: true, currency: true, billingInterval: true, tierKey: true } } },
+        select: { status: true, trialEndsAt: true, complimentary: true, plan: { select: { priceMinor: true, currency: true, billingInterval: true, tierKey: true } } },
       }),
       this.prisma.billingTransaction.findMany({ where: { status: 'SUCCESSFUL' }, select: { amountMinor: true, currency: true, paidAt: true } }),
       this.prisma.billingWebhookEvent.count({ where: { processingState: 'FAILED' } }),
@@ -36,7 +36,9 @@ export class PlatformBillingService {
     ]);
     const arr = new Map<string, bigint>();
     const mrr = new Map<string, bigint>();
-    for (const subscription of subscriptions) {
+    // Complimentary grants are access, not revenue: they never enter MRR, ARR or paid counts.
+    const paying = subscriptions.filter((row) => !row.complimentary);
+    for (const subscription of paying) {
       if (!['ACTIVE', 'CANCEL_SCHEDULED'].includes(subscription.status)) continue;
       const annual = subscription.plan.priceMinor * (subscription.plan.billingInterval === 'YEARLY' ? 1n : 12n);
       arr.set(subscription.plan.currency, (arr.get(subscription.plan.currency) ?? 0n) + annual);
@@ -50,10 +52,11 @@ export class PlatformBillingService {
       active: subscriptions.filter((row) => row.status === 'ACTIVE').length,
       trialing: subscriptions.filter((row) => row.status === 'TRIALING').length,
       trialExpiring24h: subscriptions.filter((row) => row.status === 'TRIALING' && row.trialEndsAt && row.trialEndsAt.getTime() <= Date.now() + 86_400_000).length,
-      activePaid: subscriptions.filter((row) => ['ACTIVE', 'CANCEL_SCHEDULED'].includes(row.status)).length,
+      activePaid: paying.filter((row) => ['ACTIVE', 'CANCEL_SCHEDULED'].includes(row.status)).length,
+      complimentary: subscriptions.filter((row) => row.complimentary && row.status === 'ACTIVE').length,
       trialConversionRate: (() => {
-        const completedTrials = subscriptions.filter((row) => row.status !== 'TRIALING' && row.trialEndsAt).length;
-        const converted = subscriptions.filter((row) => ['ACTIVE', 'CANCEL_SCHEDULED'].includes(row.status) && row.trialEndsAt).length;
+        const completedTrials = paying.filter((row) => row.status !== 'TRIALING' && row.trialEndsAt).length;
+        const converted = paying.filter((row) => ['ACTIVE', 'CANCEL_SCHEDULED'].includes(row.status) && row.trialEndsAt).length;
         return completedTrials ? Number((converted / completedTrials * 100).toFixed(1)) : null;
       })(),
       pastDue: subscriptions.filter((row) => row.status === 'PAST_DUE').length,

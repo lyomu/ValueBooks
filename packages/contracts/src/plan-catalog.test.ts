@@ -65,4 +65,10 @@ describe('describeOrganizationPlan', () => {
       'danger',
     );
   });
+
+  it('never presents complimentary access as a paid plan', () => {
+    expect(
+      describeOrganizationPlan({ ...base, subscriptionStatus: 'ACTIVE', complimentary: true }),
+    ).toEqual({ label: 'Growth · Complimentary', tone: 'info' });
+  });
 });

@@ -158,7 +158,12 @@ describe('platform mutation audit coverage', () => {
       .http()
       .post(`${API}/platform/organizations/${organizationId}/plan`)
       .set('Cookie', superadminCookie)
-      .send({ planId: plan.id, reason: 'Audit plan assignment evidence.' })
+      .send({
+        planId: plan.id,
+        status: 'ACTIVE',
+        complimentary: true,
+        reason: 'Audit plan assignment evidence.',
+      })
       .expect(200);
     await harness
       .http()

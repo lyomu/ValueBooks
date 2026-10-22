@@ -2,6 +2,7 @@ import {
   OFFICIAL_PLAN_CATALOG,
   officialYearlySavingsPercent,
   type OfficialEntitlementKey,
+  type OfficialFeatureKey,
   type OfficialPlanTier,
 } from '@valuebooks/contracts';
 
@@ -46,6 +47,27 @@ const limitValue = (key: OfficialEntitlementKey): Record<string, FeatureValue> =
       return [plan.tierKey, value === null ? 'Unlimited' : value === 0 ? false : String(value)];
     }),
   );
+
+/** On/off cell for the comparison table, read from the catalog the API enforces. */
+const featureValue = (key: OfficialFeatureKey): Record<string, FeatureValue> =>
+  Object.fromEntries(Object.values(catalog).map((plan) => [plan.tierKey, plan.features[key]]));
+/** Monthly allowance cell: unlimited, not included, or "N / month". */
+const monthlyValue = (key: OfficialEntitlementKey): Record<string, FeatureValue> =>
+  Object.fromEntries(
+    Object.values(catalog).map((plan) => {
+      const value = plan.limits[key];
+      return [
+        plan.tierKey,
+        value === null ? 'Unlimited' : value === 0 ? false : `${value} / month`,
+      ];
+    }),
+  );
+const everyPlan: Record<string, FeatureValue> = {
+  starter: true,
+  growth: true,
+  professional: true,
+  advanced: true,
+};
 
 function plan(tier: OfficialPlanTier, copy: Pick<Plan, 'tagline' | 'topFeatures'>): Plan {
   return {
@@ -117,105 +139,59 @@ export type FeatureGroup = {
   }>;
 };
 
+/**
+ * Every row is either read from the catalog (limits and on/off features the API seeds and
+ * enforces) or is a capability every plan has. Nothing here may advertise a feature the product
+ * does not have -- there is no online invoice payment collection or live bank feed.
+ */
 export const FEATURE_GROUPS: FeatureGroup[] = [
   {
     id: 'core',
     name: 'Core accounting',
     rows: [
-      {
-        label: 'Users included',
-        values: limitValue('seats.max'),
-      },
-      {
-        label: 'Chart of accounts',
-        values: { starter: true, growth: true, professional: true, advanced: true },
-      },
-      {
-        label: 'Multi-currency support',
-        values: { starter: false, growth: false, professional: true, advanced: true },
-      },
-      {
-        label: 'Role-based permissions',
-        values: { starter: false, growth: false, professional: true, advanced: true },
-      },
-      {
-        label: 'Audit trail',
-        values: { starter: false, growth: false, professional: true, advanced: true },
-      },
+      { label: 'Users included', values: limitValue('seats.max') },
+      { label: 'Chart of accounts', values: everyPlan },
+      { label: 'Manual journals', values: featureValue('manual_journals.enabled') },
+      { label: 'Multi-currency', values: featureValue('multi_currency.enabled') },
+      { label: 'Custom roles', values: featureValue('custom_roles.enabled') },
+      { label: 'Audit trail', values: everyPlan },
     ],
   },
   {
     id: 'invoicing',
     name: 'Invoicing & payments',
     rows: [
-      {
-        label: 'Invoices issued per month',
-        values: limitValue('invoices.issued.max'),
-      },
-      {
-        label: 'Quotes per month',
-        values: limitValue('quotes.max'),
-      },
-      {
-        label: 'Recurring invoices',
-        values: { starter: false, growth: true, professional: true, advanced: true },
-      },
-      {
-        label: 'Customer portal',
-        values: { starter: false, growth: true, professional: true, advanced: true },
-      },
-      {
-        label: 'Online payment collection',
-        values: { starter: true, growth: true, professional: true, advanced: true },
-      },
-      {
-        label: 'Payment reminders',
-        values: { starter: true, growth: true, professional: true, advanced: true },
-      },
+      { label: 'Invoices issued per month', values: limitValue('invoices.issued.max') },
+      { label: 'Quotes per month', values: limitValue('quotes.max') },
+      { label: 'Active customers', values: limitValue('customers.active.max') },
+      { label: 'Recurring invoices', values: featureValue('recurring_invoices.enabled') },
+      { label: 'Customer portal', values: everyPlan },
+      { label: 'Payment recording & reminders', values: everyPlan },
     ],
   },
   {
     id: 'banking',
     name: 'Banking',
     rows: [
-      {
-        label: 'Bank feed connections',
-        values: { starter: false, growth: true, professional: true, advanced: true },
-      },
-      {
-        label: 'Bank reconciliation',
-        values: { starter: false, growth: true, professional: true, advanced: true },
-      },
-      {
-        label: 'Transaction rules',
-        values: { starter: false, growth: false, professional: true, advanced: true },
-      },
-      {
-        label: 'Multi-currency transactions',
-        values: { starter: false, growth: false, professional: true, advanced: true },
-      },
+      { label: 'Bank accounts', values: limitValue('bank_accounts.max') },
+      { label: 'Bank statement imports', values: everyPlan },
+      { label: 'Bank reconciliation', values: featureValue('bank_reconciliation.enabled') },
+      { label: 'Bank rules', values: everyPlan },
     ],
   },
   {
     id: 'reporting',
     name: 'Reporting & insights',
     rows: [
+      { label: 'P&L and balance sheet', values: everyPlan },
+      { label: 'Cash-flow reporting', values: featureValue('cash_flow_reporting.enabled') },
       {
-        label: 'P&L and balance sheet',
-        values: { starter: true, growth: true, professional: true, advanced: true },
+        label: 'Advanced financial reports',
+        values: featureValue('advanced_financial_reports.enabled'),
       },
-      {
-        label: 'Custom reports',
-        values: { starter: false, growth: true, professional: true, advanced: true },
-      },
-      {
-        label: 'Budgets & cashflow forecasting',
-        values: { starter: false, growth: false, professional: true, advanced: true },
-      },
-      {
-        label: 'ValueBooks AI insights',
-        values: { starter: false, growth: false, professional: true, advanced: true },
-      },
+      { label: 'Saved reports', values: limitValue('reports.saved.enabled') },
+      { label: 'Scheduled reports', values: limitValue('reports.scheduled.enabled') },
+      { label: 'ValueBooks AI insights', values: monthlyValue('ai_insights.max') },
     ],
   },
   {

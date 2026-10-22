@@ -4073,6 +4073,9 @@ model OrganizationSubscription {
   /// Set when a renewal charge first fails; cleared on recovery. Drives the dunning grace-period
   /// countdown rather than re-deriving it from transaction history on every check.
   pastDueSince           DateTime?          @map("past_due_since") @db.Timestamptz(6)
+  /// Access granted by a platform administrator without a payment (audited, reason required).
+  /// Never counted as paid revenue; a verified provider payment clears it.
+  complimentary          Boolean            @default(false)
   createdAt              DateTime           @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt              DateTime           @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
   organization           Organization       @relation(fields: [organizationId], references: [id], onDelete: Cascade)

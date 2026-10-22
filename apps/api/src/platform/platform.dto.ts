@@ -12,6 +12,7 @@ import {
   Max,
   MaxLength,
   Min,
+  MinLength,
 } from 'class-validator';
 
 const trim = ({ value }: { value: unknown }): unknown =>
@@ -321,19 +322,26 @@ export class AssignPlanDto {
   @IsUUID()
   planId!: string;
 
+  /** TRIALING starts a cardless trial; ACTIVE is accepted only as a complimentary grant. Paid,
+   * past-due and cancelled states come from verified provider events, never from the console. */
   @IsOptional()
-  @IsIn(['TRIALING', 'ACTIVE', 'PAST_DUE', 'CANCELLED'])
-  status?: 'TRIALING' | 'ACTIVE' | 'PAST_DUE' | 'CANCELLED';
+  @IsIn(['TRIALING', 'ACTIVE'])
+  status?: 'TRIALING' | 'ACTIVE';
+
+  /** Required for ACTIVE: marks unpaid access so it never counts as revenue. */
+  @IsOptional()
+  @IsBoolean()
+  complimentary?: boolean;
 
   @IsOptional()
   @Matches(ISO_DATE)
   trialEndsAt?: string;
 
-  @IsOptional()
   @IsString()
+  @MinLength(10)
   @MaxLength(500)
   @Transform(trim)
-  reason?: string;
+  reason!: string;
 }
 
 export class CreateFeatureFlagDto {
