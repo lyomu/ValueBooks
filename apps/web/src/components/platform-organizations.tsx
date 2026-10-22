@@ -18,6 +18,7 @@ import {
   StatusBadge,
 } from '@valuebooks/ui';
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 import { useCallback, useEffect, useState, type FormEvent } from 'react';
 
 import { ApiError, apiRequest } from '../lib/api';
@@ -53,7 +54,14 @@ export function PlatformOrganizations() {
   const [rows, setRows] = useState<PlatformOrganization[] | null>(null);
   const [totalRows, setTotalRows] = useState(0);
   const [page, setPage] = useState(1);
-  const [filters, setFilters] = useState({ query: '', status: '', countryCode: '', planKey: '' });
+  // Overview drilldowns link here with a filter already chosen, e.g. ?status=SUSPENDED.
+  const searchParams = useSearchParams();
+  const [filters, setFilters] = useState({
+    query: searchParams.get('query') ?? '',
+    status: searchParams.get('status') ?? '',
+    countryCode: searchParams.get('countryCode') ?? '',
+    planKey: searchParams.get('planKey') ?? '',
+  });
   const [error, setError] = useState('');
 
   const load = useCallback(async () => {

@@ -69,14 +69,14 @@ Updated after every item: status, commit/PR, the focused checks actually run, an
 
 | ID | Task | Status | Evidence |
 |---|---|---|---|
-| 3.1 | `metric-dictionary.md`; analytics endpoint: period, series, billing snapshot, attention items, `observedAt` | ⬜ | |
-| 3.2a | Overview header: period selector, last updated, refresh | ⬜ | |
-| 3.2b | Four KPI cards with deltas and drilldowns | ⬜ | |
-| 3.2c | Growth trend chart and organization-health panel | ⬜ | |
-| 3.2d | Billing snapshot row | ⬜ | |
-| 3.2e | Requires attention, plan mix and platform health panels | ⬜ | |
-| 3.2f | Funnel, module adoption, countries, recent activity | ⬜ | |
-| 3.2g | Per-widget honest states; responsive 4/2/1 columns | ⬜ | |
+| 3.1 | `metric-dictionary.md`; analytics endpoint: period, series, billing snapshot, attention items, `observedAt` | ✅ | [metric-dictionary.md](metric-dictionary.md). `analytics` gains `previousPeriod` (equal-length preceding window with `hasData`), `reporting.growth` (registrations + activations per bucket) and five more attention counts. The billing snapshot stays in `/platform/billing/overview`, preserving the documented "analytics reads no tenant money" boundary; the page calls both. Fixed: retention rate divided by ACTIVE organizations, which could exceed 100% |
+| 3.2a | Overview header: period selector, last updated, refresh | ✅ | `PlatformPage` meta line: date range + "Updated HH:MM" |
+| 3.2b | Four KPI cards with deltas and drilldowns | ✅ | Shared `DashboardKpi`; change badge only when the previous window has data; every tile links to its filtered list |
+| 3.2c | Growth trend chart and organization-health panel | ✅ | Two-series area chart (registered vs finished setup) + clickable lifecycle distribution; "Limited data" note under 3 points |
+| 3.2d | Billing snapshot row | ✅ | MRR/ARR per currency (never summed), active paid, trialing, conversion, past due, complimentary; methodology shown; fails independently of analytics |
+| 3.2e | Requires attention, plan mix and platform health panels | 🔄 | Attention queue (6 sources, severity-toned, each linking to its records) and plan mix done. Platform health panel folded into the attention queue for now; revisit in 5.3 when per-queue scopes are fixed |
+| 3.2f | Funnel, module adoption, countries, recent activity | ✅ | Kept and moved onto the shared panel primitives; audit event keys now render as readable names |
+| 3.2g | Per-widget honest states; responsive 4/2/1 columns | ✅ | `Promise.allSettled` so a billing outage shows "unknown", never 0; per-panel skeleton/empty/error with retry; 4/2/1 KPI grid |
 | 3.3 | Organization 360° detail tabs | ⬜ | |
 | 3.4 | Organizations list: subscription-state and onboarding filters, last activity | ⬜ | |
 | 3.5 | Users list and detail: platform role vs memberships, sessions, status dialog | ⬜ | |
@@ -133,3 +133,7 @@ Updated after every item: status, commit/PR, the focused checks actually run, an
   - `OFFICIAL_PLAN_CATALOG` gains a `features` map, so the marketing table and the entitlement spec read the same source.
   - **Checks, all green:** contracts 7/7, web marketing 3/3, api + web + contracts typecheck, ESLint, integration 30/30 (`plan-entitlements`, `platform-audit`, `plan-selection`, `billing-webhook-claim`, `platform-authorization`), migration drift clean.
 - **2026-10-22**: Separate accounting defect documented in `docs/ACCOUNTING_ISSUE_INVENTORY_ADJUSTMENTS_IN_PROFIT_AND_LOSS.md` (inventory gains and opening stock posted as negative expense). Not part of this project; awaiting accountant sign-off.
+- **2026-10-22**: Phase 3 — overview dashboard (3.1, 3.2) implemented.
+  - Organizations listing now reads filters from the query string, so overview drilldowns land pre-filtered (verified: `?status=SUSPENDED` returns the one suspended tenant).
+  - **Checks:** api + web typecheck, ESLint, integration `platform-operations` 3/3 (new spec covers the period comparison, ordered growth buckets and attention counts, and re-asserts the no-money boundary), `platform-projections` 2/2. Browser pass over the rebuilt overview at desktop with no errors.
+  - **Local dev database:** the three new migrations were applied with `prisma migrate deploy` (they had not been, which is why billing endpoints returned 500 locally).

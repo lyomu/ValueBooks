@@ -300,6 +300,16 @@ export const platformAnalyticsSchema = z.object({
     active: z.number().int().nonnegative(),
     createdInPeriod: z.number().int().nonnegative(),
   }),
+  /** The immediately preceding window of equal length, for period-over-period change. */
+  previousPeriod: z.object({
+    from: z.iso.datetime(),
+    to: z.iso.datetime(),
+    organizationsCreated: z.number().int().nonnegative(),
+    usersCreated: z.number().int().nonnegative(),
+    organizationsActivated: z.number().int().nonnegative(),
+    /** False when the earlier window is empty: show no change rather than an invented one. */
+    hasData: z.boolean(),
+  }),
   activation: z.object({
     onboardingCompleted: z.number().int().nonnegative(),
     onboardingCompletedRate: z.number(),
@@ -334,8 +344,25 @@ export const platformAnalyticsSchema = z.object({
     registrations: z.array(
       z.object({ key: z.string(), label: z.string(), organizations: z.number().int() }),
     ),
+    /** Registrations and completed onboarding per bucket, for the growth chart. */
+    growth: z.array(
+      z.object({
+        key: z.string(),
+        label: z.string(),
+        organizations: z.number().int(),
+        activated: z.number().int(),
+      }),
+    ),
   }),
-  attention: z.object({ failedJobsLast24Hours: z.number().int().nonnegative() }),
+  /** Counts behind the overview's "Requires attention" queue; each links to its source list. */
+  attention: z.object({
+    failedJobsLast24Hours: z.number().int().nonnegative(),
+    stalledOnboarding: z.number().int().nonnegative(),
+    failedWebhooks: z.number().int().nonnegative(),
+    highSeveritySecurityEvents: z.number().int().nonnegative(),
+    trialsExpiringSoon: z.number().int().nonnegative(),
+    suspendedOrganizations: z.number().int().nonnegative(),
+  }),
   recentActivity: z.array(
     z.object({ id: z.uuid(), eventKey: z.string(), occurredAt: z.iso.datetime() }),
   ),

@@ -126,6 +126,86 @@ describe('platform operations acceptance', () => {
     expect(forbiddenMoneyKeys(data)).toEqual([]);
   });
 
+  it('reports period comparison, growth series and attention counts honestly', async () => {
+    // A stalled signup (older than 7 days, setup never finished) and a failed scheduled job, so
+    // the attention queue has something real to report.
+    const stalled = await harness.prisma.organization.create({
+      data: {
+        legalName: 'Stalled Books Ltd',
+        slug: `stalled-${Date.now()}`,
+        countryCode: 'KE',
+        baseCurrency: 'KES',
+        timeZone: 'Africa/Nairobi',
+        locale: 'en-KE',
+        status: 'DRAFT',
+        createdByUserId: owner.id,
+        createdAt: new Date(Date.now() - 30 * 86_400_000),
+      },
+    });
+
+    const response = await harness
+      .http()
+      .get(`${API}/platform/analytics?from=2026-10-01&to=2026-10-31`)
+      .set('Cookie', operationsCookie)
+      .expect(200);
+    const { data } = response.body as {
+      data: {
+        previousPeriod: {
+          from: string;
+          to: string;
+          hasData: boolean;
+          organizationsCreated: number;
+        };
+        reporting: {
+          from: string;
+          to: string;
+          growth: { key: string; organizations: number; activated: number }[];
+        };
+        attention: Record<string, number>;
+      };
+    };
+
+    // The previous window is the same length and ends immediately before the selected one.
+    expect(new Date(data.previousPeriod.to).getTime()).toBeLessThan(
+      new Date(data.reporting.from).getTime(),
+    );
+    const selectedMs =
+      new Date(data.reporting.to).getTime() - new Date(data.reporting.from).getTime();
+    const previousMs =
+      new Date(data.previousPeriod.to).getTime() - new Date(data.previousPeriod.from).getTime();
+    expect(Math.abs(selectedMs - previousMs)).toBeLessThanOrEqual(1);
+    // An empty earlier window must say so, so a KPI shows no change rather than inventing one.
+    expect(data.previousPeriod.hasData).toBe(data.previousPeriod.organizationsCreated > 0);
+
+    // Growth buckets are ordered and never negative; every bucket carries both series.
+    const keys = data.reporting.growth.map((bucket) => bucket.key);
+    expect([...keys].sort((a, b) => a.localeCompare(b))).toEqual(keys);
+    for (const bucket of data.reporting.growth) {
+      expect(bucket.organizations).toBeGreaterThanOrEqual(0);
+      expect(bucket.activated).toBeGreaterThanOrEqual(0);
+    }
+
+    expect(data.attention).toMatchObject({
+      stalledOnboarding: await harness.prisma.organization.count({
+        where: {
+          status: 'DRAFT',
+          onboardingCompletedAt: null,
+          createdAt: { lt: new Date(Date.now() - 7 * 86_400_000) },
+        },
+      }),
+      failedWebhooks: await harness.prisma.billingWebhookEvent.count({
+        where: { processingState: 'FAILED' },
+      }),
+      suspendedOrganizations: await harness.prisma.organization.count({
+        where: { status: 'SUSPENDED' },
+      }),
+    });
+    expect(data.attention.stalledOnboarding).toBeGreaterThanOrEqual(1);
+    expect(forbiddenMoneyKeys(data)).toEqual([]);
+
+    await harness.prisma.organization.delete({ where: { id: stalled.id } });
+  });
+
   async function cookieFor(userId: string): Promise<string> {
     const token = createOpaqueToken();
     await harness.prisma.session.create({

@@ -1,13 +1,24 @@
 'use client';
 
 import type { PlatformAnalytics } from '@valuebooks/contracts';
-import { AlertTriangle, ArrowRight, Building2, CheckCircle2, RefreshCw, Users } from 'lucide-react';
+import { Button, Card, EmptyState, ErrorState } from '@valuebooks/ui';
+import {
+  AlertTriangle,
+  ArrowRight,
+  Building2,
+  CheckCircle2,
+  CircleDollarSign,
+  RefreshCw,
+  TrendingUp,
+  Users,
+} from 'lucide-react';
 import Link from 'next/link';
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
 import {
   Area,
   AreaChart,
   CartesianGrid,
+  Legend,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -15,6 +26,7 @@ import {
 } from 'recharts';
 
 import { apiRequest } from '../lib/api';
+import { ChartLoading, DashboardKpi, DashboardPanelHeading } from './dashboard-panels';
 import { PlatformPage } from './platform-shell';
 
 const periods = [
@@ -24,30 +36,51 @@ const periods = [
   ['year', 'Current year', 365],
 ] as const;
 
+/** ValueBooks' own subscription figures, from the billing overview endpoint (SUPPORT and above). */
+type BillingSnapshot = {
+  activePaid: number;
+  complimentary: number;
+  trialing: number;
+  trialExpiring24h: number;
+  trialConversionRate: number | null;
+  pastDue: number;
+  mrrMinorByCurrency: Record<string, string>;
+  arrMinorByCurrency: Record<string, string>;
+  methodology: string;
+};
+
 export function PlatformOverview() {
   const [analytics, setAnalytics] = useState<PlatformAnalytics | null>(null);
+  const [billing, setBilling] = useState<BillingSnapshot | null>(null);
+  const [billingFailed, setBillingFailed] = useState(false);
   const [period, setPeriod] = useState<(typeof periods)[number][0]>('30d');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const range = useMemo(() => reportingRange(period), [period]);
+
   const load = useCallback(async () => {
     setLoading(true);
-    try {
-      const query = new URLSearchParams(range);
-      const response = await apiRequest<{ data: PlatformAnalytics }>(
-        `/platform/analytics?${query}`,
-      );
-      setAnalytics(response.data);
+    const query = new URLSearchParams(range);
+    // The two panels fail independently: a billing outage must not blank the tenant metrics, and
+    // neither may render as a zero.
+    const [analyticsResult, billingResult] = await Promise.allSettled([
+      apiRequest<{ data: PlatformAnalytics }>(`/platform/analytics?${query}`),
+      apiRequest<{ data: BillingSnapshot }>('/platform/billing/overview'),
+    ]);
+    if (analyticsResult.status === 'fulfilled') {
+      setAnalytics(analyticsResult.value.data);
       setError('');
-    } catch {
-      setError('Analytics could not be loaded.');
-    } finally {
-      setLoading(false);
+    } else {
+      setError('Platform analytics could not be loaded.');
     }
+    setBillingFailed(billingResult.status === 'rejected');
+    if (billingResult.status === 'fulfilled') setBilling(billingResult.value.data);
+    setLoading(false);
   }, [range]);
   useEffect(() => void load(), [load]);
 
   const total = analytics?.organizations.total ?? 0;
+  const previous = analytics?.previousPeriod;
   const adoption = analytics
     ? Object.entries(analytics.adoption).map(([label, organizations]) => ({
         label: `${label[0]?.toUpperCase()}${label.slice(1)}`,
@@ -55,10 +88,24 @@ export function PlatformOverview() {
         percent: rate(organizations, total),
       }))
     : [];
+  const attention = analytics ? attentionItems(analytics) : [];
+
   return (
     <PlatformPage
-      title="Platform Overview"
-      description="Monitor organization growth, user activity, product adoption, and platform operations."
+      title="Overview"
+      description="What changed across the platform, and what needs attention today."
+      meta={
+        analytics ? (
+          <>
+            {new Date(analytics.reporting.from).toLocaleDateString()} –{' '}
+            {new Date(analytics.reporting.to).toLocaleDateString()} · Updated{' '}
+            {new Date(analytics.observedAt).toLocaleTimeString([], {
+              hour: 'numeric',
+              minute: '2-digit',
+            })}
+          </>
+        ) : null
+      }
       actions={
         <div className="rb-platform-overview__controls">
           <label>
@@ -74,149 +121,274 @@ export function PlatformOverview() {
               ))}
             </select>
           </label>
-          <button
-            type="button"
-            className="is-secondary"
-            onClick={() => void load()}
-            disabled={loading}
-          >
+          <Button variant="outline" onClick={() => void load()} disabled={loading}>
             <RefreshCw aria-hidden="true" /> Refresh
-          </button>
-          {analytics ? (
-            <small>
-              Updated{' '}
-              {new Date(analytics.observedAt).toLocaleTimeString([], {
-                hour: 'numeric',
-                minute: '2-digit',
-              })}
-            </small>
-          ) : null}
+          </Button>
         </div>
       }
     >
       {error ? (
-        <p className="rb-platform__alert" role="alert">
-          {error}
-        </p>
-      ) : null}
-      <section className="rb-platform-overview__kpis" aria-label="Primary platform metrics">
-        <Metric
-          href="/platform/organizations"
-          label="Total organizations"
-          value={analytics?.organizations.total}
-          icon={Building2}
-          detail="All registered organizations"
-          loading={loading}
-        />
-        <Metric
-          href="/platform/organizations"
-          label="Active organizations"
-          value={analytics?.organizations.active}
-          icon={CheckCircle2}
-          detail={
-            analytics ? `${rate(analytics.organizations.active, total)}% of all organizations` : ''
+        <ErrorState
+          title="Platform analytics unavailable"
+          description={error}
+          action={
+            <Button variant="outline" onClick={() => void load()}>
+              Retry
+            </Button>
           }
-          loading={loading}
         />
-        <Metric
-          href="/platform/users"
-          label="Total users"
-          value={analytics?.users.total}
-          icon={Users}
-          detail={analytics ? `${analytics.users.createdInPeriod} new in selected period` : ''}
-          loading={loading}
-        />
-        <Metric
-          href="/platform/organizations"
-          label="New organizations"
-          value={analytics?.organizations.createdInPeriod}
+      ) : null}
+
+      <section className="rb-dash-kpis--four" aria-label="Primary platform metrics">
+        <DashboardKpi
+          label="Total organizations"
           icon={Building2}
-          detail="In selected period"
           loading={loading}
+          value={analytics ? analytics.organizations.total.toLocaleString() : '—'}
+          hint="All registered organizations"
+          href="/platform/organizations"
+        />
+        <DashboardKpi
+          label="Active organizations"
+          icon={CheckCircle2}
+          loading={loading}
+          value={analytics ? analytics.organizations.active.toLocaleString() : '—'}
+          hint={analytics ? `${rate(analytics.organizations.active, total)}% of all` : undefined}
+          href="/platform/organizations?status=ACTIVE"
+        />
+        <DashboardKpi
+          label="Registered users"
+          icon={Users}
+          loading={loading}
+          value={analytics ? analytics.users.total.toLocaleString() : '—'}
+          hint={analytics ? `${analytics.users.createdInPeriod} new this period` : undefined}
+          delta={
+            analytics && previous?.hasData
+              ? change(analytics.users.createdInPeriod, previous.usersCreated)
+              : null
+          }
+          href="/platform/users"
+        />
+        <DashboardKpi
+          label="New organizations"
+          icon={TrendingUp}
+          loading={loading}
+          value={analytics ? analytics.organizations.createdInPeriod.toLocaleString() : '—'}
+          hint="In selected period"
+          delta={
+            analytics && previous?.hasData
+              ? change(analytics.organizations.createdInPeriod, previous.organizationsCreated)
+              : null
+          }
+          href="/platform/organizations"
         />
       </section>
+
       {analytics ? (
         <>
-          <section
-            className="rb-platform-overview__growth-grid"
-            aria-label="Growth and organization health"
-          >
-            <Panel
-              title="Organization growth"
-              description={`Registrations by ${analytics.reporting.grouping} in the selected period.`}
-            >
-              {analytics.reporting.registrations.length ? (
-                <div className="rb-platform-overview__chart">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <AreaChart data={analytics.reporting.registrations}>
-                      <CartesianGrid vertical={false} stroke="hsl(214 28% 91%)" />
-                      <XAxis
-                        dataKey="label"
-                        tickLine={false}
-                        axisLine={false}
-                        tick={{ fontSize: 11 }}
-                      />
-                      <YAxis
-                        allowDecimals={false}
-                        tickLine={false}
-                        axisLine={false}
-                        tick={{ fontSize: 11 }}
-                      />
-                      <Tooltip />
-                      <Area
-                        type="monotone"
-                        dataKey="organizations"
-                        name="Organizations"
-                        stroke="hsl(207 88% 48%)"
-                        fill="hsl(207 88% 48% / .18)"
-                        strokeWidth={2}
-                      />
-                    </AreaChart>
-                  </ResponsiveContainer>
-                </div>
+          <section className="rb-dash-grid" aria-label="Growth and organization health">
+            <Card className="rb-dash-panel">
+              <DashboardPanelHeading
+                title="Organization growth"
+                description={`Registrations and completed setup by ${analytics.reporting.grouping}.`}
+                href="/platform/organizations"
+                linkLabel="Organizations"
+              />
+              {loading ? (
+                <ChartLoading label="Loading growth data" />
+              ) : analytics.reporting.growth.length ? (
+                <>
+                  <div className="rb-dash-chart">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <AreaChart data={analytics.reporting.growth}>
+                        <CartesianGrid vertical={false} stroke="hsl(214 28% 91%)" />
+                        <XAxis
+                          dataKey="label"
+                          tickLine={false}
+                          axisLine={false}
+                          tick={{ fontSize: 11 }}
+                        />
+                        <YAxis
+                          allowDecimals={false}
+                          tickLine={false}
+                          axisLine={false}
+                          tick={{ fontSize: 11 }}
+                        />
+                        <Tooltip />
+                        <Legend iconType="circle" wrapperStyle={{ fontSize: 12 }} />
+                        <Area
+                          type="monotone"
+                          dataKey="organizations"
+                          name="Registered"
+                          stroke="hsl(var(--rb-primary))"
+                          fill="hsl(var(--rb-primary) / .16)"
+                          strokeWidth={2}
+                        />
+                        <Area
+                          type="monotone"
+                          dataKey="activated"
+                          name="Finished setup"
+                          stroke="hsl(var(--rb-success))"
+                          fill="hsl(var(--rb-success) / .14)"
+                          strokeWidth={2}
+                        />
+                      </AreaChart>
+                    </ResponsiveContainer>
+                  </div>
+                  {analytics.reporting.growth.length < 3 ? (
+                    <p className="rb-platform__muted">
+                      Limited data: {analytics.reporting.growth.length} point
+                      {analytics.reporting.growth.length === 1 ? '' : 's'} in this period.
+                    </p>
+                  ) : null}
+                </>
               ) : (
-                <p className="rb-platform__muted">
-                  No organizations were registered in this period.
-                </p>
+                <EmptyState
+                  icon={TrendingUp}
+                  variant="no-results"
+                  title="No registrations in this period"
+                  description="Choose a longer period to see earlier growth."
+                />
               )}
-            </Panel>
-            <Panel title="Organization health" description="Current lifecycle distribution.">
+            </Card>
+            <Card className="rb-dash-panel">
+              <DashboardPanelHeading
+                title="Organization health"
+                description="Current lifecycle distribution."
+              />
               <Distribution
                 total={total}
                 rows={[
-                  ['Active', analytics.organizations.active, 'is-good'],
-                  ['Still in setup', analytics.organizations.draft, 'is-neutral'],
-                  ['Suspended', analytics.organizations.suspended, 'is-warning'],
+                  ['Active', analytics.organizations.active, 'is-good', 'status=ACTIVE'],
+                  ['Still in setup', analytics.organizations.draft, 'is-neutral', 'status=DRAFT'],
+                  [
+                    'Suspended',
+                    analytics.organizations.suspended,
+                    'is-warning',
+                    'status=SUSPENDED',
+                  ],
                 ]}
               />
-            </Panel>
+            </Card>
           </section>
-          <section className="rb-platform-overview__attention" aria-labelledby="attention-heading">
-            <div>
-              <h2 id="attention-heading">Requires attention</h2>
-              <p>Organizations and platform events that may need administrative review.</p>
-            </div>
-            <div className="rb-platform-overview__attention-list">
-              {analytics.organizations.suspended > 0 ? (
-                <Attention
-                  title={`${analytics.organizations.suspended} suspended organization${analytics.organizations.suspended === 1 ? '' : 's'}`}
-                  href="/platform/organizations"
-                  action="Review organizations"
+
+          <Card className="rb-dash-panel rb-platform-overview__billing">
+            <DashboardPanelHeading
+              title="Billing snapshot"
+              description="ValueBooks subscription revenue and collection health."
+              href="/platform/billing"
+              linkLabel="Billing"
+            />
+            {billingFailed ? (
+              <ErrorState
+                title="Billing figures unavailable"
+                description="The billing service did not respond. These numbers are not zero — they are unknown."
+                action={
+                  <Button variant="outline" onClick={() => void load()}>
+                    Retry
+                  </Button>
+                }
+              />
+            ) : !billing ? (
+              <ChartLoading label="Loading billing snapshot" />
+            ) : (
+              <>
+                <div className="rb-platform-overview__billing-grid">
+                  <Figure label="MRR" value={money(billing.mrrMinorByCurrency)} />
+                  <Figure label="ARR (run rate)" value={money(billing.arrMinorByCurrency)} />
+                  <Figure
+                    label="Active paid"
+                    value={billing.activePaid.toLocaleString()}
+                    href="/platform/billing/subscriptions"
+                  />
+                  <Figure
+                    label="Trialing"
+                    value={billing.trialing.toLocaleString()}
+                    href="/platform/billing/trials"
+                  />
+                  <Figure
+                    label="Trial conversion"
+                    value={
+                      billing.trialConversionRate === null
+                        ? 'No completed trials'
+                        : `${billing.trialConversionRate}%`
+                    }
+                  />
+                  <Figure
+                    label="Past due"
+                    value={billing.pastDue.toLocaleString()}
+                    tone={billing.pastDue > 0 ? 'warning' : undefined}
+                    href="/platform/billing/issues"
+                  />
+                  {billing.complimentary > 0 ? (
+                    <Figure
+                      label="Complimentary"
+                      value={billing.complimentary.toLocaleString()}
+                      href="/platform/billing/subscriptions"
+                    />
+                  ) : null}
+                </div>
+                <p className="rb-platform__muted">{billing.methodology}</p>
+              </>
+            )}
+          </Card>
+
+          <section className="rb-dash-grid rb-dash-grid--obligations" aria-label="Operations">
+            <Card className="rb-dash-panel">
+              <DashboardPanelHeading
+                title="Requires attention"
+                description="Each item links to the records behind it."
+              />
+              {attention.length ? (
+                <ul className="rb-platform-overview__attention-list">
+                  {attention.map((item) => (
+                    <li key={item.title}>
+                      <Link href={item.href}>
+                        <AlertTriangle aria-hidden="true" className={`is-${item.tone}`} />
+                        <span>
+                          <strong>{item.title}</strong>
+                          <small>{item.detail}</small>
+                        </span>
+                        <ArrowRight aria-hidden="true" />
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <EmptyState
+                  icon={CheckCircle2}
+                  variant="no-results"
+                  title="Nothing needs attention"
+                  description="No stalled onboarding, failed jobs or webhooks, expiring trials, or high-severity security events."
                 />
-              ) : null}
-              {analytics.attention.failedJobsLast24Hours > 0 ? (
-                <Attention
-                  title={`${analytics.attention.failedJobsLast24Hours} failed background job${analytics.attention.failedJobsLast24Hours === 1 ? '' : 's'} in 24 hours`}
-                  href="/platform/jobs"
-                  action="View jobs"
+              )}
+            </Card>
+            <Card className="rb-dash-panel">
+              <DashboardPanelHeading
+                title="Plan mix"
+                description="Organizations by current subscription."
+                href="/platform/plans"
+                linkLabel="Plans"
+              />
+              {analytics.distribution.byPlan.length ? (
+                <Bars
+                  rows={analytics.distribution.byPlan.map((row) => ({
+                    label: row.planName,
+                    organizations: row.organizations,
+                    percent: rate(row.organizations, total),
+                  }))}
                 />
-              ) : null}
-              {analytics.organizations.suspended === 0 &&
-              analytics.attention.failedJobsLast24Hours === 0 ? (
-                <p className="rb-platform__muted">No immediate issues require attention.</p>
-              ) : null}
-            </div>
+              ) : (
+                <EmptyState
+                  icon={CircleDollarSign}
+                  variant="no-results"
+                  title="No subscriptions yet"
+                  description="Plan mix appears once organizations hold a trial or paid plan."
+                />
+              )}
+            </Card>
           </section>
+
           <section className="rb-platform-overview__two-column">
             <Panel
               title="Activation funnel"
@@ -237,33 +409,13 @@ export function PlatformOverview() {
             >
               <Bars rows={adoption} />
             </Panel>
-            <Panel title="Plan distribution" description="Current subscription plans.">
-              {analytics.distribution.byPlan.length ? (
-                <Bars
-                  rows={analytics.distribution.byPlan.map((row) => ({
-                    label: row.planName,
-                    organizations: row.organizations,
-                    percent: rate(row.organizations, total),
-                  }))}
-                />
-              ) : (
-                <p className="rb-platform__muted">
-                  No paid subscriptions yet. <Link href="/platform/billing">Open billing</Link>.
-                </p>
-              )}
-            </Panel>
-            <Panel
-              title="Geographic distribution"
-              description="Organizations by registered country."
-            >
+            <Panel title="Countries" description="Organizations by registered country.">
               <Bars
-                rows={analytics.distribution.byCountry
-                  .slice(0, 5)
-                  .map((row) => ({
-                    label: countryName(row.countryCode),
-                    organizations: row.organizations,
-                    percent: rate(row.organizations, total),
-                  }))}
+                rows={analytics.distribution.byCountry.slice(0, 5).map((row) => ({
+                  label: countryName(row.countryCode),
+                  organizations: row.organizations,
+                  percent: rate(row.organizations, total),
+                }))}
               />
             </Panel>
             <Panel
@@ -271,10 +423,10 @@ export function PlatformOverview() {
               description="Organizations with audit-recorded activity. Automated background work is excluded."
             >
               <Distribution
-                total={analytics.organizations.active}
+                total={total}
                 rows={[
-                  ['Active in 30 days', analytics.retention.activeLast30Days, 'is-good'],
-                  ['Active in 90 days', analytics.retention.activeLast90Days, 'is-neutral'],
+                  ['Active in 30 days', analytics.retention.activeLast30Days, 'is-good', ''],
+                  ['Active in 90 days', analytics.retention.activeLast90Days, 'is-neutral', ''],
                 ]}
               />
             </Panel>
@@ -286,7 +438,7 @@ export function PlatformOverview() {
                 <ul className="rb-platform-overview__activity">
                   {analytics.recentActivity.map((event) => (
                     <li key={event.id}>
-                      <span>{event.eventKey.replaceAll('.', ' ')}</span>
+                      <span>{eventName(event.eventKey)}</span>
                       <time dateTime={event.occurredAt}>
                         {new Date(event.occurredAt).toLocaleString()}
                       </time>
@@ -296,7 +448,7 @@ export function PlatformOverview() {
               ) : (
                 <p className="rb-platform__muted">No platform administration activity yet.</p>
               )}
-              <Link className="rb-platform__link" href="/platform/audit">
+              <Link className="rb-platform-overview__more" href="/platform/audit">
                 View all activity <ArrowRight aria-hidden="true" />
               </Link>
             </Panel>
@@ -307,32 +459,87 @@ export function PlatformOverview() {
   );
 }
 
-function Metric({
-  href,
+type AttentionItem = {
+  title: string;
+  detail: string;
+  href: string;
+  tone: 'warning' | 'danger';
+};
+
+/** Most urgent first; an item appears only when its count is non-zero. */
+function attentionItems(analytics: PlatformAnalytics): AttentionItem[] {
+  const { attention } = analytics;
+  const items: AttentionItem[] = [];
+  const plural = (count: number, one: string, many: string) => (count === 1 ? one : many);
+  if (attention.trialsExpiringSoon > 0)
+    items.push({
+      title: `${attention.trialsExpiringSoon} ${plural(attention.trialsExpiringSoon, 'trial expires', 'trials expire')} within 24 hours`,
+      detail: 'Unpaid trials become read-only at expiry.',
+      href: '/platform/billing/trials',
+      tone: 'warning',
+    });
+  if (attention.failedWebhooks > 0)
+    items.push({
+      title: `${attention.failedWebhooks} failed webhook ${plural(attention.failedWebhooks, 'event', 'events')}`,
+      detail: 'A payment may be verified but not applied. All time.',
+      href: '/platform/billing/webhooks',
+      tone: 'danger',
+    });
+  if (attention.failedJobsLast24Hours > 0)
+    items.push({
+      title: `${attention.failedJobsLast24Hours} failed scheduled ${plural(attention.failedJobsLast24Hours, 'job', 'jobs')} in 24 hours`,
+      detail: 'Scheduled executions only; queue failures are listed under Jobs.',
+      href: '/platform/jobs',
+      tone: 'danger',
+    });
+  if (attention.highSeveritySecurityEvents > 0)
+    items.push({
+      title: `${attention.highSeveritySecurityEvents} high-severity security ${plural(attention.highSeveritySecurityEvents, 'event', 'events')} in 24 hours`,
+      detail: 'Severity warning or above.',
+      href: '/platform/security',
+      tone: 'danger',
+    });
+  if (attention.stalledOnboarding > 0)
+    items.push({
+      title: `${attention.stalledOnboarding} ${plural(attention.stalledOnboarding, 'organization has', 'organizations have')} stalled in setup`,
+      detail: 'Signed up more than 7 days ago, setup never finished.',
+      href: '/platform/organizations?status=DRAFT',
+      tone: 'warning',
+    });
+  if (attention.suspendedOrganizations > 0)
+    items.push({
+      title: `${attention.suspendedOrganizations} suspended ${plural(attention.suspendedOrganizations, 'organization', 'organizations')}`,
+      detail: 'Suspended tenants cannot use the application.',
+      href: '/platform/organizations?status=SUSPENDED',
+      tone: 'warning',
+    });
+  return items;
+}
+
+function Figure({
   label,
   value,
-  icon: Icon,
-  detail,
-  loading,
+  href,
+  tone,
 }: {
-  href: string;
   label: string;
-  value: number | undefined;
-  icon: typeof Building2;
-  detail: string;
-  loading: boolean;
+  value: string;
+  href?: string;
+  tone?: 'warning';
 }) {
+  const body = (
+    <>
+      <span>{label}</span>
+      <strong className={tone ? `is-${tone}` : undefined}>{value}</strong>
+    </>
+  );
   return (
-    <Link href={href} className="rb-platform-overview__metric">
-      <span>
-        {label}
-        <Icon aria-hidden="true" />
-      </span>
-      <strong>{loading ? '—' : value?.toLocaleString()}</strong>
-      <small>{detail}</small>
-    </Link>
+    <div className="rb-platform-overview__figure">
+      {href ? <Link href={href}>{body}</Link> : body}
+    </div>
   );
 }
+
 function Panel({
   title,
   description,
@@ -343,20 +550,27 @@ function Panel({
   children: ReactNode;
 }) {
   return (
-    <section className="rb-platform__card rb-platform-overview__panel">
-      <header>
-        <h2>{title}</h2>
-        <p>{description}</p>
-      </header>
+    <Card className="rb-dash-panel rb-platform-overview__panel">
+      <DashboardPanelHeading title={title} description={description} />
       {children}
-    </section>
+    </Card>
   );
 }
-function Distribution({ rows, total }: { rows: [string, number, string][]; total: number }) {
+
+function Distribution({
+  rows,
+  total,
+}: {
+  rows: [string, number, string, string][];
+  total: number;
+}) {
   return (
     <div className="rb-platform-overview__distribution">
-      {rows.map(([label, count, tone]) => (
-        <Link key={label} href="/platform/organizations">
+      {rows.map(([label, count, tone, query]) => (
+        <Link
+          key={label}
+          href={query ? `/platform/organizations?${query}` : '/platform/organizations'}
+        >
           <span>
             <i className={tone} />
             {label}
@@ -368,6 +582,7 @@ function Distribution({ rows, total }: { rows: [string, number, string][]; total
     </div>
   );
 }
+
 function Funnel({ rows, total }: { rows: [string, number][]; total: number }) {
   return (
     <ol className="rb-platform-overview__funnel">
@@ -388,6 +603,7 @@ function Funnel({ rows, total }: { rows: [string, number][]; total: number }) {
     </ol>
   );
 }
+
 function Bars({ rows }: { rows: { label: string; organizations: number; percent: number }[] }) {
   return (
     <div className="rb-platform-overview__bars">
@@ -409,20 +625,39 @@ function Bars({ rows }: { rows: { label: string; organizations: number; percent:
     </div>
   );
 }
-function Attention({ title, href, action }: { title: string; href: string; action: string }) {
-  return (
-    <Link href={href}>
-      <AlertTriangle aria-hidden="true" />
-      <span>{title}</span>
-      <em>
-        {action} <ArrowRight aria-hidden="true" />
-      </em>
-    </Link>
-  );
+
+/** Change against the previous window. Growth is favourable for every metric shown here. */
+function change(current: number, previous: number) {
+  if (previous === 0) return current > 0 ? { label: 'New', favorable: true } : null;
+  const percent = Math.round(((current - previous) / previous) * 100);
+  if (percent === 0) return { label: 'No change', favorable: true };
+  return { label: `${percent > 0 ? '+' : ''}${percent}%`, favorable: percent > 0 };
 }
+
+/** Each currency on its own; unconverted currencies are never added together. */
+function money(byCurrency: Record<string, string>): string {
+  const entries = Object.entries(byCurrency);
+  if (entries.length === 0) return 'None yet';
+  return entries
+    .map(([currency, minor]) =>
+      new Intl.NumberFormat(undefined, {
+        style: 'currency',
+        currency,
+        maximumFractionDigits: 0,
+      }).format(Number(minor) / 100),
+    )
+    .join(' · ');
+}
+
+function eventName(key: string): string {
+  const text = key.split('.').slice(1).join(' ').replaceAll('_', ' ');
+  return text ? `${text[0]?.toUpperCase()}${text.slice(1)}` : key;
+}
+
 function rate(part: number, whole: number) {
   return whole ? Math.round((part / whole) * 100) : 0;
 }
+
 function reportingRange(period: (typeof periods)[number][0]) {
   const days = periods.find(([key]) => key === period)?.[2] ?? 30;
   const to = new Date();
@@ -432,6 +667,7 @@ function reportingRange(period: (typeof periods)[number][0]) {
       : new Date(to.getTime() - (days - 1) * 86_400_000);
   return { from: from.toISOString().slice(0, 10), to: to.toISOString().slice(0, 10) };
 }
+
 function countryName(code: string) {
   try {
     return new Intl.DisplayNames(undefined, { type: 'region' }).of(code) ?? code;

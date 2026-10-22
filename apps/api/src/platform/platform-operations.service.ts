@@ -266,6 +266,14 @@ export class PlatformOperationsService {
     const createdInPeriod = { gte: from, lte: to };
     const rangeDays = Math.max(1, Math.ceil((to.getTime() - from.getTime()) / 86_400_000));
     const grouping = rangeDays <= 31 ? 'day' : rangeDays <= 120 ? 'week' : 'month';
+    // The immediately preceding window of the same length, so a KPI can state its change honestly
+    // -- or say nothing at all when there is no earlier window to compare against.
+    const periodMs = to.getTime() - from.getTime();
+    const previousFrom = new Date(from.getTime() - periodMs - 1);
+    const previousTo = new Date(from.getTime() - 1);
+    const createdInPreviousPeriod = { gte: previousFrom, lte: previousTo };
+    const dayAgo = new Date(now - 86_400_000);
+    const dayAhead = new Date(now + 86_400_000);
 
     const [
       totalOrganizations,
@@ -288,7 +296,14 @@ export class PlatformOperationsService {
       activeLast30,
       activeLast90,
       registrationRows,
+      activationRows,
+      previousNewOrganizations,
+      previousNewUsers,
+      previousActivated,
       failedJobsLast24Hours,
+      stalledOnboarding,
+      failedWebhooks,
+      highSeveritySecurityEvents,
       recentActivity,
     ] = await Promise.all([
       this.prisma.organization.count(),
@@ -363,8 +378,31 @@ export class PlatformOperationsService {
         select: { createdAt: true },
         orderBy: { createdAt: 'asc' },
       }),
+      this.prisma.organization.findMany({
+        where: { onboardingCompletedAt: createdInPeriod },
+        select: { onboardingCompletedAt: true },
+        orderBy: { onboardingCompletedAt: 'asc' },
+      }),
+      this.prisma.organization.count({ where: { createdAt: createdInPreviousPeriod } }),
+      this.prisma.user.count({ where: { createdAt: createdInPreviousPeriod } }),
+      this.prisma.organization.count({
+        where: { onboardingCompletedAt: createdInPreviousPeriod },
+      }),
       this.prisma.scheduledJobExecution.count({
-        where: { status: 'FAILED', createdAt: { gte: new Date(now - 86_400_000) } },
+        where: { status: 'FAILED', createdAt: { gte: dayAgo } },
+      }),
+      // Signed up, never finished setup, and old enough that it is a stall rather than a tenant
+      // still filling the form.
+      this.prisma.organization.count({
+        where: {
+          status: 'DRAFT',
+          onboardingCompletedAt: null,
+          createdAt: { lt: new Date(now - 7 * 86_400_000) },
+        },
+      }),
+      this.prisma.billingWebhookEvent.count({ where: { processingState: 'FAILED' } }),
+      this.prisma.securityEvent.count({
+        where: { severity: { in: ['WARNING', 'ERROR', 'CRITICAL'] }, occurredAt: { gte: dayAgo } },
       }),
       this.prisma.platformAuditEvent.findMany({
         orderBy: { occurredAt: 'desc' },
@@ -376,7 +414,33 @@ export class PlatformOperationsService {
     const plans = await this.prisma.plan.findMany({ select: { id: true, key: true, name: true } });
     const planName = new Map(plans.map((plan) => [plan.id, plan.name]));
 
-    const registrations = bucketRegistrations(registrationRows, grouping);
+    const registrations = bucketSeries(
+      registrationRows.map((row) => row.createdAt),
+      grouping,
+    );
+    // One series per bucket so the chart can draw registrations against activations without the
+    // client joining two lists by label.
+    const activations = new Map(
+      bucketSeries(
+        activationRows.flatMap((row) =>
+          row.onboardingCompletedAt ? [row.onboardingCompletedAt] : [],
+        ),
+        grouping,
+      ).map((bucket) => [bucket.key, bucket.organizations]),
+    );
+    const growth = registrations.map((bucket) => ({
+      ...bucket,
+      activated: activations.get(bucket.key) ?? 0,
+    }));
+    for (const [key, activated] of activations) {
+      if (!registrations.some((bucket) => bucket.key === key))
+        growth.push({ key, label: key, organizations: 0, activated });
+    }
+    growth.sort((a, b) => a.key.localeCompare(b.key));
+
+    const trialsExpiringSoon = await this.prisma.organizationSubscription.count({
+      where: { status: 'TRIALING', trialEndsAt: { gte: new Date(now), lte: dayAhead } },
+    });
 
     return {
       organizations: {
@@ -387,6 +451,16 @@ export class PlatformOperationsService {
         createdInPeriod: newInPeriod,
       },
       users: { total: totalUsers, active: activeUsers, createdInPeriod: newUsersInPeriod },
+      // `null` where the preceding window holds no data at all: a KPI then shows no change rather
+      // than an invented +100%.
+      previousPeriod: {
+        from: previousFrom.toISOString(),
+        to: previousTo.toISOString(),
+        organizationsCreated: previousNewOrganizations,
+        usersCreated: previousNewUsers,
+        organizationsActivated: previousActivated,
+        hasData: previousNewOrganizations + previousNewUsers + previousActivated > 0,
+      },
       activation: {
         onboardingCompleted: activatedOrganizations,
         onboardingCompletedRate: rate(activatedOrganizations, totalOrganizations),
@@ -404,7 +478,9 @@ export class PlatformOperationsService {
       retention: {
         activeLast30Days: activeLast30,
         activeLast90Days: activeLast90,
-        activeLast30DaysRate: rate(activeLast30, activeOrganizations),
+        // Against every organization, not only ACTIVE ones: a tenant still in setup or suspended
+        // can have recorded activity, which against the smaller base produced rates above 100%.
+        activeLast30DaysRate: rate(activeLast30, totalOrganizations),
       },
       distribution: {
         byCountry: byCountry
@@ -423,8 +499,16 @@ export class PlatformOperationsService {
         to: to.toISOString(),
         grouping,
         registrations,
+        growth,
       },
-      attention: { failedJobsLast24Hours },
+      attention: {
+        failedJobsLast24Hours,
+        stalledOnboarding,
+        failedWebhooks,
+        highSeveritySecurityEvents,
+        trialsExpiringSoon,
+        suspendedOrganizations,
+      },
       recentActivity: recentActivity.map((event) => ({
         id: event.id,
         eventKey: event.eventKey,
@@ -435,10 +519,10 @@ export class PlatformOperationsService {
   }
 }
 
-function bucketRegistrations(rows: Array<{ createdAt: Date }>, grouping: 'day' | 'week' | 'month') {
+function bucketSeries(values: Date[], grouping: 'day' | 'week' | 'month') {
   const counts = new Map<string, number>();
-  for (const { createdAt } of rows) {
-    const date = new Date(createdAt);
+  for (const value of values) {
+    const date = new Date(value);
     const key =
       grouping === 'month'
         ? date.toISOString().slice(0, 7)

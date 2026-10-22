@@ -9150,54 +9150,6 @@ button.rb-customer-facts__heading {
   color: hsl(var(--rb-muted-foreground));
   font-size: 0.75rem;
 }
-.rb-platform-overview__kpis {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 0.75rem;
-  margin-bottom: 1rem;
-}
-.rb-platform-overview__metric {
-  display: grid;
-  gap: 0.45rem;
-  min-height: 7.2rem;
-  padding: 1rem;
-  color: inherit;
-  text-decoration: none;
-  background: hsl(var(--rb-card));
-  border: 1px solid hsl(var(--rb-border));
-  border-radius: var(--rb-radius);
-}
-.rb-platform-overview__metric:hover {
-  border-color: hsl(var(--rb-primary) / 0.4);
-  background: hsl(var(--rb-primary) / 0.03);
-}
-.rb-platform-overview__metric > span {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  color: hsl(var(--rb-muted-foreground));
-  font-size: 0.75rem;
-  font-weight: 500;
-}
-.rb-platform-overview__metric svg {
-  width: 1.125rem;
-  height: 1.125rem;
-  color: hsl(var(--rb-primary));
-}
-.rb-platform-overview__metric strong {
-  font-size: 1.65rem;
-  line-height: 1;
-}
-.rb-platform-overview__metric small {
-  color: hsl(var(--rb-muted-foreground));
-  font-size: 0.72rem;
-}
-.rb-platform-overview__growth-grid {
-  display: grid;
-  grid-template-columns: minmax(0, 1.65fr) minmax(17rem, 1fr);
-  gap: 1rem;
-  margin-bottom: 1rem;
-}
 .rb-platform-overview__two-column {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -9207,27 +9159,47 @@ button.rb-customer-facts__heading {
   min-height: 0;
   margin: 0;
 }
-.rb-platform-overview__panel header {
+.rb-platform-overview__panel .rb-dash-panel-heading {
   margin-bottom: 1rem;
 }
-.rb-platform-overview__panel header h2,
-.rb-platform-overview__attention h2 {
-  margin: 0;
-  font-size: 1rem;
+/* Billing snapshot: one figure per currency group, each linking to its records. */
+.rb-platform-overview__billing {
+  margin-bottom: 1rem;
 }
-.rb-platform-overview__panel header p,
-.rb-platform-overview__attention p {
-  margin: 0.28rem 0 0;
+.rb-platform-overview__billing-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr));
+  gap: 0.75rem;
+  margin: 1rem 0 0.75rem;
+}
+.rb-platform-overview__figure span,
+.rb-platform-overview__figure a > span {
+  display: block;
   color: hsl(var(--rb-muted-foreground));
-  font-size: 0.75rem;
-  line-height: 1.4;
+  font-size: 0.72rem;
 }
-.rb-platform-overview__chart {
-  height: 14rem;
+.rb-platform-overview__figure strong {
+  display: block;
+  margin-top: 0.15rem;
+  font-size: 1.15rem;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+  overflow-wrap: anywhere;
+}
+.rb-platform-overview__figure strong.is-warning {
+  color: hsl(var(--rb-danger));
+}
+.rb-platform-overview__figure a {
+  color: inherit;
+  text-decoration: none;
+}
+.rb-platform-overview__figure a:hover strong {
+  color: hsl(var(--rb-primary));
 }
 .rb-platform-overview__distribution {
   display: grid;
   gap: 0.75rem;
+  margin-top: 1rem;
 }
 .rb-platform-overview__distribution a {
   display: grid;
@@ -9260,50 +9232,75 @@ button.rb-customer-facts__heading {
   min-width: 2.5rem;
   text-align: right;
 }
-.rb-platform-overview__attention {
-  display: grid;
-  grid-template-columns: minmax(14rem, 0.65fr) 1fr;
-  gap: 1.25rem;
-  margin-bottom: 1rem;
-  padding: 1rem 1.15rem;
-  background: hsl(var(--rb-card));
-  border: 1px solid hsl(var(--rb-border));
-  border-radius: var(--rb-radius);
-}
 .rb-platform-overview__attention-list {
   display: grid;
-  gap: 0.25rem;
+  gap: 0.2rem;
+  margin: 1rem 0 0;
+  padding: 0;
+  list-style: none;
 }
 .rb-platform-overview__attention-list a {
   display: flex;
   align-items: center;
-  gap: 0.6rem;
-  min-height: 2.25rem;
+  gap: 0.65rem;
+  padding: 0.5rem 0.4rem;
   color: inherit;
+  border-radius: var(--rb-radius-sm);
   text-decoration: none;
 }
-.rb-platform-overview__attention-list a > svg {
-  width: 1rem;
-  color: hsl(8 78% 52%);
+.rb-platform-overview__attention-list a:hover {
+  background: hsl(var(--rb-muted));
 }
-.rb-platform-overview__attention-list em {
-  display: flex;
-  align-items: center;
-  gap: 0.2rem;
+.rb-platform-overview__attention-list a > svg:first-child {
+  width: 1rem;
+  height: 1rem;
+  flex: 0 0 1rem;
+}
+.rb-platform-overview__attention-list svg.is-danger {
+  color: hsl(var(--rb-danger));
+}
+.rb-platform-overview__attention-list svg.is-warning {
+  color: hsl(var(--rb-warning));
+}
+.rb-platform-overview__attention-list span {
+  display: grid;
+  min-width: 0;
+}
+.rb-platform-overview__attention-list strong {
+  font-size: 0.8125rem;
+  font-weight: 500;
+}
+.rb-platform-overview__attention-list small {
+  color: hsl(var(--rb-muted-foreground));
+  font-size: 0.72rem;
+}
+.rb-platform-overview__attention-list a > svg:last-child {
+  width: 0.9rem;
+  height: 0.9rem;
+  flex: 0 0 0.9rem;
   margin-left: auto;
   color: hsl(var(--rb-primary));
-  font-size: 0.78rem;
-  font-style: normal;
 }
-.rb-platform-overview__attention-list em svg {
+.rb-platform-overview__more {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  margin-top: 0.75rem;
+  color: hsl(var(--rb-primary));
+  font-size: 0.78rem;
+  font-weight: 500;
+  text-decoration: none;
+}
+.rb-platform-overview__more svg {
   width: 0.9rem;
+  height: 0.9rem;
 }
 .rb-platform-overview__funnel,
 .rb-platform-overview__bars,
 .rb-platform-overview__activity {
   display: grid;
   gap: 0.7rem;
-  margin: 0;
+  margin: 1rem 0 0;
   padding: 0;
   list-style: none;
 }
@@ -9368,18 +9365,8 @@ button.rb-customer-facts__heading {
   color: hsl(var(--rb-muted-foreground));
   font-size: 0.7rem;
 }
-@media (max-width: 70rem) {
-  .rb-platform-overview__kpis {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-  .rb-platform-overview__growth-grid {
-    grid-template-columns: 1fr;
-  }
-}
 @media (max-width: 48rem) {
-  .rb-platform-overview__kpis,
-  .rb-platform-overview__two-column,
-  .rb-platform-overview__attention {
+  .rb-platform-overview__two-column {
     grid-template-columns: 1fr;
   }
   .rb-platform-overview__controls {
@@ -9390,9 +9377,6 @@ button.rb-customer-facts__heading {
   }
   .rb-platform-overview__controls select {
     width: 100%;
-  }
-  .rb-platform-overview__attention {
-    gap: 0.7rem;
   }
 }
 
