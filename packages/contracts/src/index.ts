@@ -4232,6 +4232,40 @@ export const OFFICIAL_FEATURE_KEYS = [
 ] as const;
 export type OfficialFeatureKey = (typeof OFFICIAL_FEATURE_KEYS)[number];
 
+/** Operator-facing names for every catalog key, in the order the approved matrix lists them. */
+export const OFFICIAL_ENTITLEMENT_LABELS: Record<
+  OfficialEntitlementKey | OfficialFeatureKey,
+  string
+> = {
+  'customers.active.max': 'Active customers',
+  'invoices.issued.max': 'Invoices issued / month',
+  'seats.max': 'Organization users',
+  'expenses.max': 'Expenses / month',
+  'vendors.max': 'Vendors',
+  'bills.enabled': 'Bills / month',
+  'purchase_orders.enabled': 'Purchase orders / month',
+  'products.max': 'Products and services',
+  'bank_accounts.max': 'Bank accounts',
+  'warehouses.enabled': 'Warehouses',
+  'projects.enabled': 'Active projects',
+  'reports.saved.enabled': 'Saved reports',
+  'reports.scheduled.enabled': 'Scheduled reports',
+  'ai_insights.max': 'AI insight requests / month',
+  'quotes.max': 'Quotes / month',
+  'sales_orders.enabled': 'Sales orders / month',
+  'approval_workflows.enabled': 'Approval workflows',
+  'recurring_invoices.enabled': 'Recurring invoices',
+  'manual_journals.enabled': 'Manual journals',
+  'bank_reconciliation.enabled': 'Bank reconciliation',
+  'multi_currency.enabled': 'Multi-currency',
+  'stock_tracking.enabled': 'Stock tracking',
+  'multiple_warehouses.enabled': 'Multiple warehouses',
+  'timesheets.enabled': 'Timesheets',
+  'custom_roles.enabled': 'Custom roles',
+  'cash_flow_reporting.enabled': 'Cash-flow reporting',
+  'advanced_financial_reports.enabled': 'Advanced financial reports',
+};
+
 const features = (enabled: readonly OfficialFeatureKey[]): Record<OfficialFeatureKey, boolean> =>
   Object.fromEntries(OFFICIAL_FEATURE_KEYS.map((key) => [key, enabled.includes(key)])) as Record<
     OfficialFeatureKey,

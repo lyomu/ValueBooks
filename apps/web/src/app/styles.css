@@ -9696,3 +9696,16 @@ button.rb-customer-facts__heading {
     min-height: 0;
   }
 }
+/* Plans & pricing catalog (platform-plan-catalog.tsx). */
+.rb-plan-catalog__name,
+.rb-plan-catalog__price,
+.rb-plan-catalog__drift {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem;
+}
+.rb-plan-catalog__price + .rb-table-secondary {
+  display: block;
+  margin-top: 0.25rem;
+}

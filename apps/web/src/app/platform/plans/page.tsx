@@ -1,9 +1,6 @@
-import type { Metadata } from 'next';
+import { redirect } from 'next/navigation';
 
-import { PlatformPlans } from '../../../components/platform-catalog';
-
-export const metadata: Metadata = { title: 'Plans | ValueBooks platform' };
-
+/** Plans & pricing moved under Billing; keep old links and bookmarks working. */
 export default function PlatformPlansRoute() {
-  return <PlatformPlans />;
+  redirect('/platform/billing/plans');
 }

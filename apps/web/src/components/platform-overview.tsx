@@ -367,7 +367,7 @@ export function PlatformOverview() {
               <DashboardPanelHeading
                 title="Plan mix"
                 description="Organizations by current subscription."
-                href="/platform/plans"
+                href="/platform/billing/plans"
                 linkLabel="Plans"
               />
               {analytics.distribution.byPlan.length ? (

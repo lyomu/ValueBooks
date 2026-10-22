@@ -67,7 +67,7 @@ const NAV_SECTIONS: NavSection[] = [
 const BILLING_NAV = [
   { href: '/platform/billing', label: 'Overview' },
   { href: '/platform/billing/subscriptions', label: 'Subscriptions' },
-  { href: '/platform/plans', label: 'Plans & pricing' },
+  { href: '/platform/billing/plans', label: 'Plans & pricing' },
   { href: '/platform/billing/transactions', label: 'Transactions' },
   { href: '/platform/billing/trials', label: 'Trials' },
   { href: '/platform/billing/revenue', label: 'Revenue analytics' },
