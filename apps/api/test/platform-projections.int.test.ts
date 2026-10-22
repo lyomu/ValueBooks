@@ -110,6 +110,16 @@ describe('platform response projections', () => {
       expect(forbiddenTenantFinancialPaths(response.body as unknown), path).toEqual([]);
     }
 
+    // The detail's member list is capped, so the suspension dialog reads this uncapped count.
+    const detail = await harness
+      .http()
+      .get(`${API}/platform/organizations/${organizationId}`)
+      .set('Cookie', supportCookie)
+      .expect(200);
+    const { data } = detail.body as { data: { memberCount: number; members: unknown[] } };
+    expect(data.memberCount).toBe(data.members.length);
+    expect(data.memberCount).toBeGreaterThan(0);
+
     // Plans intentionally carry the global catalogue price, currency, and billing interval. Those
     // fields describe what ValueBooks sells, not a tenant's invoices, journals, or balances.
     // Truncation between tests also clears the migration-seeded default plan, so seed one here

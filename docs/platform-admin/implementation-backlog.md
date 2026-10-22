@@ -77,7 +77,7 @@ Updated after every item: status, commit/PR, the focused checks actually run, an
 | 3.2e | Requires attention, plan mix and platform health panels | 🔄 | Attention queue (6 sources, severity-toned, each linking to its records) and plan mix done. Platform health panel folded into the attention queue for now; revisit in 5.3 when per-queue scopes are fixed |
 | 3.2f | Funnel, module adoption, countries, recent activity | ✅ | Kept and moved onto the shared panel primitives; audit event keys now render as readable names |
 | 3.2g | Per-widget honest states; responsive 4/2/1 columns | ✅ | `Promise.allSettled` so a billing outage shows "unknown", never 0; per-panel skeleton/empty/error with retry; 4/2/1 KPI grid |
-| 3.3 | Organization 360° detail tabs | ⬜ | |
+| 3.3 | Organization 360° detail tabs | ✅ | `platform-organization-detail.tsx`: seven tabs on shared `Tabs`/`DataTable`/`StatusBadge`; lifecycle and subscription shown as separate badges; suspension banner. Suspend/reactivate moved to `AdminActionDialog` (reason, slug typed back for suspend) and `e2e/phase12-platform.spec.ts` updated to match. Side feeds (billing, security, audit, failed jobs) keep loading, error-with-retry and empty apart; previously a failed feed read as "nothing recorded". API detail gains an uncapped active `memberCount` (the member list is capped at 100). Legacy raw-button rule now excludes tab triggers, icon buttons and the combobox clear via a selector-list `:not()` that keeps its (0,1,1) specificity |
 | 3.4 | Organizations list: subscription-state and onboarding filters, last activity | ⬜ | |
 | 3.5 | Users list and detail: platform role vs memberships, sessions, status dialog | ⬜ | |
 
@@ -137,3 +137,7 @@ Updated after every item: status, commit/PR, the focused checks actually run, an
   - Organizations listing now reads filters from the query string, so overview drilldowns land pre-filtered (verified: `?status=SUSPENDED` returns the one suspended tenant).
   - **Checks:** api + web typecheck, ESLint, integration `platform-operations` 3/3 (new spec covers the period comparison, ordered growth buckets and attention counts, and re-asserts the no-money boundary), `platform-projections` 2/2. Browser pass over the rebuilt overview at desktop with no errors.
   - **Local dev database:** the three new migrations were applied with `prisma migrate deploy` (they had not been, which is why billing endpoints returned 500 locally).
+- **2026-10-22**: Phase 3.3, the organization detail rebuild.
+  - **Checks, all green:** web + api typecheck; ESLint on the touched files; web unit 27/27; integration `platform-projections` (new `memberCount` assertion), `platform-operations` 3/3 and `platform-audit` 1/1.
+  - **Browser pass against the dev servers:** all seven tabs at 1440px plus the 390px overview; the full suspend → banner → reactivate flow on the demo tenant, using the spec's selectors. Tab triggers render transparent; no browser errors.
+  - **Deferred:** `e2e/phase12-platform.spec.ts` itself was not run (it needs the isolated :3300 e2e stack and is not yet in Jenkins, see 6.1). Full lint, typecheck and test, plus **Test (integration)**, go to Jenkins.

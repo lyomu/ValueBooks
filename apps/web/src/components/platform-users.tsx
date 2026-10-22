@@ -18,7 +18,7 @@ import {
   usePlatformSession,
   type Paginated,
 } from '../lib/platform';
-import { Row } from './platform-organizations';
+import { Row } from './platform-organization-detail';
 import { PlatformPage } from './platform-shell';
 
 type UserDetail = {

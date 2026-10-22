@@ -5091,6 +5091,66 @@ a.rb-nav-item:hover {
   color: hsl(var(--rb-muted-foreground));
   font-size: 0.75rem;
 }
+/* Entity detail: independent lifecycle badges, a state banner, and the tab strip. */
+.rb-platform__detail-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+}
+.rb-platform__banner {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+  padding: 0.85rem 1rem;
+}
+.rb-platform__banner > svg {
+  width: 1.1rem;
+  height: 1.1rem;
+  flex: 0 0 1.1rem;
+  margin-top: 0.1rem;
+  color: hsl(var(--rb-warning));
+}
+.rb-platform__banner.is-warn {
+  background: hsl(var(--rb-warning-surface));
+  border-color: hsl(var(--rb-warning) / 0.3);
+}
+.rb-platform__banner h2 {
+  margin: 0;
+  font-size: 0.875rem;
+}
+.rb-platform__banner p {
+  margin: 0.2rem 0 0;
+  font-size: 0.8125rem;
+  line-height: 1.5;
+}
+.rb-platform__tabs .rb-tabs__list {
+  margin-bottom: 1.25rem;
+  overflow-x: auto;
+}
+.rb-platform__tabs .rb-tabs__content > .rb-platform__grid:last-child,
+.rb-platform__tabs .rb-tabs__content > .rb-platform__card:last-child {
+  margin-bottom: 0;
+}
+.rb-platform__tabs .rb-platform__card > h2 {
+  margin: 0 0 0.75rem;
+  font-size: 0.9375rem;
+}
+.rb-platform__tabs .rb-platform__card > a {
+  display: inline-block;
+  margin-top: 0.75rem;
+  color: hsl(var(--rb-primary));
+  font-size: 0.8125rem;
+  font-weight: 500;
+  text-decoration: none;
+}
+.rb-platform__tabs .rb-table-card {
+  margin-top: 0.75rem;
+}
+.rb-platform__tabs .rb-platform__card > * + .rb-platform__muted {
+  margin-top: 0.75rem;
+}
 /* AdminActionDialog (admin-action-dialog.tsx): impact, audited reason, typed confirmation. */
 .rb-admin-action {
   display: grid;
@@ -5560,9 +5620,11 @@ a.rb-nav-item:hover {
 .rb-platform__check input {
   min-height: 0;
 }
-/* Legacy console pages still use raw <button>s styled here. Scoped to page content so the shared
-   `Button` and the shell chrome keep their own styles; pages move to `Button` as they are rebuilt. */
-:where(.rb-platform__page) button:not(.rb-button) {
+/* Legacy console pages still use raw <button>s styled here. Scoped to page content, and excluding
+   every shared primitive (`Button`, icon buttons, tab triggers, combobox clear) so those keep
+   their own styles. A selector-list `:not()` keeps the original (0,1,1) specificity. Pages drop
+   out of this rule as each is rebuilt on `Button`. */
+:where(.rb-platform__page) button:not(.rb-button, .rb-icon-button, .rb-tabs__trigger, .rb-combobox__clear) {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -5577,24 +5639,24 @@ a.rb-nav-item:hover {
   font-weight: 600;
   cursor: pointer;
 }
-:where(.rb-platform__page) button:not(.rb-button) svg {
+:where(.rb-platform__page) button:not(.rb-button, .rb-icon-button, .rb-tabs__trigger, .rb-combobox__clear) svg {
   width: 1rem;
   height: 1rem;
   flex: 0 0 auto;
 }
-:where(.rb-platform__page) button:not(.rb-button):disabled {
+:where(.rb-platform__page) button:not(.rb-button, .rb-icon-button, .rb-tabs__trigger, .rb-combobox__clear):disabled {
   opacity: 0.55;
   cursor: not-allowed;
 }
-:where(.rb-platform__page) button.is-danger:not(.rb-button) {
+:where(.rb-platform__page) button.is-danger:not(.rb-button, .rb-tabs__trigger) {
   background: hsl(var(--rb-danger));
 }
-:where(.rb-platform__page) button.is-secondary:not(.rb-button) {
+:where(.rb-platform__page) button.is-secondary:not(.rb-button, .rb-tabs__trigger) {
   color: hsl(var(--rb-foreground));
   background: hsl(var(--rb-muted));
   border: 1px solid hsl(var(--rb-border));
 }
-:where(.rb-platform__page) button.is-quiet-danger:not(.rb-button) {
+:where(.rb-platform__page) button.is-quiet-danger:not(.rb-button, .rb-tabs__trigger) {
   color: hsl(var(--rb-danger));
   background: hsl(var(--rb-danger-surface));
   border: 1px solid hsl(var(--rb-danger) / 0.22);

@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 
-import { PlatformOrganizationDetail } from '../../../../components/platform-organizations';
+import { PlatformOrganizationDetail } from '../../../../components/platform-organization-detail';
 
 export const metadata: Metadata = { title: 'Organization | ValueBooks platform' };
 

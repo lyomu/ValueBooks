@@ -157,6 +157,8 @@ export class PlatformTenantsService {
           orderBy: { createdAt: 'asc' },
           take: 100,
         },
+        // The member list is capped; the count is not, so the impact of a suspension is exact.
+        _count: { select: { members: { where: { status: 'ACTIVE' } } } },
       },
     });
     if (!organization) throw new NotFoundException('Organization not found.');
@@ -178,6 +180,7 @@ export class PlatformTenantsService {
       onboardingCompletedAt: organization.onboardingCompletedAt?.toISOString() ?? null,
       createdAt: organization.createdAt.toISOString(),
       owner: organization.createdBy,
+      memberCount: organization._count.members,
       members: organization.members.map((member) => ({
         userId: member.user.id,
         email: member.user.email,

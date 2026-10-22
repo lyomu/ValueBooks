@@ -71,17 +71,27 @@ test.describe('Phase 12 platform console', () => {
     ).toBeVisible({
       timeout: 15_000,
     });
-    await page.getByLabel('Reason').fill('Phase 12 Playwright suspension check.');
+    // Suspension lives on the Administration tab behind AdminActionDialog: an audited reason
+    // plus the organization's slug typed back as confirmation.
+    await page.getByRole('tab', { name: 'Administration' }).click();
     await page.getByRole('button', { name: 'Suspend organization' }).click();
+    const suspend = page.getByRole('dialog', { name: 'Suspend organization' });
+    await suspend.getByLabel('Reason').fill('Phase 12 Playwright suspension check.');
+    const slug = (await suspend.locator('label strong').textContent()) ?? '';
+    await suspend.getByLabel(/to confirm/).fill(slug);
+    await suspend.getByRole('button', { name: 'Suspend organization' }).click();
     await expect(page.getByRole('status')).toContainText('Organization suspended.', {
       timeout: 10_000,
     });
     await expect(page.getByRole('heading', { name: 'Suspended' })).toBeVisible();
     await expect(page.getByText('Phase 12 Playwright suspension check.')).toBeVisible();
 
-    // Reactivation is one confirmation click: the API takes an optional reason and the console
-    // does not collect one, so restoring access is a single action.
-    await page.getByRole('button', { name: 'Reactivate' }).click();
+    // The API treats the reactivation reason as optional; the console records one anyway so the
+    // audit trail explains both directions.
+    await page.getByRole('button', { name: 'Reactivate organization' }).click();
+    const reactivate = page.getByRole('dialog', { name: 'Reactivate organization' });
+    await reactivate.getByLabel('Reason').fill('Phase 12 Playwright reactivation check.');
+    await reactivate.getByRole('button', { name: 'Reactivate organization' }).click();
     await expect(page.getByRole('status')).toContainText('Organization reactivated.', {
       timeout: 10_000,
     });
