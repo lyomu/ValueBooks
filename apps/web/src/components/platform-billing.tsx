@@ -1,6 +1,6 @@
 'use client';
 
-import { DataTable, DataTableSearch, DataTableToolbar, Button } from '@valuebooks/ui';
+import { Badge, DataTable, DataTableSearch, DataTableToolbar, Button } from '@valuebooks/ui';
 import Link from 'next/link';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
@@ -279,7 +279,7 @@ export function PlatformBillingList({ kind }: { kind: Listing }) {
               {(kind === 'trials'
                 ? ['active', 'expiring', 'expired', 'converted']
                 : kind === 'webhooks'
-                  ? ['VERIFIED', 'PROCESSED', 'FAILED']
+                  ? ['VERIFIED', 'PROCESSING', 'PROCESSED', 'FAILED']
                   : kind === 'subscriptions'
                     ? [
                         'TRIALING',
@@ -449,6 +449,7 @@ export function PlatformBillingIssues() {
       errorMessage: string | null;
     }>;
     unknownRefunds: Array<{ id: string }>;
+    unsubscribedOrganizations?: Array<{ id: string; legalName: string }>;
   } | null>(null);
   const [error, setError] = useState('');
   useEffect(() => {
@@ -507,6 +508,19 @@ export function PlatformBillingIssues() {
             <ul>
               {data.unknownRefunds.map((row) => (
                 <li key={row.id}>{row.id}</li>
+              ))}
+            </ul>
+          </section>
+          <section className="rb-platform__card">
+            <h2>
+              Active organizations without a subscription (
+              {data.unsubscribedOrganizations?.length ?? 0})
+            </h2>
+            <ul>
+              {(data.unsubscribedOrganizations ?? []).map((row) => (
+                <li key={row.id}>
+                  <Link href={`/platform/organizations/${row.id}`}>{row.legalName}</Link>
+                </li>
               ))}
             </ul>
           </section>
@@ -823,12 +837,34 @@ export function PlatformBillingOverrides({ organizationId }: { organizationId: s
   );
 }
 
+type ProviderPlanState =
+  'READY' | 'MISSING_CODE' | 'DUPLICATE_CODE' | 'WRONG_PROVIDER' | 'MISSING_PLAN';
+
+/** Checkout is blocked for every state except READY. */
+const PROVIDER_PLAN_STATE: Record<
+  ProviderPlanState,
+  { label: string; tone: 'success' | 'warning' | 'danger' }
+> = {
+  READY: { label: 'Ready', tone: 'success' },
+  MISSING_CODE: { label: 'Plan code missing', tone: 'warning' },
+  DUPLICATE_CODE: { label: 'Code reused by another plan', tone: 'danger' },
+  WRONG_PROVIDER: { label: 'Not mapped to Paystack', tone: 'danger' },
+  MISSING_PLAN: { label: 'Catalog row missing', tone: 'danger' },
+};
+
 export function PlatformBillingProviders() {
   const [rows, setRows] = useState<Array<{
     provider: string;
     environment: string;
     credentialsConfigured: boolean;
-    plans: Array<{ key: string; configured: boolean }>;
+    plans: Array<{
+      key: string;
+      state: ProviderPlanState;
+      providerPlanCode: string | null;
+      configured: boolean;
+    }>;
+    readyPlans: number;
+    expectedPlans: number;
     lastWebhook: { receivedAt: string; processingState: string } | null;
   }> | null>(null);
   useEffect(() => {
@@ -850,11 +886,29 @@ export function PlatformBillingProviders() {
             <p>Environment: {row.environment}</p>
             <p>Credentials: {row.credentialsConfigured ? 'Configured' : 'Incomplete'}</p>
             <p>
-              Mapped plans:{' '}
-              {row.plans
-                .map((plan) => `${plan.key} (${plan.configured ? 'ready' : 'missing remote IDs'})`)
-                .join(', ') || 'None'}
+              Plan codes: {row.readyPlans} of {row.expectedPlans} official plans ready for checkout
             </p>
+            <DataTable
+              caption="Paystack plan-code coverage"
+              rows={row.plans.map((plan) => ({ ...plan, id: plan.key }))}
+              columns={[
+                { key: 'plan', header: 'Plan', cell: (plan) => plan.key },
+                {
+                  key: 'code',
+                  header: 'Paystack plan code',
+                  cell: (plan) => plan.providerPlanCode ?? '—',
+                },
+                {
+                  key: 'state',
+                  header: 'Status',
+                  cell: (plan) => (
+                    <Badge tone={PROVIDER_PLAN_STATE[plan.state].tone}>
+                      {PROVIDER_PLAN_STATE[plan.state].label}
+                    </Badge>
+                  ),
+                },
+              ]}
+            />
             <p>
               Last signed webhook:{' '}
               {row.lastWebhook

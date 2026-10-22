@@ -1,11 +1,15 @@
 'use client';
 
-import type {
-  OrganizationEntitlements,
-  PlatformOrganization,
-  PlatformUsage,
+import {
+  describeOrganizationPlan,
+  OFFICIAL_PLAN_CATALOG,
+  OFFICIAL_PLAN_TIERS,
+  type OrganizationEntitlements,
+  type PlatformOrganization,
+  type PlatformUsage,
+  type SubscriptionStatus,
 } from '@valuebooks/contracts';
-import { DataTable, PrimarySecondaryCell } from '@valuebooks/ui';
+import { Badge, DataTable, PrimarySecondaryCell } from '@valuebooks/ui';
 import Link from 'next/link';
 import { useCallback, useEffect, useState, type FormEvent } from 'react';
 
@@ -107,11 +111,17 @@ export function PlatformOrganizations() {
         </label>
         <label>
           Plan
-          <input
+          <select
             value={filters.planKey}
-            placeholder="growth"
             onChange={(event) => setFilters({ ...filters, planKey: event.target.value })}
-          />
+          >
+            <option value="">All plans</option>
+            {OFFICIAL_PLAN_TIERS.map((tier) => (
+              <option key={tier} value={tier}>
+                {OFFICIAL_PLAN_CATALOG[tier].name}
+              </option>
+            ))}
+          </select>
         </label>
         <button type="submit">Apply</button>
       </form>
@@ -150,7 +160,14 @@ export function PlatformOrganizations() {
             header: 'Country',
             cell: (row: PlatformOrganization) => row.countryCode,
           },
-          { key: 'plan', header: 'Plan', cell: (row: PlatformOrganization) => row.planName ?? '-' },
+          {
+            key: 'plan',
+            header: 'Plan',
+            cell: (row: PlatformOrganization) => {
+              const plan = describeOrganizationPlan(row);
+              return <Badge tone={plan.tone}>{plan.label}</Badge>;
+            },
+          },
           {
             key: 'members',
             header: 'Members',
@@ -328,7 +345,18 @@ export function PlatformOrganizationDetail({ organizationId }: { organizationId:
         <section className="rb-platform__card" aria-label="Plan">
           <h2>Plan</h2>
           <dl>
-            <Row label="Plan" value={detail.entitlements.plan?.name ?? 'None'} />
+            <Row
+              label="Plan"
+              value={
+                describeOrganizationPlan({
+                  planName: detail.entitlements.plan?.name ?? null,
+                  planStatus: null,
+                  subscriptionStatus:
+                    (detail.entitlements.subscription?.status as SubscriptionStatus | undefined) ??
+                    null,
+                }).label
+              }
+            />
             <Row label="Subscription" value={detail.entitlements.subscription?.status ?? '—'} />
             <Row
               label="Trial ends"

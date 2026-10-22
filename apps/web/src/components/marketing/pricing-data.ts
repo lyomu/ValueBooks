@@ -1,6 +1,16 @@
+import {
+  OFFICIAL_PLAN_CATALOG,
+  officialYearlySavingsPercent,
+  type OfficialEntitlementKey,
+  type OfficialPlanTier,
+} from '@valuebooks/contracts';
+
 /**
- * Approved commercial plan catalog for the public marketing site (billing/subscriptions spec
- * Sections 3 and 10). `id` doubles as the tier key the real backend catalog groups monthly/yearly
+ * Marketing copy for the approved commercial plan catalog (billing/subscriptions spec Sections 3
+ * and 10). Prices, savings, the "most popular" tier and every quantitative limit are read from
+ * `OFFICIAL_PLAN_CATALOG` in `@valuebooks/contracts` -- the same figures the API's catalog
+ * migrations are tested against -- so the public page cannot advertise a price or cap checkout and
+ * enforcement don't honour. Only taglines and qualitative feature copy are authored here. `id` doubles as the tier key the real backend catalog groups monthly/yearly
  * rows under (`${id}_monthly` / `${id}_yearly` — see `PlanCard`'s checkout call in `pricing.tsx`),
  * so it must stay in sync with the `tierKey` column seeded onto the `Plan` table. Both the
  * homepage pricing teaser and the /pricing page read from here so they can't drift.
@@ -22,71 +32,77 @@ export type Plan = {
   ctaHref?: string;
 };
 
+const catalog = OFFICIAL_PLAN_CATALOG;
+const limit = (tier: OfficialPlanTier, key: OfficialEntitlementKey) => catalog[tier].limits[key];
+const users = (tier: OfficialPlanTier) => {
+  const seats = limit(tier, 'seats.max');
+  return seats === 1 ? '1 user' : `${seats ?? 'Unlimited'} users`;
+};
+/** Limit cell for the comparison table: unlimited, not included, or the cap. */
+const limitValue = (key: OfficialEntitlementKey): Record<string, FeatureValue> =>
+  Object.fromEntries(
+    Object.values(catalog).map((plan) => {
+      const value = plan.limits[key];
+      return [plan.tierKey, value === null ? 'Unlimited' : value === 0 ? false : String(value)];
+    }),
+  );
+
+function plan(tier: OfficialPlanTier, copy: Pick<Plan, 'tagline' | 'topFeatures'>): Plan {
+  return {
+    id: tier,
+    name: catalog[tier].name,
+    monthlyPriceUsd: catalog[tier].monthlyPriceMinor / 100,
+    yearlyPriceUsd: catalog[tier].yearlyPriceMinor / 100,
+    yearlySavingsPercent: officialYearlySavingsPercent(catalog[tier]),
+    highlighted: catalog[tier].mostPopular,
+    ...copy,
+  };
+}
+
 export const PLANS: Plan[] = [
-  {
-    id: 'starter',
-    name: 'Starter',
+  plan('starter', {
     tagline: 'For solo owners getting invoices and expenses organized.',
-    monthlyPriceUsd: 1,
-    yearlyPriceUsd: 10,
-    yearlySavingsPercent: 17,
     topFeatures: [
-      '1 user',
-      '10 customers, 5 invoices/mo',
+      users('starter'),
+      `${limit('starter', 'customers.active.max')} customers, ${limit('starter', 'invoices.issued.max')} invoices/mo`,
       'Expense tracking',
       'Core financial reports',
       'Email support',
     ],
-  },
-  {
-    id: 'growth',
-    name: 'Growth',
+  }),
+  plan('growth', {
     tagline: 'For small teams who need banking and multi-user access.',
-    monthlyPriceUsd: 4.99,
-    yearlyPriceUsd: 55,
-    yearlySavingsPercent: 8,
     topFeatures: [
-      '2 users',
+      users('growth'),
       'Bills & purchase orders',
       'Banking & reconciliation',
       'Basic inventory',
-      '50 customers, 20 invoices/mo',
+      `${limit('growth', 'customers.active.max')} customers, ${limit('growth', 'invoices.issued.max')} invoices/mo`,
       'Chat support',
     ],
-  },
-  {
-    id: 'professional',
-    name: 'Professional',
+  }),
+  plan('professional', {
     tagline: 'For growing businesses that need deeper reporting and roles.',
-    monthlyPriceUsd: 9.99,
-    yearlyPriceUsd: 100,
-    yearlySavingsPercent: 17,
-    highlighted: true,
     topFeatures: [
-      '5 users',
+      users('professional'),
       'Projects & timesheets',
       'Advanced reporting & insights',
       'Inventory & multi-currency',
-      '100 customers, 100 invoices/mo',
+      `${limit('professional', 'customers.active.max')} customers, ${limit('professional', 'invoices.issued.max')} invoices/mo`,
       'Priority support',
     ],
-  },
-  {
-    id: 'advanced',
-    name: 'Advanced',
+  }),
+  plan('advanced', {
     tagline: 'For established businesses with complex workflows.',
-    monthlyPriceUsd: 20,
-    yearlyPriceUsd: 220,
-    yearlySavingsPercent: 8,
     topFeatures: [
-      '10 users',
+      users('advanced'),
       'Unlimited customers & invoices',
       'Unlimited projects',
       'Advanced automation & approvals',
       'Custom roles',
       'Priority support',
     ],
-  },
+  }),
 ];
 
 export type FeatureValue = boolean | string;
@@ -108,7 +124,7 @@ export const FEATURE_GROUPS: FeatureGroup[] = [
     rows: [
       {
         label: 'Users included',
-        values: { starter: '1', growth: '2', professional: '5', advanced: '10' },
+        values: limitValue('seats.max'),
       },
       {
         label: 'Chart of accounts',
@@ -133,13 +149,12 @@ export const FEATURE_GROUPS: FeatureGroup[] = [
     name: 'Invoicing & payments',
     rows: [
       {
-        label: 'Invoices & quotes',
-        values: {
-          starter: 'Unlimited',
-          growth: 'Unlimited',
-          professional: 'Unlimited',
-          advanced: 'Unlimited',
-        },
+        label: 'Invoices issued per month',
+        values: limitValue('invoices.issued.max'),
+      },
+      {
+        label: 'Quotes per month',
+        values: limitValue('quotes.max'),
       },
       {
         label: 'Recurring invoices',

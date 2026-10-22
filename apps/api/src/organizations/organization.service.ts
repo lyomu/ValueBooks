@@ -5,6 +5,7 @@ import {
   ConflictException,
   ForbiddenException,
   Injectable,
+  Logger,
   NotFoundException,
 } from '@nestjs/common';
 import {
@@ -15,6 +16,7 @@ import {
   OrganizationStatus,
   type Prisma,
 } from '@prisma/client';
+import { OFFICIAL_TRIAL } from '@valuebooks/contracts';
 
 import { AuthMailerService } from '../auth/auth-mailer.service.js';
 import { createOpaqueToken, hashToken } from '../auth/auth.crypto.js';
@@ -92,6 +94,8 @@ type OrganizationDetailRow = Prisma.OrganizationGetPayload<{
 
 @Injectable()
 export class OrganizationService {
+  private readonly logger = new Logger(OrganizationService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly access: OrganizationAccessService,
@@ -541,9 +545,17 @@ export class OrganizationService {
           where: { organizationId: context.id },
           select: { id: true },
         });
+        if (!trialPlan && !alreadySubscribed) {
+          // Without the Professional plan row the organization would run with no subscription:
+          // unlimited quotas and never read-only. Onboarding still completes (blocking signup on
+          // a catalog fault is worse), but the gap is logged and listed under Billing issues.
+          this.logger.error(
+            `Cardless trial not started for organization ${context.id}: no ACTIVE professional monthly plan in the catalog.`,
+          );
+        }
         if (trialPlan && !alreadySubscribed) {
           const startedAt = new Date();
-          const trialEndsAt = new Date(startedAt.getTime() + 336 * 60 * 60 * 1000);
+          const trialEndsAt = new Date(startedAt.getTime() + OFFICIAL_TRIAL.hours * 60 * 60 * 1000);
           trialStartedAt = startedAt;
           trialEndForNotice = trialEndsAt;
           await tx.organizationSubscription.create({

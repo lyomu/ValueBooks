@@ -1,5 +1,6 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import type { Prisma } from '@prisma/client';
+import { OFFICIAL_PLAN_TIERS } from '@valuebooks/contracts';
 
 import { PrismaService } from '../database/prisma.service.js';
 import { TrialLifecycleService } from '../billing/trial-lifecycle.service.js';
@@ -100,7 +101,7 @@ export class PlatformBillingService {
   }
 
   async issues() {
-    const [failedPayments, failedWebhooks, unresolvedChanges, unknownRefunds] = await Promise.all([
+    const [failedPayments, failedWebhooks, unresolvedChanges, unknownRefunds, unsubscribedOrganizations] = await Promise.all([
       this.prisma.billingTransaction.findMany({ where: { status: 'FAILED' }, orderBy: { createdAt: 'desc' }, take: 100,
         include: { organization: { select: { id: true, legalName: true } } } }),
       this.prisma.billingWebhookEvent.findMany({ where: { processingState: 'FAILED' }, orderBy: { receivedAt: 'desc' }, take: 100,
@@ -108,8 +109,13 @@ export class PlatformBillingService {
       this.prisma.subscriptionChange.findMany({ where: { status: 'CANCELLING_OLD' }, orderBy: { updatedAt: 'desc' }, take: 100,
         include: { organization: { select: { id: true, legalName: true } } } }),
       this.prisma.billingRefund.findMany({ where: { providerStatus: 'UNKNOWN_REQUIRES_RECONCILIATION' }, orderBy: { updatedAt: 'desc' }, take: 100 }),
+      // A finished organization with no subscription row resolves every quota as unlimited and is
+      // never made read-only -- normally impossible, since onboarding starts the trial. Surfaced
+      // here for investigation; the console never creates a trial or charge to "fix" it.
+      this.prisma.organization.findMany({ where: { status: 'ACTIVE', subscription: { is: null } }, orderBy: { createdAt: 'desc' }, take: 100,
+        select: { id: true, legalName: true, createdAt: true } }),
     ]);
-    return { failedPayments: failedPayments.map((row) => this.transactionMoney(row)), failedWebhooks, unresolvedChanges, unknownRefunds: unknownRefunds.map((row) => ({ ...row, amountMinor: row.amountMinor.toString() })) };
+    return { failedPayments: failedPayments.map((row) => this.transactionMoney(row)), failedWebhooks, unresolvedChanges, unknownRefunds: unknownRefunds.map((row) => ({ ...row, amountMinor: row.amountMinor.toString() })), unsubscribedOrganizations };
   }
 
   async subscriptions(query: { page?: string; pageSize?: string; search?: string; status?: string; provider?: string; plan?: string }) {
@@ -215,11 +221,27 @@ export class PlatformBillingService {
   async providers() {
     const plans = await this.prisma.plan.findMany({ where: { status: 'ACTIVE' }, select: { key: true, tierKey: true, billingProvider: true, providerProductId: true, providerPriceId: true } });
     const latest = await this.prisma.billingWebhookEvent.findMany({ orderBy: { receivedAt: 'desc' }, distinct: ['billingProvider'], take: 2, select: { billingProvider: true, receivedAt: true, processingState: true } });
+    // Coverage is measured against the approved catalog (four tiers x two intervals), not only the
+    // rows that happen to exist, so a missing official row shows up as a gap rather than vanishing.
+    const expectedKeys = OFFICIAL_PLAN_TIERS.flatMap((tier) => [`${tier}_monthly`, `${tier}_yearly`]);
+    const codeCounts = new Map<string, number>();
+    for (const plan of plans) if (plan.providerPriceId) codeCounts.set(plan.providerPriceId, (codeCounts.get(plan.providerPriceId) ?? 0) + 1);
+    const coverage = expectedKeys.map((key) => {
+      const plan = plans.find((candidate) => candidate.key === key);
+      const state = !plan ? 'MISSING_PLAN'
+        : plan.billingProvider !== 'PAYSTACK' ? 'WRONG_PROVIDER'
+          : !plan.providerPriceId ? 'MISSING_CODE'
+            : (codeCounts.get(plan.providerPriceId) ?? 0) > 1 ? 'DUPLICATE_CODE'
+              : 'READY';
+      return { key, state, providerPlanCode: plan?.providerPriceId ?? null, configured: state === 'READY' };
+    });
     return [{
       provider: 'PAYSTACK',
       environment: process.env.PAYSTACK_ENVIRONMENT ?? 'test',
       credentialsConfigured: Boolean(process.env.PAYSTACK_SECRET_KEY),
-      plans: plans.filter((plan) => plan.billingProvider === 'PAYSTACK').map((plan) => ({ key: plan.key, configured: Boolean(plan.providerPriceId) })),
+      plans: coverage,
+      readyPlans: coverage.filter((row) => row.state === 'READY').length,
+      expectedPlans: expectedKeys.length,
       lastWebhook: latest.find((row) => row.billingProvider === 'PAYSTACK') ?? null,
     }];
   }

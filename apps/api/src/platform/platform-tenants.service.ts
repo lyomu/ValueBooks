@@ -1,5 +1,6 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import type { Prisma } from '@prisma/client';
+import { OFFICIAL_TRIAL } from '@valuebooks/contracts';
 
 import { PrismaService } from '../database/prisma.service.js';
 import { EntitlementsService } from './entitlements.service.js';
@@ -36,7 +37,10 @@ export class PlatformTenantsService {
     const where: Prisma.OrganizationWhereInput = {
       ...(query.status ? { status: query.status } : {}),
       ...(query.countryCode ? { countryCode: query.countryCode } : {}),
-      ...(query.planKey ? { subscription: { plan: { key: query.planKey } } } : {}),
+      // Accepts a tier ("growth") as well as an exact plan key ("growth_monthly").
+      ...(query.planKey
+        ? { subscription: { plan: { OR: [{ key: query.planKey }, { tierKey: query.planKey }] } } }
+        : {}),
       ...(query.query
         ? {
             OR: [
@@ -81,7 +85,9 @@ export class PlatformTenantsService {
           suspendedReason: true,
           createdAt: true,
           createdBy: { select: { email: true, displayName: true } },
-          subscription: { select: { status: true, plan: { select: { key: true, name: true } } } },
+          subscription: {
+            select: { status: true, plan: { select: { key: true, name: true, status: true } } },
+          },
           _count: { select: { members: true } },
         },
       }),
@@ -102,6 +108,7 @@ export class PlatformTenantsService {
         ownerName: row.createdBy.displayName,
         planKey: row.subscription?.plan.key ?? null,
         planName: row.subscription?.plan.name ?? null,
+        planStatus: row.subscription?.plan.status ?? null,
         subscriptionStatus: row.subscription?.status ?? null,
         memberCount: row._count.members,
         createdAt: row.createdAt.toISOString(),
@@ -322,17 +329,24 @@ export class PlatformTenantsService {
         }),
         tx.plan.findUnique({
           where: { id: input.planId },
-          select: { id: true, key: true, trialDays: true, priceMinor: true },
+          select: { id: true, key: true, status: true, priceMinor: true },
         }),
       ]);
       if (!organization) throw new NotFoundException('Organization not found.');
       if (!plan) throw new NotFoundException('Plan not found.');
+      if (plan.status !== 'ACTIVE') {
+        // Retired placeholder tiers (free/growth/scale) and unpublished drafts are not offers; an
+        // organization moved onto one would carry entitlement keys nothing enforces.
+        throw new BadRequestException('Only an active catalog plan can be assigned.');
+      }
 
       const status = input.status ?? 'ACTIVE';
+      // A trial assigned here follows the same cardless-trial policy as signup (336 hours), not the
+      // per-row `trialDays` column, which the official catalog does not use for trial length.
       const trialEndsAt = input.trialEndsAt
         ? new Date(`${input.trialEndsAt}T00:00:00.000Z`)
-        : status === 'TRIALING' && plan.trialDays > 0
-          ? new Date(Date.now() + plan.trialDays * 86_400_000)
+        : status === 'TRIALING'
+          ? new Date(Date.now() + OFFICIAL_TRIAL.hours * 3_600_000)
           : null;
 
       const subscription = await tx.organizationSubscription.upsert({

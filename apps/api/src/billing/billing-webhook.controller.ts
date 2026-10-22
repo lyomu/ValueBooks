@@ -1,4 +1,4 @@
-import { Controller, HttpCode, Post, Req } from '@nestjs/common';
+import { Controller, HttpCode, InternalServerErrorException, Post, Req } from '@nestjs/common';
 import type { RawBodyRequest } from '@nestjs/common';
 import type { Request } from 'express';
 
@@ -21,8 +21,15 @@ export class BillingWebhookController {
   @Post('paystack')
   @HttpCode(200)
   async paystack(@Req() request: RawBodyRequest<Request>) {
+    // The signature covers the exact bytes Paystack sent. Re-serialising a parsed body could
+    // verify a payload that differs from what was signed, so a missing raw body (a server
+    // misconfiguration -- `rawBody: true` is set in main.ts) fails closed; the 5xx makes Paystack
+    // retry once the server is fixed.
+    if (!request.rawBody) {
+      throw new InternalServerErrorException('Raw webhook body unavailable; refusing to verify.');
+    }
     const verified = await this.paystackAdapter.verifyWebhook({
-      rawBody: request.rawBody ?? Buffer.from(JSON.stringify(request.body ?? {})),
+      rawBody: request.rawBody,
       headers: request.headers,
     });
     await this.webhooks.recordAndProcess('PAYSTACK', verified, normalizePaystackEvent(verified));

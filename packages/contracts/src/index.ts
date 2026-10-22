@@ -38,7 +38,15 @@ export const platformRoleSchema = z.enum(['SUPPORT', 'OPERATIONS', 'SUPERADMIN']
 export const platformAdminStatusSchema = z.enum(['ACTIVE', 'REVOKED']);
 export const planStatusSchema = z.enum(['DRAFT', 'ACTIVE', 'RETIRED']);
 export const billingIntervalSchema = z.enum(['MONTHLY', 'YEARLY']);
-export const subscriptionStatusSchema = z.enum(['TRIALING', 'ACTIVE', 'PAST_DUE', 'CANCELLED']);
+export const subscriptionStatusSchema = z.enum([
+  'TRIALING',
+  'TRIAL_EXPIRED',
+  'ACTIVE',
+  'PAST_DUE',
+  'CANCEL_SCHEDULED',
+  'CANCELLED',
+]);
+export const billingProviderSchema = z.enum(['PADDLE', 'PAYSTACK']);
 export const featureFlagStatusSchema = z.enum(['ACTIVE', 'ARCHIVED']);
 export const featureFlagScopeSchema = z.enum(['GLOBAL', 'COUNTRY', 'PLAN', 'ORGANIZATION']);
 export const platformCountryPackStatusSchema = z.enum(['DRAFT', 'PUBLISHED', 'DEPRECATED']);
@@ -122,6 +130,8 @@ export const platformOrganizationSchema = z.object({
   ownerName: z.string().min(1),
   planKey: z.string().nullable(),
   planName: z.string().nullable(),
+  /** RETIRED/DRAFT here means the organization sits on a legacy tier that needs review. */
+  planStatus: planStatusSchema.nullable(),
   subscriptionStatus: subscriptionStatusSchema.nullable(),
   memberCount: z.number().int().nonnegative(),
   createdAt: z.iso.datetime(),
@@ -180,14 +190,20 @@ export const platformUserSchema = z.object({
 export const platformPlanSchema = z.object({
   id: z.uuid(),
   key: z.string().min(1),
+  tierKey: z.string().min(1),
   name: z.string().min(1),
   description: z.string().nullable(),
   status: planStatusSchema,
   isDefault: z.boolean(),
+  isMostPopular: z.boolean(),
   trialDays: z.number().int().nonnegative(),
   priceMinor: z.string(),
   currency: z.string().length(3),
   billingInterval: billingIntervalSchema,
+  billingProvider: billingProviderSchema.nullable(),
+  providerProductId: z.string().nullable(),
+  /** The Paystack plan code (`PLN_…`) for PAYSTACK plans; checkout is blocked while null. */
+  providerPriceId: z.string().nullable(),
   sortOrder: z.number().int(),
   subscriberCount: z.number().int().nonnegative(),
   entitlements: z.array(resolvedEntitlementSchema),
@@ -4114,6 +4130,7 @@ export type PlatformUser = z.infer<typeof platformUserSchema>;
 export type PlanStatus = z.infer<typeof planStatusSchema>;
 export type BillingInterval = z.infer<typeof billingIntervalSchema>;
 export type SubscriptionStatus = z.infer<typeof subscriptionStatusSchema>;
+export type BillingProvider = z.infer<typeof billingProviderSchema>;
 export type PlatformPlan = z.infer<typeof platformPlanSchema>;
 export type ResolvedEntitlement = z.infer<typeof resolvedEntitlementSchema>;
 export type ResolvedFlag = z.infer<typeof resolvedFlagSchema>;
@@ -4131,3 +4148,207 @@ export type PlatformFailedJob = z.infer<typeof platformFailedJobSchema>;
 export type PlatformSecurityEvent = z.infer<typeof platformSecurityEventSchema>;
 export type PlatformAuditEvent = z.infer<typeof platformAuditEventSchema>;
 export type PlatformAnalytics = z.infer<typeof platformAnalyticsSchema>;
+
+// --- Official commercial plan catalog ---
+//
+// The approved ValueBooks catalog (Platform Admin master plan §4.1–§4.3, owner decisions of
+// 2026-10-22). The database (`plans` / `plan_entitlements`, seeded by migration) stays the runtime
+// billing authority; this constant is the reviewed expectation the migrations are tested against
+// (`apps/api/test/plan-entitlements.int.test.ts`) and the single source the marketing site and plan
+// picker read prices and limits from, so a public price can never drift from what checkout charges.
+// Changing a value here is a commercial decision that needs a matching migration.
+
+export const OFFICIAL_PLAN_TIERS = ['starter', 'growth', 'professional', 'advanced'] as const;
+export type OfficialPlanTier = (typeof OFFICIAL_PLAN_TIERS)[number];
+
+/** Entitlement keys the catalog sells. Limits: a number is a cap, `0` is "not included", `null` is unlimited. */
+export const OFFICIAL_ENTITLEMENT_KEYS = [
+  'customers.active.max',
+  'invoices.issued.max',
+  'seats.max',
+  'expenses.max',
+  'vendors.max',
+  'bills.enabled',
+  'purchase_orders.enabled',
+  'products.max',
+  'bank_accounts.max',
+  'warehouses.enabled',
+  'projects.enabled',
+  'reports.saved.enabled',
+  'reports.scheduled.enabled',
+  'ai_insights.max',
+  'quotes.max',
+  'sales_orders.enabled',
+  'approval_workflows.enabled',
+] as const;
+export type OfficialEntitlementKey = (typeof OFFICIAL_ENTITLEMENT_KEYS)[number];
+
+export type OfficialPlan = {
+  tierKey: OfficialPlanTier;
+  name: string;
+  currency: 'USD';
+  /** Integer minor units (cents). The yearly price is its own approved figure, never monthly × 12. */
+  monthlyPriceMinor: number;
+  yearlyPriceMinor: number;
+  mostPopular: boolean;
+  limits: Record<OfficialEntitlementKey, number | null>;
+};
+
+export const OFFICIAL_PLAN_CATALOG: Record<OfficialPlanTier, OfficialPlan> = {
+  starter: {
+    tierKey: 'starter',
+    name: 'Starter',
+    currency: 'USD',
+    monthlyPriceMinor: 100,
+    yearlyPriceMinor: 1000,
+    mostPopular: false,
+    limits: {
+      'customers.active.max': 10,
+      'invoices.issued.max': 5,
+      'seats.max': 1,
+      'expenses.max': 20,
+      'vendors.max': 10,
+      'bills.enabled': 0,
+      'purchase_orders.enabled': 0,
+      'products.max': 20,
+      'bank_accounts.max': 1,
+      'warehouses.enabled': 0,
+      'projects.enabled': 0,
+      'reports.saved.enabled': 0,
+      'reports.scheduled.enabled': 0,
+      'ai_insights.max': 0,
+      'quotes.max': 5,
+      'sales_orders.enabled': 0,
+      'approval_workflows.enabled': 0,
+    },
+  },
+  growth: {
+    tierKey: 'growth',
+    name: 'Growth',
+    currency: 'USD',
+    monthlyPriceMinor: 499,
+    yearlyPriceMinor: 5500,
+    mostPopular: false,
+    limits: {
+      'customers.active.max': 50,
+      'invoices.issued.max': 20,
+      'seats.max': 2,
+      'expenses.max': 150,
+      'vendors.max': 100,
+      'bills.enabled': 100,
+      'purchase_orders.enabled': 50,
+      'products.max': 200,
+      'bank_accounts.max': 3,
+      'warehouses.enabled': 1,
+      'projects.enabled': 0,
+      'reports.saved.enabled': 5,
+      'reports.scheduled.enabled': 0,
+      'ai_insights.max': 0,
+      'quotes.max': 50,
+      'sales_orders.enabled': 50,
+      'approval_workflows.enabled': 0,
+    },
+  },
+  professional: {
+    tierKey: 'professional',
+    name: 'Professional',
+    currency: 'USD',
+    monthlyPriceMinor: 999,
+    yearlyPriceMinor: 10000,
+    mostPopular: true,
+    limits: {
+      'customers.active.max': 100,
+      'invoices.issued.max': 100,
+      'seats.max': 5,
+      'expenses.max': 1000,
+      'vendors.max': 1000,
+      'bills.enabled': 500,
+      'purchase_orders.enabled': 250,
+      'products.max': 2000,
+      'bank_accounts.max': 10,
+      'warehouses.enabled': 3,
+      'projects.enabled': 25,
+      'reports.saved.enabled': 25,
+      'reports.scheduled.enabled': 5,
+      'ai_insights.max': 30,
+      'quotes.max': null,
+      'sales_orders.enabled': null,
+      'approval_workflows.enabled': 0,
+    },
+  },
+  advanced: {
+    tierKey: 'advanced',
+    name: 'Advanced',
+    currency: 'USD',
+    monthlyPriceMinor: 2000,
+    yearlyPriceMinor: 22000,
+    mostPopular: false,
+    limits: {
+      'customers.active.max': null,
+      'invoices.issued.max': null,
+      'seats.max': 10,
+      'expenses.max': null,
+      'vendors.max': null,
+      'bills.enabled': null,
+      'purchase_orders.enabled': null,
+      'products.max': null,
+      'bank_accounts.max': null,
+      'warehouses.enabled': null,
+      'projects.enabled': null,
+      'reports.saved.enabled': null,
+      'reports.scheduled.enabled': null,
+      'ai_insights.max': 150,
+      'quotes.max': null,
+      'sales_orders.enabled': null,
+      'approval_workflows.enabled': null,
+    },
+  },
+};
+
+/** The cardless trial: Professional access for 336 hours, with a reduced AI allowance. */
+export const OFFICIAL_TRIAL = {
+  tierKey: 'professional' as OfficialPlanTier,
+  hours: 336,
+  limitOverrides: { 'ai_insights.max': 10 } as Partial<
+    Record<OfficialEntitlementKey, number | null>
+  >,
+};
+
+/** Rounded public "Save N%" for the yearly interval versus twelve monthly bills. */
+export function officialYearlySavingsPercent(plan: OfficialPlan): number {
+  return Math.round((1 - plan.yearlyPriceMinor / (plan.monthlyPriceMinor * 12)) * 100);
+}
+
+export type OrganizationPlanTone = 'success' | 'info' | 'warning' | 'danger' | 'neutral';
+
+/**
+ * One reading of "what plan is this organization on" for every console surface (master plan §8.1):
+ * never a bare dash. Trial access, an unpaid expired trial, a legacy tier and a missing subscription
+ * are each named explicitly, because each needs a different operator response.
+ */
+export function describeOrganizationPlan(input: {
+  planName: string | null;
+  planStatus: PlanStatus | null;
+  subscriptionStatus: SubscriptionStatus | null;
+}): { label: string; tone: OrganizationPlanTone } {
+  const { planName, planStatus, subscriptionStatus } = input;
+  if (!subscriptionStatus) return { label: 'Not subscribed', tone: 'neutral' };
+  if (planStatus && planStatus !== 'ACTIVE') {
+    return { label: `Legacy — review${planName ? ` (${planName})` : ''}`, tone: 'warning' };
+  }
+  const name = planName ?? 'Unknown plan';
+  switch (subscriptionStatus) {
+    case 'TRIALING':
+      return { label: 'Trial (Professional access)', tone: 'info' };
+    case 'TRIAL_EXPIRED':
+      return { label: 'Trial expired — unpaid', tone: 'warning' };
+    case 'PAST_DUE':
+      return { label: `${name} · Past due`, tone: 'danger' };
+    case 'CANCEL_SCHEDULED':
+      return { label: `${name} · Cancels at period end`, tone: 'warning' };
+    case 'CANCELLED':
+      return { label: `${name} · Cancelled`, tone: 'neutral' };
+    case 'ACTIVE':
+      return { label: name, tone: 'success' };
+  }
+}

@@ -4258,6 +4258,9 @@ model UsageCounter {
 enum WebhookProcessingState {
   RECEIVED
   VERIFIED
+  /// Claimed by one delivery and being applied. Concurrent duplicate deliveries see this and
+  /// stand down; a claim older than the stale window (a crashed worker) can be re-claimed.
+  PROCESSING
   PROCESSED
   FAILED
 }
@@ -4277,6 +4280,7 @@ model BillingWebhookEvent {
   lastError         String?                 @map("last_error") @db.VarChar(1000)
   receivedAt        DateTime                @default(now()) @map("received_at") @db.Timestamptz(6)
   processedAt       DateTime?               @map("processed_at") @db.Timestamptz(6)
+  processingStartedAt DateTime?             @map("processing_started_at") @db.Timestamptz(6)
 
   @@unique([billingProvider, providerEventId])
   @@index([processingState, receivedAt])

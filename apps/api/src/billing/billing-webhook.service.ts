@@ -34,8 +34,11 @@ interface NormalizedBillingEvent {
   clientReference?: string;
 }
 
+/** How long a PROCESSING claim is honoured before another delivery may take the event over. */
+export const WEBHOOK_CLAIM_STALE_MS = 5 * 60 * 1000;
+
 /**
- * Persists every verified webhook event before acting on it (`RECEIVED` -> `VERIFIED` ->
+ * Persists every verified webhook event before acting on it (`VERIFIED` -> `PROCESSING` ->
  * `PROCESSED`/`FAILED`), and makes processing idempotent on `(billingProvider, providerEventId)`:
  * a duplicate delivery is recognized and skipped rather than reapplied (Section 15/27).
  *
@@ -73,26 +76,52 @@ export class BillingWebhookService {
       return { deduplicated: true };
     }
 
-    const event = await this.prisma.billingWebhookEvent.upsert({
-      where: {
-        billingProvider_providerEventId: {
+    let event: { id: string };
+    try {
+      event = await this.prisma.billingWebhookEvent.upsert({
+        where: {
+          billingProvider_providerEventId: {
+            billingProvider: provider,
+            providerEventId: verified.providerEventId,
+          },
+        },
+        create: {
           billingProvider: provider,
           providerEventId: verified.providerEventId,
+          eventType: verified.eventType,
+          signatureVerified: true,
+          processingState: 'VERIFIED',
+          payload: verified.payload as object,
         },
+        // Only count the redelivery here. The state is left to the claim below, so a duplicate
+        // arriving mid-processing cannot reset another delivery's PROCESSING claim.
+        update: { retryCount: { increment: 1 } },
+        select: { id: true },
+      });
+    } catch (error) {
+      // Two first deliveries raced on the insert; the other one owns this event.
+      if ((error as { code?: string }).code === 'P2002') return { deduplicated: true };
+      throw error;
+    }
+
+    // Atomic claim: exactly one delivery moves the row into PROCESSING. A concurrent duplicate
+    // finds nothing to claim and stands down; if the owner later fails, its own (non-2xx)
+    // delivery is the one the provider retries. A claim left by a crashed worker goes stale.
+    const now = new Date();
+    const claimed = await this.prisma.billingWebhookEvent.updateMany({
+      where: {
+        id: event.id,
+        OR: [
+          { processingState: { in: ['RECEIVED', 'VERIFIED', 'FAILED'] } },
+          {
+            processingState: 'PROCESSING',
+            processingStartedAt: { lt: new Date(now.getTime() - WEBHOOK_CLAIM_STALE_MS) },
+          },
+        ],
       },
-      create: {
-        billingProvider: provider,
-        providerEventId: verified.providerEventId,
-        eventType: verified.eventType,
-        signatureVerified: true,
-        processingState: 'VERIFIED',
-        payload: verified.payload as object,
-      },
-      update: {
-        retryCount: { increment: 1 },
-        processingState: 'VERIFIED',
-      },
+      data: { processingState: 'PROCESSING', processingStartedAt: now },
     });
+    if (claimed.count === 0) return { deduplicated: true };
 
     try {
       if (normalized.refund) await this.applyRefund(provider, normalized.refund);
