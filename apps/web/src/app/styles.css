@@ -9709,3 +9709,22 @@ button.rb-customer-facts__heading {
   display: block;
   margin-top: 0.25rem;
 }
+/* Billing issues (platform-billing.tsx): one record per line, its detail beneath. */
+.rb-platform__issue-list {
+  display: grid;
+  gap: 0.6rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.rb-platform__issue-list li {
+  display: grid;
+  gap: 0.15rem;
+  font-size: 0.875rem;
+}
+/* A shared Select in a platform card header sizes to its options instead of filling the row. */
+.rb-platform__card-head > .rb-select {
+  flex: 0 0 auto;
+  width: auto;
+  min-width: 11rem;
+}
