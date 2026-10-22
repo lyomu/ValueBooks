@@ -19,10 +19,6 @@ function LegalDocument({
   return (
     <article className="mk-legal">
       <header className="mk-legal__hero">
-        <p className="mk-legal__draft" role="status">
-          Draft — pending legal review
-        </p>
-        <p className="mk-kicker">VALUEBOOKS · EINSBRAND DIGITAL</p>
         <h1>{title}</h1>
         <p>{summary}</p>
       </header>

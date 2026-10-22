@@ -190,7 +190,11 @@ export default function MarketingHomePage() {
         <div className="mk-personas__heading">
           <Reveal as="div">
             <MarketingKicker>Your way of working</MarketingKicker>
-            <h2>One financial home. Different kinds of momentum.</h2>
+            <h2>
+              One financial home.
+              <br />
+              Different kinds of momentum.
+            </h2>
           </Reveal>
         </div>
         <div className="mk-personas__list">
