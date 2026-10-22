@@ -177,6 +177,52 @@ describe('platform operations acceptance', () => {
     );
   });
 
+  it('separates platform access from organization roles and counts live sessions exactly', async () => {
+    type Listed = { id: string; platformRole: string | null };
+    const list = async (query: string) => {
+      const response = await harness
+        .http()
+        .get(`${API}/platform/users?${query}`)
+        .set('Cookie', operationsCookie)
+        .expect(200);
+      return (response.body as { data: Listed[] }).data;
+    };
+    const admins = await list('platformAccess=ADMIN');
+    expect(admins.map((row) => row.platformRole)).toEqual(['OPERATIONS']);
+    const others = await list('platformAccess=NONE');
+    expect(others.map((row) => row.id)).toContain(owner.id);
+    expect(others.every((row) => row.platformRole === null)).toBe(true);
+
+    // The owner holds a session (from `cookieFor`) plus one that has already expired.
+    await harness.prisma.session.create({
+      data: {
+        userId: owner.id,
+        tokenHash: hashToken(createOpaqueToken()),
+        expiresAt: new Date(Date.now() - 60_000),
+      },
+    });
+    const detail = await harness
+      .http()
+      .get(`${API}/platform/users/${owner.id}`)
+      .set('Cookie', operationsCookie)
+      .expect(200);
+    const { data } = detail.body as {
+      data: {
+        platformRole: string | null;
+        activeSessionCount: number;
+        activeSessions: Array<{ lastSeenAt: string }>;
+      };
+    };
+    expect(data.platformRole).toBeNull();
+    expect(data.activeSessionCount).toBe(
+      await harness.prisma.session.count({
+        where: { userId: owner.id, revokedAt: null, expiresAt: { gt: new Date() } },
+      }),
+    );
+    expect(data.activeSessions).toHaveLength(data.activeSessionCount);
+    expect(data.activeSessions[0]?.lastSeenAt).toEqual(expect.any(String));
+  });
+
   it('reports period comparison, growth series and attention counts honestly', async () => {
     // A stalled signup (older than 7 days, setup never finished) and a failed scheduled job, so
     // the attention queue has something real to report.

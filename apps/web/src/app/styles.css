@@ -5133,11 +5133,12 @@ a.rb-nav-item:hover {
 .rb-platform__tabs .rb-tabs__content > .rb-platform__card:last-child {
   margin-bottom: 0;
 }
-.rb-platform__tabs .rb-platform__card > h2 {
+/* `Panel` (platform-organization-detail.tsx): a titled card on console detail pages. */
+.rb-platform__card.rb-platform__panel > h2 {
   margin: 0 0 0.75rem;
   font-size: 0.9375rem;
 }
-.rb-platform__tabs .rb-platform__card > a {
+.rb-platform__card.rb-platform__panel > a {
   display: inline-block;
   margin-top: 0.75rem;
   color: hsl(var(--rb-primary));
@@ -5145,10 +5146,11 @@ a.rb-nav-item:hover {
   font-weight: 500;
   text-decoration: none;
 }
-.rb-platform__tabs .rb-table-card {
+.rb-platform__tabs .rb-table-card,
+.rb-platform__card.rb-platform__panel .rb-table-card {
   margin-top: 0.75rem;
 }
-.rb-platform__tabs .rb-platform__card > * + .rb-platform__muted {
+.rb-platform__card.rb-platform__panel > * + .rb-platform__muted {
   margin-top: 0.75rem;
 }
 /* Console lists carry more filters than tenant lists; let the shared filter group wrap. */
@@ -5454,8 +5456,7 @@ a.rb-nav-item:hover {
   .rb-platform__stats,
   .rb-platform__stats--secondary,
   .rb-platform__health-grid,
-  .rb-platform__revenue-grid,
-  .rb-platform-user__summary-grid {
+  .rb-platform__revenue-grid {
     grid-template-columns: 1fr;
   }
 }
@@ -5477,24 +5478,6 @@ a.rb-nav-item:hover {
 }
 .rb-platform__grid .rb-platform__card {
   margin-bottom: 0;
-}
-.rb-platform-user__summary-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  align-items: start;
-  gap: 1rem;
-  margin-bottom: 1rem;
-}
-.rb-platform-user__summary-grid .rb-platform__card {
-  margin-bottom: 0;
-}
-.rb-platform-user__administration {
-  max-width: 42rem;
-}
-.rb-platform-user__administration-form {
-  display: grid;
-  gap: 0.75rem;
-  max-width: 30rem;
 }
 .rb-platform__card.is-warn {
   border-color: hsl(var(--rb-danger) / 0.4);

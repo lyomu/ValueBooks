@@ -148,6 +148,11 @@ export class UserSearchDto extends PlatformPageDto {
   @IsOptional()
   @IsIn(['PENDING_VERIFICATION', 'ACTIVE', 'SUSPENDED', 'CLOSED'])
   status?: 'PENDING_VERIFICATION' | 'ACTIVE' | 'SUSPENDED' | 'CLOSED';
+
+  /** ADMIN: holds an active platform grant. NONE: does not. Tenant roles never count. */
+  @IsOptional()
+  @IsIn(['ADMIN', 'NONE'])
+  platformAccess?: 'ADMIN' | 'NONE';
 }
 
 export class UpdateUserStatusDto {

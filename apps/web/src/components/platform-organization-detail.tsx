@@ -594,9 +594,10 @@ function FeedError({ what, onRetry }: { what: string; onRetry: () => void }) {
   );
 }
 
-function Panel({ title, children }: { title: string; children: React.ReactNode }) {
+/** A titled card for console detail pages; shared with the user detail. */
+export function Panel({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <Card className="rb-platform__card">
+    <Card className="rb-platform__card rb-platform__panel">
       <h2>{title}</h2>
       {children}
     </Card>

@@ -474,6 +474,11 @@ export class PlatformTenantsService {
     const pageSize = query.pageSize ?? DEFAULT_PAGE_SIZE;
     const where: Prisma.UserWhereInput = {
       ...(query.status ? { status: query.status } : {}),
+      ...(query.platformAccess === 'ADMIN'
+        ? { platformAdmin: { is: { status: 'ACTIVE' } } }
+        : query.platformAccess === 'NONE'
+          ? { NOT: { platformAdmin: { is: { status: 'ACTIVE' } } } }
+          : {}),
       ...(query.query
         ? {
             OR: [
@@ -497,6 +502,7 @@ export class PlatformTenantsService {
           status: true,
           emailVerifiedAt: true,
           createdAt: true,
+          platformAdmin: { select: { role: true, status: true } },
           _count: { select: { memberships: true } },
         },
       }),
@@ -509,6 +515,7 @@ export class PlatformTenantsService {
         status: row.status,
         emailVerified: row.emailVerifiedAt !== null,
         membershipCount: row._count.memberships,
+        platformRole: row.platformAdmin?.status === 'ACTIVE' ? row.platformAdmin.role : null,
         createdAt: row.createdAt.toISOString(),
       })),
       pagination: { page, pageSize, totalRows },
@@ -516,6 +523,10 @@ export class PlatformTenantsService {
   }
 
   async userDetail(userId: string) {
+    const liveSessions: Prisma.SessionWhereInput = {
+      revokedAt: null,
+      expiresAt: { gt: new Date() },
+    };
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
       select: {
@@ -537,11 +548,13 @@ export class PlatformTenantsService {
           take: 100,
         },
         sessions: {
-          where: { revokedAt: null, expiresAt: { gt: new Date() } },
-          select: { createdAt: true, userAgent: true },
-          orderBy: { createdAt: 'desc' },
+          where: liveSessions,
+          select: { createdAt: true, lastSeenAt: true, userAgent: true },
+          orderBy: { lastSeenAt: 'desc' },
           take: 10,
         },
+        // The session list is capped; the count is not, so a revocation's impact is exact.
+        _count: { select: { sessions: { where: liveSessions } } },
         securityEvents: {
           select: { eventKey: true, severity: true, occurredAt: true },
           orderBy: { occurredAt: 'desc' },
@@ -566,8 +579,10 @@ export class PlatformTenantsService {
         roleName: membership.role.name,
         membershipStatus: membership.status,
       })),
+      activeSessionCount: user._count.sessions,
       activeSessions: user.sessions.map((session) => ({
         createdAt: session.createdAt.toISOString(),
+        lastSeenAt: session.lastSeenAt.toISOString(),
         userAgent: session.userAgent,
       })),
       securityEvents: user.securityEvents.map((event) => ({

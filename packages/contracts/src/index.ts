@@ -189,6 +189,8 @@ export const platformUserSchema = z.object({
   emailVerified: z.boolean(),
   profileComplete: z.boolean().optional(),
   membershipCount: z.number().int().nonnegative(),
+  /** Active platform grant, if any. Organization roles are separate and grant nothing here. */
+  platformRole: platformRoleSchema.nullable(),
   createdAt: z.iso.datetime(),
 });
 

@@ -14,7 +14,8 @@ import {
   StatusBadge,
 } from '@valuebooks/ui';
 import Link from 'next/link';
-import { useCallback, useEffect, useState, type FormEvent } from 'react';
+import { useSearchParams } from 'next/navigation';
+import { useCallback, useEffect, useMemo, useState, type FormEvent } from 'react';
 
 import { ApiError, apiRequest } from '../lib/api';
 import {
@@ -201,19 +202,20 @@ export function PlatformSecurityEvents() {
   const [page, setPage] = useState(1);
   const [filters, setFilters] = useState({ eventKey: '', severity: '', from: '', to: '' });
   const [error, setError] = useState('');
+  const scope = useLinkedScope();
 
   const load = useCallback(async () => {
     setError('');
     try {
       const response = await apiRequest<Paginated<PlatformSecurityEvent>>(
-        `/platform/security-events${platformQuery({ ...filters, page })}`,
+        `/platform/security-events${platformQuery({ ...filters, ...scope.query, page })}`,
       );
       setRows(response.data);
       setTotalRows(response.pagination.totalRows);
     } catch {
       setError('Security events could not be loaded.');
     }
-  }, [filters, page]);
+  }, [filters, page, scope.query]);
 
   useEffect(() => {
     void load();
@@ -230,6 +232,7 @@ export function PlatformSecurityEvents() {
       title="Security events"
       description="Across every tenant, plus events with no tenant at all."
     >
+      <LinkedScopeNote scope={scope} href="/platform/security" />
       <form className="rb-platform__filters" onSubmit={search}>
         <label>
           Event key
@@ -327,20 +330,25 @@ export function PlatformAudit() {
   const [page, setPage] = useState(1);
   const [error, setError] = useState('');
 
+  const scope = useLinkedScope();
+
   useEffect(() => {
-    void apiRequest<Paginated<PlatformAuditEvent>>(`/platform/audit${platformQuery({ page })}`)
+    void apiRequest<Paginated<PlatformAuditEvent>>(
+      `/platform/audit${platformQuery({ ...scope.query, page })}`,
+    )
       .then((response) => {
         setRows(response.data);
         setTotalRows(response.pagination.totalRows);
       })
       .catch(() => setError('The platform audit log could not be loaded.'));
-  }, [page]);
+  }, [page, scope.query]);
 
   return (
     <PlatformPage
       title="Platform audit"
       description="Every mutating action taken in this console. Kept separately from tenant audit logs, because most of these actions are cross-tenant and none of them were taken by the tenant."
     >
+      <LinkedScopeNote scope={scope} href="/platform/audit" />
       {error ? (
         <p className="rb-platform__alert" role="alert">
           {error}
@@ -397,5 +405,37 @@ export function PlatformAudit() {
 
       <DataTablePagination page={page} pageSize={25} totalRows={totalRows} onPageChange={setPage} />
     </PlatformPage>
+  );
+}
+
+/**
+ * Detail pages link here pre-scoped to one organization (`?organizationId=`) or, for security
+ * events, one account (`?userId=`). The scope is shown, so a narrowed list never passes for the
+ * whole log.
+ */
+function useLinkedScope() {
+  const searchParams = useSearchParams();
+  const organizationId = searchParams.get('organizationId') ?? '';
+  const userId = searchParams.get('userId') ?? '';
+  const query = useMemo(
+    () => ({ ...(organizationId ? { organizationId } : {}), ...(userId ? { userId } : {}) }),
+    [organizationId, userId],
+  );
+  const label = organizationId ? 'one organization' : userId ? 'one account' : null;
+  return { query, label };
+}
+
+function LinkedScopeNote({
+  scope,
+  href,
+}: {
+  scope: ReturnType<typeof useLinkedScope>;
+  href: string;
+}) {
+  if (!scope.label) return null;
+  return (
+    <p className="rb-platform__notice" role="status">
+      Showing entries for {scope.label} only. <Link href={href}>Show all</Link>
+    </p>
   );
 }
