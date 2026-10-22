@@ -108,33 +108,38 @@ test.describe('Phase 12 platform console', () => {
     await signIn(page, PLATFORM_ADMIN);
     await page.goto('/platform/feature-flags');
 
-    await page.getByLabel('Key').fill(key);
-    await page.getByLabel('Name').fill('Phase 12 browser flag');
+    // Phase 5.1: creation, rules and preview go through the list, dialogs and the flag detail page.
     await page.getByRole('button', { name: 'Create flag' }).click();
-    await expect(page.getByRole('status')).toContainText('Feature flag created.', {
+    const create = page.getByRole('dialog');
+    await create.getByLabel('Key').fill(key);
+    await create.getByLabel('Name').fill('Phase 12 browser flag');
+    await create.getByLabel('Reason').fill('Browser test of country targeting.');
+    await create.getByRole('button', { name: 'Create flag' }).click();
+    await expect(
+      page.getByRole('heading', { level: 1, name: 'Phase 12 browser flag' }),
+    ).toBeVisible({
       timeout: 10_000,
     });
 
-    const flag = page.getByRole('region', { name: key });
-    await expect(flag).toBeVisible();
-    // Playwright's filter({ has }) needs a page-rooted inner locator: one chained from the
-    // region resolves to nothing (verified against the installed Playwright 1.62).
-    const ruleEditor = flag
-      .locator('form')
-      .filter({ has: page.getByRole('button', { name: 'Save rule' }) });
-    await ruleEditor.getByLabel('Scope').selectOption('COUNTRY');
-    await ruleEditor.getByLabel('Country code').fill('KE');
-    await ruleEditor.getByRole('button', { name: 'Save rule' }).click();
-    await expect(page.getByRole('status')).toContainText('Targeting rule saved.');
+    await page.getByRole('button', { name: 'Add or change a rule' }).click();
+    const rule = page.getByRole('dialog');
+    await rule.getByLabel('Scope').selectOption('COUNTRY');
+    await rule.getByLabel('Country').fill('Kenya');
+    await page.getByRole('option', { name: /Kenya \(KE\)/ }).click();
+    await rule.getByLabel('Reason').fill('Pilot the flag for Kenyan tenants.');
+    await rule.getByRole('button', { name: 'Add rule' }).click();
+    await expect(
+      page.getByRole('status').filter({ hasText: 'Targeting rule saved.' }),
+    ).toBeVisible();
 
-    const preview = flag
-      .locator('form')
-      .filter({ has: page.getByRole('button', { name: 'Preview flag' }) });
-    await preview.getByLabel('Country code').fill('KE');
-    await preview.getByRole('button', { name: 'Preview flag' }).click();
-    await expect(flag.getByRole('status')).toContainText(/Enabled.*decided by country/i, {
-      timeout: 10_000,
-    });
+    await page.getByLabel('Audience').selectOption('hypothetical');
+    await page.locator('#sim-country').fill('Kenya');
+    await page.getByRole('option', { name: /Kenya \(KE\)/ }).click();
+    await page.getByRole('button', { name: 'Run preview' }).click();
+    await expect(page.getByRole('status').filter({ hasText: /^On for/ })).toContainText(
+      /decided by the country rule/i,
+      { timeout: 10_000 },
+    );
     expect(errors).toEqual([]);
   });
 });

@@ -25,8 +25,8 @@ The frontend `platformRoleAtLeast` (`apps/web/src/lib/platform.ts`) only hides c
 | GET `plans` | SUPPORT | — |
 | POST `plans`, PATCH `plans/:id`, POST/DELETE `plans/:id/entitlements` | SUPERADMIN | `platform.plan_*`, `platform.entitlement_*` |
 | PUT `plans/:id/provider-code` | SUPERADMIN | `platform.plan_provider_code_changed` (reason required; old and new code plus Paystack's verified amount, currency and interval). PATCH `plans/:id` refuses a code change |
-| GET `feature-flags`, GET `feature-flags/:key/preview` | SUPPORT | — |
-| POST/PATCH flags and rules | SUPERADMIN | `platform.feature_flag_*` |
+| GET `feature-flags`, `feature-flags/:flagId` (with history), `feature-flags/audience`, `feature-flags/:key/preview` | SUPPORT | — |
+| POST/PATCH flags, POST/DELETE rules | SUPERADMIN | `platform.feature_flag_*` with reason (required except on create) and full before/after state. Rule targets must exist. The approval-governed `phase13.hosted_ai_egress` refuses rule and default changes here (archive still allowed) |
 | Hosted-AI egress: GET | SUPPORT | — |
 | Hosted-AI egress: approve, revoke | SUPERADMIN | `platform.hosted_ai_egress_*` |
 | GET `jobs/health`, `jobs/failed` | SUPPORT | — |

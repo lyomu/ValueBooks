@@ -6,6 +6,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 
+import type { Prisma } from '@prisma/client';
 import { OFFICIAL_PLAN_TIERS } from '@valuebooks/contracts';
 
 import {
@@ -13,11 +14,14 @@ import {
   paystackPlanMismatches,
 } from '../billing/paystack-billing.adapter.js';
 import { PrismaService } from '../database/prisma.service.js';
+import { findCountry } from '../organizations/jurisdiction-catalog.js';
+import { APPROVAL_GOVERNED_FLAGS } from './phase13-feature-flags.js';
 import { writePlatformAudit } from './platform-audit.js';
 import type { PlatformContext } from './platform-context.js';
 import type {
   CreateFeatureFlagDto,
   CreatePlanDto,
+  FlagAudienceDto,
   SetProviderPlanCodeDto,
   UpdateFeatureFlagDto,
   UpdatePlanDto,
@@ -390,37 +394,64 @@ export class PlatformCatalogService {
   async listFlags() {
     const flags = await this.prisma.featureFlag.findMany({
       orderBy: [{ status: 'asc' }, { key: 'asc' }],
-      include: {
-        rules: {
-          orderBy: { scope: 'asc' },
-          include: {
-            plan: { select: { key: true, name: true } },
-            organization: { select: { legalName: true, tradingName: true } },
-          },
-        },
-      },
+      include: FLAG_INCLUDE,
     });
-    return flags.map((flag) => ({
-      id: flag.id,
-      key: flag.key,
-      name: flag.name,
-      description: flag.description,
-      defaultEnabled: flag.defaultEnabled,
-      status: flag.status,
-      rules: flag.rules.map((rule) => ({
-        id: rule.id,
-        scope: rule.scope,
-        enabled: rule.enabled,
-        note: rule.note,
-        countryCode: rule.countryCode,
-        planId: rule.planId,
-        planName: rule.plan?.name ?? null,
-        organizationId: rule.organizationId,
-        organizationName: rule.organization
-          ? (rule.organization.tradingName ?? rule.organization.legalName)
-          : null,
-      })),
-    }));
+    const lastChanges = await Promise.all(
+      flags.map((flag) =>
+        this.prisma.platformAuditEvent.findFirst({
+          where: flagHistoryWhere(
+            flag.id,
+            flag.rules.map((rule) => rule.id),
+          ),
+          orderBy: { occurredAt: 'desc' },
+          select: FLAG_HISTORY_SELECT,
+        }),
+      ),
+    );
+    return flags.map((flag, index) => {
+      const lastChange = lastChanges[index];
+      return {
+        ...serializeFlag(flag),
+        lastChange: lastChange ? serializeFlagChange(lastChange) : null,
+      };
+    });
+  }
+
+  /** One flag with its rules and its change history, for the flag detail page. */
+  async getFlag(flagId: string) {
+    const flag = await this.prisma.featureFlag.findUnique({
+      where: { id: flagId },
+      include: FLAG_INCLUDE,
+    });
+    if (!flag) throw new NotFoundException('Feature flag not found.');
+    const history = await this.prisma.platformAuditEvent.findMany({
+      where: flagHistoryWhere(
+        flag.id,
+        flag.rules.map((rule) => rule.id),
+      ),
+      orderBy: { occurredAt: 'desc' },
+      take: 100,
+      select: FLAG_HISTORY_SELECT,
+    });
+    return { ...serializeFlag(flag), history: history.map(serializeFlagChange) };
+  }
+
+  /**
+   * How many organizations a rule's target matches today. More specific rules can still override
+   * it for some of them, which the console states alongside the number.
+   */
+  async flagAudience(input: FlagAudienceDto) {
+    assertScopeTarget(input);
+    await assertTargetExists(this.prisma, input);
+    const organizations =
+      input.scope === 'GLOBAL'
+        ? await this.prisma.organization.count()
+        : input.scope === 'COUNTRY'
+          ? await this.prisma.organization.count({ where: { countryCode: input.countryCode } })
+          : input.scope === 'PLAN'
+            ? await this.prisma.organizationSubscription.count({ where: { planId: input.planId } })
+            : 1;
+    return { organizations };
   }
 
   async createFlag(actor: PlatformContext, input: CreateFeatureFlagDto, ipHash: string | null) {
@@ -442,7 +473,8 @@ export class PlatformCatalogService {
         eventKey: 'platform.feature_flag_created',
         targetType: 'feature_flag',
         targetId: flag.id,
-        after: { key: flag.key, defaultEnabled: flag.defaultEnabled },
+        reason: input.reason ?? null,
+        after: flagSnapshot(flag),
         ipHash,
       });
       return { id: flag.id, key: flag.key };
@@ -458,6 +490,11 @@ export class PlatformCatalogService {
     return this.prisma.$transaction(async (tx) => {
       const existing = await tx.featureFlag.findUnique({ where: { id: flagId } });
       if (!existing) throw new NotFoundException('Feature flag not found.');
+      if (APPROVAL_GOVERNED_FLAGS.has(existing.key) && input.defaultEnabled !== undefined) {
+        throw new BadRequestException(
+          'This flag is governed by its approval workflow, so its default cannot be changed here. It can still be archived.',
+        );
+      }
       const updated = await tx.featureFlag.update({
         where: { id: flagId },
         data: {
@@ -471,8 +508,9 @@ export class PlatformCatalogService {
         eventKey: 'platform.feature_flag_updated',
         targetType: 'feature_flag',
         targetId: flagId,
-        before: { defaultEnabled: existing.defaultEnabled, status: existing.status },
-        after: { defaultEnabled: updated.defaultEnabled, status: updated.status },
+        reason: input.reason,
+        before: flagSnapshot(existing),
+        after: flagSnapshot(updated),
         ipHash,
       });
       return { id: updated.id, key: updated.key, status: updated.status };
@@ -487,8 +525,13 @@ export class PlatformCatalogService {
   ) {
     assertScopeTarget(input);
     return this.prisma.$transaction(async (tx) => {
-      const flag = await tx.featureFlag.findUnique({ where: { id: flagId }, select: { id: true } });
+      const flag = await tx.featureFlag.findUnique({
+        where: { id: flagId },
+        select: { id: true, key: true },
+      });
       if (!flag) throw new NotFoundException('Feature flag not found.');
+      assertNotApprovalGoverned(flag.key);
+      await assertTargetExists(tx, input);
 
       // One rule per flag per target, matching the partial unique indexes on the table. Finding the
       // existing one first turns a repeat call into an edit rather than a constraint violation.
@@ -500,7 +543,6 @@ export class PlatformCatalogService {
           planId: input.planId ?? null,
           organizationId: input.organizationId ?? null,
         },
-        select: { id: true, enabled: true },
       });
 
       const rule = existing
@@ -525,28 +567,193 @@ export class PlatformCatalogService {
         targetType: 'feature_flag_rule',
         targetId: rule.id,
         organizationId: input.organizationId ?? null,
-        before: existing ? { enabled: existing.enabled } : undefined,
-        after: { scope: rule.scope, enabled: rule.enabled },
+        reason: input.reason,
+        before: existing ? ruleSnapshot(flag, existing) : undefined,
+        after: ruleSnapshot(flag, rule),
         ipHash,
       });
       return { id: rule.id, scope: rule.scope, enabled: rule.enabled };
     });
   }
 
-  async removeFlagRule(actor: PlatformContext, ruleId: string, ipHash: string | null) {
+  async removeFlagRule(
+    actor: PlatformContext,
+    ruleId: string,
+    reason: string,
+    ipHash: string | null,
+  ) {
     return this.prisma.$transaction(async (tx) => {
-      const existing = await tx.featureFlagRule.findUnique({ where: { id: ruleId } });
+      const existing = await tx.featureFlagRule.findUnique({
+        where: { id: ruleId },
+        include: { flag: { select: { id: true, key: true } } },
+      });
       if (!existing) throw new NotFoundException('Feature flag rule not found.');
+      assertNotApprovalGoverned(existing.flag.key);
       await tx.featureFlagRule.delete({ where: { id: ruleId } });
       await writePlatformAudit(tx, actor, {
         eventKey: 'platform.feature_flag_rule_removed',
         targetType: 'feature_flag_rule',
         targetId: ruleId,
         organizationId: existing.organizationId,
-        before: { scope: existing.scope, enabled: existing.enabled },
+        reason,
+        before: ruleSnapshot(existing.flag, existing),
         ipHash,
       });
     });
+  }
+}
+
+const FLAG_INCLUDE = {
+  rules: {
+    orderBy: { scope: 'asc' },
+    include: {
+      plan: { select: { key: true, name: true } },
+      organization: { select: { legalName: true, tradingName: true } },
+    },
+  },
+} satisfies Prisma.FeatureFlagInclude;
+
+const FLAG_HISTORY_SELECT = {
+  id: true,
+  eventKey: true,
+  reason: true,
+  before: true,
+  after: true,
+  occurredAt: true,
+  actor: { select: { displayName: true, email: true } },
+} satisfies Prisma.PlatformAuditEventSelect;
+
+type FlagWithRules = Prisma.FeatureFlagGetPayload<{ include: typeof FLAG_INCLUDE }>;
+
+function serializeFlag(flag: FlagWithRules) {
+  return {
+    id: flag.id,
+    key: flag.key,
+    name: flag.name,
+    description: flag.description,
+    defaultEnabled: flag.defaultEnabled,
+    status: flag.status,
+    updatedAt: flag.updatedAt.toISOString(),
+    /** Set when an approval workflow, not this console, owns the flag's targeting. */
+    governedBy: APPROVAL_GOVERNED_FLAGS.get(flag.key) ?? null,
+    rules: flag.rules.map((rule) => ({
+      id: rule.id,
+      scope: rule.scope,
+      enabled: rule.enabled,
+      note: rule.note,
+      countryCode: rule.countryCode,
+      planId: rule.planId,
+      planName: rule.plan?.name ?? null,
+      organizationId: rule.organizationId,
+      organizationName: rule.organization
+        ? (rule.organization.tradingName ?? rule.organization.legalName)
+        : null,
+    })),
+  };
+}
+
+function serializeFlagChange(
+  event: Prisma.PlatformAuditEventGetPayload<{ select: typeof FLAG_HISTORY_SELECT }>,
+) {
+  return {
+    id: event.id,
+    eventKey: event.eventKey,
+    reason: event.reason,
+    before: event.before,
+    after: event.after,
+    occurredAt: event.occurredAt.toISOString(),
+    actor: event.actor.displayName || event.actor.email,
+  };
+}
+
+/**
+ * A flag's own events plus its rules' events. Rule events written since phase 5.1 carry the flag
+ * id; older ones are found through the rules the flag still has (a rule removed before 5.1 left no
+ * link back to its flag).
+ */
+function flagHistoryWhere(flagId: string, ruleIds: string[]): Prisma.PlatformAuditEventWhereInput {
+  return {
+    OR: [
+      { targetType: 'feature_flag', targetId: flagId },
+      { targetType: 'feature_flag_rule', after: { path: ['flagId'], equals: flagId } },
+      { targetType: 'feature_flag_rule', before: { path: ['flagId'], equals: flagId } },
+      ...(ruleIds.length ? [{ targetType: 'feature_flag_rule', targetId: { in: ruleIds } }] : []),
+    ],
+  };
+}
+
+function flagSnapshot(flag: {
+  key: string;
+  name: string;
+  description: string | null;
+  defaultEnabled: boolean;
+  status: string;
+}) {
+  return {
+    key: flag.key,
+    name: flag.name,
+    description: flag.description,
+    defaultEnabled: flag.defaultEnabled,
+    status: flag.status,
+  };
+}
+
+function ruleSnapshot(
+  flag: { id: string; key: string },
+  rule: {
+    scope: string;
+    enabled: boolean;
+    countryCode: string | null;
+    planId: string | null;
+    organizationId: string | null;
+    note: string | null;
+  },
+) {
+  return {
+    flagId: flag.id,
+    flagKey: flag.key,
+    scope: rule.scope,
+    countryCode: rule.countryCode,
+    planId: rule.planId,
+    organizationId: rule.organizationId,
+    enabled: rule.enabled,
+    note: rule.note,
+  };
+}
+
+function assertNotApprovalGoverned(key: string): void {
+  if (APPROVAL_GOVERNED_FLAGS.has(key)) {
+    throw new BadRequestException(
+      "This flag's targeting is owned by its approval workflow. Grant or revoke it from the organization's AI egress approval instead.",
+    );
+  }
+}
+
+/**
+ * Typed targets: a rule must name a supported country, an existing plan or an existing
+ * organization. Without this a typo becomes a rule that silently matches nothing, or a 500.
+ */
+async function assertTargetExists(
+  db: Prisma.TransactionClient,
+  input: { scope: string; countryCode?: string; planId?: string; organizationId?: string },
+): Promise<void> {
+  if (input.scope === 'COUNTRY' && !findCountry(input.countryCode ?? '')) {
+    throw new BadRequestException(`${input.countryCode} is not a supported country.`);
+  }
+  if (
+    input.scope === 'PLAN' &&
+    !(await db.plan.findUnique({ where: { id: input.planId }, select: { id: true } }))
+  ) {
+    throw new BadRequestException('That plan does not exist.');
+  }
+  if (
+    input.scope === 'ORGANIZATION' &&
+    !(await db.organization.findUnique({
+      where: { id: input.organizationId },
+      select: { id: true },
+    }))
+  ) {
+    throw new BadRequestException('That organization does not exist.');
   }
 }
 
@@ -554,7 +761,7 @@ export class PlatformCatalogService {
  * The scope and its target must agree. The table carries the same check, but a constraint violation
  * surfaces as a 500; this makes it a 400 that names the mistake.
  */
-function assertScopeTarget(input: UpsertFlagRuleDto): void {
+function assertScopeTarget(input: FlagAudienceDto): void {
   const targets = {
     COUNTRY: input.countryCode,
     PLAN: input.planId,

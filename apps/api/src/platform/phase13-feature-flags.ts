@@ -34,3 +34,13 @@ export const PHASE13_FEATURE_FLAGS = {
    */
   HOSTED_AI_EGRESS: 'phase13.hosted_ai_egress',
 } as const;
+
+/**
+ * Flags whose targeting is owned by a dedicated approval workflow rather than the generic flag
+ * console. Their rules are written and revoked together with the approval record (see
+ * `HostedAiEgressApprovalService`), so the console may archive them (failing closed) but never edit
+ * their rules or default.
+ */
+export const APPROVAL_GOVERNED_FLAGS: ReadonlyMap<string, string> = new Map([
+  [PHASE13_FEATURE_FLAGS.HOSTED_AI_EGRESS, 'HOSTED_AI_EGRESS_APPROVAL'],
+]);

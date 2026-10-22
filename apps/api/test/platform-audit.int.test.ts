@@ -196,19 +196,25 @@ describe('platform mutation audit coverage', () => {
       .http()
       .patch(`${API}/platform/feature-flags/${flag.id}`)
       .set('Cookie', superadminCookie)
-      .send({ defaultEnabled: true })
+      .send({ defaultEnabled: true, reason: 'Audit flag default evidence.' })
       .expect(200);
     const rule = await harness
       .http()
       .post(`${API}/platform/feature-flags/${flag.id}/rules`)
       .set('Cookie', superadminCookie)
-      .send({ scope: 'GLOBAL', enabled: false, note: 'Audit rule evidence.' })
+      .send({
+        scope: 'GLOBAL',
+        enabled: false,
+        note: 'Audit rule evidence.',
+        reason: 'Audit rule set evidence.',
+      })
       .expect(200)
       .then((response) => (response.body as { data: { id: string } }).data);
     await harness
       .http()
       .delete(`${API}/platform/feature-flags/rules/${rule.id}`)
       .set('Cookie', superadminCookie)
+      .send({ reason: 'Audit rule removal evidence.' })
       .expect(204);
 
     const executionId = await createFailedExecution();
@@ -302,9 +308,24 @@ describe('platform mutation audit coverage', () => {
         audit('platform.admin_granted', 'platform_admin', grant.id, 'Audit grant evidence.'),
         audit('platform.admin_revoked', 'platform_admin', grant.id),
         audit('platform.feature_flag_created', 'feature_flag', flag.id),
-        audit('platform.feature_flag_updated', 'feature_flag', flag.id),
-        audit('platform.feature_flag_rule_set', 'feature_flag_rule', rule.id),
-        audit('platform.feature_flag_rule_removed', 'feature_flag_rule', rule.id),
+        audit(
+          'platform.feature_flag_updated',
+          'feature_flag',
+          flag.id,
+          'Audit flag default evidence.',
+        ),
+        audit(
+          'platform.feature_flag_rule_set',
+          'feature_flag_rule',
+          rule.id,
+          'Audit rule set evidence.',
+        ),
+        audit(
+          'platform.feature_flag_rule_removed',
+          'feature_flag_rule',
+          rule.id,
+          'Audit rule removal evidence.',
+        ),
         audit('platform.country_pack_created', 'country_pack', createdPack.id),
         audit('platform.country_pack_updated', 'country_pack', createdPack.id),
         audit('platform.country_pack_tax_definition_upserted', 'tax_pack', taxPack.id),

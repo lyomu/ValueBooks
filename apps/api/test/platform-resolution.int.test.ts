@@ -57,7 +57,13 @@ describe('platform entitlement and feature-flag resolution', () => {
     );
     organizationId = organization.id;
     const plan = await harness.prisma.plan.create({
-      data: { key: 'resolution', tierKey: 'resolution', name: 'Resolution', status: 'ACTIVE', priceMinor: 0n },
+      data: {
+        key: 'resolution',
+        tierKey: 'resolution',
+        name: 'Resolution',
+        status: 'ACTIVE',
+        priceMinor: 0n,
+      },
     });
     planId = plan.id;
     // `organizations.finalize()` above already starts the cardless trial (on the real seeded
@@ -152,14 +158,24 @@ describe('platform entitlement and feature-flag resolution', () => {
       .http()
       .post(`${API}/platform/feature-flags/${flag.id}/rules`)
       .set('Cookie', superadminCookie)
-      .send({ scope: 'GLOBAL', enabled: true, note: 'initial decision' })
+      .send({
+        scope: 'GLOBAL',
+        enabled: true,
+        note: 'initial decision',
+        reason: 'Initial rollout decision.',
+      })
       .expect(200)
       .then((response) => (response.body as { data: { id: string } }).data);
     const second = await harness
       .http()
       .post(`${API}/platform/feature-flags/${flag.id}/rules`)
       .set('Cookie', superadminCookie)
-      .send({ scope: 'GLOBAL', enabled: false, note: 'replacement decision' })
+      .send({
+        scope: 'GLOBAL',
+        enabled: false,
+        note: 'replacement decision',
+        reason: 'Replacement rollout decision.',
+      })
       .expect(200)
       .then((response) => (response.body as { data: { id: string } }).data);
 
@@ -189,6 +205,7 @@ describe('platform entitlement and feature-flag resolution', () => {
           key: 'repeat.flag',
           enabled: false,
           decidedBy: 'GLOBAL',
+          audience: { countryCode: null, planId: null, organizationId: null },
         }),
       );
   });

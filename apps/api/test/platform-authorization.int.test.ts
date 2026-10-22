@@ -8,7 +8,7 @@ import { PLATFORM_ROLE_KEY, PLATFORM_ROLE_ORDER } from '../src/platform/platform
 import { PlatformGuard } from '../src/platform/platform.guard.js';
 import { API, createTestHarness, type TestHarness } from './support/app.js';
 
-type HttpMethod = 'get' | 'post' | 'patch' | 'delete';
+type HttpMethod = 'get' | 'post' | 'put' | 'patch' | 'delete';
 type PlatformRole = (typeof PLATFORM_ROLE_ORDER)[number];
 
 interface PlatformEndpoint {
@@ -63,6 +63,14 @@ describe('platform authorization boundary over HTTP', () => {
     expect(endpoints.map((endpoint) => `${endpoint.method} ${endpoint.path}`)).toContain('get me');
     expect(endpoints.map((endpoint) => `${endpoint.method} ${endpoint.path}`)).toContain(
       'post feature-flags/:flagId/rules',
+    );
+    // Sub-controllers are walked too: billing money movement sits behind the same boundary.
+    expect(endpoints.map((endpoint) => `${endpoint.method} ${endpoint.path}`)).toEqual(
+      expect.arrayContaining([
+        'post billing/transactions/:id/refunds',
+        'post billing/refunds/:id/approve',
+        'put plans/:planId/provider-code',
+      ]),
     );
   });
 
@@ -155,6 +163,8 @@ describe('platform authorization boundary over HTTP', () => {
       .replace(':flagId', ID)
       .replace(':ruleId', ID)
       .replace(':executionId', ID)
+      .replace(':tenantId', ID)
+      .replace(':id', ID)
       .replace(':key', 'missing-flag');
     const request = harness.http();
     switch (endpoint.method) {
@@ -162,6 +172,8 @@ describe('platform authorization boundary over HTTP', () => {
         return request.get(path).set('Cookie', cookie);
       case 'post':
         return request.post(path).set('Cookie', cookie).send({});
+      case 'put':
+        return request.put(path).set('Cookie', cookie).send({});
       case 'patch':
         return request.patch(path).set('Cookie', cookie).send({});
       case 'delete':
@@ -174,7 +186,9 @@ function discoverPlatformEndpoints(app: INestApplication): PlatformEndpoint[] {
   const endpoints: PlatformEndpoint[] = [];
   for (const controller of registeredControllers(app)) {
     const basePath = metadataValue<string>(PATH_METADATA, controller) ?? '';
-    if (basePath !== 'platform') continue;
+    // Every platform surface, including sub-controllers such as `platform/billing`.
+    if (basePath !== 'platform' && !basePath.startsWith('platform/')) continue;
+    const prefix = basePath.slice('platform'.length).replace(/^\//, '');
     const classGuards = metadataValue<unknown[]>(GUARDS_METADATA, controller) ?? [];
     const prototype = controller.prototype as object;
     for (const methodName of Object.getOwnPropertyNames(prototype)) {
@@ -189,7 +203,7 @@ function discoverPlatformEndpoints(app: INestApplication): PlatformEndpoint[] {
       if (!isHttpMethod(method)) throw new Error(`Unsupported platform method on ${path}.`);
       endpoints.push({
         method,
-        path,
+        path: prefix ? `${prefix}/${path}` : path,
         role: metadataValue<PlatformRole>(PLATFORM_ROLE_KEY, handler) ?? 'SUPPORT',
       });
     }
@@ -212,5 +226,11 @@ function metadataValue<T>(key: string, target: object): T | undefined {
 }
 
 function isHttpMethod(value: string | undefined): value is HttpMethod {
-  return value === 'get' || value === 'post' || value === 'patch' || value === 'delete';
+  return (
+    value === 'get' ||
+    value === 'post' ||
+    value === 'put' ||
+    value === 'patch' ||
+    value === 'delete'
+  );
 }

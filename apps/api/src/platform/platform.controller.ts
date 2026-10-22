@@ -33,12 +33,14 @@ import {
   CreateHostedAiEgressApprovalDto,
   CreatePlanDto,
   FailedJobSearchDto,
+  FlagAudienceDto,
   FlagPreviewDto,
   GrantPlatformAdminDto,
   OrganizationSearchDto,
   PlatformAuditSearchDto,
   PlatformAnalyticsQueryDto,
   ReactivateOrganizationDto,
+  RemoveFlagRuleDto,
   RevokeHostedAiEgressApprovalDto,
   SecurityEventSearchDto,
   SuspendOrganizationDto,
@@ -339,6 +341,19 @@ export class PlatformController {
     return { data: await this.catalog.listFlags() };
   }
 
+  /** Declared before `feature-flags/:flagId` so the static segment is not parsed as an id. */
+  @Get('feature-flags/audience')
+  @RequirePlatformRole('SUPPORT')
+  async flagAudience(@Query() query: FlagAudienceDto) {
+    return { data: await this.catalog.flagAudience(query) };
+  }
+
+  @Get('feature-flags/:flagId')
+  @RequirePlatformRole('SUPPORT')
+  async flag(@Param('flagId', new ParseUUIDPipe()) flagId: string) {
+    return { data: await this.catalog.getFlag(flagId) };
+  }
+
   @Post('feature-flags')
   @HttpCode(201)
   @RequirePlatformRole('SUPERADMIN')
@@ -381,9 +396,10 @@ export class PlatformController {
   @RequirePlatformRole('SUPERADMIN')
   async removeFlagRule(
     @Param('ruleId', new ParseUUIDPipe()) ruleId: string,
+    @Body() input: RemoveFlagRuleDto,
     @Req() request: PlatformRequest,
   ) {
-    await this.catalog.removeFlagRule(request.platform, ruleId, this.ipHash(request));
+    await this.catalog.removeFlagRule(request.platform, ruleId, input.reason, this.ipHash(request));
   }
 
   /** Explains what a given audience would see, before any tenant matches it. */

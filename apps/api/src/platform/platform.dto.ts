@@ -405,8 +405,16 @@ export class CreateFeatureFlagDto {
   @IsOptional()
   @IsBoolean()
   defaultEnabled?: boolean;
+
+  /** Optional on create: the description says what the flag is for. Every later change needs one. */
+  @IsOptional()
+  @IsString()
+  @Length(10, 500)
+  @Transform(trim)
+  reason?: string;
 }
 
+/** A flag change reaches tenants immediately, so each one records why it was made. */
 export class UpdateFeatureFlagDto {
   @IsOptional()
   @IsString()
@@ -427,6 +435,11 @@ export class UpdateFeatureFlagDto {
   @IsOptional()
   @IsIn(['ACTIVE', 'ARCHIVED'])
   status?: 'ACTIVE' | 'ARCHIVED';
+
+  @IsString()
+  @Length(10, 500)
+  @Transform(trim)
+  reason!: string;
 }
 
 export class CreateHostedAiEgressApprovalDto {
@@ -508,8 +521,44 @@ export class UpsertFlagRuleDto {
   @MaxLength(500)
   @Transform(trim)
   note?: string;
+
+  @IsString()
+  @Length(10, 500)
+  @Transform(trim)
+  reason!: string;
 }
 
+export class RemoveFlagRuleDto {
+  @IsString()
+  @Length(10, 500)
+  @Transform(trim)
+  reason!: string;
+}
+
+/** The audience one targeting rule would reach, for the impact line in the rule dialog. */
+export class FlagAudienceDto {
+  @IsIn(['GLOBAL', 'COUNTRY', 'PLAN', 'ORGANIZATION'])
+  scope!: 'GLOBAL' | 'COUNTRY' | 'PLAN' | 'ORGANIZATION';
+
+  @IsOptional()
+  @IsString()
+  @Length(2, 2)
+  @Transform(upper)
+  countryCode?: string;
+
+  @IsOptional()
+  @IsUUID()
+  planId?: string;
+
+  @IsOptional()
+  @IsUUID()
+  organizationId?: string;
+}
+
+/**
+ * Either a real organization (its country and plan then come from its record, exactly as at
+ * runtime) or a hypothetical country and plan. Mixing the two is refused by the service.
+ */
 export class FlagPreviewDto {
   @IsOptional()
   @IsString()
