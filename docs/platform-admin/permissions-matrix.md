@@ -24,6 +24,7 @@ The frontend `platformRoleAtLeast` (`apps/web/src/lib/platform.ts`) only hides c
 | PATCH `users/:id/status` | OPERATIONS | `platform.user_status_changed` |
 | GET `plans` | SUPPORT | — |
 | POST `plans`, PATCH `plans/:id`, POST/DELETE `plans/:id/entitlements` | SUPERADMIN | `platform.plan_*`, `platform.entitlement_*` |
+| PUT `plans/:id/provider-code` | SUPERADMIN | `platform.plan_provider_code_changed` (reason required; old and new code plus Paystack's verified amount, currency and interval). PATCH `plans/:id` refuses a code change |
 | GET `feature-flags`, GET `feature-flags/:key/preview` | SUPPORT | — |
 | POST/PATCH flags and rules | SUPERADMIN | `platform.feature_flag_*` |
 | Hosted-AI egress: GET | SUPPORT | — |

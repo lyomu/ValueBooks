@@ -15,6 +15,10 @@ import {
   Badge,
   Button,
   DataTable,
+  FieldMessage,
+  FormField,
+  Input,
+  Label,
   ErrorState,
   PrimarySecondaryCell,
   StatusBadge,
@@ -29,6 +33,8 @@ import {
   enforcedAllowance as enforced,
   sameAllowance as same,
 } from '../lib/plan-catalog';
+import { platformRoleAtLeast, usePlatformSession } from '../lib/platform';
+import { AdminActionDialog } from './admin-action-dialog';
 import { Panel } from './platform-organization-detail';
 import { PlatformPage } from './platform-shell';
 
@@ -61,7 +67,14 @@ function money(minor: string | number, currency: string): string {
  * entitlement changes need a versioned, previewed, approved change (master plan §10.3), not an
  * inline edit to a live plan that subscribers already hold.
  */
+const PLAN_CODE = /^PLN_[A-Za-z0-9]{4,60}$/;
+
 export function PlatformPlanCatalog() {
+  const { session } = usePlatformSession();
+  const canManage = platformRoleAtLeast(session?.role ?? null, 'SUPERADMIN');
+  const [editing, setEditing] = useState<string | null>(null);
+  const [newCode, setNewCode] = useState('');
+  const [notice, setNotice] = useState('');
   const [plans, setPlans] = useState<Feed<PlatformPlan[]>>({ status: 'loading' });
   const [coverage, setCoverage] = useState<Feed<ProviderCoverage | null>>({ status: 'loading' });
 
@@ -142,9 +155,24 @@ export function PlatformPlanCatalog() {
             {CODE_LABEL[code.state][0]}
           </Badge>
         ) : null}
+        {canManage && plan?.status === 'ACTIVE' ? (
+          <Button
+            variant="ghost"
+            size="sm"
+            aria-label={`Change Paystack code for ${key}`}
+            onClick={() => {
+              setNewCode('');
+              setEditing(key);
+            }}
+          >
+            Change code
+          </Button>
+        ) : null}
       </div>
     );
   };
+  const editingPlan = editing ? byKey.get(editing) : undefined;
+  const codeValid = PLAN_CODE.test(newCode.trim());
 
   return (
     <PlatformPage
@@ -156,6 +184,11 @@ export function PlatformPlanCatalog() {
         ) : undefined
       }
     >
+      {notice ? (
+        <p className="rb-platform__notice" role="status">
+          {notice}
+        </p>
+      ) : null}
       <Panel title="Catalog">
         <DataTable
           caption="Plan catalog"
@@ -316,6 +349,59 @@ export function PlatformPlanCatalog() {
           moving anyone off a legacy plan needs an explicit, approved migration.
         </p>
       </Panel>
+      {editingPlan ? (
+        <AdminActionDialog
+          open
+          onOpenChange={(open) => (open ? undefined : setEditing(null))}
+          title="Change Paystack plan code"
+          description={`${editingPlan.name} · ${editingPlan.key}`}
+          confirmLabel="Verify and save code"
+          confirmDisabled={!codeValid}
+          impact={
+            <>
+              <p>
+                New checkouts for <strong>{editingPlan.key}</strong> will charge through this
+                Paystack plan. Current code: <code>{editingPlan.providerPriceId ?? 'none'}</code>.
+              </p>
+              <p>
+                ValueBooks first asks Paystack for the plan and compares its amount, currency and
+                interval with {money(editingPlan.priceMinor, editingPlan.currency)} /{' '}
+                {editingPlan.billingInterval.toLowerCase()}. If anything differs, nothing is saved.
+              </p>
+              <p>
+                The {editingPlan.subscriberCount.toLocaleString()} organization
+                {editingPlan.subscriberCount === 1 ? '' : 's'} already on this plan keep their
+                existing Paystack subscriptions; renewals are not re-pointed.
+              </p>
+            </>
+          }
+          fields={
+            <FormField>
+              <Label htmlFor="plan-code">New Paystack plan code</Label>
+              <Input
+                id="plan-code"
+                value={newCode}
+                autoComplete="off"
+                placeholder="PLN_…"
+                onChange={(event) => setNewCode(event.target.value)}
+              />
+              <FieldMessage>
+                {newCode && !codeValid
+                  ? 'A Paystack plan code looks like PLN_ followed by letters and digits.'
+                  : 'Copy it from the plan in the Paystack dashboard for this environment.'}
+              </FieldMessage>
+            </FormField>
+          }
+          onConfirm={async (reason) => {
+            await apiRequest(`/platform/plans/${editingPlan.id}/provider-code`, {
+              method: 'PUT',
+              body: JSON.stringify({ providerPlanCode: newCode.trim(), reason }),
+            });
+            setNotice(`Paystack code for ${editingPlan.key} verified and saved.`);
+            load();
+          }}
+        />
+      ) : null}
     </PlatformPage>
   );
 }

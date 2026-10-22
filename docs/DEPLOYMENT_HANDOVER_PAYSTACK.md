@@ -102,7 +102,11 @@ pre-authorization, or subscription-expiring-card events.
 Paddle is retired from active processing. Paystack is the only active provider.
 
 The production plan catalog must contain these eight Paystack codes after migrations. Configure
-them through Platform Admin or a controlled production database update:
+them in Platform Admin → Billing → Plans & pricing → **Change code** (SUPERADMIN). That action asks
+Paystack for the plan first and saves nothing unless its amount, currency and interval match the
+catalog row; it requires a reason and records the old and new code in the platform audit log. The
+generic plan update no longer accepts a code. Use a controlled database update only if the console
+is unavailable, and record why:
 
 | Plan key | Paystack plan code |
 | --- | --- |

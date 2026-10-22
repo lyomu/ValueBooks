@@ -1,21 +1,67 @@
 import {
+  BadGatewayException,
   BadRequestException,
   ConflictException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
 
+import { OFFICIAL_PLAN_TIERS } from '@valuebooks/contracts';
+
+import {
+  PaystackBillingAdapter,
+  paystackPlanMismatches,
+} from '../billing/paystack-billing.adapter.js';
 import { PrismaService } from '../database/prisma.service.js';
 import { writePlatformAudit } from './platform-audit.js';
 import type { PlatformContext } from './platform-context.js';
 import type {
   CreateFeatureFlagDto,
   CreatePlanDto,
+  SetProviderPlanCodeDto,
   UpdateFeatureFlagDto,
   UpdatePlanDto,
   UpsertEntitlementDto,
   UpsertFlagRuleDto,
 } from './platform.dto.js';
+
+const OFFICIAL_PLAN_KEYS = new Set(
+  OFFICIAL_PLAN_TIERS.flatMap((tier) => [`${tier}_monthly`, `${tier}_yearly`]),
+);
+
+type PlanRow = {
+  name: string;
+  status: string;
+  isDefault: boolean;
+  isMostPopular: boolean;
+  tierKey: string;
+  trialDays: number;
+  priceMinor: bigint;
+  currency: string;
+  billingInterval: string;
+  billingProvider: string | null;
+  providerProductId: string | null;
+  providerPriceId: string | null;
+  sortOrder: number;
+};
+
+function planAuditSnapshot(plan: PlanRow) {
+  return {
+    name: plan.name,
+    status: plan.status,
+    isDefault: plan.isDefault,
+    isMostPopular: plan.isMostPopular,
+    tierKey: plan.tierKey,
+    trialDays: plan.trialDays,
+    priceMinor: plan.priceMinor.toString(),
+    currency: plan.currency,
+    billingInterval: plan.billingInterval,
+    billingProvider: plan.billingProvider,
+    providerProductId: plan.providerProductId,
+    providerPlanCode: plan.providerPriceId,
+    sortOrder: plan.sortOrder,
+  };
+}
 
 /**
  * Global reference data a superadmin owns: plans, their entitlements, and feature flags with their
@@ -24,7 +70,10 @@ import type {
  */
 @Injectable()
 export class PlatformCatalogService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly paystack: PaystackBillingAdapter,
+  ) {}
 
   async listPlans() {
     const plans = await this.prisma.plan.findMany({
@@ -116,7 +165,8 @@ export class PlatformCatalogService {
       if (
         subscriberCount > 0 &&
         ((input.priceMinor !== undefined && BigInt(input.priceMinor) !== existing.priceMinor) ||
-          (input.billingInterval !== undefined && input.billingInterval !== existing.billingInterval) ||
+          (input.billingInterval !== undefined &&
+            input.billingInterval !== existing.billingInterval) ||
           (input.currency !== undefined && input.currency !== existing.currency))
       ) {
         // Billing spec Section 20: never silently reprice current subscribers. A real commercial
@@ -135,6 +185,14 @@ export class PlatformCatalogService {
       if (input.isDefault === false && existing.isDefault) {
         throw new BadRequestException(
           'Make another plan the default rather than leaving the platform without one.',
+        );
+      }
+      if (
+        input.providerPriceId !== undefined &&
+        input.providerPriceId !== existing.providerPriceId
+      ) {
+        throw new BadRequestException(
+          'Change a Paystack plan code through the plan-code action, which verifies it with Paystack and records a reason.',
         );
       }
       const updated = await tx.plan.update({
@@ -168,11 +226,85 @@ export class PlatformCatalogService {
         eventKey: 'platform.plan_updated',
         targetType: 'plan',
         targetId: planId,
-        before: { status: existing.status, isDefault: existing.isDefault, name: existing.name },
-        after: { status: updated.status, isDefault: updated.isDefault, name: updated.name },
+        // Record every commercial field, so a change to any of them leaves evidence.
+        before: planAuditSnapshot(existing),
+        after: planAuditSnapshot(updated),
         ipHash,
       });
       return { id: updated.id, key: updated.key, status: updated.status };
+    });
+  }
+
+  async setProviderPlanCode(
+    actor: PlatformContext,
+    planId: string,
+    input: SetProviderPlanCodeDto,
+    ipHash: string | null,
+  ) {
+    const plan = await this.prisma.plan.findUnique({ where: { id: planId } });
+    if (!plan) throw new NotFoundException('Plan not found.');
+    if (!OFFICIAL_PLAN_KEYS.has(plan.key) || plan.status !== 'ACTIVE') {
+      throw new BadRequestException('Only the eight active official plans carry a Paystack code.');
+    }
+    if (plan.billingProvider !== 'PAYSTACK') {
+      throw new BadRequestException('This plan is not billed through Paystack.');
+    }
+    if (plan.providerPriceId === input.providerPlanCode) {
+      throw new BadRequestException("That is already this plan's Paystack code.");
+    }
+    const holder = await this.prisma.plan.findFirst({
+      where: { providerPriceId: input.providerPlanCode, id: { not: planId } },
+      select: { key: true },
+    });
+    if (holder) {
+      throw new ConflictException(`That Paystack code is already used by ${holder.key}.`);
+    }
+    // Verify before storing: an unverifiable code is never saved. Checkout re-verifies anyway, but
+    // a wrong code caught here never reaches a customer.
+    // The adapter's 5xx would reach the operator as a generic failure; its message (Paystack's
+    // status and error text, or "not configured") is what they need, and carries no secret.
+    const remote = await this.paystack.getPlan(input.providerPlanCode).catch((error: unknown) => {
+      if (error instanceof BadGatewayException) {
+        throw new BadRequestException(
+          `Paystack could not confirm ${input.providerPlanCode}: ${error.message} Nothing was changed.`,
+        );
+      }
+      throw error;
+    });
+    const mismatches = paystackPlanMismatches(remote, {
+      ...plan,
+      providerPriceId: input.providerPlanCode,
+    });
+    if (mismatches.length > 0) {
+      throw new BadRequestException(
+        `The Paystack plan does not match ${plan.key}: ${mismatches.join('; ')}. Nothing was changed.`,
+      );
+    }
+    return this.prisma.$transaction(async (tx) => {
+      // Conditional on the code read above, so two concurrent changes cannot both apply.
+      const changed = await tx.plan.updateMany({
+        where: { id: planId, providerPriceId: plan.providerPriceId },
+        data: { providerPriceId: input.providerPlanCode },
+      });
+      if (changed.count !== 1) {
+        throw new ConflictException(
+          'The plan changed while this was being verified. Reload and try again.',
+        );
+      }
+      await writePlatformAudit(tx, actor, {
+        eventKey: 'platform.plan_provider_code_changed',
+        targetType: 'plan',
+        targetId: planId,
+        reason: input.reason,
+        before: { key: plan.key, providerPlanCode: plan.providerPriceId },
+        after: {
+          key: plan.key,
+          providerPlanCode: input.providerPlanCode,
+          verified: { amount: remote.amount, currency: remote.currency, interval: remote.interval },
+        },
+        ipHash,
+      });
+      return { key: plan.key, providerPlanCode: input.providerPlanCode };
     });
   }
 
@@ -186,7 +318,9 @@ export class PlatformCatalogService {
       const plan = await tx.plan.findUnique({ where: { id: planId }, select: { id: true } });
       if (!plan) throw new NotFoundException('Plan not found.');
       if (await tx.organizationSubscription.count({ where: { planId } })) {
-        throw new BadRequestException('This plan has subscribers. Create a new version and migrate with customer authorization before changing entitlements.');
+        throw new BadRequestException(
+          'This plan has subscribers. Create a new version and migrate with customer authorization before changing entitlements.',
+        );
       }
       const before = await tx.planEntitlement.findUnique({
         where: { planId_key: { planId, key: input.key } },
@@ -238,7 +372,9 @@ export class PlatformCatalogService {
       });
       if (!existing) throw new NotFoundException('Entitlement not found.');
       if (await tx.organizationSubscription.count({ where: { planId } })) {
-        throw new BadRequestException('This plan has subscribers. Its entitlements cannot be removed in place.');
+        throw new BadRequestException(
+          'This plan has subscribers. Its entitlements cannot be removed in place.',
+        );
       }
       await tx.planEntitlement.delete({ where: { id: existing.id } });
       await writePlatformAudit(tx, actor, {

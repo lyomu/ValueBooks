@@ -9,6 +9,7 @@ import {
   ParseUUIDPipe,
   Patch,
   Post,
+  Put,
   Query,
   Req,
   UseGuards,
@@ -42,6 +43,7 @@ import {
   SecurityEventSearchDto,
   SuspendOrganizationDto,
   UpdateFeatureFlagDto,
+  SetProviderPlanCodeDto,
   UpdatePlanDto,
   UpdateUserStatusDto,
   UpsertEntitlementDto,
@@ -280,6 +282,23 @@ export class PlatformController {
   ) {
     return {
       data: await this.catalog.updatePlan(request.platform, planId, input, this.ipHash(request)),
+    };
+  }
+
+  @Put('plans/:planId/provider-code')
+  @RequirePlatformRole('SUPERADMIN')
+  async setProviderPlanCode(
+    @Param('planId', new ParseUUIDPipe()) planId: string,
+    @Body() input: SetProviderPlanCodeDto,
+    @Req() request: PlatformRequest,
+  ) {
+    return {
+      data: await this.catalog.setProviderPlanCode(
+        request.platform,
+        planId,
+        input,
+        this.ipHash(request),
+      ),
     };
   }
 

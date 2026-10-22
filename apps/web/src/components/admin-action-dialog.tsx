@@ -21,6 +21,10 @@ const MIN_REASON = 10;
  * states the impact, collects the audited reason, optionally requires typing a confirmation
  * phrase for high-impact changes, and shows the server's refusal in place. Authorization is still
  * the server's decision; this dialog only makes the operator's intent explicit.
+ *
+ * Actions that need input beyond the reason (a new plan code, a trial extension length) pass their
+ * own controlled inputs as `fields` and hold the confirm button with `confirmDisabled` until those
+ * inputs are valid. The dialog still owns the reason, the confirmation phrase and the error.
  */
 export function AdminActionDialog({
   open,
@@ -32,6 +36,8 @@ export function AdminActionDialog({
   tone = 'primary',
   requireReason = true,
   confirmationPhrase,
+  fields,
+  confirmDisabled = false,
   onConfirm,
 }: {
   open: boolean;
@@ -45,6 +51,10 @@ export function AdminActionDialog({
   requireReason?: boolean;
   /** When set, the operator must type this exact text (e.g. the organization's name). */
   confirmationPhrase?: string;
+  /** Action-specific inputs, rendered between the impact and the reason. */
+  fields?: ReactNode;
+  /** Keeps confirm disabled while `fields` are incomplete or invalid. */
+  confirmDisabled?: boolean;
   /** Throws to keep the dialog open with the error shown; resolves to close it. */
   onConfirm: (reason: string) => Promise<void>;
 }) {
@@ -83,6 +93,7 @@ export function AdminActionDialog({
       <DialogContent title={title} description={description}>
         <div className="rb-admin-action">
           <div className="rb-admin-action__impact">{impact}</div>
+          {fields}
           {requireReason ? (
             <FormField>
               <Label htmlFor={`${id}-reason`}>Reason</Label>
@@ -123,7 +134,7 @@ export function AdminActionDialog({
             <Button
               variant={tone === 'danger' ? 'danger' : 'primary'}
               loading={busy}
-              disabled={!reasonValid || !phraseValid}
+              disabled={!reasonValid || !phraseValid || confirmDisabled}
               onClick={() => void confirm()}
             >
               {confirmLabel}

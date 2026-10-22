@@ -242,6 +242,22 @@ export class CreatePlanDto {
   sortOrder?: number;
 }
 
+/**
+ * The only way to change a plan's Paystack code: one official plan at a time, with a reason, after
+ * Paystack confirms the code's amount, currency and interval match the catalog row.
+ */
+export class SetProviderPlanCodeDto {
+  @IsString()
+  @Matches(/^PLN_[A-Za-z0-9]{4,60}$/, { message: 'providerPlanCode must look like PLN_xxxx' })
+  @Transform(trim)
+  providerPlanCode!: string;
+
+  @IsString()
+  @Length(10, 500)
+  @Transform(trim)
+  reason!: string;
+}
+
 export class UpdatePlanDto {
   @IsOptional()
   @IsString()
