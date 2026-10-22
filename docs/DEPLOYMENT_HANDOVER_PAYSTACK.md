@@ -90,9 +90,15 @@ charge.success
 subscription.create
 subscription.disable
 subscription.not_renew
+invoice.update
 invoice.payment_failed
 all Refund events
 ```
+
+`invoice.update` is how a renewal names its subscription: Paystack sends it after each renewal
+charge, and ValueBooks records a paid one against that subscription with Paystack's billing
+period. A renewal `charge.success` is also matched (by customer and plan), so renewals are still
+recorded without it, but `invoice.update` is the more precise signal.
 
 Do not select unrelated card-verification, dispute, payment-request, direct-debit,
 pre-authorization, or subscription-expiring-card events.
