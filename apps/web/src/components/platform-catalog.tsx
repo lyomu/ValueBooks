@@ -1,6 +1,7 @@
 'use client';
 
 import type { FeatureFlag, PlatformPlan } from '@valuebooks/contracts';
+import { Badge, CardSkeleton, StatusBadge } from '@valuebooks/ui';
 import { useCallback, useEffect, useState, type FormEvent } from 'react';
 
 import { ApiError, apiRequest } from '../lib/api';
@@ -60,7 +61,7 @@ export function PlatformPlans() {
       ) : null}
 
       {plans === null ? (
-        <p className="rb-platform__muted">Loading plans…</p>
+        <CardSkeleton />
       ) : (
         <div className="rb-platform__grid">
           {plans.map((plan) => (
@@ -68,9 +69,9 @@ export function PlatformPlans() {
               <div className="rb-platform__card-head">
                 <h2>
                   {plan.name}
-                  {plan.isDefault ? <span className="rb-platform__pill is-ok">default</span> : null}
+                  {plan.isDefault ? <Badge tone="success">Default</Badge> : null}
                 </h2>
-                <span className="rb-platform__pill">{plan.status.toLowerCase()}</span>
+                <StatusBadge status={plan.status} />
               </div>
               <p className="rb-platform__muted">{plan.description ?? 'No description.'}</p>
               <dl>
@@ -284,7 +285,7 @@ export function PlatformFeatureFlags() {
       ) : null}
 
       {flags === null ? (
-        <p className="rb-platform__muted">Loading feature flags…</p>
+        <CardSkeleton />
       ) : flags.length === 0 ? (
         <p className="rb-platform__muted">No feature flags yet.</p>
       ) : (
@@ -292,7 +293,7 @@ export function PlatformFeatureFlags() {
           <section key={flag.id} className="rb-platform__card" aria-label={flag.key}>
             <div className="rb-platform__card-head">
               <h2>{flag.name}</h2>
-              <span className="rb-platform__pill">{flag.status.toLowerCase()}</span>
+              <StatusBadge status={flag.status} />
             </div>
             <p className="rb-platform__muted">
               <code>{flag.key}</code>: {flag.description ?? 'No description.'} Default:{' '}
@@ -453,7 +454,7 @@ function FlagPreview({ flagKey }: { flagKey: string }) {
       </button>
       {result ? (
         <p className="rb-platform__notice" role="status">
-          {result.enabled ? 'Enabled' : 'Disabled'} â€” decided by {result.decidedBy.toLowerCase()}.
+          {result.enabled ? 'Enabled' : 'Disabled'} — decided by {result.decidedBy.toLowerCase()}.
         </p>
       ) : null}
       {error ? (

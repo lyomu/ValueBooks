@@ -5,7 +5,7 @@ import type {
   PlatformCountryPackTier,
   PlatformTaxPack,
 } from '@valuebooks/contracts';
-import { DataTable, PrimarySecondaryCell } from '@valuebooks/ui';
+import { CardSkeleton, DataTable, PrimarySecondaryCell, StatusBadge } from '@valuebooks/ui';
 import {
   Archive,
   CirclePlus,
@@ -283,7 +283,7 @@ export function PlatformCountryPacks() {
       ) : null}
 
       {packs === null ? (
-        <p className="rb-platform__muted">Loading country packs...</p>
+        <CardSkeleton />
       ) : packs.length === 0 ? (
         <section className="rb-platform__card rb-platform__empty">
           <FileJson aria-hidden="true" />
@@ -881,8 +881,7 @@ function LifecycleConfirmation({
 }
 
 function PackStatus({ status }: { status: PlatformCountryPack['status'] }) {
-  const tone = status === 'PUBLISHED' ? 'is-ok' : status === 'DEPRECATED' ? 'is-warn' : '';
-  return <span className={`rb-platform__pill ${tone}`}>{status.toLowerCase()}</span>;
+  return <StatusBadge status={status} />;
 }
 
 function tierLabel(tier: PlatformCountryPackTier): string {

@@ -1,7 +1,13 @@
 'use client';
 
 import type { PlatformUser } from '@valuebooks/contracts';
-import { DataTable, PrimarySecondaryCell } from '@valuebooks/ui';
+import {
+  DataTable,
+  DataTablePagination,
+  DetailSkeleton,
+  PrimarySecondaryCell,
+  StatusBadge,
+} from '@valuebooks/ui';
 import Link from 'next/link';
 import { useCallback, useEffect, useState, type FormEvent } from 'react';
 
@@ -12,7 +18,7 @@ import {
   usePlatformSession,
   type Paginated,
 } from '../lib/platform';
-import { Pager, Row, StatusPill } from './platform-organizations';
+import { Row } from './platform-organizations';
 import { PlatformPage } from './platform-shell';
 
 type UserDetail = {
@@ -135,7 +141,7 @@ export function PlatformUsers() {
           {
             key: 'status',
             header: 'Status',
-            cell: (row: PlatformUser) => <StatusPill status={row.status} />,
+            cell: (row: PlatformUser) => <StatusBadge status={row.status} />,
           },
           {
             key: 'verified',
@@ -157,7 +163,7 @@ export function PlatformUsers() {
         ]}
       />
 
-      <Pager page={page} pageSize={25} totalRows={totalRows} onChange={setPage} />
+      <DataTablePagination page={page} pageSize={25} totalRows={totalRows} onPageChange={setPage} />
     </PlatformPage>
   );
 }
@@ -214,7 +220,7 @@ export function PlatformUserDetail({ userId }: { userId: string }) {
             {error}
           </p>
         ) : (
-          <p className="rb-platform__muted">Loading…</p>
+          <DetailSkeleton variant="profile" />
         )}
       </PlatformPage>
     );
@@ -224,7 +230,7 @@ export function PlatformUserDetail({ userId }: { userId: string }) {
     <PlatformPage
       title={user.displayName}
       description={user.email}
-      actions={<StatusPill status={user.status} />}
+      actions={<StatusBadge status={user.status} />}
     >
       {error ? (
         <p className="rb-platform__alert" role="alert">
@@ -334,12 +340,12 @@ export function PlatformUserDetail({ userId }: { userId: string }) {
             {
               key: 'membership',
               header: 'Membership',
-              cell: (membership) => <StatusPill status={membership.membershipStatus} />,
+              cell: (membership) => <StatusBadge status={membership.membershipStatus} />,
             },
             {
               key: 'organization-status',
               header: 'Organization status',
-              cell: (membership) => <StatusPill status={membership.organizationStatus} />,
+              cell: (membership) => <StatusBadge status={membership.organizationStatus} />,
             },
           ]}
         />

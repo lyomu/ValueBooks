@@ -9,7 +9,14 @@ import {
   type PlatformUsage,
   type SubscriptionStatus,
 } from '@valuebooks/contracts';
-import { Badge, DataTable, PrimarySecondaryCell } from '@valuebooks/ui';
+import {
+  Badge,
+  DataTable,
+  DataTablePagination,
+  DetailSkeleton,
+  PrimarySecondaryCell,
+  StatusBadge,
+} from '@valuebooks/ui';
 import Link from 'next/link';
 import { useCallback, useEffect, useState, type FormEvent } from 'react';
 
@@ -153,7 +160,7 @@ export function PlatformOrganizations() {
           {
             key: 'status',
             header: 'Status',
-            cell: (row: PlatformOrganization) => <StatusPill status={row.status} />,
+            cell: (row: PlatformOrganization) => <StatusBadge status={row.status} />,
           },
           {
             key: 'country',
@@ -189,7 +196,7 @@ export function PlatformOrganizations() {
         ]}
       />
 
-      <Pager page={page} pageSize={25} totalRows={totalRows} onChange={setPage} />
+      <DataTablePagination page={page} pageSize={25} totalRows={totalRows} onPageChange={setPage} />
     </PlatformPage>
   );
 }
@@ -263,7 +270,7 @@ export function PlatformOrganizationDetail({ organizationId }: { organizationId:
   if (!detail) {
     return (
       <PlatformPage title="Organization">
-        <p className="rb-platform__muted">Loading…</p>
+        <DetailSkeleton variant="profile" />
       </PlatformPage>
     );
   }
@@ -272,7 +279,7 @@ export function PlatformOrganizationDetail({ organizationId }: { organizationId:
     <PlatformPage
       title={detail.name}
       description={`${detail.slug} · ${detail.countryCode} · ${detail.baseCurrency}`}
-      actions={<StatusPill status={detail.status} />}
+      actions={<StatusBadge status={detail.status} />}
     >
       {error ? (
         <p className="rb-platform__alert" role="alert">
@@ -511,45 +518,11 @@ export function PlatformOrganizationDetail({ organizationId }: { organizationId:
   );
 }
 
-export function StatusPill({ status }: { status: string }) {
-  const tone =
-    status === 'ACTIVE' ? 'is-ok' : status === 'SUSPENDED' || status === 'CLOSED' ? 'is-warn' : '';
-  return <span className={`rb-platform__pill ${tone}`}>{status.replaceAll('_', ' ')}</span>;
-}
-
 export function Row({ label, value }: { label: string; value: string | number }) {
   return (
     <div className="rb-platform__row">
       <dt>{label}</dt>
       <dd>{typeof value === 'number' ? value.toLocaleString() : value}</dd>
     </div>
-  );
-}
-
-export function Pager({
-  page,
-  pageSize,
-  totalRows,
-  onChange,
-}: {
-  page: number;
-  pageSize: number;
-  totalRows: number;
-  onChange: (page: number) => void;
-}) {
-  const pages = Math.max(1, Math.ceil(totalRows / pageSize));
-  if (pages <= 1) return null;
-  return (
-    <nav className="rb-platform__pager" aria-label="Pagination">
-      <button type="button" disabled={page <= 1} onClick={() => onChange(page - 1)}>
-        Previous
-      </button>
-      <span>
-        Page {page} of {pages}
-      </span>
-      <button type="button" disabled={page >= pages} onClick={() => onChange(page + 1)}>
-        Next
-      </button>
-    </nav>
   );
 }

@@ -7,7 +7,7 @@ FORM: Compact responsive analytical panels, honest unavailable states, precise t
 */
 'use client';
 
-import { Button, Card, EmptyState, PageHeader, Skeleton } from '@valuebooks/ui';
+import { Button, Card, EmptyState, PageHeader } from '@valuebooks/ui';
 import {
   ArrowDownRight,
   ArrowUpRight,
@@ -41,6 +41,7 @@ import {
 
 import { apiRequest } from '../lib/api';
 import { hasPermission, useWorkspace } from '../lib/workspace';
+import { ChartLegend, ChartLoading, DashboardKpi, DashboardPanelHeading } from './dashboard-panels';
 
 type DashboardData = {
   currency: string;
@@ -630,7 +631,7 @@ export function Dashboard() {
 
 function Kpi({
   label,
-  icon: Icon,
+  icon,
   amount,
   currency,
   loading,
@@ -644,33 +645,18 @@ function Kpi({
   tone: string;
 }) {
   return (
-    <Card className={`rb-dash-kpi is-${tone}`}>
-      <div className="rb-dash-kpi-top">
-        <span>{label}</span>
-        <Icon aria-hidden="true" />
-      </div>
-      <strong>
-        {loading
-          ? 'Loading…'
-          : amount !== undefined && currency
-            ? formatMinor(amount, currency)
-            : '—'}
-      </strong>
-      <small>{loading ? ' ' : 'For selected period'}</small>
-    </Card>
+    <DashboardKpi
+      label={label}
+      icon={icon}
+      tone={tone}
+      loading={loading}
+      value={amount !== undefined && currency ? formatMinor(amount, currency) : '—'}
+      hint="For selected period"
+    />
   );
 }
 
-function PanelHeading({ title, description }: { title: string; description: string }) {
-  return (
-    <div className="rb-dash-panel-heading">
-      <div>
-        <h2>{title}</h2>
-        <p>{description}</p>
-      </div>
-    </div>
-  );
-}
+const PanelHeading = DashboardPanelHeading;
 
 function AgingPanel({
   title,
@@ -752,28 +738,6 @@ function Metric({
     <div>
       <span>{label}</span>
       <strong>{amount === null ? 'Unavailable' : formatMinor(amount, currency ?? 'USD')}</strong>
-    </div>
-  );
-}
-
-function ChartLegend({ items, colors }: { items: string[]; colors: string[] }) {
-  return (
-    <div className="rb-dash-legend">
-      {items.map((item, index) => (
-        <span key={item}>
-          <i style={{ background: colors[index] }} />
-          {item}
-        </span>
-      ))}
-    </div>
-  );
-}
-
-function ChartLoading() {
-  return (
-    <div className="rb-dash-loading" aria-label="Loading dashboard data">
-      <Skeleton />
-      <Skeleton />
     </div>
   );
 }

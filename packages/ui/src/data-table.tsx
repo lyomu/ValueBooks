@@ -232,3 +232,51 @@ export function DataTable<T extends { id: string }>({
     </Card>
   );
 }
+
+/**
+ * Previous / next paging for a server-paginated `DataTable`. Renders nothing for a single page.
+ * Place it directly after the table it pages.
+ */
+export function DataTablePagination({
+  page,
+  pageSize,
+  totalRows,
+  onPageChange,
+  disabled = false,
+  label = 'Pagination',
+}: {
+  page: number;
+  pageSize: number;
+  totalRows: number;
+  onPageChange: (page: number) => void;
+  disabled?: boolean;
+  label?: string;
+}) {
+  const pages = Math.max(1, Math.ceil(totalRows / pageSize));
+  if (pages <= 1) return null;
+  return (
+    <nav className="rb-table-pagination" aria-label={label}>
+      <Button
+        type="button"
+        variant="outline"
+        size="sm"
+        disabled={disabled || page <= 1}
+        onClick={() => onPageChange(page - 1)}
+      >
+        Previous
+      </Button>
+      <span>
+        Page {page} of {pages}
+      </span>
+      <Button
+        type="button"
+        variant="outline"
+        size="sm"
+        disabled={disabled || page >= pages}
+        onClick={() => onPageChange(page + 1)}
+      >
+        Next
+      </Button>
+    </nav>
+  );
+}

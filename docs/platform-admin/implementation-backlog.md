@@ -32,7 +32,7 @@ Updated after every item: status, commit/PR, the focused checks actually run, an
 
 | ID | Task | Status | Evidence |
 |---|---|---|---|
-| 1.0 | Read-only production catalog verification (script and runbook): migration status, plan rows by status, Paystack codes on all 8 ACTIVE plans, subscriptions on retired plans | 🔄 | SQL check written ([runbook](runbooks/plan-catalog-verification.md)); **awaiting an owner/ops run against production** |
+| 1.0 | Read-only production catalog verification (script and runbook): migration status, plan rows by status, Paystack codes on all 8 ACTIVE plans, subscriptions on retired plans | ⏸ | SQL check written ([runbook](runbooks/plan-catalog-verification.md)); owner will run it at release time, before deploying |
 | 1.1 | D1: migration making Professional quotes and sales orders unlimited, plus an entitlement-matrix integration test | ✅ | `20261022090000_correct_professional_unlimited_entitlements`; `test/plan-entitlements.int.test.ts` 11/11 locally (replays catalog migrations; all 8 plans + trial) |
 | 1.2 | D2: gate workflows on `approval_workflows.enabled` (Advanced only) | ✅ | `workflows.service.ts`; key resolution covered by the matrix spec. Existing rules are untouched; only creation is gated |
 | 1.3 | `OFFICIAL_PLAN_CATALOG` in `packages/contracts`; DB == constant test; marketing and plan picker derive from it; fix the "unlimited invoices" copy (D4) | ✅ | Constant + `OFFICIAL_TRIAL` in contracts; `plan-entitlements.int.test.ts` asserts DB prices, provider and limits equal it; `pricing-data.ts` derives prices, savings, most-popular and quantitative copy; the invoice row now shows 5/20/100/Unlimited, with a new "Quotes per month" row. `pricing-data.test.ts` 3/3. Qualitative marketing mismatches → ⛔ O1 |
@@ -47,23 +47,23 @@ Updated after every item: status, commit/PR, the focused checks actually run, an
 
 | ID | Item | Status |
 |---|---|---|
-| O1 | The marketing comparison table makes qualitative claims that disagree with seeded entitlements. Examples: "Role-based permissions" ✓ on Professional, but `custom_roles.enabled` is Advanced only; "Budgets & cashflow forecasting" ✗ on Growth, but `cash_flow_reporting.enabled` is on; "Audit trail", "Transaction rules" and "Customer portal" map to no entitlement key. Owner decision needed: change the copy or the entitlements. | ⛔ |
-| O2 | `POST /platform/organizations/:id/plan` (SUPERADMIN, audited) can set a paid plan ACTIVE without a verified payment. Spec §4.4 says not to mint paid subscriptions. Recommendation: restrict it to TRIALING / complimentary use with a mandatory reason, or route complimentary access through the existing approved entitlement overrides. | ⛔ |
-| O3 | Run the read-only production check (1.0) before deploying Phase 1. If the 10-14 migrations are missing in production, this deploy will also apply the official catalog. | ⛔ |
+| O1 | Marketing comparison table disagreed with enforced entitlements. **Owner decision 2026-10-22: fix the copy, not the plans.** Done: every on/off row now reads `OFFICIAL_PLAN_CATALOG.features` or is marked as included on every plan; rows for features the product does not have (online payment collection, bank feed connections) are removed, and the homepage line "accept secure online payments" now reads "record customer payments as they arrive". | ✅ |
+| O2 | Admin assign-plan could mint a paid subscription. **Owner decision 2026-10-22: trials and complimentary grants only.** Done: the endpoint accepts only TRIALING or ACTIVE + `complimentary: true`, the reason is now mandatory (≥10 chars), and it refuses to overwrite a provider-billed subscription. New `organization_subscriptions.complimentary` column keeps such grants out of MRR, ARR and active-paid counts; a verified payment clears the flag. | ✅ |
+| O3 | Read-only production catalog check. **Owner decision 2026-10-22: run it once all phases are complete**, before the deploy. Runbook ready: `runbooks/plan-catalog-verification.md`. | ⏸ deferred to release |
 
 ## Phase 2 — Shared admin shell & design system (P1/P2)
 
 | ID | Task | Status | Evidence |
 |---|---|---|---|
-| 2.1 | Shell: spec §5 nav groups, active-group auto-expand, one collapse control, ValueBooks mark when collapsed, tooltips, contrast-safe hover | ⬜ | |
-| 2.2 | Shared platform session context (single `/platform/me` fetch) | ⬜ | |
-| 2.3 | `PlatformPage` → shared `PageHeader` (meta / updated-at slot) | ⬜ | |
-| 2.4 | `StatusPill` → `StatusBadge`; `Pager` → shared DataTable pagination | ⬜ | |
-| 2.5 | `StatCard` variant: period, delta, drilldown, loading/error/no-data | ⬜ | |
-| 2.6 | Remove the global `.rb-platform button` override | ⬜ | |
-| 2.7 | `AdminActionDialog` pattern (impact, reason, typed confirmation) | ⬜ | |
-| 2.8 | Skeleton/Empty/Error states on every page; shared filters; billing page titles | ⬜ | |
-| 2.9 | Document the variants in `DESIGN.md` and `/design-system` | ⬜ | |
+| 2.1 | Shell: spec §5 nav groups, active-group auto-expand, one collapse control, ValueBooks mark when collapsed, tooltips, contrast-safe hover | ✅ | `PlatformShell` uses the tenant `rb-app-shell` structure plus a light `rb-app-shell--platform` variant: sidebar logo, `CollapsedSidebarMark` (moved to `brand-logo.tsx`, shared with `AppShell`), `Dialog`/`DrawerContent` mobile drawer (replaces the hand-rolled focus trap), shared profile dropdown with Exit console / Sign out. The billing group opens on billing routes and stays open after the operator opens it. Screenshots checked at desktop, collapsed and 390px drawer |
+| 2.2 | Shared platform session context (single `/platform/me` fetch) | ✅ | `PlatformSessionProvider` in `lib/platform.ts`; `usePlatformSession()` reads the shell's session and only fetches outside a provider |
+| 2.3 | `PlatformPage` → shared `PageHeader` (meta / updated-at slot) | ✅ | `PlatformPage` now renders `PageHeader` plus an optional `meta` line; the old `.rb-platform__heading` CSS was removed |
+| 2.4 | `StatusPill` → `StatusBadge`; `Pager` → shared DataTable pagination | ✅ | New `DataTablePagination` in `packages/ui` replaces `Pager` and the billing pages' inline pager; `StatusBadge` tone map gains platform statuses; every `rb-platform__pill` replaced; dead CSS removed. D11 mojibake fixed |
+| 2.5 | `StatCard` variant: period, delta, drilldown, loading/error/no-data | ✅ | Borrowed from the customer dashboard: `dashboard-panels.tsx` (`DashboardKpi` with `delta` + `href`, `DashboardPanelHeading`, `ChartLegend`, `ChartLoading`) is now used by `dashboard.tsx` (unchanged rendering, verified by screenshot) and is ready for the 3.2 Overview; `.rb-dash-kpis--four` 4/2/1 grid |
+| 2.6 | Remove the global `.rb-platform button` override | ✅ | Scoped to `:where(.rb-platform__page) button:not(.rb-button)` with the same specificity, so shared `Button`s and chrome are no longer restyled. Raw buttons on legacy pages keep their look until each page is rebuilt |
+| 2.7 | `AdminActionDialog` pattern (impact, reason, typed confirmation) | ✅ | `admin-action-dialog.tsx` on shared `Dialog` and form fields. Adopted page by page in Phases 3–5; suspend/reactivate moves in 3.3 together with the Playwright spec |
+| 2.8 | Skeleton/Empty/Error states on every page; shared filters; billing page titles | 🔄 | Done: plain "Loading…" text replaced with `CardSkeleton`/`DetailSkeleton` on every platform page; metadata titles on all 13 billing pages. Remaining: filter bars move to `DataTableToolbar` as each list is rebuilt (3.4, 3.5, 4.3, 5.x) |
+| 2.9 | Document the variants in `DESIGN.md` and `/design-system` | ✅ | `DESIGN.md` → "Platform Admin variant" |
 
 ## Phase 3 — Overview dashboard, Organizations, Users (P1)
 
@@ -114,7 +114,7 @@ Updated after every item: status, commit/PR, the focused checks actually run, an
 ## Progress log
 
 - **2026-10-22**: Phase 0 audit completed (three parallel code inspections). The plan was approved and the tracker created.
-- **2026-10-22**: Phase 1 implemented (uncommitted, branch `feat/brand-and-plan-picker`).
+- **2026-10-22**: Phase 1 committed as `b2e7d4c` on `feat/platform-admin-commercial-correctness`.
   - **Checks run locally, all green:**
     - Typecheck: contracts, api, web.
     - ESLint on the touched files.
@@ -123,3 +123,13 @@ Updated after every item: status, commit/PR, the focused checks actually run, an
     - Migration drift (`prisma migrate diff --exit-code` against a shadow DB): no difference.
   - **Deferred to Jenkins:** full Lint/Typecheck/Test and **Test (integration)**, which is mandatory before merge because this touches billing.
   - **Formatting:** pre-existing Prettier drift remains in 4 billing/organization files that were already unformatted at HEAD; they were not reformatted, to avoid churn.
+- **2026-10-22**: Phase 2 implemented; it borrows from the customer app (shell structure, drawer, profile menu, brand mark, dashboard KPI/panel primitives).
+  - **Checks run locally, all green:** web + ui typecheck, ESLint on touched files, ui unit 8/8, web unit 27/27.
+  - **Manual check:** Playwright screenshots of `/platform`, organizations and providers at desktop; the collapsed rail; the 390px drawer. A regression screenshot of the customer `/dashboard` is unchanged. No browser errors.
+  - **Deferred to Jenkins:** full lint/typecheck/test. `e2e/phase12-platform.spec.ts` is not in Jenkins (6.1); its selectors ("Platform console" nav, Reason, Suspend organization) are unchanged.
+- **2026-10-22**: Owner decisions O1–O3 actioned.
+  - O1 (marketing copy) and O2 (assign-plan) implemented; O3 deferred to release by the owner.
+  - New migration `20261022092000_subscription_complimentary_flag` (additive boolean, default false).
+  - `OFFICIAL_PLAN_CATALOG` gains a `features` map, so the marketing table and the entitlement spec read the same source.
+  - **Checks, all green:** contracts 7/7, web marketing 3/3, api + web + contracts typecheck, ESLint, integration 30/30 (`plan-entitlements`, `platform-audit`, `plan-selection`, `billing-webhook-claim`, `platform-authorization`), migration drift clean.
+- **2026-10-22**: Separate accounting defect documented in `docs/ACCOUNTING_ISSUE_INVENTORY_ADJUSTMENTS_IN_PROFIT_AND_LOSS.md` (inventory gains and opening stock posted as negative expense). Not part of this project; awaiting accountant sign-off.

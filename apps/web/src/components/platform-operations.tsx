@@ -6,7 +6,13 @@ import type {
   PlatformQueueHealth,
   PlatformSecurityEvent,
 } from '@valuebooks/contracts';
-import { DataTable, PrimarySecondaryCell } from '@valuebooks/ui';
+import {
+  CardSkeleton,
+  DataTable,
+  DataTablePagination,
+  PrimarySecondaryCell,
+  StatusBadge,
+} from '@valuebooks/ui';
 import Link from 'next/link';
 import { useCallback, useEffect, useState, type FormEvent } from 'react';
 
@@ -17,7 +23,6 @@ import {
   usePlatformSession,
   type Paginated,
 } from '../lib/platform';
-import { Pager } from './platform-organizations';
 import { PlatformPage } from './platform-shell';
 
 export function PlatformJobs() {
@@ -110,7 +115,7 @@ export function PlatformJobs() {
           </div>
         </section>
       ) : (
-        <p className="rb-platform__muted">Loading queue health…</p>
+        <CardSkeleton />
       )}
 
       <section className="rb-platform__section" aria-label="Failed executions">
@@ -179,7 +184,12 @@ export function PlatformJobs() {
             },
           ]}
         />
-        <Pager page={page} pageSize={25} totalRows={totalRows} onChange={setPage} />
+        <DataTablePagination
+          page={page}
+          pageSize={25}
+          totalRows={totalRows}
+          onPageChange={setPage}
+        />
       </section>
     </PlatformPage>
   );
@@ -277,11 +287,7 @@ export function PlatformSecurityEvents() {
           {
             key: 'severity',
             header: 'Severity',
-            cell: (row: PlatformSecurityEvent) => (
-              <span className={`rb-platform__pill${row.severity === 'INFO' ? '' : ' is-warn'}`}>
-                {row.severity.toLowerCase()}
-              </span>
-            ),
+            cell: (row: PlatformSecurityEvent) => <StatusBadge status={row.severity} />,
           },
           {
             key: 'user',
@@ -310,7 +316,7 @@ export function PlatformSecurityEvents() {
         ]}
       />
 
-      <Pager page={page} pageSize={25} totalRows={totalRows} onChange={setPage} />
+      <DataTablePagination page={page} pageSize={25} totalRows={totalRows} onPageChange={setPage} />
     </PlatformPage>
   );
 }
@@ -389,7 +395,7 @@ export function PlatformAudit() {
         ]}
       />
 
-      <Pager page={page} pageSize={25} totalRows={totalRows} onChange={setPage} />
+      <DataTablePagination page={page} pageSize={25} totalRows={totalRows} onPageChange={setPage} />
     </PlatformPage>
   );
 }

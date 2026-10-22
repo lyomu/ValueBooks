@@ -1087,10 +1087,7 @@ body {
 .rb-platform,
 .rb-platform-shell,
 .rb-platform-notice,
-.rb-platform__bar,
 .rb-platform__nav,
-.rb-platform__main,
-.rb-platform__heading,
 .rb-platform__stats,
 .rb-platform__grid,
 .rb-platform__card {
@@ -1143,7 +1140,6 @@ p,
 .rb-stat-label,
 .rb-stat-helper,
 .rb-section-heading p,
-.rb-platform__heading p,
 .rb-platform__stat span,
 .rb-platform__muted,
 .rb-table-secondary,
@@ -5082,70 +5078,47 @@ a.rb-nav-item:hover {
 }
 
 /* --- Phase 12: platform console -------------------------------------------------------------
-   A separate surface from the tenant app, with its own chrome. It shares the design tokens but not
-   the shell: a platform administrator has no organization, so none of the tenant navigation
-   applies to them. */
+   The console renders in the tenant app's shell structure (`.rb-app-shell`, `.rb-app-sidebar`,
+   `.rb-topbar`, `.rb-page-container`) through the light `.rb-app-shell--platform` variant below.
+   It shares tokens and layout, never tenant chrome: a platform administrator has no organization. */
 
 .rb-platform {
-  display: flex;
-  height: 100dvh;
-  flex-direction: column;
-  overflow: hidden;
   color: hsl(var(--rb-foreground));
   background: hsl(var(--rb-background));
 }
-.rb-platform__bar {
-  display: flex;
-  min-height: 4rem;
-  flex: 0 0 4rem;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: 1rem;
-  padding: 0 clamp(1rem, 3vw, 2rem);
-  border-bottom: 1px solid hsl(var(--rb-border));
-}
-.rb-platform__brand {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.55rem;
-  color: inherit;
-  font-size: 1rem;
-  text-decoration: none;
-}
-.rb-platform__brand svg {
-  width: 1.15rem;
-  height: 1.15rem;
-  color: hsl(var(--rb-primary));
-}
-.rb-platform__identity {
-  display: inline-flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 0.75rem;
+.rb-platform__meta {
+  margin: -0.75rem 0 1.25rem;
   color: hsl(var(--rb-muted-foreground));
-  font-size: 0.85rem;
+  font-size: 0.75rem;
 }
-.rb-platform__identity a {
-  color: hsl(var(--rb-primary));
-  font-weight: 600;
-  text-decoration: none;
+/* AdminActionDialog (admin-action-dialog.tsx): impact, audited reason, typed confirmation. */
+.rb-admin-action {
+  display: grid;
+  gap: 1rem;
 }
-.rb-platform__role {
-  padding: 0.1rem 0.5rem;
-  color: hsl(var(--rb-primary));
-  background: hsl(var(--rb-primary) / 0.12);
-  border-radius: 999px;
-  font-size: 0.7rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
+.rb-admin-action__impact {
+  padding: 0.75rem 0.875rem;
+  color: hsl(var(--rb-foreground));
+  background: hsl(var(--rb-muted));
+  border-radius: var(--rb-radius-sm);
+  font-size: 0.8125rem;
+  line-height: 1.5;
 }
-.rb-platform__body {
+.rb-admin-action__impact > :first-child {
+  margin-top: 0;
+}
+.rb-admin-action__impact > :last-child {
+  margin-bottom: 0;
+}
+.rb-admin-action__error {
+  margin: 0;
+  color: hsl(var(--rb-danger));
+  font-size: 0.8125rem;
+}
+.rb-admin-action__footer {
   display: flex;
-  flex: 1;
-  min-height: 0;
-  overflow: hidden;
+  justify-content: flex-end;
+  gap: 0.5rem;
 }
 /* The platform keeps its light surface while sharing the customer sidebar's rail, rows and toggle. */
 .rb-platform__sidebar {
@@ -5156,9 +5129,14 @@ a.rb-nav-item:hover {
   border-color: hsl(var(--rb-border));
 }
 .rb-platform__sidebar .rb-app-sidebar__brand {
-  justify-content: flex-end;
+  justify-content: space-between;
   color: hsl(var(--rb-foreground));
-  font-size: 0.8rem;
+  border-bottom-color: hsl(var(--rb-border));
+}
+.rb-platform__sidebar .rb-app-sidebar__brand-copy {
+  flex-direction: row;
+  align-items: center;
+  text-decoration: none;
 }
 .rb-platform__sidebar .rb-app-sidebar__toggle,
 .rb-platform__sidebar .rb-nav-group__trigger,
@@ -5263,21 +5241,6 @@ a.rb-nav-item:hover {
 .rb-platform__sidebar.is-collapsed .rb-app-sidebar__brand {
   justify-content: center;
 }
-.rb-platform__sidebar.is-collapsed .rb-app-sidebar__toggle {
-  display: grid;
-}
-.rb-platform__mobile-toggle {
-  display: none;
-}
-.rb-platform .rb-platform__mobile-toggle {
-  display: none;
-  color: hsl(var(--rb-foreground));
-  background: transparent;
-  border: 1px solid hsl(var(--rb-border));
-}
-.rb-platform__mobile-layer {
-  display: none;
-}
 .rb-platform__nav a:focus-visible,
 .rb-platform button:focus-visible,
 .rb-platform input:focus-visible,
@@ -5286,34 +5249,6 @@ a.rb-nav-item:hover {
 .rb-platform a:focus-visible {
   outline: 2px solid hsl(var(--rb-ring));
   outline-offset: 2px;
-}
-.rb-platform__main {
-  flex: 1;
-  min-width: 0;
-  min-height: 0;
-  max-width: 100rem;
-  margin-inline: auto;
-  padding: clamp(1rem, 3vw, 2rem);
-}
-.rb-platform__heading {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: start;
-  justify-content: space-between;
-  gap: 1rem;
-  margin-bottom: 1.5rem;
-}
-.rb-platform__heading h1 {
-  margin: 0;
-  font-size: 1.5rem;
-  letter-spacing: -0.02em;
-}
-.rb-platform__heading p {
-  max-width: 70ch;
-  margin: 0.4rem 0 0;
-  color: hsl(var(--rb-muted-foreground));
-  font-size: 0.9rem;
-  line-height: 1.5;
 }
 .rb-platform__stats {
   display: grid;
@@ -5441,32 +5376,6 @@ a.rb-nav-item:hover {
   }
 }
 @media (max-width: 48rem) {
-  .rb-platform__sidebar:not(.rb-platform__mobile-sidebar) {
-    display: none;
-  }
-  .rb-platform .rb-platform__mobile-toggle {
-    display: grid;
-    place-items: center;
-  }
-  .rb-platform__mobile-layer {
-    display: block;
-    position: fixed;
-    inset: 0;
-    z-index: 100;
-  }
-  .rb-platform .rb-platform__mobile-backdrop {
-    position: absolute;
-    inset: 0;
-    width: 100%;
-    background: hsl(var(--rb-foreground) / 0.35);
-    border: 0;
-  }
-  .rb-platform__mobile-sidebar {
-    position: absolute;
-    inset: 0 auto 0 0;
-    height: 100dvh;
-    max-width: min(20rem, 88vw);
-  }
   .rb-platform__stats,
   .rb-platform__stats--secondary,
   .rb-platform__health-grid,
@@ -5600,25 +5509,6 @@ a.rb-nav-item:hover {
   border-radius: 0.5rem;
   font-size: 0.9rem;
 }
-.rb-platform__pill {
-  padding: 0.12rem 0.5rem;
-  color: hsl(var(--rb-muted-foreground));
-  background: hsl(var(--rb-muted));
-  border-radius: 999px;
-  font-size: 0.6875rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  white-space: nowrap;
-}
-.rb-platform__pill.is-ok {
-  color: hsl(var(--rb-primary));
-  background: hsl(var(--rb-primary) / 0.12);
-}
-.rb-platform__pill.is-warn {
-  color: hsl(var(--rb-danger));
-  background: hsl(var(--rb-danger-surface));
-}
 .rb-platform__filters,
 .rb-platform__inline-form {
   display: flex;
@@ -5670,7 +5560,9 @@ a.rb-nav-item:hover {
 .rb-platform__check input {
   min-height: 0;
 }
-.rb-platform button {
+/* Legacy console pages still use raw <button>s styled here. Scoped to page content so the shared
+   `Button` and the shell chrome keep their own styles; pages move to `Button` as they are rebuilt. */
+:where(.rb-platform__page) button:not(.rb-button) {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -5685,24 +5577,24 @@ a.rb-nav-item:hover {
   font-weight: 600;
   cursor: pointer;
 }
-.rb-platform button svg {
+:where(.rb-platform__page) button:not(.rb-button) svg {
   width: 1rem;
   height: 1rem;
   flex: 0 0 auto;
 }
-.rb-platform button:disabled {
+:where(.rb-platform__page) button:not(.rb-button):disabled {
   opacity: 0.55;
   cursor: not-allowed;
 }
-.rb-platform button.is-danger {
+:where(.rb-platform__page) button.is-danger:not(.rb-button) {
   background: hsl(var(--rb-danger));
 }
-.rb-platform button.is-secondary {
+:where(.rb-platform__page) button.is-secondary:not(.rb-button) {
   color: hsl(var(--rb-foreground));
   background: hsl(var(--rb-muted));
   border: 1px solid hsl(var(--rb-border));
 }
-.rb-platform button.is-quiet-danger {
+:where(.rb-platform__page) button.is-quiet-danger:not(.rb-button) {
   color: hsl(var(--rb-danger));
   background: hsl(var(--rb-danger-surface));
   border: 1px solid hsl(var(--rb-danger) / 0.22);
@@ -5766,14 +5658,6 @@ a.rb-nav-item:hover {
   max-width: 28rem;
   color: hsl(var(--rb-danger));
   white-space: normal;
-}
-.rb-platform__pager {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  margin-top: 1rem;
-  color: hsl(var(--rb-muted-foreground));
-  font-size: 0.85rem;
 }
 .rb-platform__forbidden {
   display: flex;
@@ -5961,22 +5845,6 @@ a.rb-nav-item:hover {
   border-radius: 0.5rem;
   font-weight: 700;
   text-decoration: none;
-}
-
-@media (max-width: 60rem) {
-  .rb-platform__body {
-    flex-direction: column;
-  }
-  .rb-platform__nav {
-    flex-direction: row;
-    width: 100%;
-    overflow-x: auto;
-    border-right: 0;
-    border-bottom: 1px solid hsl(var(--rb-border));
-  }
-  .rb-platform__nav a {
-    flex: 0 0 auto;
-  }
 }
 
 @media (max-width: 40rem) {
@@ -8312,6 +8180,70 @@ button.rb-customer-facts__heading {
   margin-top: 0.2rem;
   color: hsl(var(--rb-muted-foreground));
   font-size: 0.7rem;
+}
+/* Shared KPI options (dashboard-panels.tsx): a drilldown tile and a period-over-period change. */
+.rb-dash-kpi__link {
+  display: block;
+  margin: -1rem -1.15rem;
+  padding: 1rem 1.15rem;
+  color: inherit;
+  border-radius: inherit;
+  text-decoration: none;
+}
+.rb-dash-kpi.is-link:hover {
+  border-color: hsl(var(--rb-primary) / 0.35);
+}
+.rb-dash-kpi__link:focus-visible {
+  outline: 3px solid hsl(var(--rb-primary) / 0.35);
+  outline-offset: 1px;
+}
+.rb-dash-kpi > small .rb-dash-kpi__delta,
+.rb-dash-kpi__link > small .rb-dash-kpi__delta {
+  margin-right: 0.35rem;
+  padding: 0.05rem 0.35rem;
+  border-radius: 999px;
+  font-size: 0.6875rem;
+  font-weight: 600;
+}
+.rb-dash-kpi__delta.is-up {
+  color: hsl(var(--rb-success));
+  background: hsl(var(--rb-success-surface));
+}
+.rb-dash-kpi__delta.is-down {
+  color: hsl(var(--rb-danger));
+  background: hsl(var(--rb-danger-surface));
+}
+.rb-dash-kpi__link > strong {
+  display: block;
+  margin-top: 0.45rem;
+  color: hsl(var(--rb-foreground));
+  font-size: clamp(1.35rem, 2vw, 1.75rem);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.035em;
+}
+.rb-dash-kpi__link > small {
+  display: block;
+  min-height: 1rem;
+  margin-top: 0.2rem;
+  color: hsl(var(--rb-muted-foreground));
+  font-size: 0.7rem;
+}
+/* Four-up KPI row (Platform Admin overview): 4 / 2 / 1 columns as space allows. */
+.rb-dash-kpis--four {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+@media (max-width: 74rem) {
+  .rb-dash-kpis--four {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (max-width: 40rem) {
+  .rb-dash-kpis--four {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }
 .rb-dash-panel-heading {
   display: flex;

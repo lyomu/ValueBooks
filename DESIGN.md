@@ -310,6 +310,30 @@ is never the only identifier. Displayed figures carry `.rb-num` for tabular nume
 All overlays use accessible Radix primitives for labeling, focus containment, keyboard dismissal,
 and portal layering. Motion is brief and functional and is removed when reduced motion is requested.
 
+### Platform Admin variant
+
+The Platform Admin console (`/platform`, admin host) borrows the tenant app's shell rather than
+keeping its own: `PlatformShell` renders `.rb-app-shell.rb-app-shell--platform` with the shared
+sidebar rail, `.rb-topbar`, `Dialog` + `DrawerContent` mobile drawer, and the profile dropdown. The
+variant is a light sidebar surface (`.rb-platform__sidebar`), section labels instead of tenant
+module groups, and no organization switcher, quick-create or tenant navigation — a platform
+administrator has no organization.
+
+- **Brand:** the full ValueBooks logo sits in the sidebar; collapsed, `CollapsedSidebarMark`
+  (`brand-logo.tsx`) is both the logo and the expand control. No "Platform" wordmark.
+- **Page frame:** `PlatformPage` wraps the shared `PageHeader`, with an optional `meta` line for
+  scope or freshness ("Last updated 09:32").
+- **Dashboard tiles and panels:** `dashboard-panels.tsx` (`DashboardKpi`, `DashboardPanelHeading`,
+  `ChartLegend`, `ChartLoading`) is shared by the customer dashboard and the admin overview. A KPI
+  takes an optional `delta` (coloured by whether the change is good news, not by its sign) and an
+  `href` drilldown; `.rb-dash-kpis--four` gives the 4 / 2 / 1 column KPI row.
+- **Statuses and paging:** `StatusBadge` covers platform lifecycles (suspended, trialing, past due,
+  published, processing, severity…); server-paginated tables use `DataTablePagination`.
+- **Privileged actions:** `AdminActionDialog` (impact statement, audited reason of at least ten
+  characters, optional typed confirmation, inline server refusal). Never an inline form on a list.
+- **Legacy pages:** raw `<button>`s inside `.rb-platform__page` keep their old console styling
+  until each page is rebuilt on `Button`; that rule no longer touches shared `Button`s or chrome.
+
 ## Do's and Don'ts
 
 ### Do:

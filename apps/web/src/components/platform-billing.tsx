@@ -1,6 +1,15 @@
 'use client';
 
-import { Badge, DataTable, DataTableSearch, DataTableToolbar, Button } from '@valuebooks/ui';
+import {
+  Badge,
+  Button,
+  CardSkeleton,
+  DataTable,
+  DataTablePagination,
+  DataTableSearch,
+  DataTableToolbar,
+  DetailSkeleton,
+} from '@valuebooks/ui';
 import Link from 'next/link';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
@@ -301,22 +310,13 @@ export function PlatformBillingList({ kind }: { kind: Listing }) {
           </DataTableToolbar>
         }
       />
-      {result && result.pagination.totalRows > result.pagination.pageSize ? (
-        <div className="rb-trial-actions">
-          <Button variant="outline" disabled={page === 1} onClick={() => setPage(page - 1)}>
-            Previous
-          </Button>
-          <span>
-            Page {page} of {Math.ceil(result.pagination.totalRows / result.pagination.pageSize)}
-          </span>
-          <Button
-            variant="outline"
-            disabled={page * result.pagination.pageSize >= result.pagination.totalRows}
-            onClick={() => setPage(page + 1)}
-          >
-            Next
-          </Button>
-        </div>
+      {result ? (
+        <DataTablePagination
+          page={page}
+          pageSize={result.pagination.pageSize}
+          totalRows={result.pagination.totalRows}
+          onPageChange={setPage}
+        />
       ) : null}
       {kind === 'trials' && extensionId ? (
         <section className="rb-security-section" aria-label="Extend trial">
@@ -468,7 +468,7 @@ export function PlatformBillingIssues() {
         </p>
       ) : null}
       {!data ? (
-        <p className="rb-platform__muted">Loading issues…</p>
+        <CardSkeleton />
       ) : (
         <div className="rb-platform__grid">
           <section className="rb-platform__card">
@@ -878,7 +878,7 @@ export function PlatformBillingProviders() {
       description="Deployment-managed configuration and signed webhook health."
     >
       {!rows ? (
-        <p className="rb-platform__muted">Loading provider status…</p>
+        <CardSkeleton />
       ) : (
         rows.map((row) => (
           <section className="rb-security-section" key={row.provider}>
@@ -951,7 +951,7 @@ export function PlatformBillingDetail({
           {error}
         </p>
       ) : !row ? (
-        <p className="rb-platform__muted">Loading record…</p>
+        <DetailSkeleton variant="profile" />
       ) : (
         <div className="rb-security-section">
           {Object.entries(row)

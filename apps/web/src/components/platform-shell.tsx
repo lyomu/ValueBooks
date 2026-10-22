@@ -1,38 +1,69 @@
 'use client';
 
 import {
+  Dialog,
+  DrawerContent,
+  Dropdown,
+  DropdownContent,
+  DropdownItem,
+  DropdownLabel,
+  DropdownSeparator,
+  DropdownTrigger,
+  PageHeader,
+} from '@valuebooks/ui';
+import {
   Activity,
   Building2,
+  ChevronDown,
+  ChevronLeft,
+  CreditCard,
   Flag,
   Gauge,
   Globe2,
-  CreditCard,
-  ChevronDown,
-  ChevronLeft,
-  ChevronRight,
   Menu,
   ScrollText,
   ShieldAlert,
   Users,
 } from 'lucide-react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
-import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { usePathname, useRouter } from 'next/navigation';
+import { useEffect, useState, type ReactNode } from 'react';
 
-import { usePlatformSession } from '../lib/platform';
+import { apiRequest } from '../lib/api';
+import { PlatformSessionProvider, usePlatformSession } from '../lib/platform';
 import { appUrl } from '../lib/site-hosts';
-import { BrandLogo } from './brand-logo';
+import { BrandLogo, CollapsedSidebarMark } from './brand-logo';
 
-const NAV = [
-  { href: '/platform', label: 'Overview', icon: Gauge },
-  { href: '/platform/organizations', label: 'Organizations', icon: Building2 },
-  { href: '/platform/users', label: 'Users', icon: Users },
-  { href: '/platform/feature-flags', label: 'Feature flags', icon: Flag },
-  { href: '/platform/country-packs', label: 'Country & tax', icon: Globe2 },
-  { href: '/platform/jobs', label: 'Jobs', icon: Activity },
-  { href: '/platform/security', label: 'Security', icon: ShieldAlert },
-  { href: '/platform/audit', label: 'Audit', icon: ScrollText },
-] as const;
+type NavItem = { href: string; label: string; icon: typeof Gauge };
+type NavSection = { label?: string; items: NavItem[]; billing?: boolean };
+
+/** Master plan §5 information architecture. Billing & Subscriptions is the one collapsible group. */
+const NAV_SECTIONS: NavSection[] = [
+  { items: [{ href: '/platform', label: 'Overview', icon: Gauge }] },
+  {
+    label: 'Workspace management',
+    items: [
+      { href: '/platform/organizations', label: 'Organizations', icon: Building2 },
+      { href: '/platform/users', label: 'Users', icon: Users },
+    ],
+  },
+  { label: 'Commercial operations', items: [], billing: true },
+  {
+    label: 'Platform configuration',
+    items: [
+      { href: '/platform/feature-flags', label: 'Feature flags', icon: Flag },
+      { href: '/platform/country-packs', label: 'Country & tax', icon: Globe2 },
+    ],
+  },
+  {
+    label: 'Operations & trust',
+    items: [
+      { href: '/platform/jobs', label: 'Jobs & queues', icon: Activity },
+      { href: '/platform/security', label: 'Security events', icon: ShieldAlert },
+      { href: '/platform/audit', label: 'Audit logs', icon: ScrollText },
+    ],
+  },
+];
 const BILLING_NAV = [
   { href: '/platform/billing', label: 'Overview' },
   { href: '/platform/billing/subscriptions', label: 'Subscriptions' },
@@ -47,72 +78,234 @@ const BILLING_NAV = [
   { href: '/platform/billing/audit', label: 'Billing audit logs' },
 ] as const;
 const BILLING_NAV_ID = 'platform-billing-navigation';
+const COLLAPSED_STORAGE_KEY = 'valuebooks:platform-nav-collapsed';
 
-/**
- * The platform console shell — a separate surface from the tenant app, with its own boundary.
- *
- * It shares no chrome with `AppShell` on purpose. The tenant shell is built around an organization
- * switcher and tenant navigation, neither of which a platform administrator has: they are not a
- * member of anything. Reusing it would mean carrying an empty organization context through a
- * console that must never acquire one.
- */
-export function PlatformShell({ children }: { children: ReactNode }) {
-  const { session, state } = usePlatformSession();
+function isActive(pathname: string, href: string, exactRoots: readonly string[]) {
+  return exactRoots.includes(href)
+    ? pathname === href
+    : pathname === href || pathname.startsWith(`${href}/`);
+}
+
+function PlatformSidebar({
+  collapsed,
+  onToggle,
+  onNavigate,
+  mobile = false,
+}: {
+  collapsed: boolean;
+  onToggle: () => void;
+  onNavigate?: () => void;
+  mobile?: boolean;
+}) {
   const pathname = usePathname();
   const billingRoute =
     pathname.startsWith('/platform/billing') || pathname.startsWith('/platform/plans');
+  const [billingOpen, setBillingOpen] = useState(billingRoute);
+  // Arriving on a billing page opens the group; leaving it does not close a group the operator
+  // opened themselves.
+  useEffect(() => {
+    if (billingRoute) setBillingOpen(true);
+  }, [billingRoute]);
+
+  const rail = collapsed && !mobile;
+  const link = (item: NavItem) => {
+    const active = isActive(pathname, item.href, ['/platform']);
+    return (
+      <Link
+        key={item.href}
+        href={item.href}
+        title={rail ? item.label : undefined}
+        aria-label={rail ? item.label : undefined}
+        aria-current={active ? 'page' : undefined}
+        className={active ? 'rb-nav-item is-active' : 'rb-nav-item'}
+        onClick={onNavigate}
+      >
+        <item.icon aria-hidden="true" />
+        <span>{item.label}</span>
+      </Link>
+    );
+  };
+
+  return (
+    <aside
+      className={
+        collapsed
+          ? 'rb-app-sidebar rb-platform__sidebar is-collapsed'
+          : 'rb-app-sidebar rb-platform__sidebar'
+      }
+    >
+      <div className="rb-app-sidebar__brand">
+        {collapsed ? (
+          <CollapsedSidebarMark onExpand={onToggle} label="Expand platform sidebar" />
+        ) : (
+          <>
+            <Link
+              href="/platform"
+              className="rb-app-sidebar__brand-copy"
+              aria-label="ValueBooks"
+              onClick={onNavigate}
+            >
+              <BrandLogo variant="full" height={26} alt="ValueBooks" priority />
+            </Link>
+            {mobile ? null : (
+              <button
+                type="button"
+                className="rb-app-sidebar__toggle"
+                aria-label="Collapse platform sidebar"
+                onClick={onToggle}
+              >
+                <ChevronLeft aria-hidden="true" />
+              </button>
+            )}
+          </>
+        )}
+      </div>
+      <nav className="rb-app-sidebar__nav rb-platform__nav" aria-label="Platform console">
+        {NAV_SECTIONS.map((section, index) => (
+          <div className="rb-platform__nav-section" key={section.label ?? index}>
+            {section.label ? <span className="rb-platform__nav-label">{section.label}</span> : null}
+            {section.billing ? (
+              <>
+                <button
+                  className={
+                    billingRoute ? 'rb-nav-group__trigger is-current' : 'rb-nav-group__trigger'
+                  }
+                  type="button"
+                  title={rail ? 'Billing & subscriptions' : undefined}
+                  aria-label={rail ? 'Billing & subscriptions' : undefined}
+                  aria-expanded={billingOpen && !rail}
+                  aria-controls={rail ? undefined : `${BILLING_NAV_ID}${mobile ? '-mobile' : ''}`}
+                  onClick={() => {
+                    // Collapsed, the group icon is the way in: open the rail with the group.
+                    if (rail) {
+                      onToggle();
+                      setBillingOpen(true);
+                    } else setBillingOpen((open) => !open);
+                  }}
+                >
+                  <CreditCard className="rb-nav-group__icon" aria-hidden="true" />
+                  <span className="rb-nav-group__label">Billing &amp; subscriptions</span>
+                  <ChevronDown
+                    className={billingOpen ? 'rb-nav-group__caret is-open' : 'rb-nav-group__caret'}
+                    aria-hidden="true"
+                  />
+                </button>
+                {billingOpen && !rail ? (
+                  <div
+                    className="rb-platform__nav-children"
+                    id={`${BILLING_NAV_ID}${mobile ? '-mobile' : ''}`}
+                  >
+                    {BILLING_NAV.map((item) => {
+                      const active = isActive(pathname, item.href, ['/platform/billing']);
+                      return (
+                        <Link
+                          key={item.href}
+                          href={item.href}
+                          aria-current={active ? 'page' : undefined}
+                          className={active ? 'rb-nav-item is-active' : 'rb-nav-item'}
+                          onClick={onNavigate}
+                        >
+                          {item.label}
+                        </Link>
+                      );
+                    })}
+                  </div>
+                ) : null}
+              </>
+            ) : null}
+            {section.items.map(link)}
+          </div>
+        ))}
+      </nav>
+    </aside>
+  );
+}
+
+function PlatformTopBar({ onMenuClick }: { onMenuClick: () => void }) {
+  const { session } = usePlatformSession();
+  const router = useRouter();
+  const displayName = session?.displayName ?? session?.email ?? 'Platform administrator';
+  const initials = displayName
+    .split(/[\s@.]+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0])
+    .join('')
+    .toUpperCase();
+  const role = session ? session.role.charAt(0) + session.role.slice(1).toLowerCase() : '';
+
+  async function signOut() {
+    await apiRequest('/auth/logout', { method: 'POST' }).catch(() => undefined);
+    router.push('/login');
+    router.refresh();
+  }
+
+  return (
+    <header className="rb-topbar rb-platform__topbar">
+      <button className="rb-icon-button rb-topbar__menu" type="button" onClick={onMenuClick}>
+        <Menu aria-hidden="true" />
+        <span className="rb-visually-hidden">Open platform navigation</span>
+      </button>
+      <div className="rb-topbar__actions">
+        <Dropdown>
+          <DropdownTrigger asChild>
+            <button
+              className="rb-profile-trigger"
+              type="button"
+              aria-label={`Open account menu for ${displayName}`}
+            >
+              <span className="rb-avatar">{initials || 'VB'}</span>
+              <span className="rb-profile-trigger__copy">
+                <strong>{displayName}</strong>
+                <small>{role}</small>
+              </span>
+            </button>
+          </DropdownTrigger>
+          <DropdownContent align="end">
+            <DropdownLabel>{session?.email}</DropdownLabel>
+            <DropdownSeparator />
+            <DropdownItem asChild>
+              <Link href={appUrl('/dashboard')}>Exit console</Link>
+            </DropdownItem>
+            <DropdownItem onSelect={() => void signOut()}>Sign out</DropdownItem>
+          </DropdownContent>
+        </Dropdown>
+      </div>
+    </header>
+  );
+}
+
+/**
+ * The platform console shell. It borrows the tenant app's shell structure -- sidebar rail, topbar,
+ * drawer, profile menu -- in a light Platform Admin variant (`rb-app-shell--platform`), but none of
+ * its tenant chrome: a platform administrator has no organization, so there is no organization
+ * switcher, quick-create menu or tenant navigation, and no organization context is ever carried.
+ */
+export function PlatformShell({ children }: { children: ReactNode }) {
+  const platform = usePlatformSession();
+  const pathname = usePathname();
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
-  const [billingOpen, setBillingOpen] = useState(billingRoute);
-  const mobileLayerRef = useRef<HTMLDivElement>(null);
-  const mobileToggleRef = useRef<HTMLButtonElement>(null);
 
+  // Same restore rule as the tenant shell: a stored preference wins; otherwise narrow viewports
+  // start collapsed. Starts expanded so the server and first client render agree.
   useEffect(() => {
+    let stored: string | null = null;
     try {
-      setCollapsed(window.sessionStorage.getItem('valuebooks:platform-nav-collapsed') === '1');
+      stored = window.sessionStorage.getItem(COLLAPSED_STORAGE_KEY);
     } catch {
       /* Navigation remains usable when storage is unavailable. */
     }
-  }, []);
-  useEffect(() => {
-    setBillingOpen(billingRoute);
-    setMobileOpen(false);
-  }, [billingRoute, pathname]);
-  useEffect(() => {
-    if (!mobileOpen) return;
-    const panel = mobileLayerRef.current;
-    const toggle = mobileToggleRef.current;
-    const close = panel?.querySelector<HTMLButtonElement>(
-      '[aria-label="Close platform navigation"]',
+    setCollapsed(
+      stored === null ? window.matchMedia('(max-width: 64rem)').matches : stored === '1',
     );
-    close?.focus();
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') {
-        setMobileOpen(false);
-        return;
-      }
-      if (event.key !== 'Tab' || !panel) return;
-      const focusable = [...panel.querySelectorAll<HTMLElement>('aside button, aside a')];
-      if (!focusable.length) return;
-      if (event.shiftKey && document.activeElement === focusable[0]) {
-        event.preventDefault();
-        focusable[focusable.length - 1]?.focus();
-      } else if (!event.shiftKey && document.activeElement === focusable[focusable.length - 1]) {
-        event.preventDefault();
-        focusable[0]?.focus();
-      }
-    };
-    document.addEventListener('keydown', onKeyDown);
-    return () => {
-      document.removeEventListener('keydown', onKeyDown);
-      toggle?.focus();
-    };
-  }, [mobileOpen]);
+  }, []);
+  useEffect(() => setMobileOpen(false), [pathname]);
 
   function toggleCollapsed() {
     setCollapsed((current) => {
       try {
-        window.sessionStorage.setItem('valuebooks:platform-nav-collapsed', current ? '0' : '1');
+        window.sessionStorage.setItem(COLLAPSED_STORAGE_KEY, current ? '0' : '1');
       } catch {
         /* Keep the in-memory preference. */
       }
@@ -120,109 +313,10 @@ export function PlatformShell({ children }: { children: ReactNode }) {
     });
   }
 
-  function toggleBillingNavigation() {
-    setBillingOpen((current) => !current);
-  }
-
-  const navigation = (mobile = false) => (
-    <nav className="rb-app-sidebar__nav rb-platform__nav" aria-label="Platform console">
-      <div className="rb-platform__nav-section">
-        <span className="rb-platform__nav-label">Workspace</span>
-        {NAV.slice(0, 3).map((item) => {
-          const active =
-            item.href === '/platform'
-              ? pathname === item.href
-              : pathname === item.href || pathname.startsWith(`${item.href}/`);
-          return (
-            <Link
-              key={item.href}
-              href={item.href}
-              title={collapsed && !mobile ? item.label : undefined}
-              aria-label={collapsed && !mobile ? item.label : undefined}
-              aria-current={active ? 'page' : undefined}
-              className={active ? 'rb-nav-item is-active' : 'rb-nav-item'}
-              onClick={() => setMobileOpen(false)}
-            >
-              <item.icon aria-hidden="true" />
-              <span>{item.label}</span>
-            </Link>
-          );
-        })}
-      </div>
-      <div className="rb-platform__nav-section">
-        <span className="rb-platform__nav-label">Administration</span>
-        <button
-          className={billingRoute ? 'rb-nav-group__trigger is-current' : 'rb-nav-group__trigger'}
-          type="button"
-          title={collapsed && !mobile ? 'Billing & subscriptions' : undefined}
-          aria-label={collapsed && !mobile ? 'Billing & subscriptions' : undefined}
-          aria-expanded={billingOpen && (!collapsed || mobile)}
-          aria-controls={
-            collapsed && !mobile ? undefined : mobile ? `${BILLING_NAV_ID}-mobile` : BILLING_NAV_ID
-          }
-          onClick={() => {
-            if (collapsed && !mobile) {
-              setCollapsed(false);
-              setBillingOpen(true);
-            } else toggleBillingNavigation();
-          }}
-        >
-          <CreditCard className="rb-nav-group__icon" aria-hidden="true" />
-          <span className="rb-nav-group__label">Billing &amp; subscriptions</span>
-          <ChevronDown
-            className={billingOpen ? 'rb-nav-group__caret is-open' : 'rb-nav-group__caret'}
-            aria-hidden="true"
-          />
-        </button>
-        {billingOpen && (!collapsed || mobile) ? (
-          <div
-            className="rb-platform__nav-children"
-            id={mobile ? `${BILLING_NAV_ID}-mobile` : BILLING_NAV_ID}
-          >
-            {BILLING_NAV.map((item) => {
-              const active =
-                item.href === '/platform/billing'
-                  ? pathname === item.href
-                  : pathname === item.href || pathname.startsWith(`${item.href}/`);
-              return (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  aria-current={active ? 'page' : undefined}
-                  className={active ? 'rb-nav-item is-active' : 'rb-nav-item'}
-                  onClick={() => setMobileOpen(false)}
-                >
-                  {item.label}
-                </Link>
-              );
-            })}
-          </div>
-        ) : null}
-        {NAV.slice(3).map((item) => {
-          const active = pathname === item.href || pathname.startsWith(`${item.href}/`);
-          return (
-            <Link
-              key={item.href}
-              href={item.href}
-              title={collapsed && !mobile ? item.label : undefined}
-              aria-label={collapsed && !mobile ? item.label : undefined}
-              aria-current={active ? 'page' : undefined}
-              className={active ? 'rb-nav-item is-active' : 'rb-nav-item'}
-              onClick={() => setMobileOpen(false)}
-            >
-              <item.icon aria-hidden="true" />
-              <span>{item.label}</span>
-            </Link>
-          );
-        })}
-      </div>
-    </nav>
-  );
-
-  if (state === 'loading') {
+  if (platform.state === 'loading') {
     return <PlatformNotice title="Loading the console" copy="Checking your platform access." />;
   }
-  if (state === 'signed-out') {
+  if (platform.state === 'signed-out') {
     return (
       <PlatformNotice
         title="Sign in to continue"
@@ -231,7 +325,7 @@ export function PlatformShell({ children }: { children: ReactNode }) {
       />
     );
   }
-  if (state === 'forbidden') {
+  if (platform.state === 'forbidden') {
     return (
       <PlatformNotice
         title="You do not have platform access"
@@ -240,7 +334,7 @@ export function PlatformShell({ children }: { children: ReactNode }) {
       />
     );
   }
-  if (state === 'error') {
+  if (platform.state === 'error') {
     return (
       <PlatformNotice
         title="The console could not be loaded"
@@ -251,83 +345,37 @@ export function PlatformShell({ children }: { children: ReactNode }) {
   }
 
   return (
-    <div className="rb-platform">
-      <header className="rb-platform__bar">
-        <button
-          ref={mobileToggleRef}
-          type="button"
-          className="rb-platform__mobile-toggle"
-          aria-label="Open platform navigation"
-          aria-expanded={mobileOpen}
-          onClick={() => setMobileOpen(true)}
-        >
-          <Menu aria-hidden="true" />
-        </button>
-        <Link href="/platform" className="rb-platform__brand" aria-label="ValueBooks">
-          <BrandLogo variant="full" height={26} alt="ValueBooks" priority />
-        </Link>
-        <div className="rb-platform__identity">
-          <span className="rb-platform__role">{session?.role.toLowerCase()}</span>
-          <span>{session?.email}</span>
-          <Link href={appUrl('/dashboard')}>Exit console</Link>
+    <PlatformSessionProvider value={platform}>
+      <div
+        className={
+          collapsed
+            ? 'rb-app-shell rb-app-shell--platform rb-platform has-collapsed-sidebar'
+            : 'rb-app-shell rb-app-shell--platform rb-platform'
+        }
+      >
+        <div className="rb-app-shell__desktop-nav">
+          <PlatformSidebar collapsed={collapsed} onToggle={toggleCollapsed} />
         </div>
-      </header>
-      <div className="rb-platform__body">
-        <aside
-          className={
-            collapsed
-              ? 'rb-app-sidebar rb-platform__sidebar is-collapsed'
-              : 'rb-app-sidebar rb-platform__sidebar'
-          }
-        >
-          <div className="rb-app-sidebar__brand">
-            <span className="rb-visually-hidden">Platform navigation</span>
-            <button
-              type="button"
-              className="rb-app-sidebar__toggle"
-              aria-label={collapsed ? 'Expand platform sidebar' : 'Collapse platform sidebar'}
-              onClick={toggleCollapsed}
-            >
-              {collapsed ? <ChevronRight aria-hidden="true" /> : <ChevronLeft aria-hidden="true" />}
-            </button>
-          </div>
-          {navigation()}
-        </aside>
-        {mobileOpen ? (
-          <div
-            ref={mobileLayerRef}
-            className="rb-platform__mobile-layer"
-            role="dialog"
-            aria-modal="true"
-            aria-label="Platform navigation"
-          >
-            <button
-              className="rb-platform__mobile-backdrop"
-              type="button"
-              aria-label="Dismiss platform navigation"
-              onClick={() => setMobileOpen(false)}
+
+        <Dialog open={mobileOpen} onOpenChange={setMobileOpen}>
+          <DrawerContent title="Platform navigation" side="left">
+            <PlatformSidebar
+              collapsed={false}
+              mobile
+              onToggle={() => setMobileOpen(false)}
+              onNavigate={() => setMobileOpen(false)}
             />
-            <aside className="rb-app-sidebar rb-platform__sidebar rb-platform__mobile-sidebar">
-              <div className="rb-app-sidebar__brand">
-                <span className="rb-visually-hidden">Platform navigation</span>
-                <button
-                  type="button"
-                  className="rb-app-sidebar__toggle"
-                  aria-label="Close platform navigation"
-                  onClick={() => setMobileOpen(false)}
-                >
-                  <ChevronRight aria-hidden="true" />
-                </button>
-              </div>
-              {navigation(true)}
-            </aside>
-          </div>
-        ) : null}
-        <main id="main-content" className="rb-platform__main">
-          {children}
-        </main>
+          </DrawerContent>
+        </Dialog>
+
+        <div className="rb-app-shell__workspace">
+          <PlatformTopBar onMenuClick={() => setMobileOpen(true)} />
+          <main className="rb-main-scroll" id="main-content" tabIndex={-1}>
+            <div className="rb-page-container rb-platform__page">{children}</div>
+          </main>
+        </div>
       </div>
-    </div>
+    </PlatformSessionProvider>
   );
 }
 
@@ -350,27 +398,27 @@ export function PlatformNotice({
   );
 }
 
-/** Standard page heading inside the console, so every screen introduces itself the same way. */
+/**
+ * Standard console page frame: the shared `PageHeader`, plus an optional `meta` line for scope or
+ * freshness ("Last updated 09:32") under the description.
+ */
 export function PlatformPage({
   title,
   description,
+  meta,
   actions,
   children,
 }: {
   title: string;
   description?: string;
+  meta?: ReactNode;
   actions?: ReactNode;
   children: ReactNode;
 }) {
   return (
     <>
-      <div className="rb-platform__heading">
-        <div>
-          <h1>{title}</h1>
-          {description ? <p>{description}</p> : null}
-        </div>
-        {actions ? <div className="rb-platform__heading-actions">{actions}</div> : null}
-      </div>
+      <PageHeader title={title} description={description} actions={actions} />
+      {meta ? <p className="rb-platform__meta">{meta}</p> : null}
       {children}
     </>
   );

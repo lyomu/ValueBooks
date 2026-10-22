@@ -48,6 +48,25 @@ const statusTone: Record<string, BadgeTone> = {
   rejected: 'danger',
   reversed: 'danger',
   review_required: 'warning',
+  // Platform Admin lifecycles: accounts, organizations, subscriptions, webhooks, country packs and
+  // security-event severity share the same semantic colours as tenant statuses.
+  suspended: 'danger',
+  revoked: 'danger',
+  pending_verification: 'warning',
+  trialing: 'info',
+  trial_expired: 'warning',
+  past_due: 'danger',
+  cancel_scheduled: 'warning',
+  verified: 'info',
+  processing: 'info',
+  processed: 'success',
+  published: 'success',
+  deprecated: 'neutral',
+  retired: 'neutral',
+  info: 'info',
+  warning: 'warning',
+  error: 'danger',
+  critical: 'danger',
 };
 
 export function StatusBadge({ status, className }: { status: string; className?: string }) {

@@ -1,7 +1,15 @@
 'use client';
 
 import type { PlatformRole, PlatformSession } from '@valuebooks/contracts';
-import { useCallback, useEffect, useState } from 'react';
+import {
+  createContext,
+  createElement,
+  useCallback,
+  useContext,
+  useEffect,
+  useState,
+  type ReactNode,
+} from 'react';
 
 import { ApiError, apiRequest } from './api';
 
@@ -29,6 +37,29 @@ export interface PlatformSessionResult {
  * enforces the same rule server-side.
  */
 export function usePlatformSession(): PlatformSessionResult {
+  const shared = useContext(PlatformSessionContext);
+  const own = useLoadPlatformSession(shared === null);
+  return shared ?? own;
+}
+
+/**
+ * `PlatformShell` resolves the grant once and shares it, so a page asking for the caller's role
+ * reads the shell's answer instead of issuing its own `/platform/me` request. Outside a provider
+ * (tests, isolated renders) the hook still loads the session itself.
+ */
+const PlatformSessionContext = createContext<PlatformSessionResult | null>(null);
+
+export function PlatformSessionProvider({
+  value,
+  children,
+}: {
+  value: PlatformSessionResult;
+  children: ReactNode;
+}) {
+  return createElement(PlatformSessionContext.Provider, { value }, children);
+}
+
+function useLoadPlatformSession(enabled: boolean): PlatformSessionResult {
   const [session, setSession] = useState<PlatformSession | null>(null);
   const [state, setState] = useState<PlatformState>('loading');
 
@@ -45,8 +76,8 @@ export function usePlatformSession(): PlatformSessionResult {
   }, []);
 
   useEffect(() => {
-    void load();
-  }, [load]);
+    if (enabled) void load();
+  }, [enabled, load]);
 
   return { session, state, refresh: load };
 }

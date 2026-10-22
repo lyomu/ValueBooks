@@ -1,5 +1,6 @@
 'use client';
 
+import { CardSkeleton } from '@valuebooks/ui';
 import { AlertCircle, Clock3, CreditCard, RefreshCw } from 'lucide-react';
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
@@ -111,7 +112,7 @@ export function PlatformBillingOverview() {
         </p>
       ) : null}
       {!overview || !revenue ? (
-        <p className="rb-platform__muted">Loading billing overview…</p>
+        <CardSkeleton />
       ) : (
         <>
           <section className="rb-platform__section" aria-labelledby="billing-subscriptions-heading">
