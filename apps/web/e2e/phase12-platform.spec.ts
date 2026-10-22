@@ -142,4 +142,47 @@ test.describe('Phase 12 platform console', () => {
     );
     expect(errors).toEqual([]);
   });
+
+  test('opens the investigation pages read-only, with scoped figures and readable evidence', async ({
+    page,
+  }) => {
+    const errors = collectBrowserErrors(page);
+    await signIn(page, PLATFORM_ADMIN);
+
+    // Phase 5.3: every queue figure names its queue, and the retained failure count is not a 24h figure.
+    await page.goto('/platform/jobs');
+    await expect(page.getByRole('heading', { level: 1, name: 'Jobs and queues' })).toBeVisible();
+    await expect(page.getByRole('columnheader', { name: 'Failed (retained)' })).toBeVisible({
+      timeout: 15_000,
+    });
+    await expect(page.getByText('It is not a 24-hour figure')).toBeVisible();
+    await page.getByRole('tab', { name: 'Email queue' }).click();
+    await expect(page.getByText('job contents are not shown')).toBeVisible();
+
+    // Phase 5.4: readable names over raw keys; the Warning filter matches what emitters write.
+    await page.goto('/platform/security');
+    await expect(page.getByRole('heading', { level: 1, name: 'Security events' })).toBeVisible();
+    await page.getByLabel('Event').selectOption('auth.login_succeeded');
+    await expect(page.getByRole('cell', { name: /Signed in/ }).first()).toBeVisible({
+      timeout: 15_000,
+    });
+    await page.getByRole('button', { name: 'Details' }).first().click();
+    await expect(page.getByRole('dialog')).toContainText('auth.login_succeeded');
+    await page.keyboard.press('Escape');
+
+    // Phase 5.5: the suspension above is in the audit log with its reason and a before/after diff.
+    await page.goto('/platform/audit');
+    await expect(page.getByRole('heading', { level: 1, name: 'Platform audit' })).toBeVisible();
+    await page.getByLabel('Action').selectOption('platform.organization_suspended');
+    await page.getByRole('button', { name: 'Details' }).first().click({ timeout: 15_000 });
+    const detail = page.getByRole('dialog');
+    await expect(detail).toContainText('Organization suspended');
+    await expect(detail.getByRole('table', { name: 'Changed fields' })).toContainText('SUSPENDED');
+    await page.keyboard.press('Escape');
+
+    // Phase 5.2: packs are listed per code, and the fallback pack is never shown as a country.
+    await page.goto('/platform/country-packs');
+    await expect(page.getByText('Fallback (no jurisdiction)')).toBeVisible({ timeout: 15_000 });
+    expect(errors).toEqual([]);
+  });
 });
