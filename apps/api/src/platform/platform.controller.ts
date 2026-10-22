@@ -39,8 +39,10 @@ import {
   OrganizationSearchDto,
   PlatformAuditSearchDto,
   PlatformAnalyticsQueryDto,
+  QueueNameDto,
   ReactivateOrganizationDto,
   RemoveFlagRuleDto,
+  RetryJobDto,
   RevokeHostedAiEgressApprovalDto,
   SecurityEventSearchDto,
   SuspendOrganizationDto,
@@ -478,15 +480,27 @@ export class PlatformController {
     return this.operations.failedJobs(query);
   }
 
+  @Get('jobs/queues/:queue/failed')
+  @RequirePlatformRole('SUPPORT')
+  async queueFailures(@Param() params: QueueNameDto) {
+    return { data: await this.operations.queueFailures(params.queue) };
+  }
+
   @Post('jobs/:executionId/retry')
   @HttpCode(200)
   @RequirePlatformRole('OPERATIONS')
   async retryJob(
     @Param('executionId', new ParseUUIDPipe()) executionId: string,
+    @Body() input: RetryJobDto,
     @Req() request: PlatformRequest,
   ) {
     return {
-      data: await this.operations.retryJob(request.platform, executionId, this.ipHash(request)),
+      data: await this.operations.retryJob(
+        request.platform,
+        executionId,
+        input.reason,
+        this.ipHash(request),
+      ),
     };
   }
 

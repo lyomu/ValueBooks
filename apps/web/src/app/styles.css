@@ -5869,7 +5869,7 @@ a.rb-nav-item:hover {
   flex-wrap: wrap;
   gap: 0.4rem;
 }
-.rb-platform__table-actions button {
+.rb-platform__table-actions button:not(.rb-button) {
   min-height: 2rem;
   padding: 0 0.65rem;
   font-size: 0.78rem;

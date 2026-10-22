@@ -239,16 +239,34 @@ export const featureFlagSchema = z.object({
 });
 
 export const platformQueueHealthSchema = z.object({
+  /** BullMQ counts; `failed` is every retained exhausted job, not a time window. */
   queues: z.object({
     automation: z.record(z.string(), z.number()),
     email: z.record(z.string(), z.number()),
   }),
+  oldestWaitingAt: z.object({
+    automation: z.iso.datetime().nullable(),
+    email: z.iso.datetime().nullable(),
+  }),
+  /** Database view of scheduled executions only. */
   scheduler: z.object({
     dueNow: z.number().int().nonnegative(),
+    overdue: z.number().int().nonnegative(),
+    overdueAfterMinutes: z.number().int().positive(),
     failedLastDay: z.number().int().nonnegative(),
     runningNow: z.number().int().nonnegative(),
+    nextRunAt: z.iso.datetime().nullable(),
   }),
   observedAt: z.iso.datetime(),
+});
+
+/** A retained queue failure without its payload; email addresses in the reason are redacted. */
+export const platformQueueFailureSchema = z.object({
+  id: z.string().min(1),
+  name: z.string().min(1),
+  attemptsMade: z.number().int().nonnegative(),
+  failedAt: z.iso.datetime().nullable(),
+  reason: z.string().nullable(),
 });
 
 export const platformFailedJobSchema = z.object({
@@ -4179,6 +4197,7 @@ export type PlatformTaxPack = z.infer<typeof platformTaxPackSchema>;
 export type PlatformCountryPack = z.infer<typeof platformCountryPackSchema>;
 export type PlatformQueueHealth = z.infer<typeof platformQueueHealthSchema>;
 export type PlatformFailedJob = z.infer<typeof platformFailedJobSchema>;
+export type PlatformQueueFailure = z.infer<typeof platformQueueFailureSchema>;
 export type PlatformSecurityEvent = z.infer<typeof platformSecurityEventSchema>;
 export type PlatformAuditEvent = z.infer<typeof platformAuditEventSchema>;
 export type PlatformAnalytics = z.infer<typeof platformAnalyticsSchema>;

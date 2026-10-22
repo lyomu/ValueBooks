@@ -1679,6 +1679,8 @@ svg.lucide {
 .rb-explain-panel--surface {
   box-sizing: border-box;
   height: 100%;
+  /* Full height for the surface, but short content stays packed at the top, not spread out. */
+  align-content: start;
   padding: var(--rb-space-5);
   overflow-y: auto;
   color: hsl(var(--rb-foreground));

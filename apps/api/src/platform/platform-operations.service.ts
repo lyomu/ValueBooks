@@ -15,6 +15,8 @@ import type {
 } from './platform.dto.js';
 
 const DEFAULT_PAGE_SIZE = 25;
+/** A job due for longer than this is overdue: the scheduler is not picking work up. */
+const SCHEDULER_OVERDUE_MS = 15 * 60_000;
 
 /**
  * Operational visibility across every tenant: queue health, failed scheduled work, the security
@@ -41,22 +43,65 @@ export class PlatformOperationsService {
    * operator is looking for.
    */
   async queueHealth() {
-    const [automation, email, dueNow, failedLastDay, runningNow] = await Promise.all([
+    const now = new Date();
+    const [
+      automation,
+      email,
+      automationOldest,
+      emailOldest,
+      dueNow,
+      overdue,
+      next,
+      failedLastDay,
+      runningNow,
+    ] = await Promise.all([
       this.automationQueue.counts(),
       this.emailQueue.counts(),
+      this.automationQueue.oldestWaitingAt(),
+      this.emailQueue.oldestWaitingAt(),
       this.prisma.scheduledJob.count({
-        where: { status: 'ACTIVE', nextRunAt: { lte: new Date() } },
+        where: { status: 'ACTIVE', nextRunAt: { lte: now } },
+      }),
+      // Due for longer than the overdue window: the scheduler is not picking work up.
+      this.prisma.scheduledJob.count({
+        where: {
+          status: 'ACTIVE',
+          nextRunAt: { lte: new Date(now.getTime() - SCHEDULER_OVERDUE_MS) },
+        },
+      }),
+      this.prisma.scheduledJob.findFirst({
+        where: { status: 'ACTIVE', nextRunAt: { gt: now } },
+        orderBy: { nextRunAt: 'asc' },
+        select: { nextRunAt: true },
       }),
       this.prisma.scheduledJobExecution.count({
-        where: { status: 'FAILED', createdAt: { gte: new Date(Date.now() - 86_400_000) } },
+        where: { status: 'FAILED', createdAt: { gte: new Date(now.getTime() - 86_400_000) } },
       }),
       this.prisma.scheduledJobExecution.count({ where: { status: 'RUNNING' } }),
     ]);
     return {
+      // BullMQ counts. `failed` is every retained exhausted job (`removeOnFail: false`), not a
+      // time window: it only falls when an operator retries or removes them (defect D10).
       queues: { automation, email },
-      scheduler: { dueNow, failedLastDay, runningNow },
-      observedAt: new Date().toISOString(),
+      oldestWaitingAt: { automation: automationOldest, email: emailOldest },
+      // Database view of scheduled work. `failedLastDay` counts scheduled executions only.
+      scheduler: {
+        dueNow,
+        overdue,
+        overdueAfterMinutes: SCHEDULER_OVERDUE_MS / 60_000,
+        failedLastDay,
+        runningNow,
+        nextRunAt: next?.nextRunAt?.toISOString() ?? null,
+      },
+      observedAt: now.toISOString(),
     };
+  }
+
+  /** Retained failures in one BullMQ queue, read-only and without job payloads. */
+  async queueFailures(queue: 'automation' | 'email') {
+    return queue === 'automation'
+      ? this.automationQueue.recentFailures()
+      : this.emailQueue.recentFailures();
   }
 
   async failedJobs(query: FailedJobSearchDto) {
@@ -65,6 +110,7 @@ export class PlatformOperationsService {
     const where: Prisma.ScheduledJobExecutionWhereInput = {
       status: 'FAILED',
       ...(query.organizationId ? { organizationId: query.organizationId } : {}),
+      ...(query.handler ? { scheduledJob: { handler: query.handler } } : {}),
     };
     const [totalRows, rows] = await Promise.all([
       this.prisma.scheduledJobExecution.count({ where }),
@@ -109,7 +155,12 @@ export class PlatformOperationsService {
    * administrator would use, with the tenant read from the execution row rather than from the
    * caller — a platform operator has no organization context of their own to supply.
    */
-  async retryJob(actor: PlatformContext, executionId: string, ipHash: string | null) {
+  async retryJob(
+    actor: PlatformContext,
+    executionId: string,
+    reason: string,
+    ipHash: string | null,
+  ) {
     const execution = await this.prisma.scheduledJobExecution.findUnique({
       where: { id: executionId },
       select: { id: true, organizationId: true, status: true },
@@ -136,7 +187,9 @@ export class PlatformOperationsService {
         targetType: 'scheduled_job_execution',
         targetId: executionId,
         organizationId: execution.organizationId,
+        reason,
         before: { status: execution.status },
+        after: { status: 'QUEUED' },
         ipHash,
       }),
     );

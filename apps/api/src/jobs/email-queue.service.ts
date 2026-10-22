@@ -3,6 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import { Queue } from 'bullmq';
 
 import { EMAIL_QUEUE_NAME, type EmailDeliveryJob, type EmailJobName } from './email-job.js';
+import { oldestWaitingAt, recentFailures, type QueueFailure } from './queue-diagnostics.js';
 import { producerConnection } from './redis-connection.js';
 
 export type EmailQueueCounts = {
@@ -47,6 +48,16 @@ export class EmailQueueService implements OnModuleDestroy {
       delayed: counts.delayed ?? 0,
       failed: counts.failed ?? 0,
     };
+  }
+
+  /** When the longest-waiting job was enqueued, for the console's queue health. */
+  async oldestWaitingAt(): Promise<string | null> {
+    return oldestWaitingAt(this.queue);
+  }
+
+  /** Recent retained failures without their payloads. */
+  async recentFailures(limit?: number): Promise<QueueFailure[]> {
+    return recentFailures(this.queue, limit);
   }
 
   async onModuleDestroy(): Promise<void> {

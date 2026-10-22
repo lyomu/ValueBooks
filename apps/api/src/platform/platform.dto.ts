@@ -619,4 +619,22 @@ export class FailedJobSearchDto extends PlatformPageDto {
   @IsOptional()
   @IsUUID()
   organizationId?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(60)
+  handler?: string;
+}
+
+/** Retrying re-runs tenant work (a reminder email, a recurring posting), so it records why. */
+export class RetryJobDto {
+  @IsString()
+  @Length(10, 500)
+  @Transform(trim)
+  reason!: string;
+}
+
+export class QueueNameDto {
+  @IsIn(['automation', 'email'])
+  queue!: 'automation' | 'email';
 }

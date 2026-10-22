@@ -222,6 +222,7 @@ describe('platform mutation audit coverage', () => {
       .http()
       .post(`${API}/platform/jobs/${executionId}/retry`)
       .set('Cookie', operationsCookie)
+      .send({ reason: 'Audit retry evidence.' })
       .expect(200);
 
     const countryPack = countryPackInput('AUDIT', '1');
@@ -388,6 +389,7 @@ describe('platform mutation audit coverage', () => {
           targetType: 'scheduled_job_execution',
           targetId: executionId,
           organizationId,
+          reason: 'Audit retry evidence.',
         }),
       ]),
     );

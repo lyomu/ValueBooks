@@ -268,9 +268,16 @@ export class SchedulerService {
       if (execution.status !== ScheduledJobExecutionStatus.FAILED) {
         throw new ConflictException('Only failed executions can be retried.');
       }
-      const updated = await tx.scheduledJobExecution.update({
-        where: { id: executionId },
+      // Conditional on FAILED so two retries racing past the check above reset (and audit) once.
+      const claimed = await tx.scheduledJobExecution.updateMany({
+        where: { id: executionId, status: ScheduledJobExecutionStatus.FAILED },
         data: { status: ScheduledJobExecutionStatus.QUEUED, error: null, completedAt: null },
+      });
+      if (claimed.count !== 1) {
+        throw new ConflictException('Only failed executions can be retried.');
+      }
+      const updated = await tx.scheduledJobExecution.findUniqueOrThrow({
+        where: { id: executionId },
       });
       await writeAuditEvent(tx, {
         organizationId,
