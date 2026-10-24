@@ -15,6 +15,32 @@ import type {
 } from './platform.dto.js';
 
 const DEFAULT_PAGE_SIZE = 25;
+/** A job due for longer than this is overdue: the scheduler is not picking work up. */
+const SCHEDULER_OVERDUE_MS = 15 * 60_000;
+/**
+ * Security event metadata that identifies a sign-in session. It is not the session token, but it
+ * is session detail, so only superadmins see it (master plan §14.1). The network hash is never
+ * returned at all.
+ */
+const SESSION_METADATA_KEYS = ['sessionId'];
+
+/** `from`/`to` are UTC calendar dates; `to` includes its whole day. */
+function occurredWithin(from?: string, to?: string) {
+  if (!from && !to) return {};
+  return {
+    occurredAt: {
+      ...(from ? { gte: new Date(`${from}T00:00:00.000Z`) } : {}),
+      ...(to ? { lt: new Date(new Date(`${to}T00:00:00.000Z`).getTime() + 86_400_000) } : {}),
+    },
+  };
+}
+
+function withoutSessionDetail(metadata: Prisma.JsonValue): Prisma.JsonValue {
+  if (!metadata || typeof metadata !== 'object' || Array.isArray(metadata)) return metadata;
+  return Object.fromEntries(
+    Object.entries(metadata).filter(([key]) => !SESSION_METADATA_KEYS.includes(key)),
+  );
+}
 
 /**
  * Operational visibility across every tenant: queue health, failed scheduled work, the security
@@ -41,22 +67,65 @@ export class PlatformOperationsService {
    * operator is looking for.
    */
   async queueHealth() {
-    const [automation, email, dueNow, failedLastDay, runningNow] = await Promise.all([
+    const now = new Date();
+    const [
+      automation,
+      email,
+      automationOldest,
+      emailOldest,
+      dueNow,
+      overdue,
+      next,
+      failedLastDay,
+      runningNow,
+    ] = await Promise.all([
       this.automationQueue.counts(),
       this.emailQueue.counts(),
+      this.automationQueue.oldestWaitingAt(),
+      this.emailQueue.oldestWaitingAt(),
       this.prisma.scheduledJob.count({
-        where: { status: 'ACTIVE', nextRunAt: { lte: new Date() } },
+        where: { status: 'ACTIVE', nextRunAt: { lte: now } },
+      }),
+      // Due for longer than the overdue window: the scheduler is not picking work up.
+      this.prisma.scheduledJob.count({
+        where: {
+          status: 'ACTIVE',
+          nextRunAt: { lte: new Date(now.getTime() - SCHEDULER_OVERDUE_MS) },
+        },
+      }),
+      this.prisma.scheduledJob.findFirst({
+        where: { status: 'ACTIVE', nextRunAt: { gt: now } },
+        orderBy: { nextRunAt: 'asc' },
+        select: { nextRunAt: true },
       }),
       this.prisma.scheduledJobExecution.count({
-        where: { status: 'FAILED', createdAt: { gte: new Date(Date.now() - 86_400_000) } },
+        where: { status: 'FAILED', createdAt: { gte: new Date(now.getTime() - 86_400_000) } },
       }),
       this.prisma.scheduledJobExecution.count({ where: { status: 'RUNNING' } }),
     ]);
     return {
+      // BullMQ counts. `failed` is every retained exhausted job (`removeOnFail: false`), not a
+      // time window: it only falls when an operator retries or removes them (defect D10).
       queues: { automation, email },
-      scheduler: { dueNow, failedLastDay, runningNow },
-      observedAt: new Date().toISOString(),
+      oldestWaitingAt: { automation: automationOldest, email: emailOldest },
+      // Database view of scheduled work. `failedLastDay` counts scheduled executions only.
+      scheduler: {
+        dueNow,
+        overdue,
+        overdueAfterMinutes: SCHEDULER_OVERDUE_MS / 60_000,
+        failedLastDay,
+        runningNow,
+        nextRunAt: next?.nextRunAt?.toISOString() ?? null,
+      },
+      observedAt: now.toISOString(),
     };
+  }
+
+  /** Retained failures in one BullMQ queue, read-only and without job payloads. */
+  async queueFailures(queue: 'automation' | 'email') {
+    return queue === 'automation'
+      ? this.automationQueue.recentFailures()
+      : this.emailQueue.recentFailures();
   }
 
   async failedJobs(query: FailedJobSearchDto) {
@@ -65,6 +134,7 @@ export class PlatformOperationsService {
     const where: Prisma.ScheduledJobExecutionWhereInput = {
       status: 'FAILED',
       ...(query.organizationId ? { organizationId: query.organizationId } : {}),
+      ...(query.handler ? { scheduledJob: { handler: query.handler } } : {}),
     };
     const [totalRows, rows] = await Promise.all([
       this.prisma.scheduledJobExecution.count({ where }),
@@ -109,7 +179,12 @@ export class PlatformOperationsService {
    * administrator would use, with the tenant read from the execution row rather than from the
    * caller — a platform operator has no organization context of their own to supply.
    */
-  async retryJob(actor: PlatformContext, executionId: string, ipHash: string | null) {
+  async retryJob(
+    actor: PlatformContext,
+    executionId: string,
+    reason: string,
+    ipHash: string | null,
+  ) {
     const execution = await this.prisma.scheduledJobExecution.findUnique({
       where: { id: executionId },
       select: { id: true, organizationId: true, status: true },
@@ -136,14 +211,16 @@ export class PlatformOperationsService {
         targetType: 'scheduled_job_execution',
         targetId: executionId,
         organizationId: execution.organizationId,
+        reason,
         before: { status: execution.status },
+        after: { status: 'QUEUED' },
         ipHash,
       }),
     );
     return result;
   }
 
-  async securityEvents(query: SecurityEventSearchDto) {
+  async securityEvents(actor: PlatformContext, query: SecurityEventSearchDto) {
     const page = query.page ?? 1;
     const pageSize = query.pageSize ?? DEFAULT_PAGE_SIZE;
     const where: Prisma.SecurityEventWhereInput = {
@@ -151,16 +228,10 @@ export class PlatformOperationsService {
       ...(query.severity ? { severity: query.severity } : {}),
       ...(query.organizationId ? { organizationId: query.organizationId } : {}),
       ...(query.userId ? { userId: query.userId } : {}),
-      ...(query.from || query.to
-        ? {
-            occurredAt: {
-              ...(query.from ? { gte: new Date(`${query.from}T00:00:00.000Z`) } : {}),
-              ...(query.to
-                ? { lt: new Date(new Date(`${query.to}T00:00:00.000Z`).getTime() + 86_400_000) }
-                : {}),
-            },
-          }
+      ...(query.actor
+        ? { user: { email: { contains: query.actor, mode: 'insensitive' as const } } }
         : {}),
+      ...occurredWithin(query.from, query.to),
     };
     const [totalRows, rows] = await Promise.all([
       this.prisma.securityEvent.count({ where }),
@@ -186,7 +257,7 @@ export class PlatformOperationsService {
         eventKey: row.eventKey,
         severity: row.severity,
         occurredAt: row.occurredAt.toISOString(),
-        metadata: row.metadata,
+        metadata: actor.role === 'SUPERADMIN' ? row.metadata : withoutSessionDetail(row.metadata),
         userId: row.user?.id ?? null,
         userEmail: row.user?.email ?? null,
         organizationId: row.organization?.id ?? null,
@@ -205,6 +276,10 @@ export class PlatformOperationsService {
     const where: Prisma.PlatformAuditEventWhereInput = {
       ...(query.eventKey ? { eventKey: query.eventKey } : {}),
       ...(query.organizationId ? { organizationId: query.organizationId } : {}),
+      ...(query.actor
+        ? { actor: { email: { contains: query.actor, mode: 'insensitive' as const } } }
+        : {}),
+      ...occurredWithin(query.from, query.to),
     };
     const [totalRows, rows] = await Promise.all([
       this.prisma.platformAuditEvent.count({ where }),
@@ -225,6 +300,7 @@ export class PlatformOperationsService {
           occurredAt: true,
           actor: { select: { email: true, displayName: true } },
           platformAdmin: { select: { role: true } },
+          organization: { select: { legalName: true, tradingName: true } },
         },
       }),
     ]);
@@ -235,6 +311,9 @@ export class PlatformOperationsService {
         targetType: row.targetType,
         targetId: row.targetId,
         organizationId: row.organizationId,
+        organizationName: row.organization
+          ? (row.organization.tradingName ?? row.organization.legalName)
+          : null,
         reason: row.reason,
         before: row.before,
         after: row.after,
@@ -266,6 +345,14 @@ export class PlatformOperationsService {
     const createdInPeriod = { gte: from, lte: to };
     const rangeDays = Math.max(1, Math.ceil((to.getTime() - from.getTime()) / 86_400_000));
     const grouping = rangeDays <= 31 ? 'day' : rangeDays <= 120 ? 'week' : 'month';
+    // The immediately preceding window of the same length, so a KPI can state its change honestly
+    // -- or say nothing at all when there is no earlier window to compare against.
+    const periodMs = to.getTime() - from.getTime();
+    const previousFrom = new Date(from.getTime() - periodMs - 1);
+    const previousTo = new Date(from.getTime() - 1);
+    const createdInPreviousPeriod = { gte: previousFrom, lte: previousTo };
+    const dayAgo = new Date(now - 86_400_000);
+    const dayAhead = new Date(now + 86_400_000);
 
     const [
       totalOrganizations,
@@ -288,7 +375,14 @@ export class PlatformOperationsService {
       activeLast30,
       activeLast90,
       registrationRows,
+      activationRows,
+      previousNewOrganizations,
+      previousNewUsers,
+      previousActivated,
       failedJobsLast24Hours,
+      stalledOnboarding,
+      failedWebhooks,
+      highSeveritySecurityEvents,
       recentActivity,
     ] = await Promise.all([
       this.prisma.organization.count(),
@@ -363,8 +457,31 @@ export class PlatformOperationsService {
         select: { createdAt: true },
         orderBy: { createdAt: 'asc' },
       }),
+      this.prisma.organization.findMany({
+        where: { onboardingCompletedAt: createdInPeriod },
+        select: { onboardingCompletedAt: true },
+        orderBy: { onboardingCompletedAt: 'asc' },
+      }),
+      this.prisma.organization.count({ where: { createdAt: createdInPreviousPeriod } }),
+      this.prisma.user.count({ where: { createdAt: createdInPreviousPeriod } }),
+      this.prisma.organization.count({
+        where: { onboardingCompletedAt: createdInPreviousPeriod },
+      }),
       this.prisma.scheduledJobExecution.count({
-        where: { status: 'FAILED', createdAt: { gte: new Date(now - 86_400_000) } },
+        where: { status: 'FAILED', createdAt: { gte: dayAgo } },
+      }),
+      // Signed up, never finished setup, and old enough that it is a stall rather than a tenant
+      // still filling the form.
+      this.prisma.organization.count({
+        where: {
+          status: 'DRAFT',
+          onboardingCompletedAt: null,
+          createdAt: { lt: new Date(now - 7 * 86_400_000) },
+        },
+      }),
+      this.prisma.billingWebhookEvent.count({ where: { processingState: 'FAILED' } }),
+      this.prisma.securityEvent.count({
+        where: { severity: { in: ['WARNING', 'ERROR', 'CRITICAL'] }, occurredAt: { gte: dayAgo } },
       }),
       this.prisma.platformAuditEvent.findMany({
         orderBy: { occurredAt: 'desc' },
@@ -376,7 +493,33 @@ export class PlatformOperationsService {
     const plans = await this.prisma.plan.findMany({ select: { id: true, key: true, name: true } });
     const planName = new Map(plans.map((plan) => [plan.id, plan.name]));
 
-    const registrations = bucketRegistrations(registrationRows, grouping);
+    const registrations = bucketSeries(
+      registrationRows.map((row) => row.createdAt),
+      grouping,
+    );
+    // One series per bucket so the chart can draw registrations against activations without the
+    // client joining two lists by label.
+    const activations = new Map(
+      bucketSeries(
+        activationRows.flatMap((row) =>
+          row.onboardingCompletedAt ? [row.onboardingCompletedAt] : [],
+        ),
+        grouping,
+      ).map((bucket) => [bucket.key, bucket.organizations]),
+    );
+    const growth = registrations.map((bucket) => ({
+      ...bucket,
+      activated: activations.get(bucket.key) ?? 0,
+    }));
+    for (const [key, activated] of activations) {
+      if (!registrations.some((bucket) => bucket.key === key))
+        growth.push({ key, label: key, organizations: 0, activated });
+    }
+    growth.sort((a, b) => a.key.localeCompare(b.key));
+
+    const trialsExpiringSoon = await this.prisma.organizationSubscription.count({
+      where: { status: 'TRIALING', trialEndsAt: { gte: new Date(now), lte: dayAhead } },
+    });
 
     return {
       organizations: {
@@ -387,6 +530,16 @@ export class PlatformOperationsService {
         createdInPeriod: newInPeriod,
       },
       users: { total: totalUsers, active: activeUsers, createdInPeriod: newUsersInPeriod },
+      // `null` where the preceding window holds no data at all: a KPI then shows no change rather
+      // than an invented +100%.
+      previousPeriod: {
+        from: previousFrom.toISOString(),
+        to: previousTo.toISOString(),
+        organizationsCreated: previousNewOrganizations,
+        usersCreated: previousNewUsers,
+        organizationsActivated: previousActivated,
+        hasData: previousNewOrganizations + previousNewUsers + previousActivated > 0,
+      },
       activation: {
         onboardingCompleted: activatedOrganizations,
         onboardingCompletedRate: rate(activatedOrganizations, totalOrganizations),
@@ -404,7 +557,9 @@ export class PlatformOperationsService {
       retention: {
         activeLast30Days: activeLast30,
         activeLast90Days: activeLast90,
-        activeLast30DaysRate: rate(activeLast30, activeOrganizations),
+        // Against every organization, not only ACTIVE ones: a tenant still in setup or suspended
+        // can have recorded activity, which against the smaller base produced rates above 100%.
+        activeLast30DaysRate: rate(activeLast30, totalOrganizations),
       },
       distribution: {
         byCountry: byCountry
@@ -423,8 +578,16 @@ export class PlatformOperationsService {
         to: to.toISOString(),
         grouping,
         registrations,
+        growth,
       },
-      attention: { failedJobsLast24Hours },
+      attention: {
+        failedJobsLast24Hours,
+        stalledOnboarding,
+        failedWebhooks,
+        highSeveritySecurityEvents,
+        trialsExpiringSoon,
+        suspendedOrganizations,
+      },
       recentActivity: recentActivity.map((event) => ({
         id: event.id,
         eventKey: event.eventKey,
@@ -435,10 +598,10 @@ export class PlatformOperationsService {
   }
 }
 
-function bucketRegistrations(rows: Array<{ createdAt: Date }>, grouping: 'day' | 'week' | 'month') {
+function bucketSeries(values: Date[], grouping: 'day' | 'week' | 'month') {
   const counts = new Map<string, number>();
-  for (const { createdAt } of rows) {
-    const date = new Date(createdAt);
+  for (const value of values) {
+    const date = new Date(value);
     const key =
       grouping === 'month'
         ? date.toISOString().slice(0, 7)

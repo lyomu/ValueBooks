@@ -90,9 +90,15 @@ charge.success
 subscription.create
 subscription.disable
 subscription.not_renew
+invoice.update
 invoice.payment_failed
 all Refund events
 ```
+
+`invoice.update` is how a renewal names its subscription: Paystack sends it after each renewal
+charge, and ValueBooks records a paid one against that subscription with Paystack's billing
+period. A renewal `charge.success` is also matched (by customer and plan), so renewals are still
+recorded without it, but `invoice.update` is the more precise signal.
 
 Do not select unrelated card-verification, dispute, payment-request, direct-debit,
 pre-authorization, or subscription-expiring-card events.
@@ -102,7 +108,11 @@ pre-authorization, or subscription-expiring-card events.
 Paddle is retired from active processing. Paystack is the only active provider.
 
 The production plan catalog must contain these eight Paystack codes after migrations. Configure
-them through Platform Admin or a controlled production database update:
+them in Platform Admin → Billing → Plans & pricing → **Change code** (SUPERADMIN). That action asks
+Paystack for the plan first and saves nothing unless its amount, currency and interval match the
+catalog row; it requires a reason and records the old and new code in the platform audit log. The
+generic plan update no longer accepts a code. Use a controlled database update only if the console
+is unavailable, and record why:
 
 | Plan key | Paystack plan code |
 | --- | --- |

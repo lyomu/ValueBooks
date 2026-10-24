@@ -26,7 +26,7 @@ export class PlatformBillingService {
   async overview() {
     const [subscriptions, transactions, failedWebhooks, unresolvedChanges, failedPayments] = await Promise.all([
       this.prisma.organizationSubscription.findMany({
-        select: { status: true, trialEndsAt: true, plan: { select: { priceMinor: true, currency: true, billingInterval: true, tierKey: true } } },
+        select: { status: true, trialEndsAt: true, complimentary: true, plan: { select: { priceMinor: true, currency: true, billingInterval: true, tierKey: true } } },
       }),
       this.prisma.billingTransaction.findMany({ where: { status: 'SUCCESSFUL' }, select: { amountMinor: true, currency: true, paidAt: true } }),
       this.prisma.billingWebhookEvent.count({ where: { processingState: 'FAILED' } }),
@@ -35,7 +35,9 @@ export class PlatformBillingService {
     ]);
     const arr = new Map<string, bigint>();
     const mrr = new Map<string, bigint>();
-    for (const subscription of subscriptions) {
+    // Complimentary grants are access, not revenue: they never enter MRR, ARR or paid counts.
+    const paying = subscriptions.filter((row) => !row.complimentary);
+    for (const subscription of paying) {
       if (!['ACTIVE', 'CANCEL_SCHEDULED'].includes(subscription.status)) continue;
       const annual = subscription.plan.priceMinor * (subscription.plan.billingInterval === 'YEARLY' ? 1n : 12n);
       arr.set(subscription.plan.currency, (arr.get(subscription.plan.currency) ?? 0n) + annual);
@@ -49,10 +51,11 @@ export class PlatformBillingService {
       active: subscriptions.filter((row) => row.status === 'ACTIVE').length,
       trialing: subscriptions.filter((row) => row.status === 'TRIALING').length,
       trialExpiring24h: subscriptions.filter((row) => row.status === 'TRIALING' && row.trialEndsAt && row.trialEndsAt.getTime() <= Date.now() + 86_400_000).length,
-      activePaid: subscriptions.filter((row) => ['ACTIVE', 'CANCEL_SCHEDULED'].includes(row.status)).length,
+      activePaid: paying.filter((row) => ['ACTIVE', 'CANCEL_SCHEDULED'].includes(row.status)).length,
+      complimentary: subscriptions.filter((row) => row.complimentary && row.status === 'ACTIVE').length,
       trialConversionRate: (() => {
-        const completedTrials = subscriptions.filter((row) => row.status !== 'TRIALING' && row.trialEndsAt).length;
-        const converted = subscriptions.filter((row) => ['ACTIVE', 'CANCEL_SCHEDULED'].includes(row.status) && row.trialEndsAt).length;
+        const completedTrials = paying.filter((row) => row.status !== 'TRIALING' && row.trialEndsAt).length;
+        const converted = paying.filter((row) => ['ACTIVE', 'CANCEL_SCHEDULED'].includes(row.status) && row.trialEndsAt).length;
         return completedTrials ? Number((converted / completedTrials * 100).toFixed(1)) : null;
       })(),
       pastDue: subscriptions.filter((row) => row.status === 'PAST_DUE').length,
@@ -100,7 +103,7 @@ export class PlatformBillingService {
   }
 
   async issues() {
-    const [failedPayments, failedWebhooks, unresolvedChanges, unknownRefunds] = await Promise.all([
+    const [failedPayments, failedWebhooks, unresolvedChanges, unknownRefunds, unsubscribedOrganizations] = await Promise.all([
       this.prisma.billingTransaction.findMany({ where: { status: 'FAILED' }, orderBy: { createdAt: 'desc' }, take: 100,
         include: { organization: { select: { id: true, legalName: true } } } }),
       this.prisma.billingWebhookEvent.findMany({ where: { processingState: 'FAILED' }, orderBy: { receivedAt: 'desc' }, take: 100,
@@ -108,8 +111,13 @@ export class PlatformBillingService {
       this.prisma.subscriptionChange.findMany({ where: { status: 'CANCELLING_OLD' }, orderBy: { updatedAt: 'desc' }, take: 100,
         include: { organization: { select: { id: true, legalName: true } } } }),
       this.prisma.billingRefund.findMany({ where: { providerStatus: 'UNKNOWN_REQUIRES_RECONCILIATION' }, orderBy: { updatedAt: 'desc' }, take: 100 }),
+      // A finished organization with no subscription row resolves every quota as unlimited and is
+      // never made read-only -- normally impossible, since onboarding starts the trial. Surfaced
+      // here for investigation; the console never creates a trial or charge to "fix" it.
+      this.prisma.organization.findMany({ where: { status: 'ACTIVE', subscription: { is: null } }, orderBy: { createdAt: 'desc' }, take: 100,
+        select: { id: true, legalName: true, createdAt: true } }),
     ]);
-    return { failedPayments: failedPayments.map((row) => this.transactionMoney(row)), failedWebhooks, unresolvedChanges, unknownRefunds: unknownRefunds.map((row) => ({ ...row, amountMinor: row.amountMinor.toString() })) };
+    return { failedPayments: failedPayments.map((row) => this.transactionMoney(row)), failedWebhooks, unresolvedChanges, unknownRefunds: unknownRefunds.map((row) => ({ ...row, amountMinor: row.amountMinor.toString() })), unsubscribedOrganizations };
   }
 
   async subscriptions(query: { page?: string; pageSize?: string; search?: string; status?: string; provider?: string; plan?: string }) {
@@ -213,13 +221,30 @@ export class PlatformBillingService {
   }
 
   async providers() {
-    const plans = await this.prisma.plan.findMany({ where: { status: 'ACTIVE' }, select: { key: true, tierKey: true, billingProvider: true, providerProductId: true, providerPriceId: true } });
+    const tiers = await this.prisma.planTier.findMany({ where: { status: 'ACTIVE' }, select: { key: true }, orderBy: { sortOrder: 'asc' } });
+    const plans = await this.prisma.plan.findMany({ where: { status: 'ACTIVE' }, select: { key: true, tierKey: true, billingInterval: true, billingProvider: true, providerProductId: true, providerPriceId: true } });
     const latest = await this.prisma.billingWebhookEvent.findMany({ orderBy: { receivedAt: 'desc' }, distinct: ['billingProvider'], take: 2, select: { billingProvider: true, receivedAt: true, processingState: true } });
+    const expected = tiers.map((row) => row.key)
+      .flatMap((tier) => (['MONTHLY', 'YEARLY'] as const).map((interval) => ({ tier, interval })));
+    const codeCounts = new Map<string, number>();
+    for (const plan of plans) if (plan.providerPriceId) codeCounts.set(plan.providerPriceId, (codeCounts.get(plan.providerPriceId) ?? 0) + 1);
+    const coverage = expected.map(({ tier, interval }) => {
+      const plan = plans.find((candidate) => candidate.tierKey === tier && candidate.billingInterval === interval);
+      const key = plan?.key ?? `${tier}_${interval.toLowerCase()}`;
+      const state = !plan ? 'MISSING_PLAN'
+        : plan.billingProvider !== 'PAYSTACK' ? 'WRONG_PROVIDER'
+          : !plan.providerPriceId ? 'MISSING_CODE'
+            : (codeCounts.get(plan.providerPriceId) ?? 0) > 1 ? 'DUPLICATE_CODE'
+              : 'READY';
+      return { key, state, providerPlanCode: plan?.providerPriceId ?? null, configured: state === 'READY' };
+    });
     return [{
       provider: 'PAYSTACK',
       environment: process.env.PAYSTACK_ENVIRONMENT ?? 'test',
       credentialsConfigured: Boolean(process.env.PAYSTACK_SECRET_KEY),
-      plans: plans.filter((plan) => plan.billingProvider === 'PAYSTACK').map((plan) => ({ key: plan.key, configured: Boolean(plan.providerPriceId) })),
+      plans: coverage,
+      readyPlans: coverage.filter((row) => row.state === 'READY').length,
+      expectedPlans: expected.length,
       lastWebhook: latest.find((row) => row.billingProvider === 'PAYSTACK') ?? null,
     }];
   }
@@ -242,10 +267,21 @@ export class PlatformBillingService {
     const verified = { providerEventId: event.providerEventId, eventType: event.eventType, payload: event.payload };
     if (event.billingProvider !== 'PAYSTACK')
       throw new BadRequestException('Historical provider webhooks are retained for audit and cannot be replayed.');
-    await this.webhooksService.recordAndProcess(event.billingProvider, verified, normalizePaystackEvent(verified));
+    // O10: every attempt is audited, and the state is read back from the event rather than
+    // assumed. A retry can fail, and a concurrent redelivery holding the processing claim makes
+    // `recordAndProcess` return without processing anything. Neither is a recovery.
+    let failure: Error | null = null;
+    try {
+      await this.webhooksService.recordAndProcess(event.billingProvider, verified, normalizePaystackEvent(verified));
+    } catch (error) { failure = error instanceof Error ? error : new Error(String(error)); }
+    const after = await this.prisma.billingWebhookEvent.findUnique({ where: { id },
+      select: { processingState: true, lastError: true, retryCount: true } });
     await this.prisma.$transaction((tx) => writePlatformAudit(tx, actor, { eventKey: 'billing.webhook_retried',
-      targetType: 'billing_webhook_event', targetId: id, reason, before: { state: event.processingState }, after: { state: 'PROCESSED' } }));
-    return { processed: true };
+      targetType: 'billing_webhook_event', targetId: id, reason, before: { state: event.processingState },
+      after: { state: after?.processingState ?? 'UNKNOWN', lastError: after?.lastError ?? null, retryCount: after?.retryCount ?? null } }));
+    if (failure) throw failure;
+    // Not processed and not an error: another delivery of the same event holds the claim.
+    return { processed: after?.processingState === 'PROCESSED', state: after?.processingState ?? 'UNKNOWN' };
   }
 
   async reconcileSubscription(id: string) {

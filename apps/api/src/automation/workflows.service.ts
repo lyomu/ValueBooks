@@ -51,7 +51,10 @@ export class WorkflowsService {
     input: CreateWorkflowRuleDto,
     metadata: RequestMetadata,
   ) {
-    await this.usage.assertFeatureAvailable(context.id, 'automation.enabled');
+    // Workflow automation is an Advanced-tier capability, sold under the same entitlement as
+    // approval workflows (product-owner decision 2026-10-22). `automation.enabled` only existed on
+    // the retired placeholder plans, so checking it failed open for every real tier.
+    await this.usage.assertFeatureAvailable(context.id, 'approval_workflows.enabled');
     const parsed = createWorkflowRuleSchema.safeParse(input);
     if (!parsed.success) throw new BadRequestException(parsed.error.issues);
     return this.prisma.$transaction(async (tx) => {

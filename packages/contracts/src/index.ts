@@ -38,7 +38,15 @@ export const platformRoleSchema = z.enum(['SUPPORT', 'OPERATIONS', 'SUPERADMIN']
 export const platformAdminStatusSchema = z.enum(['ACTIVE', 'REVOKED']);
 export const planStatusSchema = z.enum(['DRAFT', 'ACTIVE', 'RETIRED']);
 export const billingIntervalSchema = z.enum(['MONTHLY', 'YEARLY']);
-export const subscriptionStatusSchema = z.enum(['TRIALING', 'ACTIVE', 'PAST_DUE', 'CANCELLED']);
+export const subscriptionStatusSchema = z.enum([
+  'TRIALING',
+  'TRIAL_EXPIRED',
+  'ACTIVE',
+  'PAST_DUE',
+  'CANCEL_SCHEDULED',
+  'CANCELLED',
+]);
+export const billingProviderSchema = z.enum(['PADDLE', 'PAYSTACK']);
 export const featureFlagStatusSchema = z.enum(['ACTIVE', 'ARCHIVED']);
 export const featureFlagScopeSchema = z.enum(['GLOBAL', 'COUNTRY', 'PLAN', 'ORGANIZATION']);
 export const platformCountryPackStatusSchema = z.enum(['DRAFT', 'PUBLISHED', 'DEPRECATED']);
@@ -122,8 +130,15 @@ export const platformOrganizationSchema = z.object({
   ownerName: z.string().min(1),
   planKey: z.string().nullable(),
   planName: z.string().nullable(),
+  /** RETIRED/DRAFT here means the organization sits on a legacy tier that needs review. */
+  planStatus: planStatusSchema.nullable(),
+  /** Unpaid access granted by a platform administrator; never counted as revenue. */
+  complimentary: z.boolean().optional(),
   subscriptionStatus: subscriptionStatusSchema.nullable(),
+  /** Members whose membership is ACTIVE; suspended memberships are excluded. */
   memberCount: z.number().int().nonnegative(),
+  /** Latest tenant audit event (state changes, not sign-ins); null when none was ever recorded. */
+  lastActivityAt: z.iso.datetime().nullable(),
   createdAt: z.iso.datetime(),
 });
 
@@ -174,23 +189,48 @@ export const platformUserSchema = z.object({
   emailVerified: z.boolean(),
   profileComplete: z.boolean().optional(),
   membershipCount: z.number().int().nonnegative(),
+  /** Active platform grant, if any. Organization roles are separate and grant nothing here. */
+  platformRole: platformRoleSchema.nullable(),
   createdAt: z.iso.datetime(),
+});
+
+/** A price change proposed from the console and not yet published (phase 7, O5). */
+export const pendingPlanPriceChangeSchema = z.object({
+  id: z.uuid(),
+  toPriceMinor: z.string(),
+  currency: z.string().length(3),
+  reason: z.string(),
+  proposedBy: z.string(),
+  proposedAt: z.iso.datetime(),
+  /** Subscribers counted when it was proposed; the preview recounts at publication time. */
+  subscribersAtProposal: z.number().int().nonnegative(),
 });
 
 export const platformPlanSchema = z.object({
   id: z.uuid(),
   key: z.string().min(1),
+  tierKey: z.string().min(1),
   name: z.string().min(1),
   description: z.string().nullable(),
   status: planStatusSchema,
   isDefault: z.boolean(),
+  isMostPopular: z.boolean(),
   trialDays: z.number().int().nonnegative(),
   priceMinor: z.string(),
   currency: z.string().length(3),
   billingInterval: billingIntervalSchema,
+  billingProvider: billingProviderSchema.nullable(),
+  providerProductId: z.string().nullable(),
+  /** The Paystack plan code (`PLN_…`) for PAYSTACK plans; checkout is blocked while null. */
+  providerPriceId: z.string().nullable(),
   sortOrder: z.number().int(),
   subscriberCount: z.number().int().nonnegative(),
   entitlements: z.array(resolvedEntitlementSchema),
+  /**
+   * A proposed price awaiting publication, or null. Carried on the list so the catalog page can
+   * show that a change is pending — and who proposed it — without a request per plan.
+   */
+  pendingPriceChange: pendingPlanPriceChangeSchema.nullable(),
 });
 
 export const featureFlagRuleSchema = z.object({
@@ -216,16 +256,34 @@ export const featureFlagSchema = z.object({
 });
 
 export const platformQueueHealthSchema = z.object({
+  /** BullMQ counts; `failed` is every retained exhausted job, not a time window. */
   queues: z.object({
     automation: z.record(z.string(), z.number()),
     email: z.record(z.string(), z.number()),
   }),
+  oldestWaitingAt: z.object({
+    automation: z.iso.datetime().nullable(),
+    email: z.iso.datetime().nullable(),
+  }),
+  /** Database view of scheduled executions only. */
   scheduler: z.object({
     dueNow: z.number().int().nonnegative(),
+    overdue: z.number().int().nonnegative(),
+    overdueAfterMinutes: z.number().int().positive(),
     failedLastDay: z.number().int().nonnegative(),
     runningNow: z.number().int().nonnegative(),
+    nextRunAt: z.iso.datetime().nullable(),
   }),
   observedAt: z.iso.datetime(),
+});
+
+/** A retained queue failure without its payload; email addresses in the reason are redacted. */
+export const platformQueueFailureSchema = z.object({
+  id: z.string().min(1),
+  name: z.string().min(1),
+  attemptsMade: z.number().int().nonnegative(),
+  failedAt: z.iso.datetime().nullable(),
+  reason: z.string().nullable(),
 });
 
 export const platformFailedJobSchema = z.object({
@@ -260,6 +318,8 @@ export const platformAuditEventSchema = z.object({
   targetType: z.string().min(1),
   targetId: z.string().nullable(),
   organizationId: z.uuid().nullable(),
+  /** Trading name, else legal name; null for changes that concern no single tenant. */
+  organizationName: z.string().nullable(),
   reason: z.string().nullable(),
   before: z.unknown(),
   after: z.unknown(),
@@ -281,6 +341,16 @@ export const platformAnalyticsSchema = z.object({
     total: z.number().int().nonnegative(),
     active: z.number().int().nonnegative(),
     createdInPeriod: z.number().int().nonnegative(),
+  }),
+  /** The immediately preceding window of equal length, for period-over-period change. */
+  previousPeriod: z.object({
+    from: z.iso.datetime(),
+    to: z.iso.datetime(),
+    organizationsCreated: z.number().int().nonnegative(),
+    usersCreated: z.number().int().nonnegative(),
+    organizationsActivated: z.number().int().nonnegative(),
+    /** False when the earlier window is empty: show no change rather than an invented one. */
+    hasData: z.boolean(),
   }),
   activation: z.object({
     onboardingCompleted: z.number().int().nonnegative(),
@@ -316,8 +386,25 @@ export const platformAnalyticsSchema = z.object({
     registrations: z.array(
       z.object({ key: z.string(), label: z.string(), organizations: z.number().int() }),
     ),
+    /** Registrations and completed onboarding per bucket, for the growth chart. */
+    growth: z.array(
+      z.object({
+        key: z.string(),
+        label: z.string(),
+        organizations: z.number().int(),
+        activated: z.number().int(),
+      }),
+    ),
   }),
-  attention: z.object({ failedJobsLast24Hours: z.number().int().nonnegative() }),
+  /** Counts behind the overview's "Requires attention" queue; each links to its source list. */
+  attention: z.object({
+    failedJobsLast24Hours: z.number().int().nonnegative(),
+    stalledOnboarding: z.number().int().nonnegative(),
+    failedWebhooks: z.number().int().nonnegative(),
+    highSeveritySecurityEvents: z.number().int().nonnegative(),
+    trialsExpiringSoon: z.number().int().nonnegative(),
+    suspendedOrganizations: z.number().int().nonnegative(),
+  }),
   recentActivity: z.array(
     z.object({ id: z.uuid(), eventKey: z.string(), occurredAt: z.iso.datetime() }),
   ),
@@ -4114,6 +4201,8 @@ export type PlatformUser = z.infer<typeof platformUserSchema>;
 export type PlanStatus = z.infer<typeof planStatusSchema>;
 export type BillingInterval = z.infer<typeof billingIntervalSchema>;
 export type SubscriptionStatus = z.infer<typeof subscriptionStatusSchema>;
+export type BillingProvider = z.infer<typeof billingProviderSchema>;
+export type PendingPlanPriceChange = z.infer<typeof pendingPlanPriceChangeSchema>;
 export type PlatformPlan = z.infer<typeof platformPlanSchema>;
 export type ResolvedEntitlement = z.infer<typeof resolvedEntitlementSchema>;
 export type ResolvedFlag = z.infer<typeof resolvedFlagSchema>;
@@ -4128,6 +4217,290 @@ export type PlatformTaxPack = z.infer<typeof platformTaxPackSchema>;
 export type PlatformCountryPack = z.infer<typeof platformCountryPackSchema>;
 export type PlatformQueueHealth = z.infer<typeof platformQueueHealthSchema>;
 export type PlatformFailedJob = z.infer<typeof platformFailedJobSchema>;
+export type PlatformQueueFailure = z.infer<typeof platformQueueFailureSchema>;
 export type PlatformSecurityEvent = z.infer<typeof platformSecurityEventSchema>;
 export type PlatformAuditEvent = z.infer<typeof platformAuditEventSchema>;
 export type PlatformAnalytics = z.infer<typeof platformAnalyticsSchema>;
+
+// --- Official commercial plan catalog ---
+//
+// The approved ValueBooks catalog (Platform Admin master plan §4.1–§4.3, owner decisions of
+// 2026-10-22). The database (`plans` / `plan_entitlements`, seeded by migration) stays the runtime
+// billing authority; this constant is the reviewed expectation the migrations are tested against
+// (`apps/api/test/plan-entitlements.int.test.ts`) and the single source the marketing site and plan
+// picker read prices and limits from, so a public price can never drift from what checkout charges.
+// Changing a value here is a commercial decision that needs a matching migration.
+
+export const OFFICIAL_PLAN_TIERS = ['starter', 'growth', 'professional', 'advanced'] as const;
+export type OfficialPlanTier = (typeof OFFICIAL_PLAN_TIERS)[number];
+
+/** Entitlement keys the catalog sells. Limits: a number is a cap, `0` is "not included", `null` is unlimited. */
+export const OFFICIAL_ENTITLEMENT_KEYS = [
+  'customers.active.max',
+  'invoices.issued.max',
+  'seats.max',
+  'expenses.max',
+  'vendors.max',
+  'bills.enabled',
+  'purchase_orders.enabled',
+  'products.max',
+  'bank_accounts.max',
+  'warehouses.enabled',
+  'projects.enabled',
+  'reports.saved.enabled',
+  'reports.scheduled.enabled',
+  'ai_insights.max',
+  'quotes.max',
+  'sales_orders.enabled',
+  'approval_workflows.enabled',
+] as const;
+export type OfficialEntitlementKey = (typeof OFFICIAL_ENTITLEMENT_KEYS)[number];
+
+/** On/off capabilities the catalog sells (seeded as `<key>` entitlements with a NULL limit). */
+export const OFFICIAL_FEATURE_KEYS = [
+  'recurring_invoices.enabled',
+  'manual_journals.enabled',
+  'bank_reconciliation.enabled',
+  'multi_currency.enabled',
+  'stock_tracking.enabled',
+  'multiple_warehouses.enabled',
+  'timesheets.enabled',
+  'custom_roles.enabled',
+  'cash_flow_reporting.enabled',
+  'advanced_financial_reports.enabled',
+] as const;
+export type OfficialFeatureKey = (typeof OFFICIAL_FEATURE_KEYS)[number];
+
+/** Operator-facing names for every catalog key, in the order the approved matrix lists them. */
+export const OFFICIAL_ENTITLEMENT_LABELS: Record<
+  OfficialEntitlementKey | OfficialFeatureKey,
+  string
+> = {
+  'customers.active.max': 'Active customers',
+  'invoices.issued.max': 'Invoices issued / month',
+  'seats.max': 'Organization users',
+  'expenses.max': 'Expenses / month',
+  'vendors.max': 'Vendors',
+  'bills.enabled': 'Bills / month',
+  'purchase_orders.enabled': 'Purchase orders / month',
+  'products.max': 'Products and services',
+  'bank_accounts.max': 'Bank accounts',
+  'warehouses.enabled': 'Warehouses',
+  'projects.enabled': 'Active projects',
+  'reports.saved.enabled': 'Saved reports',
+  'reports.scheduled.enabled': 'Scheduled reports',
+  'ai_insights.max': 'AI insight requests / month',
+  'quotes.max': 'Quotes / month',
+  'sales_orders.enabled': 'Sales orders / month',
+  'approval_workflows.enabled': 'Approval workflows',
+  'recurring_invoices.enabled': 'Recurring invoices',
+  'manual_journals.enabled': 'Manual journals',
+  'bank_reconciliation.enabled': 'Bank reconciliation',
+  'multi_currency.enabled': 'Multi-currency',
+  'stock_tracking.enabled': 'Stock tracking',
+  'multiple_warehouses.enabled': 'Multiple warehouses',
+  'timesheets.enabled': 'Timesheets',
+  'custom_roles.enabled': 'Custom roles',
+  'cash_flow_reporting.enabled': 'Cash-flow reporting',
+  'advanced_financial_reports.enabled': 'Advanced financial reports',
+};
+
+const features = (enabled: readonly OfficialFeatureKey[]): Record<OfficialFeatureKey, boolean> =>
+  Object.fromEntries(OFFICIAL_FEATURE_KEYS.map((key) => [key, enabled.includes(key)])) as Record<
+    OfficialFeatureKey,
+    boolean
+  >;
+
+export type OfficialPlan = {
+  tierKey: OfficialPlanTier;
+  name: string;
+  currency: 'USD';
+  /** Integer minor units (cents). The yearly price is its own approved figure, never monthly × 12. */
+  monthlyPriceMinor: number;
+  yearlyPriceMinor: number;
+  mostPopular: boolean;
+  limits: Record<OfficialEntitlementKey, number | null>;
+  features: Record<OfficialFeatureKey, boolean>;
+};
+
+export const OFFICIAL_PLAN_CATALOG: Record<OfficialPlanTier, OfficialPlan> = {
+  starter: {
+    tierKey: 'starter',
+    name: 'Starter',
+    currency: 'USD',
+    monthlyPriceMinor: 100,
+    yearlyPriceMinor: 1000,
+    mostPopular: false,
+    limits: {
+      'customers.active.max': 10,
+      'invoices.issued.max': 5,
+      'seats.max': 1,
+      'expenses.max': 20,
+      'vendors.max': 10,
+      'bills.enabled': 0,
+      'purchase_orders.enabled': 0,
+      'products.max': 20,
+      'bank_accounts.max': 1,
+      'warehouses.enabled': 0,
+      'projects.enabled': 0,
+      'reports.saved.enabled': 0,
+      'reports.scheduled.enabled': 0,
+      'ai_insights.max': 0,
+      'quotes.max': 5,
+      'sales_orders.enabled': 0,
+      'approval_workflows.enabled': 0,
+    },
+    features: features([]),
+  },
+  growth: {
+    tierKey: 'growth',
+    name: 'Growth',
+    currency: 'USD',
+    monthlyPriceMinor: 499,
+    yearlyPriceMinor: 5500,
+    mostPopular: false,
+    limits: {
+      'customers.active.max': 50,
+      'invoices.issued.max': 20,
+      'seats.max': 2,
+      'expenses.max': 150,
+      'vendors.max': 100,
+      'bills.enabled': 100,
+      'purchase_orders.enabled': 50,
+      'products.max': 200,
+      'bank_accounts.max': 3,
+      'warehouses.enabled': 1,
+      'projects.enabled': 0,
+      'reports.saved.enabled': 5,
+      'reports.scheduled.enabled': 0,
+      'ai_insights.max': 0,
+      'quotes.max': 50,
+      'sales_orders.enabled': 50,
+      'approval_workflows.enabled': 0,
+    },
+    features: features([
+      'recurring_invoices.enabled',
+      'manual_journals.enabled',
+      'bank_reconciliation.enabled',
+      'stock_tracking.enabled',
+      'cash_flow_reporting.enabled',
+    ]),
+  },
+  professional: {
+    tierKey: 'professional',
+    name: 'Professional',
+    currency: 'USD',
+    monthlyPriceMinor: 999,
+    yearlyPriceMinor: 10000,
+    mostPopular: true,
+    limits: {
+      'customers.active.max': 100,
+      'invoices.issued.max': 100,
+      'seats.max': 5,
+      'expenses.max': 1000,
+      'vendors.max': 1000,
+      'bills.enabled': 500,
+      'purchase_orders.enabled': 250,
+      'products.max': 2000,
+      'bank_accounts.max': 10,
+      'warehouses.enabled': 3,
+      'projects.enabled': 25,
+      'reports.saved.enabled': 25,
+      'reports.scheduled.enabled': 5,
+      'ai_insights.max': 30,
+      'quotes.max': null,
+      'sales_orders.enabled': null,
+      'approval_workflows.enabled': 0,
+    },
+    features: features([
+      'recurring_invoices.enabled',
+      'manual_journals.enabled',
+      'bank_reconciliation.enabled',
+      'multi_currency.enabled',
+      'stock_tracking.enabled',
+      'multiple_warehouses.enabled',
+      'timesheets.enabled',
+      'cash_flow_reporting.enabled',
+      'advanced_financial_reports.enabled',
+    ]),
+  },
+  advanced: {
+    tierKey: 'advanced',
+    name: 'Advanced',
+    currency: 'USD',
+    monthlyPriceMinor: 2000,
+    yearlyPriceMinor: 22000,
+    mostPopular: false,
+    limits: {
+      'customers.active.max': null,
+      'invoices.issued.max': null,
+      'seats.max': 10,
+      'expenses.max': null,
+      'vendors.max': null,
+      'bills.enabled': null,
+      'purchase_orders.enabled': null,
+      'products.max': null,
+      'bank_accounts.max': null,
+      'warehouses.enabled': null,
+      'projects.enabled': null,
+      'reports.saved.enabled': null,
+      'reports.scheduled.enabled': null,
+      'ai_insights.max': 150,
+      'quotes.max': null,
+      'sales_orders.enabled': null,
+      'approval_workflows.enabled': null,
+    },
+    features: features([...OFFICIAL_FEATURE_KEYS]),
+  },
+};
+
+/** The cardless trial: Professional access for 336 hours, with a reduced AI allowance. */
+export const OFFICIAL_TRIAL = {
+  tierKey: 'professional' as OfficialPlanTier,
+  hours: 336,
+  limitOverrides: { 'ai_insights.max': 10 } as Partial<
+    Record<OfficialEntitlementKey, number | null>
+  >,
+};
+
+/** Rounded public "Save N%" for the yearly interval versus twelve monthly bills. */
+export function officialYearlySavingsPercent(plan: OfficialPlan): number {
+  return Math.round((1 - plan.yearlyPriceMinor / (plan.monthlyPriceMinor * 12)) * 100);
+}
+
+export type OrganizationPlanTone = 'success' | 'info' | 'warning' | 'danger' | 'neutral';
+
+/**
+ * One reading of "what plan is this organization on" for every console surface (master plan §8.1):
+ * never a bare dash. Trial access, an unpaid expired trial, a legacy tier and a missing subscription
+ * are each named explicitly, because each needs a different operator response.
+ */
+export function describeOrganizationPlan(input: {
+  planName: string | null;
+  planStatus: PlanStatus | null;
+  subscriptionStatus: SubscriptionStatus | null;
+  complimentary?: boolean;
+}): { label: string; tone: OrganizationPlanTone } {
+  const { planName, planStatus, subscriptionStatus, complimentary } = input;
+  if (!subscriptionStatus) return { label: 'Not subscribed', tone: 'neutral' };
+  if (planStatus && planStatus !== 'ACTIVE') {
+    return { label: `Legacy — review${planName ? ` (${planName})` : ''}`, tone: 'warning' };
+  }
+  const name = planName ?? 'Unknown plan';
+  switch (subscriptionStatus) {
+    case 'TRIALING':
+      return { label: 'Trial (Professional access)', tone: 'info' };
+    case 'TRIAL_EXPIRED':
+      return { label: 'Trial expired — unpaid', tone: 'warning' };
+    case 'PAST_DUE':
+      return { label: `${name} · Past due`, tone: 'danger' };
+    case 'CANCEL_SCHEDULED':
+      return { label: `${name} · Cancels at period end`, tone: 'warning' };
+    case 'CANCELLED':
+      return { label: `${name} · Cancelled`, tone: 'neutral' };
+    case 'ACTIVE':
+      return complimentary
+        ? { label: `${name} · Complimentary`, tone: 'info' }
+        : { label: name, tone: 'success' };
+  }
+}

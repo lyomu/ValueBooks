@@ -1,0 +1,435 @@
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
+
+import {
+  OFFICIAL_ENTITLEMENT_KEYS,
+  OFFICIAL_FEATURE_KEYS,
+  OFFICIAL_PLAN_CATALOG,
+  OFFICIAL_PLAN_TIERS,
+  OFFICIAL_TRIAL,
+  type OfficialEntitlementKey,
+  type OfficialFeatureKey,
+  type OfficialPlanTier,
+} from '@valuebooks/contracts';
+import { Client } from 'pg';
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+
+import { UsageMeteringService } from '../src/billing/usage-metering.service.js';
+import { OrganizationAccessService } from '../src/organizations/organization-access.service.js';
+import { OrganizationService } from '../src/organizations/organization.service.js';
+import type { PlatformContext } from '../src/platform/platform-context.js';
+import { PlatformBillingService } from '../src/platform/platform-billing.service.js';
+import { PlatformTenantsService } from '../src/platform/platform-tenants.service.js';
+import { createTestHarness, type TestHarness } from './support/app.js';
+import { apiRoot, testRuntimeDatabaseUrl } from './support/database.js';
+
+/**
+ * The approved commercial matrix (master plan §4.2, owner decisions of 2026-10-22) lives in
+ * `@valuebooks/contracts` as `OFFICIAL_PLAN_CATALOG`; this spec proves the migrations produce it,
+ * resolved through the real `UsageMeteringService`. Prices can now change in the database;
+ * this launch baseline governs entitlements and provider fields, not today's prices.
+ */
+/** Quantitative limits plus on/off features; an enabled feature resolves to null (no cap). */
+const KEYS = [...OFFICIAL_ENTITLEMENT_KEYS, ...OFFICIAL_FEATURE_KEYS] as const;
+type Key = OfficialEntitlementKey | OfficialFeatureKey;
+const MATRIX = Object.fromEntries(
+  OFFICIAL_PLAN_TIERS.map((tier) => {
+    const plan = OFFICIAL_PLAN_CATALOG[tier];
+    const features = Object.fromEntries(
+      OFFICIAL_FEATURE_KEYS.map((key) => [key, plan.features[key] ? null : 0]),
+    );
+    return [tier, { ...plan.limits, ...features }];
+  }),
+) as Record<OfficialPlanTier, Record<Key, number | null>>;
+
+/** The trial runs on Professional with a reduced AI allowance (master plan §4.3). */
+const TRIAL: Record<Key, number | null> = {
+  ...MATRIX[OFFICIAL_TRIAL.tierKey],
+  ...OFFICIAL_TRIAL.limitOverrides,
+};
+
+/** Every migration that shapes the official catalog's entitlements, in deploy order. */
+const CATALOG_MIGRATIONS = [
+  '20261014070000_seed_official_plan_catalog',
+  '20261014080000_correct_advanced_unlimited_entitlements',
+  '20261022090000_correct_professional_unlimited_entitlements',
+];
+
+describe('official plan catalog entitlements', () => {
+  let harness: TestHarness;
+  let usage: UsageMeteringService;
+  let organizationId: string;
+
+  beforeAll(async () => {
+    harness = await createTestHarness();
+    await harness.reset();
+    usage = harness.app.get(UsageMeteringService);
+
+    // reset() truncates the migration-seeded catalog; replay the catalog migrations verbatim so the
+    // assertions cover the SQL production runs, not a hand-built fixture.
+    const client = new Client({ connectionString: testRuntimeDatabaseUrl() });
+    await client.connect();
+    try {
+      for (const name of CATALOG_MIGRATIONS) {
+        await client.query(
+          readFileSync(resolve(apiRoot, 'prisma/migrations', name, 'migration.sql'), 'utf8'),
+        );
+      }
+    } finally {
+      await client.end();
+    }
+
+    const user = await harness.prisma.user.create({
+      data: {
+        email: 'entitlements@example.test',
+        displayName: 'Entitlements',
+        emailVerifiedAt: new Date(),
+        status: 'ACTIVE',
+      },
+    });
+    const owner = {
+      id: user.id,
+      email: user.email,
+      displayName: user.displayName,
+      emailVerified: true,
+      status: user.status,
+    };
+    const organizations = harness.app.get(OrganizationService);
+    const access = harness.app.get(OrganizationAccessService);
+    const metadata = { ipHash: 'plan-entitlements-test', userAgent: 'plan-entitlements-test' };
+    const created = await organizations.create(
+      owner,
+      { legalName: 'Entitlement Books Ltd', businessType: 'LIMITED_COMPANY', countryCode: 'KE' },
+      metadata,
+    );
+    await organizations.finalize(
+      await access.requireMembership(owner.id, created.id),
+      owner,
+      metadata,
+    );
+    organizationId = created.id;
+  });
+
+  afterAll(async () => harness.close());
+
+  async function resolveAll(): Promise<Record<Key, number | null>> {
+    const entries = await Promise.all(
+      KEYS.map(async (key) => [key, await usage.resolveLimit(organizationId, key)] as const),
+    );
+    return Object.fromEntries(entries) as Record<Key, number | null>;
+  }
+
+  it('seeds exactly the eight official plans as ACTIVE', async () => {
+    const plans = await harness.prisma.plan.findMany({
+      where: { status: 'ACTIVE' },
+      select: { key: true },
+    });
+    expect(plans.map((plan) => plan.key).sort()).toEqual([
+      'advanced_monthly',
+      'advanced_yearly',
+      'growth_monthly',
+      'growth_yearly',
+      'professional_monthly',
+      'professional_yearly',
+      'starter_monthly',
+      'starter_yearly',
+    ]);
+  });
+
+  it('stores the approved provider and interval on every launch row', async () => {
+    for (const tier of OFFICIAL_PLAN_TIERS) {
+      const expected = OFFICIAL_PLAN_CATALOG[tier];
+      for (const interval of ['MONTHLY', 'YEARLY'] as const) {
+        const row = await harness.prisma.plan.findUniqueOrThrow({
+          where: { key: `${tier}_${interval.toLowerCase()}` },
+        });
+        expect({
+          tierKey: row.tierKey,
+          currency: row.currency,
+          billingInterval: row.billingInterval,
+          billingProvider: row.billingProvider,
+        }).toEqual({
+          tierKey: tier,
+          currency: expected.currency,
+          billingInterval: interval,
+          billingProvider: 'PAYSTACK',
+        });
+      }
+    }
+  });
+
+  it('starts a cardless trial with Professional access and the trial AI allowance', async () => {
+    const subscription = await harness.prisma.organizationSubscription.findUniqueOrThrow({
+      where: { organizationId },
+      select: {
+        status: true,
+        startedAt: true,
+        trialEndsAt: true,
+        plan: { select: { tierKey: true } },
+      },
+    });
+    expect(subscription.status).toBe('TRIALING');
+    expect(subscription.plan.tierKey).toBe(OFFICIAL_TRIAL.tierKey);
+    expect(subscription.trialEndsAt!.getTime() - subscription.startedAt.getTime()).toBe(
+      OFFICIAL_TRIAL.hours * 60 * 60 * 1000,
+    );
+    expect(await resolveAll()).toEqual(TRIAL);
+  });
+
+  for (const tier of OFFICIAL_PLAN_TIERS) {
+    for (const interval of ['monthly', 'yearly'] as const) {
+      it(`resolves the approved matrix for ${tier}_${interval}`, async () => {
+        const plan = await harness.prisma.plan.findUniqueOrThrow({
+          where: { key: `${tier}_${interval}` },
+        });
+        await harness.prisma.organizationSubscription.update({
+          where: { organizationId },
+          data: { planId: plan.id, status: 'ACTIVE', trialEndsAt: null },
+        });
+        expect(await resolveAll()).toEqual(MATRIX[tier]);
+      });
+    }
+  }
+
+  describe('platform plan assignment', () => {
+    async function actor(): Promise<PlatformContext> {
+      const user = await harness.prisma.user.upsert({
+        where: { email: 'assign-superadmin@example.test' },
+        update: {},
+        create: {
+          email: 'assign-superadmin@example.test',
+          displayName: 'Assigner',
+          emailVerifiedAt: new Date(),
+          status: 'ACTIVE',
+        },
+      });
+      const grant = await harness.prisma.platformAdmin.upsert({
+        where: { userId: user.id },
+        update: {},
+        create: { userId: user.id, role: 'SUPERADMIN' },
+      });
+      return {
+        id: grant.id,
+        userId: user.id,
+        email: user.email,
+        displayName: user.displayName,
+        role: 'SUPERADMIN',
+      };
+    }
+
+    it('refuses a retired plan and leaves the subscription untouched', async () => {
+      const tenants = harness.app.get(PlatformTenantsService);
+      await harness.prisma.planTier.create({ data: { key: 'scale', name: 'Scale', status: 'RETIRED' } });
+      const retired = await harness.prisma.plan.create({
+        data: { key: 'scale', tierKey: 'scale', name: 'Scale', status: 'RETIRED', priceMinor: 0n },
+      });
+      const before = await harness.prisma.organizationSubscription.findUniqueOrThrow({
+        where: { organizationId },
+      });
+      await expect(
+        tenants.assignPlan(
+          await actor(),
+          organizationId,
+          { planId: retired.id, reason: 'Retired plan assignment check' },
+          null,
+        ),
+      ).rejects.toThrow('Only an active catalog plan can be assigned.');
+      const after = await harness.prisma.organizationSubscription.findUniqueOrThrow({
+        where: { organizationId },
+      });
+      expect(after.planId).toBe(before.planId);
+    });
+
+    it('applies the 336-hour trial policy to an assigned trial', async () => {
+      const tenants = harness.app.get(PlatformTenantsService);
+      const plan = await harness.prisma.plan.findUniqueOrThrow({
+        where: { key: 'professional_monthly' },
+      });
+      const started = Date.now();
+      const result = await tenants.assignPlan(
+        await harness.prisma.platformAdmin
+          .findFirstOrThrow({ include: { user: true } })
+          .then((grant) => ({
+            id: grant.id,
+            userId: grant.userId,
+            email: grant.user.email,
+            displayName: grant.user.displayName,
+            role: grant.role,
+          })),
+        organizationId,
+        { planId: plan.id, status: 'TRIALING', reason: 'Assigned trial length check' },
+        null,
+      );
+      const hours = (new Date(result.trialEndsAt!).getTime() - started) / 3_600_000;
+      expect(hours).toBeGreaterThanOrEqual(OFFICIAL_TRIAL.hours - 0.01);
+      expect(hours).toBeLessThan(OFFICIAL_TRIAL.hours + 0.1);
+    });
+
+    it('schedules trial lifecycle jobs when assigning the first subscription', async () => {
+      const tenants = harness.app.get(PlatformTenantsService);
+      await harness.prisma.scheduledJob.deleteMany({
+        where: { organizationId, handler: { in: ['billing.trial_reminder', 'billing.trial_expired'] } },
+      });
+      await harness.prisma.organizationSubscription.delete({ where: { organizationId } });
+      const plan = await harness.prisma.plan.findUniqueOrThrow({
+        where: { key: 'professional_monthly' },
+      });
+      const auditCountBefore = await harness.prisma.platformAuditEvent.count({
+        where: { organizationId, eventKey: 'platform.plan_assigned' },
+      });
+      const result = await tenants.assignPlan(
+        await actor(),
+        organizationId,
+        { planId: plan.id, status: 'TRIALING', requireNoSubscription: true, reason: 'Restore a fresh trial after catalog migration' },
+        null,
+      );
+      expect(result.status).toBe('TRIALING');
+      const jobs = await harness.prisma.scheduledJob.findMany({
+        where: { organizationId, handler: { in: ['billing.trial_reminder', 'billing.trial_expired'] } },
+        select: { handler: true, nextRunAt: true },
+        orderBy: { nextRunAt: 'asc' },
+      });
+      expect(jobs.map((job) => job.handler)).toEqual([
+        'billing.trial_reminder',
+        'billing.trial_expired',
+      ]);
+      expect(jobs[1]?.nextRunAt).toEqual(new Date(result.trialEndsAt!));
+      expect(await harness.prisma.platformAuditEvent.count({
+        where: { organizationId, eventKey: 'platform.plan_assigned' },
+      })).toBe(auditCountBefore + 1);
+    });
+
+    it('refuses a stale first-trial assignment without changing the existing subscription', async () => {
+      const tenants = harness.app.get(PlatformTenantsService);
+      const plan = await harness.prisma.plan.findUniqueOrThrow({
+        where: { key: 'professional_monthly' },
+      });
+      const before = await harness.prisma.organizationSubscription.findUniqueOrThrow({
+        where: { organizationId },
+      });
+      const auditCountBefore = await harness.prisma.platformAuditEvent.count({
+        where: { organizationId, eventKey: 'platform.plan_assigned' },
+      });
+      await expect(
+        tenants.assignPlan(
+          await actor(),
+          organizationId,
+          { planId: plan.id, status: 'TRIALING', requireNoSubscription: true, reason: 'Stale first-trial check' },
+          null,
+        ),
+      ).rejects.toThrow('already has a subscription');
+      const after = await harness.prisma.organizationSubscription.findUniqueOrThrow({
+        where: { organizationId },
+      });
+      expect(after).toEqual(before);
+      expect(await harness.prisma.platformAuditEvent.count({
+        where: { organizationId, eventKey: 'platform.plan_assigned' },
+      })).toBe(auditCountBefore);
+    });
+  });
+
+  describe('complimentary access', () => {
+    const superadmin = async (): Promise<PlatformContext> => {
+      const grant = await harness.prisma.platformAdmin.findFirstOrThrow({
+        include: { user: true },
+      });
+      return {
+        id: grant.id,
+        userId: grant.userId,
+        email: grant.user.email,
+        displayName: grant.user.displayName,
+        role: grant.role,
+      };
+    };
+
+    it('refuses to mark a plan paid without a verified payment', async () => {
+      const tenants = harness.app.get(PlatformTenantsService);
+      const plan = await harness.prisma.plan.findUniqueOrThrow({
+        where: { key: 'growth_monthly' },
+      });
+      await expect(
+        tenants.assignPlan(
+          await superadmin(),
+          organizationId,
+          { planId: plan.id, status: 'ACTIVE', reason: 'Attempted paid activation' },
+          null,
+        ),
+      ).rejects.toThrow('Paid plans are activated only by a verified payment');
+    });
+
+    it('grants complimentary access that never counts as revenue', async () => {
+      const tenants = harness.app.get(PlatformTenantsService);
+      const billing = harness.app.get(PlatformBillingService);
+      const plan = await harness.prisma.plan.findUniqueOrThrow({
+        where: { key: 'advanced_monthly' },
+      });
+      const before = await billing.overview();
+      const result = await tenants.assignPlan(
+        await superadmin(),
+        organizationId,
+        {
+          planId: plan.id,
+          status: 'ACTIVE',
+          complimentary: true,
+          reason: 'Partner programme grant',
+        },
+        null,
+      );
+      expect(result).toMatchObject({ status: 'ACTIVE', complimentary: true });
+      const after = await billing.overview();
+      expect(after.activePaid).toBe(before.activePaid);
+      expect(after.mrrMinorByCurrency).toEqual(before.mrrMinorByCurrency);
+      expect(after.complimentary).toBe(before.complimentary + 1);
+    });
+
+    it('will not overwrite a provider-billed subscription', async () => {
+      const tenants = harness.app.get(PlatformTenantsService);
+      await harness.prisma.organizationSubscription.update({
+        where: { organizationId },
+        data: {
+          status: 'ACTIVE',
+          complimentary: false,
+          billingProvider: 'PAYSTACK',
+          providerSubscriptionId: 'SUB_spec',
+        },
+      });
+      const plan = await harness.prisma.plan.findUniqueOrThrow({
+        where: { key: 'starter_monthly' },
+      });
+      await expect(
+        tenants.assignPlan(
+          await superadmin(),
+          organizationId,
+          { planId: plan.id, status: 'TRIALING', reason: 'Attempted provider override' },
+          null,
+        ),
+      ).rejects.toThrow('provider-billed subscription');
+      await harness.prisma.organizationSubscription.update({
+        where: { organizationId },
+        data: { billingProvider: null, providerSubscriptionId: null },
+      });
+    });
+  });
+
+  it('is idempotent: replaying the Professional correction changes nothing', async () => {
+    const before = await harness.prisma.planEntitlement.findMany({
+      orderBy: [{ planId: 'asc' }, { key: 'asc' }],
+    });
+    const client = new Client({ connectionString: testRuntimeDatabaseUrl() });
+    await client.connect();
+    try {
+      const sql = readFileSync(
+        resolve(apiRoot, 'prisma/migrations', CATALOG_MIGRATIONS[2]!, 'migration.sql'),
+        'utf8',
+      );
+      const result = await client.query(sql);
+      expect(result.rowCount).toBe(0);
+    } finally {
+      await client.end();
+    }
+    const after = await harness.prisma.planEntitlement.findMany({
+      orderBy: [{ planId: 'asc' }, { key: 'asc' }],
+    });
+    expect(after).toEqual(before);
+  });
+});

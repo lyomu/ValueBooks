@@ -1,6 +1,14 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import type { Prisma } from '@prisma/client';
+import { OFFICIAL_TRIAL } from '@valuebooks/contracts';
 
+import { TrialLifecycleService } from '../billing/trial-lifecycle.service.js';
 import { PrismaService } from '../database/prisma.service.js';
 import { EntitlementsService } from './entitlements.service.js';
 import { writePlatformAudit } from './platform-audit.js';
@@ -28,15 +36,32 @@ export class PlatformTenantsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly entitlements: EntitlementsService,
+    private readonly trialLifecycle: TrialLifecycleService,
   ) {}
 
   async searchOrganizations(query: OrganizationSearchDto) {
     const page = query.page ?? 1;
     const pageSize = query.pageSize ?? DEFAULT_PAGE_SIZE;
+    // Plan and subscription state both constrain the same relation, so they are ANDed rather than
+    // spread into one `subscription` key where the second would silently replace the first.
+    const subscriptionFilters: Prisma.OrganizationWhereInput[] = [
+      // Accepts a tier ("growth") as well as an exact plan key ("growth_monthly").
+      ...(query.planKey
+        ? [{ subscription: { plan: { OR: [{ key: query.planKey }, { tierKey: query.planKey }] } } }]
+        : []),
+      ...(query.subscriptionStatus === 'NONE'
+        ? [{ subscription: { is: null } }]
+        : query.subscriptionStatus
+          ? [{ subscription: { status: query.subscriptionStatus } }]
+          : []),
+    ];
     const where: Prisma.OrganizationWhereInput = {
       ...(query.status ? { status: query.status } : {}),
       ...(query.countryCode ? { countryCode: query.countryCode } : {}),
-      ...(query.planKey ? { subscription: { plan: { key: query.planKey } } } : {}),
+      ...(query.onboarding
+        ? { onboardingCompletedAt: query.onboarding === 'COMPLETE' ? { not: null } : null }
+        : {}),
+      ...(subscriptionFilters.length ? { AND: subscriptionFilters } : {}),
       ...(query.query
         ? {
             OR: [
@@ -81,11 +106,18 @@ export class PlatformTenantsService {
           suspendedReason: true,
           createdAt: true,
           createdBy: { select: { email: true, displayName: true } },
-          subscription: { select: { status: true, plan: { select: { key: true, name: true } } } },
-          _count: { select: { members: true } },
+          subscription: {
+            select: {
+              status: true,
+              complimentary: true,
+              plan: { select: { key: true, name: true, status: true } },
+            },
+          },
+          _count: { select: { members: { where: { status: 'ACTIVE' } } } },
         },
       }),
     ]);
+    const lastActivity = await this.lastActivity(rows.map((row) => row.id));
 
     return {
       data: rows.map((row) => ({
@@ -102,8 +134,11 @@ export class PlatformTenantsService {
         ownerName: row.createdBy.displayName,
         planKey: row.subscription?.plan.key ?? null,
         planName: row.subscription?.plan.name ?? null,
+        planStatus: row.subscription?.plan.status ?? null,
+        complimentary: row.subscription?.complimentary ?? false,
         subscriptionStatus: row.subscription?.status ?? null,
         memberCount: row._count.members,
+        lastActivityAt: lastActivity.get(row.id) ?? null,
         createdAt: row.createdAt.toISOString(),
       })),
       pagination: { page, pageSize, totalRows },
@@ -140,6 +175,8 @@ export class PlatformTenantsService {
           orderBy: { createdAt: 'asc' },
           take: 100,
         },
+        // The member list is capped; the count is not, so the impact of a suspension is exact.
+        _count: { select: { members: { where: { status: 'ACTIVE' } } } },
       },
     });
     if (!organization) throw new NotFoundException('Organization not found.');
@@ -161,6 +198,8 @@ export class PlatformTenantsService {
       onboardingCompletedAt: organization.onboardingCompletedAt?.toISOString() ?? null,
       createdAt: organization.createdAt.toISOString(),
       owner: organization.createdBy,
+      memberCount: organization._count.members,
+      lastActivityAt: (await this.lastActivity([organization.id])).get(organization.id) ?? null,
       members: organization.members.map((member) => ({
         userId: member.user.id,
         email: member.user.email,
@@ -173,6 +212,27 @@ export class PlatformTenantsService {
       usage: await this.usage(organizationId),
       entitlements: await this.entitlements.forOrganization(organizationId),
     };
+  }
+
+  /**
+   * The latest tenant audit event per organization: the same heartbeat behind "Recently engaged"
+   * in the metric dictionary. It records state changes, not sign-ins, so a tenant that only reads
+   * its books looks idle. Only the timestamp leaves this method, never the event itself.
+   */
+  private async lastActivity(organizationIds: string[]): Promise<Map<string, string>> {
+    if (organizationIds.length === 0) return new Map();
+    const rows = await this.prisma.auditEvent.groupBy({
+      by: ['organizationId'],
+      where: { organizationId: { in: organizationIds } },
+      _max: { occurredAt: true },
+    });
+    return new Map(
+      rows.flatMap((row) =>
+        row.organizationId && row._max.occurredAt
+          ? [[row.organizationId, row._max.occurredAt.toISOString()] as const]
+          : [],
+      ),
+    );
   }
 
   /**
@@ -315,32 +375,105 @@ export class PlatformTenantsService {
     ipHash: string | null,
   ) {
     return this.prisma.$transaction(async (tx) => {
+      if (input.requireNoSubscription) {
+        // Serialize this first-trial decision with subscription inserts, whose foreign key
+        // takes a key-share lock on the organization row.
+        await tx.$queryRaw`SELECT id FROM organizations WHERE id = ${organizationId}::uuid FOR UPDATE`;
+      }
       const [organization, plan] = await Promise.all([
         tx.organization.findUnique({
           where: { id: organizationId },
-          select: { id: true, subscription: { select: { planId: true, status: true } } },
+          select: {
+            id: true,
+            createdByUserId: true,
+            timeZone: true,
+            subscription: {
+              select: {
+                planId: true,
+                status: true,
+                complimentary: true,
+                billingProvider: true,
+                providerSubscriptionId: true,
+              },
+            },
+          },
         }),
         tx.plan.findUnique({
           where: { id: input.planId },
-          select: { id: true, key: true, trialDays: true, priceMinor: true },
+          select: { id: true, key: true, status: true, priceMinor: true, tier: { select: { status: true } } },
         }),
       ]);
       if (!organization) throw new NotFoundException('Organization not found.');
       if (!plan) throw new NotFoundException('Plan not found.');
+      if (plan.status !== 'ACTIVE' || plan.tier.status !== 'ACTIVE') {
+        // Retired placeholder tiers (free/growth/scale) and unpublished drafts are not offers; an
+        // organization moved onto one would carry entitlement keys nothing enforces.
+        throw new BadRequestException('Only an active catalog plan can be assigned.');
+      }
 
-      const status = input.status ?? 'ACTIVE';
+      const status = input.status ?? 'TRIALING';
+      if (status === 'ACTIVE' && input.complimentary !== true) {
+        // Spec §4.4: the console never mints a paid subscription. Paid access starts only from a
+        // verified Paystack payment; an operator can grant a trial or explicit complimentary access.
+        throw new BadRequestException(
+          'Paid plans are activated only by a verified payment. Start a trial, or grant complimentary access.',
+        );
+      }
+      const current = organization.subscription;
+      if (input.requireNoSubscription && current) {
+        throw new ConflictException('This organization already has a subscription. Refresh before starting a trial.');
+      }
+      if (
+        current?.providerSubscriptionId &&
+        ['ACTIVE', 'PAST_DUE', 'CANCEL_SCHEDULED'].includes(current.status)
+      ) {
+        // Overwriting a provider-managed subscription would leave Paystack billing a plan the
+        // organization no longer has. Plan changes for paying customers go through checkout.
+        throw new ConflictException(
+          'This organization has an active provider-billed subscription. Change its plan through checkout.',
+        );
+      }
+      // A trial assigned here follows the same cardless-trial policy as signup (336 hours), not the
+      // per-row `trialDays` column, which the official catalog does not use for trial length.
       const trialEndsAt = input.trialEndsAt
         ? new Date(`${input.trialEndsAt}T00:00:00.000Z`)
-        : status === 'TRIALING' && plan.trialDays > 0
-          ? new Date(Date.now() + plan.trialDays * 86_400_000)
+        : status === 'TRIALING'
+          ? new Date(Date.now() + OFFICIAL_TRIAL.hours * 3_600_000)
           : null;
 
-      const subscription = await tx.organizationSubscription.upsert({
+      const subscriptionData = {
+        organizationId,
+        planId: plan.id,
+        status,
+        trialEndsAt,
+        complimentary: status === 'ACTIVE',
+      };
+      const subscription = input.requireNoSubscription
+        ? await tx.organizationSubscription.create({
+            data: subscriptionData,
+            select: { planId: true, status: true, trialEndsAt: true, complimentary: true },
+          })
+        : await tx.organizationSubscription.upsert({
         where: { organizationId },
-        update: { planId: plan.id, status, trialEndsAt, cancelledAt: null },
-        create: { organizationId, planId: plan.id, status, trialEndsAt },
-        select: { planId: true, status: true, trialEndsAt: true },
+        update: {
+          planId: plan.id,
+          entitlementVersionId: null,
+          status,
+          trialEndsAt,
+          cancelledAt: null,
+          complimentary: status === 'ACTIVE',
+        },
+        create: subscriptionData,
+        select: { planId: true, status: true, trialEndsAt: true, complimentary: true },
       });
+      if (!current && status === 'TRIALING' && trialEndsAt) {
+        await this.trialLifecycle.scheduleTrialJobs(tx, {
+          organizationId,
+          createdByUserId: organization.createdByUserId,
+          trialEndsAt,
+          timeZone: organization.timeZone,
+        });
+      }
       await writePlatformAudit(tx, actor, {
         eventKey: 'platform.plan_assigned',
         targetType: 'organization',
@@ -348,12 +481,17 @@ export class PlatformTenantsService {
         organizationId,
         reason: input.reason ?? null,
         before: organization.subscription ?? undefined,
-        after: { planId: subscription.planId, status: subscription.status },
+        after: {
+          planId: subscription.planId,
+          status: subscription.status,
+          complimentary: subscription.complimentary,
+        },
         ipHash,
       });
       return {
         planId: subscription.planId,
         status: subscription.status,
+        complimentary: subscription.complimentary,
         trialEndsAt: subscription.trialEndsAt?.toISOString() ?? null,
       };
     });
@@ -364,6 +502,11 @@ export class PlatformTenantsService {
     const pageSize = query.pageSize ?? DEFAULT_PAGE_SIZE;
     const where: Prisma.UserWhereInput = {
       ...(query.status ? { status: query.status } : {}),
+      ...(query.platformAccess === 'ADMIN'
+        ? { platformAdmin: { is: { status: 'ACTIVE' } } }
+        : query.platformAccess === 'NONE'
+          ? { NOT: { platformAdmin: { is: { status: 'ACTIVE' } } } }
+          : {}),
       ...(query.query
         ? {
             OR: [
@@ -387,6 +530,7 @@ export class PlatformTenantsService {
           status: true,
           emailVerifiedAt: true,
           createdAt: true,
+          platformAdmin: { select: { role: true, status: true } },
           _count: { select: { memberships: true } },
         },
       }),
@@ -399,6 +543,7 @@ export class PlatformTenantsService {
         status: row.status,
         emailVerified: row.emailVerifiedAt !== null,
         membershipCount: row._count.memberships,
+        platformRole: row.platformAdmin?.status === 'ACTIVE' ? row.platformAdmin.role : null,
         createdAt: row.createdAt.toISOString(),
       })),
       pagination: { page, pageSize, totalRows },
@@ -406,6 +551,10 @@ export class PlatformTenantsService {
   }
 
   async userDetail(userId: string) {
+    const liveSessions: Prisma.SessionWhereInput = {
+      revokedAt: null,
+      expiresAt: { gt: new Date() },
+    };
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
       select: {
@@ -427,11 +576,13 @@ export class PlatformTenantsService {
           take: 100,
         },
         sessions: {
-          where: { revokedAt: null, expiresAt: { gt: new Date() } },
-          select: { createdAt: true, userAgent: true },
-          orderBy: { createdAt: 'desc' },
+          where: liveSessions,
+          select: { createdAt: true, lastSeenAt: true, userAgent: true },
+          orderBy: { lastSeenAt: 'desc' },
           take: 10,
         },
+        // The session list is capped; the count is not, so a revocation's impact is exact.
+        _count: { select: { sessions: { where: liveSessions } } },
         securityEvents: {
           select: { eventKey: true, severity: true, occurredAt: true },
           orderBy: { occurredAt: 'desc' },
@@ -456,8 +607,10 @@ export class PlatformTenantsService {
         roleName: membership.role.name,
         membershipStatus: membership.status,
       })),
+      activeSessionCount: user._count.sessions,
       activeSessions: user.sessions.map((session) => ({
         createdAt: session.createdAt.toISOString(),
+        lastSeenAt: session.lastSeenAt.toISOString(),
         userAgent: session.userAgent,
       })),
       securityEvents: user.securityEvents.map((event) => ({
@@ -474,12 +627,34 @@ export class PlatformTenantsService {
     input: UpdateUserStatusDto,
     ipHash: string | null,
   ) {
+    // Who may be targeted at all (O4). An account status change is an authentication-level
+    // action: it revokes every live session below. Without these restrictions an OPERATIONS
+    // operator could suspend their own account, a superadmin's, or the last active superadmin's,
+    // which locks everyone out of the console and goes around the guard on `revokeAdmin`.
+    if (userId === actor.userId) {
+      throw new BadRequestException(
+        'You cannot change the status of your own account. Ask another administrator.',
+      );
+    }
     return this.prisma.$transaction(async (tx) => {
       const existing = await tx.user.findUnique({
         where: { id: userId },
-        select: { status: true },
+        select: {
+          status: true,
+          platformAdmin: { select: { role: true, status: true } },
+        },
       });
       if (!existing) throw new NotFoundException('User not found.');
+      const grant = existing.platformAdmin?.status === 'ACTIVE' ? existing.platformAdmin : null;
+      if (grant && actor.role !== 'SUPERADMIN') {
+        throw new ForbiddenException(
+          'This account holds platform administration access. Only a superadmin may change its status.',
+        );
+      }
+      // No separate "last active superadmin" check is needed: the only actor who may reach this
+      // point for a superadmin target is another superadmin, who is signed in and so is an active
+      // superadmin themselves, and self-targeting is already refused above. A standalone count
+      // could never fire, so it is left out rather than added as an untestable guard.
       if (existing.status === input.status) {
         throw new BadRequestException(`This account is already ${input.status}.`);
       }

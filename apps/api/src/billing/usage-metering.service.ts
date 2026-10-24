@@ -83,6 +83,7 @@ export class UsageMeteringService {
       where: { organizationId },
       select: {
         status: true,
+        entitlementVersion: { select: { values: { where: { key: resourceKey }, select: { enabled: true, limitValue: true } } } },
         plan: {
           select: { entitlements: { where: { key: resourceKey }, select: { enabled: true, limitValue: true } } },
         },
@@ -90,7 +91,9 @@ export class UsageMeteringService {
     });
     if (!subscription) return null;
     if (subscription.status === 'TRIALING' && resourceKey === 'ai_insights.max') return 10;
-    const entitlement = subscription.plan.entitlements[0];
+    const entitlement = subscription.entitlementVersion
+      ? subscription.entitlementVersion.values[0]
+      : subscription.plan.entitlements[0];
     if (!entitlement) return null;
     if (!entitlement.enabled) return 0;
     return entitlement.limitValue;

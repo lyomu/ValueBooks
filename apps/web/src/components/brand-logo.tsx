@@ -51,3 +51,25 @@ export function BrandLogo({
     />
   );
 }
+
+/** The collapsed-sidebar brand: the ValueBooks mark doubles as the rail's "expand" control, so a
+ * collapsed sidebar shows one logo and one control rather than a mark plus a separate chevron. */
+export function CollapsedSidebarMark({
+  onExpand,
+  label = 'Expand sidebar',
+}: {
+  onExpand: () => void;
+  label?: string;
+}) {
+  return (
+    <button
+      className="rb-brand-mark"
+      type="button"
+      onClick={onExpand}
+      aria-label={label}
+      style={{ background: 'transparent' }}
+    >
+      <BrandLogo variant="mark" height={28} alt="ValueBooks" priority />
+    </button>
+  );
+}

@@ -2,11 +2,13 @@ import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } 
 
 import type { PublicUser } from '../src/auth/auth.service.js';
 import { EmailQueueService } from '../src/jobs/email-queue.service.js';
+import { SchedulerService } from '../src/automation/scheduler.service.js';
 import { FiscalPeriodsService } from '../src/organizations/fiscal-periods.service.js';
 import { OrganizationAccessService } from '../src/organizations/organization-access.service.js';
 import type { OrganizationContext } from '../src/organizations/organization-context.js';
 import { OrganizationService } from '../src/organizations/organization.service.js';
 import { CustomersService } from '../src/sales/customers.service.js';
+import { InvoicesService } from '../src/sales/invoices.service.js';
 import { RecurringInvoicesService } from '../src/sales/recurring-invoices.service.js';
 import { createTestHarness, type TestHarness } from './support/app.js';
 
@@ -135,6 +137,73 @@ describe('recurring invoice generation against a real database', () => {
       where: { id: results[0]!.invoiceId! },
     });
     expect(invoice.status).toBe('DRAFT');
+  });
+
+  it('resumes a failed occurrence using the same issued invoice', async () => {
+    const template = await recurringInvoices.createTemplate(context, owner, {
+      contactId, cadence: 'MONTHLY', startDate: '2026-01-15',
+      lines: [{ description: 'Subscription', quantity: '1', unitPriceMinor: '2500' }],
+    }, metadata);
+    const scheduler = harness.app.get(SchedulerService);
+    const claim = (await scheduler.findAndClaimDueRecurringJobs(context.id, 'recurring.invoice'))[0];
+    expect(claim).toBeDefined();
+    const boundary = vi.spyOn(scheduler, 'templateDateForOccurrence');
+    boundary.mockImplementationOnce(() => { throw new Error('Simulated failure after issue'); });
+    await expect(recurringInvoices.claimAndRunDueTemplates(context, owner, metadata, claim!.job))
+      .rejects.toThrow('Simulated failure after issue');
+    boundary.mockRestore();
+
+    const invoice = await harness.prisma.invoice.findFirstOrThrow({ where: { organizationId: context.id } });
+    expect(invoice.status).toBe('ISSUED');
+    const result = await recurringInvoices.claimAndRunDueTemplates(context, owner, metadata, claim!.job);
+    expect(result.invoiceId).toBe(invoice.id);
+    expect(await harness.prisma.invoice.count({ where: { organizationId: context.id } })).toBe(1);
+    expect((await recurringInvoices.detail(context.id, template.id)).nextRunDate).toBe('2026-02-15');
+  });
+
+  it('rolls back a draft and claim together when creation fails before commit', async () => {
+    const template = await recurringInvoices.createTemplate(context, owner, {
+      contactId, cadence: 'MONTHLY', startDate: '2026-01-15',
+      lines: [{ description: 'Subscription', quantity: '1', unitPriceMinor: '2500' }],
+    }, metadata);
+    const scheduler = harness.app.get(SchedulerService);
+    const claim = (await scheduler.findAndClaimDueRecurringJobs(context.id, 'recurring.invoice'))[0]!;
+    const invoices = harness.app.get(InvoicesService);
+    const original = invoices.createDraft.bind(invoices);
+    const creation = vi.spyOn(invoices, 'createDraft').mockImplementationOnce(async (...args) => {
+      await original(...args);
+      throw new Error('Simulated failure before claim commit');
+    });
+    await expect(recurringInvoices.claimAndRunDueTemplates(context, owner, metadata, claim.job))
+      .rejects.toThrow('Simulated failure before claim commit');
+    creation.mockRestore();
+    expect(await harness.prisma.invoice.count({ where: { organizationId: context.id } })).toBe(0);
+    expect(await harness.prisma.ledgerIdempotencyKey.count({ where: {
+      organizationId: context.id, operation: 'RECURRING_INVOICE_GENERATE',
+    } })).toBe(0);
+
+    const retried = await recurringInvoices.claimAndRunDueTemplates(context, owner, metadata, claim.job);
+    expect(retried.invoiceId).toEqual(expect.any(String));
+    expect(await harness.prisma.invoice.count({ where: { organizationId: context.id } })).toBe(1);
+    expect((await recurringInvoices.detail(context.id, template.id)).nextRunDate).toBe('2026-02-15');
+  });
+
+  it('refuses an older unlinked claim for manual reconciliation', async () => {
+    const template = await recurringInvoices.createTemplate(context, owner, {
+      contactId, cadence: 'MONTHLY', startDate: '2026-01-15',
+      lines: [{ description: 'Subscription', quantity: '1', unitPriceMinor: '2500' }],
+    }, metadata);
+    const scheduler = harness.app.get(SchedulerService);
+    const claim = (await scheduler.findAndClaimDueRecurringJobs(context.id, 'recurring.invoice'))[0]!;
+    await harness.prisma.ledgerIdempotencyKey.create({ data: {
+      organizationId: context.id, operation: 'RECURRING_INVOICE_GENERATE',
+      key: `${template.id}:2026-01-15`, resourceType: 'RECURRING_INVOICE_TEMPLATE',
+      resourceId: template.id,
+    } });
+    await expect(recurringInvoices.claimAndRunDueTemplates(context, owner, metadata, claim.job))
+      .rejects.toThrow('Reconcile it before retrying');
+    expect(await harness.prisma.invoice.count({ where: { organizationId: context.id } })).toBe(0);
+    expect((await recurringInvoices.detail(context.id, template.id)).nextRunDate).toBe('2026-01-15');
   });
 
   it('sends the generated invoice when autoSend is true', async () => {

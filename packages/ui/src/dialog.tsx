@@ -50,18 +50,26 @@ export function DrawerContent({
   title,
   description,
   side = 'left',
+  size = 'default',
   ...props
 }: ComponentProps<typeof DialogPrimitive.Content> & {
   title: string;
   description?: string;
   children: ReactNode;
   side?: 'left' | 'right';
+  /** `wide` suits record detail (ids, timestamps, field lists); the default suits navigation. */
+  size?: 'default' | 'wide';
 }) {
   return (
     <DialogPrimitive.Portal>
       <DialogPrimitive.Overlay className="rb-dialog__overlay" />
       <DialogPrimitive.Content
-        className={cn('rb-drawer', `rb-drawer--${side}`, className)}
+        className={cn(
+          'rb-drawer',
+          `rb-drawer--${side}`,
+          size === 'wide' && 'rb-drawer--wide',
+          className,
+        )}
         {...props}
       >
         <DialogPrimitive.Title className="rb-visually-hidden">{title}</DialogPrimitive.Title>

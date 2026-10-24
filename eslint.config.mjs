@@ -69,4 +69,11 @@ export default tseslint.config(
     extends: [tseslint.configs.disableTypeChecked],
     rules: { '@typescript-eslint/no-require-imports': 'off' },
   },
+  {
+    // Playwright UAT fetch stub, required before the API module loads, outside any tsconfig
+    // project; type-aware linting has nothing to attach to.
+    files: ['apps/web/e2e/**/*.cjs'],
+    languageOptions: { globals: { ...globals.node } },
+    extends: [tseslint.configs.disableTypeChecked],
+  },
 );

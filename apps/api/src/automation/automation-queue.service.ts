@@ -8,6 +8,7 @@ import {
   type AutomationJob,
   type AutomationJobName,
 } from './automation-job.js';
+import { oldestWaitingAt, recentFailures, type QueueFailure } from '../jobs/queue-diagnostics.js';
 import { producerConnection } from '../jobs/redis-connection.js';
 
 export type AutomationQueueCounts = {
@@ -82,6 +83,16 @@ export class AutomationQueueService implements OnModuleDestroy {
       delayed: counts.delayed ?? 0,
       failed: counts.failed ?? 0,
     };
+  }
+
+  /** When the longest-waiting job was enqueued, for the console's queue health. */
+  async oldestWaitingAt(): Promise<string | null> {
+    return oldestWaitingAt(this.queue);
+  }
+
+  /** Recent retained failures without their payloads. */
+  async recentFailures(limit?: number): Promise<QueueFailure[]> {
+    return recentFailures(this.queue, limit);
   }
 
   async onModuleDestroy(): Promise<void> {

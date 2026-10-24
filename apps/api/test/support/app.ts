@@ -62,6 +62,12 @@ export async function createTestHarness(): Promise<TestHarness> {
     http: () => supertest.agent(app.getHttpServer() as Server),
     reset: async () => {
       await truncateAll(prisma);
+      await prisma.planTier.createMany({ data: [
+        { key: 'starter', name: 'Starter', sortOrder: 10, status: 'ACTIVE' },
+        { key: 'growth', name: 'Growth', sortOrder: 20, status: 'ACTIVE' },
+        { key: 'professional', name: 'Professional', sortOrder: 30, status: 'ACTIVE', isMostPopular: true },
+        { key: 'advanced', name: 'Advanced', sortOrder: 40, status: 'ACTIVE' },
+      ] });
       await seedPhase13FeatureFlags(prisma);
     },
     close: async () => {

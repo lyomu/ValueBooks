@@ -7,6 +7,9 @@ import { BillingModule } from '../billing/billing.module.js';
 import { EntitlementsModule } from './entitlements.module.js';
 import { FeatureFlagGuard } from './feature-flag.guard.js';
 import { PlatformAccessModule } from './platform-access.module.js';
+import { PlanPricingService } from './plan-pricing.service.js';
+import { CatalogHealthService } from './catalog-health.service.js';
+import { PlanEntitlementVersionsService } from './plan-entitlement-versions.service.js';
 import { PlatformCatalogService } from './platform-catalog.service.js';
 import { PlatformOperationsService } from './platform-operations.service.js';
 import { PlatformTenantsService } from './platform-tenants.service.js';
@@ -33,10 +36,17 @@ import { PlatformBillingService } from './platform-billing.service.js';
   providers: [
     PlatformTenantsService,
     PlatformCatalogService,
+    CatalogHealthService,
+    PlanEntitlementVersionsService,
+    PlanPricingService,
     PlatformOperationsService,
     PlatformBillingService,
     FeatureFlagGuard,
   ],
-  exports: [EntitlementsModule, FeatureFlagGuard],
+  // `PlatformTenantsService` is exported for the UAT fixture seeder (task 6.3), which produces a
+  // fixture's plan state through the console's own audited assignment rather than writing
+  // subscription rows by hand. Only `AppModule` imports this module, and no route authorization
+  // depends on the export: every platform route keeps its guard and role floor at the controller.
+  exports: [EntitlementsModule, FeatureFlagGuard, PlatformTenantsService],
 })
 export class PlatformModule {}

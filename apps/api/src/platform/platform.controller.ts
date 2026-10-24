@@ -9,6 +9,7 @@ import {
   ParseUUIDPipe,
   Patch,
   Post,
+  Put,
   Query,
   Req,
   UseGuards,
@@ -20,6 +21,8 @@ import { SessionGuard } from '../auth/session.guard.js';
 import { EntitlementsService } from './entitlements.service.js';
 import { PlatformAccessService } from './platform-access.service.js';
 import { writePlatformAudit } from './platform-audit.js';
+import { PlanPricingService } from './plan-pricing.service.js';
+import { PlanEntitlementVersionsService } from './plan-entitlement-versions.service.js';
 import { PlatformCatalogService } from './platform-catalog.service.js';
 import { HostedAiEgressApprovalService } from './hosted-ai-egress-approval.service.js';
 import { RequirePlatformRole, type PlatformRequest } from './platform-context.js';
@@ -31,17 +34,26 @@ import {
   CreateFeatureFlagDto,
   CreateHostedAiEgressApprovalDto,
   CreatePlanDto,
+  CreateTierDto,
+  EntitlementDraftValueDto,
   FailedJobSearchDto,
+  FlagAudienceDto,
   FlagPreviewDto,
   GrantPlatformAdminDto,
   OrganizationSearchDto,
   PlatformAuditSearchDto,
   PlatformAnalyticsQueryDto,
+  QueueNameDto,
   ReactivateOrganizationDto,
+  RemoveFlagRuleDto,
+  RetryJobDto,
   RevokeHostedAiEgressApprovalDto,
   SecurityEventSearchDto,
   SuspendOrganizationDto,
   UpdateFeatureFlagDto,
+  PlanPriceReasonDto,
+  ProposePlanPriceDto,
+  SetProviderPlanCodeDto,
   UpdatePlanDto,
   UpdateUserStatusDto,
   UpsertEntitlementDto,
@@ -69,6 +81,8 @@ export class PlatformController {
     private readonly access: PlatformAccessService,
     private readonly tenants: PlatformTenantsService,
     private readonly catalog: PlatformCatalogService,
+    private readonly entitlementVersions: PlanEntitlementVersionsService,
+    private readonly pricing: PlanPricingService,
     private readonly hostedEgressApprovals: HostedAiEgressApprovalService,
     private readonly operations: PlatformOperationsService,
     private readonly entitlements: EntitlementsService,
@@ -258,6 +272,33 @@ export class PlatformController {
 
   // --- Plans and entitlements ---------------------------------------------------------------
 
+  @Get('plan-tiers')
+  @RequirePlatformRole('SUPPORT')
+  async planTiers() { return { data: await this.catalog.listTiers() }; }
+
+  @Get('plans/health')
+  @RequirePlatformRole('SUPPORT')
+  async catalogHealth() { return { data: await this.catalog.catalogHealth() }; }
+
+  @Post('plan-tiers')
+  @HttpCode(201)
+  @RequirePlatformRole('SUPERADMIN')
+  async createTier(@Body() input: CreateTierDto, @Req() request: PlatformRequest) {
+    return { data: await this.catalog.createTier(request.platform, input, this.ipHash(request)) };
+  }
+
+  @Post('plan-tiers/:key/activate')
+  @RequirePlatformRole('SUPERADMIN')
+  async activateTier(@Param('key') key: string, @Body() input: PlanPriceReasonDto, @Req() request: PlatformRequest) {
+    return { data: await this.catalog.activateTier(request.platform, key, input.reason, this.ipHash(request)) };
+  }
+
+  @Post('plan-tiers/:key/retire')
+  @RequirePlatformRole('SUPERADMIN')
+  async retireTier(@Param('key') key: string, @Body() input: PlanPriceReasonDto, @Req() request: PlatformRequest) {
+    return { data: await this.catalog.retireTier(request.platform, key, input.reason, this.ipHash(request)) };
+  }
+
   @Get('plans')
   @RequirePlatformRole('SUPPORT')
   async plans() {
@@ -283,6 +324,115 @@ export class PlatformController {
     };
   }
 
+  @Put('plans/:planId/provider-code')
+  @RequirePlatformRole('SUPERADMIN')
+  async setProviderPlanCode(
+    @Param('planId', new ParseUUIDPipe()) planId: string,
+    @Body() input: SetProviderPlanCodeDto,
+    @Req() request: PlatformRequest,
+  ) {
+    return {
+      data: await this.catalog.setProviderPlanCode(
+        request.platform,
+        planId,
+        input,
+        this.ipHash(request),
+      ),
+    };
+  }
+
+  // --- Plan pricing (phase 7, O5) -------------------------------------------------------------
+  //
+  // Price changes are proposed, previewed and published rather than edited in place: `updatePlan`
+  // above still refuses to reprice a plan that has subscribers. Owner decision, 23 Oct 2026: a
+  // single superadmin may publish, and existing subscribers are repriced at their next renewal.
+
+  @Get('plans/:planId/pricing')
+  @RequirePlatformRole('SUPPORT')
+  async planPricing(@Param('planId', new ParseUUIDPipe()) planId: string) {
+    return { data: await this.pricing.planPricing(planId) };
+  }
+
+  @Post('plans/:planId/price-changes')
+  @HttpCode(201)
+  @RequirePlatformRole('SUPERADMIN')
+  async proposePlanPrice(
+    @Param('planId', new ParseUUIDPipe()) planId: string,
+    @Body() input: ProposePlanPriceDto,
+    @Req() request: PlatformRequest,
+  ) {
+    return {
+      data: await this.pricing.proposePriceChange(
+        request.platform,
+        planId,
+        input,
+        this.ipHash(request),
+      ),
+    };
+  }
+
+  @Get('plans/:planId/price-changes/:changeId/preview')
+  @RequirePlatformRole('SUPERADMIN')
+  async previewPlanPrice(
+    @Param('planId', new ParseUUIDPipe()) planId: string,
+    @Param('changeId', new ParseUUIDPipe()) changeId: string,
+  ) {
+    return { data: await this.pricing.previewPriceChange(planId, changeId) };
+  }
+
+  @Post('plans/:planId/price-changes/:changeId/notice')
+  @RequirePlatformRole('SUPERADMIN')
+  async sendPlanPriceNotice(
+    @Param('planId', new ParseUUIDPipe()) planId: string,
+    @Param('changeId', new ParseUUIDPipe()) changeId: string,
+    @Req() request: PlatformRequest,
+  ) {
+    return {
+      data: await this.pricing.sendPriceIncreaseNotice(
+        request.platform,
+        planId,
+        changeId,
+        this.ipHash(request),
+      ),
+    };
+  }
+
+  @Post('plans/:planId/price-changes/:changeId/publish')
+  @RequirePlatformRole('SUPERADMIN')
+  async publishPlanPrice(
+    @Param('planId', new ParseUUIDPipe()) planId: string,
+    @Param('changeId', new ParseUUIDPipe()) changeId: string,
+    @Req() request: PlatformRequest,
+  ) {
+    return {
+      data: await this.pricing.publishPriceChange(
+        request.platform,
+        planId,
+        changeId,
+        this.ipHash(request),
+      ),
+    };
+  }
+
+  @Post('plans/:planId/price-changes/:changeId/discard')
+  @RequirePlatformRole('SUPERADMIN')
+  async discardPlanPrice(
+    @Param('planId', new ParseUUIDPipe()) planId: string,
+    @Param('changeId', new ParseUUIDPipe()) changeId: string,
+    @Body() input: PlanPriceReasonDto,
+    @Req() request: PlatformRequest,
+  ) {
+    return {
+      data: await this.pricing.discardPriceChange(
+        request.platform,
+        planId,
+        changeId,
+        input.reason,
+        this.ipHash(request),
+      ),
+    };
+  }
+
   @Post('plans/:planId/entitlements')
   @HttpCode(200)
   @RequirePlatformRole('SUPERADMIN')
@@ -299,6 +449,43 @@ export class PlatformController {
         this.ipHash(request),
       ),
     };
+  }
+
+  @Get('plans/:planId/entitlement-versions')
+  @RequirePlatformRole('SUPPORT')
+  async planEntitlementVersions(@Param('planId', new ParseUUIDPipe()) planId: string) {
+    return { data: await this.entitlementVersions.list(planId) };
+  }
+
+  @Post('plans/:planId/entitlement-versions')
+  @HttpCode(201)
+  @RequirePlatformRole('SUPERADMIN')
+  async createEntitlementDraft(@Param('planId', new ParseUUIDPipe()) planId: string,
+    @Body() input: PlanPriceReasonDto, @Req() request: PlatformRequest) {
+    return { data: await this.entitlementVersions.createDraft(request.platform, planId, input.reason, this.ipHash(request)) };
+  }
+
+  @Put('plans/:planId/entitlement-versions/:versionId/values')
+  @RequirePlatformRole('SUPERADMIN')
+  async setEntitlementDraftValue(@Param('planId', new ParseUUIDPipe()) planId: string,
+    @Param('versionId', new ParseUUIDPipe()) versionId: string, @Body() input: EntitlementDraftValueDto,
+    @Req() request: PlatformRequest) {
+    return { data: await this.entitlementVersions.setDraftValue(request.platform, planId, versionId, input, this.ipHash(request)) };
+  }
+
+  @Get('plans/:planId/entitlement-versions/:versionId/preview')
+  @RequirePlatformRole('SUPERADMIN')
+  async previewEntitlementDraft(@Param('planId', new ParseUUIDPipe()) planId: string,
+    @Param('versionId', new ParseUUIDPipe()) versionId: string) {
+    return { data: await this.entitlementVersions.preview(planId, versionId) };
+  }
+
+  @Post('plans/:planId/entitlement-versions/:versionId/publish')
+  @RequirePlatformRole('SUPERADMIN')
+  async publishEntitlementDraft(@Param('planId', new ParseUUIDPipe()) planId: string,
+    @Param('versionId', new ParseUUIDPipe()) versionId: string, @Body() input: PlanPriceReasonDto,
+    @Req() request: PlatformRequest) {
+    return { data: await this.entitlementVersions.publish(request.platform, planId, versionId, input.reason, this.ipHash(request)) };
   }
 
   @Delete('plans/:planId/entitlements/:key')
@@ -318,6 +505,19 @@ export class PlatformController {
   @RequirePlatformRole('SUPPORT')
   async flags() {
     return { data: await this.catalog.listFlags() };
+  }
+
+  /** Declared before `feature-flags/:flagId` so the static segment is not parsed as an id. */
+  @Get('feature-flags/audience')
+  @RequirePlatformRole('SUPPORT')
+  async flagAudience(@Query() query: FlagAudienceDto) {
+    return { data: await this.catalog.flagAudience(query) };
+  }
+
+  @Get('feature-flags/:flagId')
+  @RequirePlatformRole('SUPPORT')
+  async flag(@Param('flagId', new ParseUUIDPipe()) flagId: string) {
+    return { data: await this.catalog.getFlag(flagId) };
   }
 
   @Post('feature-flags')
@@ -362,9 +562,10 @@ export class PlatformController {
   @RequirePlatformRole('SUPERADMIN')
   async removeFlagRule(
     @Param('ruleId', new ParseUUIDPipe()) ruleId: string,
+    @Body() input: RemoveFlagRuleDto,
     @Req() request: PlatformRequest,
   ) {
-    await this.catalog.removeFlagRule(request.platform, ruleId, this.ipHash(request));
+    await this.catalog.removeFlagRule(request.platform, ruleId, input.reason, this.ipHash(request));
   }
 
   /** Explains what a given audience would see, before any tenant matches it. */
@@ -443,22 +644,34 @@ export class PlatformController {
     return this.operations.failedJobs(query);
   }
 
+  @Get('jobs/queues/:queue/failed')
+  @RequirePlatformRole('SUPPORT')
+  async queueFailures(@Param() params: QueueNameDto) {
+    return { data: await this.operations.queueFailures(params.queue) };
+  }
+
   @Post('jobs/:executionId/retry')
   @HttpCode(200)
   @RequirePlatformRole('OPERATIONS')
   async retryJob(
     @Param('executionId', new ParseUUIDPipe()) executionId: string,
+    @Body() input: RetryJobDto,
     @Req() request: PlatformRequest,
   ) {
     return {
-      data: await this.operations.retryJob(request.platform, executionId, this.ipHash(request)),
+      data: await this.operations.retryJob(
+        request.platform,
+        executionId,
+        input.reason,
+        this.ipHash(request),
+      ),
     };
   }
 
   @Get('security-events')
   @RequirePlatformRole('SUPPORT')
-  async securityEvents(@Query() query: SecurityEventSearchDto) {
-    return this.operations.securityEvents(query);
+  async securityEvents(@Query() query: SecurityEventSearchDto, @Req() request: PlatformRequest) {
+    return this.operations.securityEvents(request.platform, query);
   }
 
   @Get('audit')

@@ -1,5 +1,7 @@
 import { Transform, Type } from 'class-transformer';
 import {
+  ArrayMaxSize,
+  IsArray,
   IsBoolean,
   IsEmail,
   IsIn,
@@ -12,6 +14,7 @@ import {
   Max,
   MaxLength,
   Min,
+  MinLength,
 } from 'class-validator';
 
 const trim = ({ value }: { value: unknown }): unknown =>
@@ -66,6 +69,15 @@ export class GrantPlatformAdminDto {
   note?: string;
 }
 
+const SUBSCRIPTION_STATUSES = [
+  'TRIALING',
+  'TRIAL_EXPIRED',
+  'ACTIVE',
+  'PAST_DUE',
+  'CANCEL_SCHEDULED',
+  'CANCELLED',
+] as const;
+
 export class OrganizationSearchDto extends PlatformPageDto {
   @IsOptional()
   @IsString()
@@ -88,6 +100,16 @@ export class OrganizationSearchDto extends PlatformPageDto {
   @MaxLength(40)
   @Transform(lower)
   planKey?: string;
+
+  /** A subscription state, or NONE for organizations that have never held one. */
+  @IsOptional()
+  @IsIn([...SUBSCRIPTION_STATUSES, 'NONE'])
+  subscriptionStatus?: (typeof SUBSCRIPTION_STATUSES)[number] | 'NONE';
+
+  /** Setup finished (`onboardingCompletedAt` set) or not, independent of tenant status. */
+  @IsOptional()
+  @IsIn(['COMPLETE', 'INCOMPLETE'])
+  onboarding?: 'COMPLETE' | 'INCOMPLETE';
 
   @IsOptional()
   @Matches(ISO_DATE)
@@ -128,6 +150,11 @@ export class UserSearchDto extends PlatformPageDto {
   @IsOptional()
   @IsIn(['PENDING_VERIFICATION', 'ACTIVE', 'SUSPENDED', 'CLOSED'])
   status?: 'PENDING_VERIFICATION' | 'ACTIVE' | 'SUSPENDED' | 'CLOSED';
+
+  /** ADMIN: holds an active platform grant. NONE: does not. Tenant roles never count. */
+  @IsOptional()
+  @IsIn(['ADMIN', 'NONE'])
+  platformAccess?: 'ADMIN' | 'NONE';
 }
 
 export class UpdateUserStatusDto {
@@ -215,6 +242,84 @@ export class CreatePlanDto {
   @Min(0)
   @Max(1000)
   sortOrder?: number;
+}
+
+export class CreateTierDto {
+  @IsString() @Matches(KEY) @MaxLength(40) @Transform(lower)
+  key!: string;
+  @IsString() @Length(1, 120) @Transform(trim)
+  name!: string;
+  @IsOptional() @IsString() @MaxLength(500) @Transform(trim)
+  description?: string;
+  @IsOptional() @Type(() => Number) @IsInt() @Min(0) @Max(1000)
+  sortOrder?: number;
+  @IsOptional() @IsBoolean()
+  isMostPopular?: boolean;
+  @IsOptional() @IsString() @MaxLength(300) @Transform(trim)
+  tagline?: string;
+  @IsOptional() @IsArray() @ArrayMaxSize(6) @IsString({ each: true }) @MaxLength(160, { each: true })
+  highlights?: string[];
+  @IsString() @Length(10, 500) @Transform(trim)
+  reason!: string;
+}
+
+export class EntitlementDraftValueDto {
+  @IsString() @MaxLength(60) @Transform(trim)
+  key!: string;
+  @IsBoolean()
+  enabled!: boolean;
+  @IsOptional() @Type(() => Number) @IsInt() @Min(0)
+  limitValue?: number | null;
+  @IsString() @Length(10, 500) @Transform(trim)
+  reason!: string;
+}
+
+/**
+ * The only way to change a plan's Paystack code: one official plan at a time, with a reason, after
+ * Paystack confirms the code's amount, currency and interval match the catalog row.
+ */
+export class SetProviderPlanCodeDto {
+  @IsString()
+  @Matches(/^PLN_[A-Za-z0-9]{4,60}$/, { message: 'providerPlanCode must look like PLN_xxxx' })
+  @Transform(trim)
+  providerPlanCode!: string;
+
+  @IsString()
+  @Length(10, 500)
+  @Transform(trim)
+  reason!: string;
+}
+
+/** A required reason, for an action whose only input is why it was taken. */
+export class PlanPriceReasonDto {
+  @IsString()
+  @Length(10, 500)
+  @Transform(trim)
+  reason!: string;
+}
+
+/**
+ * A proposed price for a live plan (phase 7, O5). The price is in minor units as a string, the same
+ * way every other money value crosses this boundary, so a large figure never passes through a
+ * JavaScript number.
+ */
+export class ProposePlanPriceDto {
+  @IsString()
+  @Matches(/^[0-9]{1,15}$/, { message: 'priceMinor must be a whole number of minor units' })
+  @Transform(trim)
+  priceMinor!: string;
+
+  /** Required only for a large increase; the service states the threshold when it refuses. */
+  @IsOptional()
+  @IsString()
+  @Matches(/^[0-9]{1,15}$/, { message: 'confirmPriceMinor must repeat the new price exactly' })
+  @Transform(trim)
+  confirmPriceMinor?: string;
+
+  @IsString()
+  @Length(10, 500)
+  @Transform(trim)
+  reason!: string;
 }
 
 export class UpdatePlanDto {
@@ -321,19 +426,31 @@ export class AssignPlanDto {
   @IsUUID()
   planId!: string;
 
+  /** Used by the first-trial action so a stale console view cannot replace a new subscription. */
   @IsOptional()
-  @IsIn(['TRIALING', 'ACTIVE', 'PAST_DUE', 'CANCELLED'])
-  status?: 'TRIALING' | 'ACTIVE' | 'PAST_DUE' | 'CANCELLED';
+  @IsBoolean()
+  requireNoSubscription?: boolean;
+
+  /** TRIALING starts a cardless trial; ACTIVE is accepted only as a complimentary grant. Paid,
+   * past-due and cancelled states come from verified provider events, never from the console. */
+  @IsOptional()
+  @IsIn(['TRIALING', 'ACTIVE'])
+  status?: 'TRIALING' | 'ACTIVE';
+
+  /** Required for ACTIVE: marks unpaid access so it never counts as revenue. */
+  @IsOptional()
+  @IsBoolean()
+  complimentary?: boolean;
 
   @IsOptional()
   @Matches(ISO_DATE)
   trialEndsAt?: string;
 
-  @IsOptional()
   @IsString()
+  @MinLength(10)
   @MaxLength(500)
   @Transform(trim)
-  reason?: string;
+  reason!: string;
 }
 
 export class CreateFeatureFlagDto {
@@ -357,8 +474,16 @@ export class CreateFeatureFlagDto {
   @IsOptional()
   @IsBoolean()
   defaultEnabled?: boolean;
+
+  /** Optional on create: the description says what the flag is for. Every later change needs one. */
+  @IsOptional()
+  @IsString()
+  @Length(10, 500)
+  @Transform(trim)
+  reason?: string;
 }
 
+/** A flag change reaches tenants immediately, so each one records why it was made. */
 export class UpdateFeatureFlagDto {
   @IsOptional()
   @IsString()
@@ -379,6 +504,11 @@ export class UpdateFeatureFlagDto {
   @IsOptional()
   @IsIn(['ACTIVE', 'ARCHIVED'])
   status?: 'ACTIVE' | 'ARCHIVED';
+
+  @IsString()
+  @Length(10, 500)
+  @Transform(trim)
+  reason!: string;
 }
 
 export class CreateHostedAiEgressApprovalDto {
@@ -460,8 +590,44 @@ export class UpsertFlagRuleDto {
   @MaxLength(500)
   @Transform(trim)
   note?: string;
+
+  @IsString()
+  @Length(10, 500)
+  @Transform(trim)
+  reason!: string;
 }
 
+export class RemoveFlagRuleDto {
+  @IsString()
+  @Length(10, 500)
+  @Transform(trim)
+  reason!: string;
+}
+
+/** The audience one targeting rule would reach, for the impact line in the rule dialog. */
+export class FlagAudienceDto {
+  @IsIn(['GLOBAL', 'COUNTRY', 'PLAN', 'ORGANIZATION'])
+  scope!: 'GLOBAL' | 'COUNTRY' | 'PLAN' | 'ORGANIZATION';
+
+  @IsOptional()
+  @IsString()
+  @Length(2, 2)
+  @Transform(upper)
+  countryCode?: string;
+
+  @IsOptional()
+  @IsUUID()
+  planId?: string;
+
+  @IsOptional()
+  @IsUUID()
+  organizationId?: string;
+}
+
+/**
+ * Either a real organization (its country and plan then come from its record, exactly as at
+ * runtime) or a hypothetical country and plan. Mixing the two is refused by the service.
+ */
 export class FlagPreviewDto {
   @IsOptional()
   @IsString()
@@ -485,9 +651,10 @@ export class SecurityEventSearchDto extends PlatformPageDto {
   @Transform(trim)
   eventKey?: string;
 
+  /** Emitters write `WARNING`; `WARN` is still accepted so older links keep validating. */
   @IsOptional()
-  @IsIn(['INFO', 'WARN', 'ERROR', 'CRITICAL'])
-  severity?: 'INFO' | 'WARN' | 'ERROR' | 'CRITICAL';
+  @IsIn(['INFO', 'WARNING', 'WARN', 'ERROR', 'CRITICAL'])
+  severity?: 'INFO' | 'WARNING' | 'WARN' | 'ERROR' | 'CRITICAL';
 
   @IsOptional()
   @IsUUID()
@@ -496,6 +663,13 @@ export class SecurityEventSearchDto extends PlatformPageDto {
   @IsOptional()
   @IsUUID()
   userId?: string;
+
+  /** Part of the affected account's email address, case-insensitive. */
+  @IsOptional()
+  @IsString()
+  @MaxLength(254)
+  @Transform(trim)
+  actor?: string;
 
   @IsOptional()
   @Matches(ISO_DATE)
@@ -516,10 +690,43 @@ export class PlatformAuditSearchDto extends PlatformPageDto {
   @IsOptional()
   @IsUUID()
   organizationId?: string;
+
+  /** Part of the administrator's email address, case-insensitive. */
+  @IsOptional()
+  @IsString()
+  @MaxLength(254)
+  @Transform(trim)
+  actor?: string;
+
+  @IsOptional()
+  @Matches(ISO_DATE)
+  from?: string;
+
+  @IsOptional()
+  @Matches(ISO_DATE)
+  to?: string;
 }
 
 export class FailedJobSearchDto extends PlatformPageDto {
   @IsOptional()
   @IsUUID()
   organizationId?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(60)
+  handler?: string;
+}
+
+/** Retrying re-runs tenant work (a reminder email, a recurring posting), so it records why. */
+export class RetryJobDto {
+  @IsString()
+  @Length(10, 500)
+  @Transform(trim)
+  reason!: string;
+}
+
+export class QueueNameDto {
+  @IsIn(['automation', 'email'])
+  queue!: 'automation' | 'email';
 }

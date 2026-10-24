@@ -12,6 +12,38 @@ import type {
   WebhookInput,
 } from './billing-provider.js';
 
+/** The fields of a Paystack plan that must agree with the ValueBooks catalog row it backs. */
+export type PaystackRemotePlan = {
+  plan_code: string;
+  amount: number;
+  currency: string;
+  interval: string;
+};
+
+/**
+ * Every way a Paystack plan disagrees with a catalog row, or an empty list when it matches.
+ * Checkout and the console's plan-code change both use this, so the two can never disagree about
+ * what "matches" means.
+ */
+export function paystackPlanMismatches(
+  remote: PaystackRemotePlan,
+  plan: { providerPriceId: string; priceMinor: bigint; currency: string; billingInterval: string },
+): string[] {
+  const interval = plan.billingInterval === 'MONTHLY' ? 'monthly' : 'annually';
+  return [
+    ...(remote.plan_code !== plan.providerPriceId ? ['plan code'] : []),
+    ...(!Number.isSafeInteger(remote.amount) || BigInt(remote.amount) !== plan.priceMinor
+      ? [`amount (Paystack ${remote.amount}, catalog ${plan.priceMinor.toString()})`]
+      : []),
+    ...(remote.currency !== plan.currency
+      ? [`currency (Paystack ${remote.currency}, catalog ${plan.currency})`]
+      : []),
+    ...(remote.interval !== interval
+      ? [`interval (Paystack ${remote.interval}, catalog ${interval})`]
+      : []),
+  ];
+}
+
 /**
  * Paystack REST adapter (api.paystack.co), the sole active subscription provider.
  * ValueBooks is the merchant of record for these; Paystack's customer-facing documents are its own
@@ -63,13 +95,8 @@ export class PaystackBillingAdapter implements BillingProvider {
   async createCheckout(input: CheckoutInput): Promise<CheckoutResult> {
     // Paystack ignores `amount` when a plan code is present. Verify the remote plan
     // immediately before initialization so a stale dashboard price cannot charge differently.
-    const remote = await this.request<{ data: { plan_code: string; amount: number; currency: string; interval: string } }>(
-      `/plan/${encodeURIComponent(input.plan.providerPriceId)}`, { method: 'GET' },
-    );
-    if (remote.data.plan_code !== input.plan.providerPriceId ||
-      !Number.isSafeInteger(remote.data.amount) || BigInt(remote.data.amount) !== input.plan.priceMinor ||
-      remote.data.currency !== input.plan.currency ||
-      remote.data.interval !== (input.plan.billingInterval === 'MONTHLY' ? 'monthly' : 'annually')) {
+    const remote = await this.getPlan(input.plan.providerPriceId);
+    if (paystackPlanMismatches(remote, input.plan).length > 0) {
       throw new BadGatewayException('Paystack plan price, currency or interval differs from the ValueBooks catalog. Checkout was stopped.');
     }
     const result = await this.request<{
@@ -86,6 +113,82 @@ export class PaystackBillingAdapter implements BillingProvider {
       }),
     });
     return { checkoutUrl: result.data.authorization_url, providerCheckoutId: result.data.reference };
+  }
+
+  /** Reads one plan from Paystack. Throws when credentials are missing or the code is unknown. */
+  async getPlan(planCode: string): Promise<PaystackRemotePlan> {
+    const remote = await this.request<{ data: PaystackRemotePlan }>(
+      `/plan/${encodeURIComponent(planCode)}`,
+      { method: 'GET' },
+    );
+    return remote.data;
+  }
+
+  /**
+   * Creates a plan at Paystack and returns its code, for a tier that does not exist there yet.
+   */
+  async createPlan(input: {
+    name: string;
+    amountMinor: bigint;
+    currency: string;
+    interval: 'monthly' | 'annually';
+    description?: string | null;
+  }): Promise<PaystackRemotePlan> {
+    const result = await this.request<{ data: PaystackRemotePlan }>('/plan', {
+      method: 'POST',
+      body: JSON.stringify({
+        name: input.name,
+        amount: Number(input.amountMinor),
+        currency: input.currency,
+        interval: input.interval,
+        ...(input.description ? { description: input.description } : {}),
+      }),
+    });
+    return result.data;
+  }
+
+  /**
+   * Changes a plan's amount at Paystack.
+   *
+   * `update_existing_subscriptions` is sent explicitly on every call and is never left to
+   * Paystack's default, which is `true`: whether current subscribers are repriced is a commercial
+   * decision, and it must be stated at the call site rather than inherited. ValueBooks sends `true`
+   * (owner decision, 23 Oct 2026: existing subscribers are repriced at their next renewal), and
+   * Paystack reports how many subscriptions it touched, which the console records and shows.
+   *
+   * `interval` is deliberately not updatable here. A monthly and a yearly plan are separate catalog
+   * rows with separate Paystack codes; moving a plan between intervals would silently change what
+   * its subscribers are billed for, not just how much.
+   */
+  async updatePlanAmount(input: {
+    planCode: string;
+    amountMinor: bigint;
+    currency: string;
+    updateExistingSubscriptions: boolean;
+  }): Promise<{ affectedSubscriptions: number | null; message: string }> {
+    if (typeof input.updateExistingSubscriptions !== 'boolean') {
+      throw new Error('An explicit subscription repricing choice is required before updating a Paystack plan.');
+    }
+    const result = await this.request<{ message?: string }>(
+      `/plan/${encodeURIComponent(input.planCode)}`,
+      {
+        method: 'PUT',
+        body: JSON.stringify({
+          amount: Number(input.amountMinor),
+          currency: input.currency,
+          update_existing_subscriptions: input.updateExistingSubscriptions,
+        }),
+      },
+    );
+    const message = result.message ?? '';
+    // Paystack answers "Plan updated. 1 subscription(s) affected." The count is the only report of
+    // how many live subscriptions it repriced, so it is parsed rather than assumed, and left null
+    // when the wording changes instead of being reported as zero.
+    const affected = /(\d+)\s+subscription/i.exec(message);
+    return {
+      affectedSubscriptions: affected?.[1] ? Number(affected[1]) : null,
+      message,
+    };
   }
 
   async getSubscription(providerSubscriptionId: string): Promise<ProviderSubscription> {

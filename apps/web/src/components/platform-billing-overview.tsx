@@ -1,10 +1,20 @@
 'use client';
 
-import { AlertCircle, Clock3, CreditCard, RefreshCw } from 'lucide-react';
+import { Button, CardSkeleton, ErrorState, Select } from '@valuebooks/ui';
+import {
+  AlertCircle,
+  BadgeCheck,
+  Clock3,
+  CreditCard,
+  Hourglass,
+  Percent,
+  RefreshCw,
+} from 'lucide-react';
 import Link from 'next/link';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 
-import { apiRequest } from '../lib/api';
+import { ApiError, apiRequest } from '../lib/api';
+import { DashboardKpi } from './dashboard-panels';
 import { PlatformPage } from './platform-shell';
 
 type Overview = {
@@ -28,6 +38,39 @@ type Revenue = {
     successfulPayments: number;
   }>;
 };
+type RevenueState = 'loading' | 'ready' | 'forbidden';
+const LOAD_ERROR = 'This is a loading failure, not a billing incident. Nothing was changed.';
+
+export function resolveBillingReads(
+  overviewResult: PromiseSettledResult<{ data: Overview }>,
+  revenueResult: PromiseSettledResult<{ data: Revenue }>,
+) {
+  if (overviewResult.status === 'rejected') {
+    return { overview: null, revenue: null, revenueState: 'loading' as const, error: LOAD_ERROR };
+  }
+  if (revenueResult.status === 'fulfilled') {
+    return {
+      overview: overviewResult.value.data,
+      revenue: revenueResult.value.data,
+      revenueState: 'ready' as const,
+      error: '',
+    };
+  }
+  if (revenueResult.reason instanceof ApiError && revenueResult.reason.status === 403) {
+    return {
+      overview: overviewResult.value.data,
+      revenue: null,
+      revenueState: 'forbidden' as const,
+      error: '',
+    };
+  }
+  return {
+    overview: overviewResult.value.data,
+    revenue: null,
+    revenueState: 'loading' as const,
+    error: LOAD_ERROR,
+  };
+}
 
 function formatMoney(minor: bigint, currency: string) {
   const digits =
@@ -39,6 +82,12 @@ function formatMoney(minor: bigint, currency: string) {
   const fraction = digits ? `.${String(absolute % scale).padStart(digits, '0')}` : '';
   return `${currency} ${minor < 0n ? '-' : ''}${whole}${fraction}`;
 }
+
+/** `2026-10` → "Oct 2026", in UTC like the figures themselves. */
+const monthLabel = (month: string) =>
+  new Intl.DateTimeFormat(undefined, { month: 'short', year: 'numeric', timeZone: 'UTC' }).format(
+    new Date(`${month}-01T00:00:00Z`),
+  );
 
 function RevenueCard({
   title,
@@ -74,20 +123,27 @@ function RevenueCard({
 export function PlatformBillingOverview() {
   const [overview, setOverview] = useState<Overview | null>(null);
   const [revenue, setRevenue] = useState<Revenue | null>(null);
+  const [revenueState, setRevenueState] = useState<RevenueState>('loading');
   const [period, setPeriod] = useState('all');
   const [error, setError] = useState('');
 
-  useEffect(() => {
-    void Promise.all([
+  const load = useCallback(() => {
+    setError('');
+    setOverview(null);
+    setRevenue(null);
+    setRevenueState('loading');
+    void Promise.allSettled([
       apiRequest<{ data: Overview }>('/platform/billing/overview'),
       apiRequest<{ data: Revenue }>('/platform/billing/revenue'),
-    ])
-      .then(([overviewResult, revenueResult]) => {
-        setOverview(overviewResult.data);
-        setRevenue(revenueResult.data);
-      })
-      .catch(() => setError('Billing overview could not be loaded.'));
+    ]).then(([overviewResult, revenueResult]) => {
+      const result = resolveBillingReads(overviewResult, revenueResult);
+      setOverview(result.overview);
+      setRevenue(result.revenue);
+      setRevenueState(result.revenueState);
+      setError(result.error);
+    });
   }, []);
+  useEffect(() => load(), [load]);
 
   const months = revenue?.months ?? [];
   const collections = new Map<string, { gross: bigint; count: number }>();
@@ -106,45 +162,59 @@ export function PlatformBillingOverview() {
       description="Monitor subscriptions, recurring revenue, and billing operations across ValueBooks."
     >
       {error ? (
-        <p role="alert" className="rb-platform__alert">
-          {error}
-        </p>
-      ) : null}
-      {!overview || !revenue ? (
-        <p className="rb-platform__muted">Loading billing overview…</p>
+        <ErrorState
+          title="Billing overview could not be loaded"
+          description={error}
+          action={
+            <Button variant="secondary" size="sm" onClick={load}>
+              Try again
+            </Button>
+          }
+        />
+      ) : !overview || revenueState === 'loading' ? (
+        <CardSkeleton />
       ) : (
         <>
           <section className="rb-platform__section" aria-labelledby="billing-subscriptions-heading">
             <h2 id="billing-subscriptions-heading">Subscriptions</h2>
-            <div className="rb-platform__stats">
-              <div className="rb-platform__stat">
-                <span>Active paid subscriptions</span>
-                <strong>{overview.activePaid.toLocaleString()}</strong>
-                <small>Active and scheduled to cancel</small>
-              </div>
-              <div className="rb-platform__stat">
-                <span>Organizations trialing</span>
-                <strong>{overview.trialing.toLocaleString()}</strong>
-                <small>Currently in a trial</small>
-              </div>
-              <div className="rb-platform__stat">
-                <span>Trial conversion rate</span>
-                <strong>
-                  {overview.trialConversionRate === null
-                    ? '0%'
-                    : `${overview.trialConversionRate.toLocaleString()}%`}
-                </strong>
-                <small>
-                  {overview.trialConversionRate === null
+            <div className="rb-dash-kpis--four">
+              {/* Active paid spans two statuses and excludes complimentary grants, so no single
+                  list filter reproduces it; the tile opens the full list instead. */}
+              <DashboardKpi
+                label="Active paid subscriptions"
+                icon={BadgeCheck}
+                value={overview.activePaid.toLocaleString()}
+                hint="Active or scheduled to cancel; complimentary excluded"
+                href="/platform/billing/subscriptions"
+              />
+              <DashboardKpi
+                label="Organizations trialing"
+                icon={Hourglass}
+                value={overview.trialing.toLocaleString()}
+                hint="Currently in a trial"
+                href="/platform/billing/subscriptions?status=TRIALING"
+              />
+              <DashboardKpi
+                label="Trial conversion rate"
+                icon={Percent}
+                value={
+                  overview.trialConversionRate === null
+                    ? '—'
+                    : `${overview.trialConversionRate.toLocaleString()}%`
+                }
+                hint={
+                  overview.trialConversionRate === null
                     ? 'No completed trials yet'
-                    : 'Of completed trials'}
-                </small>
-              </div>
-              <div className="rb-platform__stat">
-                <span>Past due subscriptions</span>
-                <strong>{overview.pastDue.toLocaleString()}</strong>
-                <small>Payment needs attention</small>
-              </div>
+                    : 'Of completed trials'
+                }
+              />
+              <DashboardKpi
+                label="Past due subscriptions"
+                icon={CreditCard}
+                value={overview.pastDue.toLocaleString()}
+                hint="Payment needs attention"
+                href="/platform/billing/subscriptions?status=PAST_DUE"
+              />
             </div>
           </section>
           <section className="rb-platform__section" aria-labelledby="billing-revenue-heading">
@@ -162,48 +232,58 @@ export function PlatformBillingOverview() {
               />
             </div>
           </section>
-          <section
-            className="rb-platform__section rb-platform__card"
-            aria-labelledby="billing-collections-heading"
-          >
-            <div className="rb-platform__card-head">
-              <div>
-                <h2 id="billing-collections-heading">Verified collections</h2>
-                <p className="rb-platform__muted">
-                  Track confirmed subscription payments and retained historical records.
-                </p>
-              </div>
-              <label>
-                Period{' '}
-                <select value={period} onChange={(event) => setPeriod(event.target.value)}>
+          {revenueState === 'ready' && revenue ? (
+            <section
+              className="rb-platform__section rb-platform__card"
+              aria-labelledby="billing-collections-heading"
+            >
+              <div className="rb-platform__card-head">
+                <div>
+                  <h2 id="billing-collections-heading">Verified collections</h2>
+                  <p className="rb-platform__muted">
+                    Track confirmed subscription payments and retained historical records.
+                  </p>
+                </div>
+                <Select
+                  aria-label="Collections period"
+                  value={period}
+                  onChange={(event) => setPeriod(event.target.value)}
+                >
                   <option value="all">Last 12 months</option>
                   {[...new Set(months.map((row) => row.month))].reverse().map((month) => (
                     <option key={month} value={month}>
-                      {month}
+                      {monthLabel(month)}
                     </option>
                   ))}
-                </select>
-              </label>
-            </div>
-            {collections.size ? (
-              <ul className="rb-platform__money-list">
-                {[...collections].map(([currency, value]) => (
-                  <li key={currency}>
-                    <strong>{formatMoney(value.gross, currency)}</strong>
-                    <small>
-                      {value.count.toLocaleString()} successful{' '}
-                      {value.count === 1 ? 'transaction' : 'transactions'}
-                    </small>
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <p className="rb-platform__muted">No verified payments yet.</p>
-            )}
-            <Link href="/platform/billing/revenue" className="rb-platform__link">
-              View revenue analytics
-            </Link>
-          </section>
+                </Select>
+              </div>
+              {collections.size ? (
+                <ul className="rb-platform__money-list">
+                  {[...collections].map(([currency, value]) => (
+                    <li key={currency}>
+                      <strong>{formatMoney(value.gross, currency)}</strong>
+                      <small>
+                        {value.count.toLocaleString()} successful{' '}
+                        {value.count === 1 ? 'transaction' : 'transactions'}
+                      </small>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="rb-platform__muted">No verified payments yet.</p>
+              )}
+              <Link href="/platform/billing/revenue" className="rb-platform__link">
+                View revenue analytics
+              </Link>
+            </section>
+          ) : (
+            <section className="rb-platform__section" aria-labelledby="billing-collections-heading">
+              <h2 id="billing-collections-heading">Verified collections</h2>
+              <p className="rb-platform__muted">
+                Revenue analytics require an Operations or Superadmin role.
+              </p>
+            </section>
+          )}
           <section className="rb-platform__section" aria-labelledby="billing-health-heading">
             <h2 id="billing-health-heading">Billing health</h2>
             <div className="rb-platform__health-grid">
@@ -217,7 +297,10 @@ export function PlatformBillingOverview() {
                   <strong>{overview.trialExpiring24h.toLocaleString()}</strong>
                 </span>
               </Link>
-              <Link href="/platform/billing/issues" className="rb-platform__health-card">
+              <Link
+                href="/platform/billing/transactions?status=FAILED"
+                className="rb-platform__health-card"
+              >
                 <CreditCard aria-hidden="true" />
                 <span>
                   Failed payments<strong>{overview.failedPayments.toLocaleString()}</strong>

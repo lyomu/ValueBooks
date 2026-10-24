@@ -41,7 +41,7 @@ const productPages = {
   invoicing: {
     kicker: 'INVOICES THAT DO THE FOLLOW-UP',
     title: 'Get paid without making payment your full-time job.',
-    text: 'Create beautiful invoices in minutes, accept secure online payments, and let thoughtful reminders keep things moving.',
+    text: 'Create beautiful invoices in minutes, record customer payments as they arrive, and let thoughtful reminders keep things moving.',
     mockup: <InvoiceMockup />,
     features: [
       'Create on-brand invoices, estimates, and deposits',

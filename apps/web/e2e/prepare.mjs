@@ -1,5 +1,5 @@
 import { execFileSync, spawn } from 'node:child_process';
-import { openSync } from 'node:fs';
+import { openSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
 import { Queue } from 'bullmq';
@@ -51,6 +51,15 @@ await clearAuthRateLimits();
 runNode([resolve(repoRoot, 'node_modules/@nestjs/cli/bin/nest.js'), 'build'], apiRoot());
 runNode(['dist/prisma/seed.js'], apiRoot());
 await ensurePlatformAdmin();
+// The local UAT drill opts in to the four synthetic acceptance fixtures. Ordinary E2E runs keep
+// their existing small demo dataset and do not run this seeder. The catalog is restored here
+// rather than straight after resetDatabase() because the ordinary demo seed above expects the
+// catalog to be absent: with the official plans present its demo tenant resolves to a tier
+// without approval workflows and its approval-policy step fails with PLAN_LIMIT_REACHED.
+if (process.env.ALLOW_UAT_FIXTURES === 'true') {
+  await seedUatCatalog();
+  runNode(['dist/prisma/uat-fixtures.js'], apiRoot());
+}
 startDocumentExtractionWorker();
 
 async function createDatabase() {
@@ -77,6 +86,37 @@ async function resetDatabase() {
     );
     const tables = result.rows[0]?.tables;
     if (tables) await database.query(`TRUNCATE TABLE ${tables} RESTART IDENTITY CASCADE`);
+  } finally {
+    await database.end();
+  }
+}
+
+/** E2E truncation clears data inserted by older catalog migrations while retaining their
+ * migration records. Reapply only their idempotent catalog data for the opt-in UAT drill. */
+async function seedUatCatalog() {
+  const database = new Client({ connectionString: DATABASE_URL });
+  await database.connect();
+  try {
+    await database.query(`
+      INSERT INTO plan_tiers (key, name, sort_order, status, is_most_popular)
+      VALUES ('starter','Starter',10,'ACTIVE',false), ('growth','Growth',20,'ACTIVE',false),
+        ('professional','Professional',30,'ACTIVE',true), ('advanced','Advanced',40,'ACTIVE',false)
+      ON CONFLICT (key) DO NOTHING
+    `);
+    for (const migration of [
+      '20261014070000_seed_official_plan_catalog',
+      '20261014080000_correct_advanced_unlimited_entitlements',
+      '20261022090000_correct_professional_unlimited_entitlements',
+    ]) {
+      const sql = readFileSync(
+        resolve(repoRoot, 'apps/api/prisma/migrations', migration, 'migration.sql'), 'utf8',
+      );
+      await database.query(sql);
+    }
+    await database.query(`
+      INSERT INTO plan_price_history (plan_id, price_minor, currency, billing_interval, effective_from)
+      SELECT id, price_minor, currency, billing_interval, created_at FROM plans
+    `);
   } finally {
     await database.end();
   }
@@ -210,7 +250,8 @@ function startDocumentExtractionWorker() {
       DATABASE_URL,
       REDIS_URL: 'redis://127.0.0.1:56780',
       S3_ENDPOINT,
-      SMTP_HOST: '127.0.0.1',
+      // Only the dedicated F15 config sets this; ordinary E2E keeps Mailpit.
+      SMTP_HOST: process.env.UAT_F15_SMTP_HOST ?? '127.0.0.1',
       NODE_ENV: 'test',
       QUEUE_PREFIX,
       WEB_APP_URL: 'http://127.0.0.1:3300',

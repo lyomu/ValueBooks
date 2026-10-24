@@ -3918,6 +3918,9 @@ model PlatformAdmin {
   user            User                 @relation("PlatformAdminUser", fields: [userId], references: [id], onDelete: Cascade)
   grantedBy       User?                @relation("PlatformAdminGrantedBy", fields: [grantedByUserId], references: [id], onDelete: SetNull)
   auditEvents     PlatformAuditEvent[]
+  priceChangesProposed  PlanPriceChange[]  @relation("PlanPriceChangeProposedBy")
+  priceChangesPublished PlanPriceChange[]  @relation("PlanPriceChangePublishedBy")
+  entitlementVersionsPublished PlanEntitlementVersion[]
 
   @@index([status, role])
   @@map("platform_admins")
@@ -3943,7 +3946,9 @@ model PlatformAuditEvent {
   after           Json?         @map("after_json") @db.JsonB
   ipHash          String?       @map("ip_hash") @db.Char(64)
   occurredAt      DateTime      @default(now()) @map("occurred_at") @db.Timestamptz(6)
-  platformAdmin   PlatformAdmin @relation(fields: [platformAdminId], references: [id], onDelete: Cascade)
+  /// Restrict, not Cascade (D9): deleting a grant must not delete its audit history. The table is
+  /// also append-only in the database (trigger `platform_audit_events_append_only`).
+  platformAdmin   PlatformAdmin @relation(fields: [platformAdminId], references: [id], onDelete: Restrict)
   actor           User          @relation("PlatformAuditActor", fields: [actorUserId], references: [id], onDelete: Restrict)
   organization    Organization? @relation(fields: [organizationId], references: [id], onDelete: SetNull)
 
@@ -3957,6 +3962,24 @@ enum PlanStatus {
   DRAFT
   ACTIVE
   RETIRED
+}
+
+model PlanTier {
+  id            String     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  key           String     @unique @db.VarChar(40)
+  name          String     @db.VarChar(120)
+  description   String?    @db.VarChar(500)
+  sortOrder     Int        @default(0) @map("sort_order") @db.SmallInt
+  status        PlanStatus @default(DRAFT)
+  isMostPopular Boolean    @default(false) @map("is_most_popular")
+  tagline       String?    @db.VarChar(300)
+  highlights    String[]   @default([])
+  createdAt     DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime   @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  plans         Plan[]
+
+  @@index([status, sortOrder])
+  @@map("plan_tiers")
 }
 
 enum BillingInterval {
@@ -3982,6 +4005,7 @@ model Plan {
   /// "starter_yearly" carry tierKey "starter". Used to render one pricing card per tier with a
   /// working interval switch, and to find "the other interval" of a plan during a change.
   tierKey             String                     @map("tier_key") @db.VarChar(40)
+  tier                PlanTier                   @relation(fields: [tierKey], references: [key], onDelete: Restrict)
   name                String                     @db.VarChar(120)
   description         String?                    @db.VarChar(500)
   status              PlanStatus                 @default(DRAFT)
@@ -4005,12 +4029,15 @@ model Plan {
   createdAt           DateTime                   @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt           DateTime                   @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
   entitlements        PlanEntitlement[]
+  entitlementVersions PlanEntitlementVersion[]
   subscriptions       OrganizationSubscription[]
   registrationIntents RegistrationIntent[]
   flagRules           FeatureFlagRule[]
   subscriptionChangesFrom SubscriptionChange[]   @relation("SubscriptionChangeFromPlan")
   subscriptionChangesTo   SubscriptionChange[]   @relation("SubscriptionChangeToPlan")
   intendedBySubscriptions OrganizationSubscription[] @relation("OrganizationSubscriptionIntendedPlan")
+  priceHistory        PlanPriceHistory[]
+  priceChanges        PlanPriceChange[]
 
   @@index([status, sortOrder])
   @@index([tierKey])
@@ -4034,6 +4061,42 @@ model PlanEntitlement {
   @@map("plan_entitlements")
 }
 
+enum PlanEntitlementVersionStatus {
+  DRAFT
+  PUBLISHED
+}
+
+model PlanEntitlementVersion {
+  id                         String                       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  planId                     String                       @map("plan_id") @db.Uuid
+  version                    Int
+  status                     PlanEntitlementVersionStatus @default(DRAFT)
+  publishedAt                DateTime?                    @map("published_at") @db.Timestamptz(6)
+  publishedByPlatformAdminId String?                      @map("published_by_platform_admin_id") @db.Uuid
+  reason                     String                       @db.VarChar(500)
+  createdAt                  DateTime                     @default(now()) @map("created_at") @db.Timestamptz(6)
+  plan                       Plan                         @relation(fields: [planId], references: [id], onDelete: Restrict)
+  publishedBy                PlatformAdmin?               @relation(fields: [publishedByPlatformAdminId], references: [id], onDelete: Restrict)
+  values                     PlanEntitlementValue[]
+  subscriptions              OrganizationSubscription[]
+
+  @@unique([planId, version])
+  @@index([planId, status])
+  @@map("plan_entitlement_versions")
+}
+
+model PlanEntitlementValue {
+  id         String                 @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  versionId  String                 @map("version_id") @db.Uuid
+  key        String                 @db.VarChar(60)
+  enabled    Boolean               @default(true)
+  limitValue Int?                   @map("limit_value")
+  version    PlanEntitlementVersion @relation(fields: [versionId], references: [id], onDelete: Cascade)
+
+  @@unique([versionId, key])
+  @@map("plan_entitlement_values")
+}
+
 enum SubscriptionStatus {
   TRIALING
   TRIAL_EXPIRED
@@ -4049,6 +4112,7 @@ model OrganizationSubscription {
   id                     String             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   organizationId         String             @unique @map("organization_id") @db.Uuid
   planId                 String             @map("plan_id") @db.Uuid
+  entitlementVersionId   String?            @map("entitlement_version_id") @db.Uuid
   /// During TRIALING, `planId` points at the Professional plan so the trial carries Professional
   /// entitlements regardless of what the customer actually selected (Section 6). `intendedPlanId`
   /// remembers that selection — saved as intention only, never charged — so checkout defaults to
@@ -4073,10 +4137,14 @@ model OrganizationSubscription {
   /// Set when a renewal charge first fails; cleared on recovery. Drives the dunning grace-period
   /// countdown rather than re-deriving it from transaction history on every check.
   pastDueSince           DateTime?          @map("past_due_since") @db.Timestamptz(6)
+  /// Access granted by a platform administrator without a payment (audited, reason required).
+  /// Never counted as paid revenue; a verified provider payment clears it.
+  complimentary          Boolean            @default(false)
   createdAt              DateTime           @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt              DateTime           @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
   organization           Organization       @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   plan                   Plan               @relation(fields: [planId], references: [id], onDelete: Restrict)
+  entitlementVersion     PlanEntitlementVersion? @relation(fields: [entitlementVersionId], references: [id], onDelete: Restrict)
   intendedPlan           Plan?              @relation("OrganizationSubscriptionIntendedPlan", fields: [intendedPlanId], references: [id], onDelete: SetNull)
   transactions           BillingTransaction[]
 
@@ -4258,6 +4326,9 @@ model UsageCounter {
 enum WebhookProcessingState {
   RECEIVED
   VERIFIED
+  /// Claimed by one delivery and being applied. Concurrent duplicate deliveries see this and
+  /// stand down; a claim older than the stale window (a crashed worker) can be re-claimed.
+  PROCESSING
   PROCESSED
   FAILED
 }
@@ -4277,6 +4348,7 @@ model BillingWebhookEvent {
   lastError         String?                 @map("last_error") @db.VarChar(1000)
   receivedAt        DateTime                @default(now()) @map("received_at") @db.Timestamptz(6)
   processedAt       DateTime?               @map("processed_at") @db.Timestamptz(6)
+  processingStartedAt DateTime?             @map("processing_started_at") @db.Timestamptz(6)
 
   @@unique([billingProvider, providerEventId])
   @@index([processingState, receivedAt])
@@ -4295,6 +4367,73 @@ enum SubscriptionChangeStatus {
 
 /// One upgrade/downgrade/migration attempt, same-provider or cross-provider, per Section 8. Kept
 /// even after completion as the audit trail of who/what/when/why for a plan change.
+enum PlanPriceChangeStatus {
+  DRAFT
+  PUBLISHED
+  DISCARDED
+}
+
+/// One proposed, previewed and published change to a plan's price (phase 7, O5).
+///
+/// Prices are administrator-editable from the console, but never edited in place on the plan row
+/// alone: a change is proposed, its effect on current subscribers is previewed, and publishing both
+/// updates Paystack and records what happened here. `PlanPriceHistory` is what makes an old charge
+/// explainable afterwards — once Paystack's plan carries the new amount, the provider no longer
+/// knows what a subscriber used to pay.
+model PlanPriceChange {
+  id                  String                @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  planId              String                @map("plan_id") @db.Uuid
+  status              PlanPriceChangeStatus @default(DRAFT)
+  /// The price the plan carried when the change was proposed. Publishing refuses if the plan has
+  /// moved since, so two administrators cannot overwrite each other's change.
+  fromPriceMinor      BigInt                @map("from_price_minor")
+  toPriceMinor        BigInt                @map("to_price_minor")
+  currency            String                @db.Char(3)
+  /// Subscribers on the plan when the change was proposed, for comparison with what Paystack
+  /// reports it actually repriced.
+  subscribersAtProposal Int                 @map("subscribers_at_proposal")
+  /// What Paystack answered on publish. Null when Paystack's wording did not state a count; that
+  /// is unknown, not zero.
+  providerAffectedSubscriptions Int?        @map("provider_affected_subscriptions")
+  providerMessage     String?               @map("provider_message") @db.VarChar(500)
+  reason              String                @db.VarChar(500)
+  proposedByPlatformAdminId String           @map("proposed_by_platform_admin_id") @db.Uuid
+  publishedByPlatformAdminId String?         @map("published_by_platform_admin_id") @db.Uuid
+  publishedAt         DateTime?             @map("published_at") @db.Timestamptz(6)
+  discardedAt         DateTime?             @map("discarded_at") @db.Timestamptz(6)
+  createdAt           DateTime              @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt           DateTime              @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  plan                Plan                  @relation(fields: [planId], references: [id], onDelete: Cascade)
+  proposedBy          PlatformAdmin         @relation("PlanPriceChangeProposedBy", fields: [proposedByPlatformAdminId], references: [id], onDelete: Restrict)
+  publishedBy         PlatformAdmin?        @relation("PlanPriceChangePublishedBy", fields: [publishedByPlatformAdminId], references: [id], onDelete: Restrict)
+  priceHistory        PlanPriceHistory[]
+
+  @@index([planId, status])
+  @@index([status, createdAt])
+  @@map("plan_price_changes")
+}
+
+/// What a plan cost, and from when. One row per price the plan has ever carried, seeded with the
+/// price each official plan was created with, so "what was this subscriber paying in March" is
+/// answerable from ValueBooks alone.
+model PlanPriceHistory {
+  id              String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  planId          String           @map("plan_id") @db.Uuid
+  priceMinor      BigInt           @map("price_minor")
+  currency        String           @db.Char(3)
+  billingInterval BillingInterval  @map("billing_interval")
+  effectiveFrom   DateTime         @map("effective_from") @db.Timestamptz(6)
+  /// Null for the seeded opening row, which predates administrator-managed pricing.
+  priceChangeId   String?          @map("price_change_id") @db.Uuid
+  createdAt       DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
+  plan            Plan             @relation(fields: [planId], references: [id], onDelete: Cascade)
+  /// Restrict, not SET NULL: a history row must keep naming the change that produced it.
+  priceChange     PlanPriceChange? @relation(fields: [priceChangeId], references: [id], onDelete: Restrict)
+
+  @@index([planId, effectiveFrom])
+  @@map("plan_price_history")
+}
+
 model SubscriptionChange {
   id              String                   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   organizationId  String                   @map("organization_id") @db.Uuid

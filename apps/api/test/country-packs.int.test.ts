@@ -175,6 +175,7 @@ describe('country packs: admin lifecycle, compliance status, tier enforcement', 
       .http()
       .post(`${API}/localization/country-packs/RW/versions/2026.1-draft/publish`)
       .set('Cookie', adminCookie)
+      .send({ reason: 'Country pack lifecycle test.' })
       .expect(200)
       .then((response) =>
         expect((response.body as DataOf<StatusView>).data.status).toBe('PUBLISHED'),
@@ -191,11 +192,13 @@ describe('country packs: admin lifecycle, compliance status, tier enforcement', 
       .http()
       .delete(`${API}/localization/country-packs/RW/versions/2026.1-draft`)
       .set('Cookie', adminCookie)
+      .send({ reason: 'Country pack lifecycle test.' })
       .expect(409);
     await harness
       .http()
       .post(`${API}/localization/country-packs/RW/versions/2026.1-draft/deprecate`)
       .set('Cookie', adminCookie)
+      .send({ reason: 'Country pack lifecycle test.' })
       .expect(200)
       .then((response) =>
         expect((response.body as DataOf<StatusView>).data.status).toBe('DEPRECATED'),
@@ -209,6 +212,88 @@ describe('country packs: admin lifecycle, compliance status, tier enforcement', 
     expect((publishedAfter.body as DataOf<PackRow[]>).data.some((pack) => pack.code === 'RW')).toBe(
       false,
     );
+  });
+
+  it('requires a reason to publish and reports pinned organizations, the current version and history', async () => {
+    await harness
+      .http()
+      .post(`${API}/localization/country-packs`)
+      .set('Cookie', adminCookie)
+      .send(rwandaDraft)
+      .expect(201);
+    await harness
+      .http()
+      .post(`${API}/localization/country-packs/RW/versions/2026.1-draft/publish`)
+      .set('Cookie', adminCookie)
+      .expect(400);
+    await expect(
+      harness.prisma.countryPack.findUniqueOrThrow({
+        where: { code_version: { code: 'RW', version: '2026.1-draft' } },
+      }),
+    ).resolves.toMatchObject({ status: 'DRAFT' });
+    await harness
+      .http()
+      .post(`${API}/localization/country-packs/RW/versions/2026.1-draft/publish`)
+      .set('Cookie', adminCookie)
+      .send({ reason: 'Rwanda launch approved by compliance.' })
+      .expect(200);
+
+    type AdminRow = {
+      code: string;
+      version: string;
+      current: boolean;
+      pinnedOrganizations: number;
+    };
+    const all = (
+      await harness
+        .http()
+        .get(`${API}/localization/country-packs/admin/all`)
+        .set('Cookie', adminCookie)
+        .expect(200)
+    ).body as DataOf<AdminRow[]>;
+    expect(all.data.find((pack) => pack.code === 'RW')).toMatchObject({
+      current: true,
+      pinnedOrganizations: 0,
+    });
+    // The organization created in beforeEach pins the Kenya pack; the count comes from the DB.
+    const preference = await harness.prisma.organizationPreference.findUniqueOrThrow({
+      where: { organizationId },
+    });
+    const pinnedToKenya = await harness.prisma.organizationPreference.count({
+      where: {
+        countryPackCode: preference.countryPackCode,
+        countryPackVersion: preference.countryPackVersion,
+      },
+    });
+    expect(
+      all.data.find(
+        (pack) =>
+          pack.code === preference.countryPackCode &&
+          pack.version === preference.countryPackVersion,
+      )?.pinnedOrganizations,
+    ).toBe(pinnedToKenya);
+    expect(pinnedToKenya).toBeGreaterThan(0);
+
+    const detail = (
+      await harness
+        .http()
+        .get(`${API}/localization/country-packs/admin/RW/versions/2026.1-draft`)
+        .set('Cookie', adminCookie)
+        .expect(200)
+    ).body as DataOf<{
+      versions: Array<{ version: string; current: boolean }>;
+      history: Array<{ eventKey: string; reason: string | null }>;
+    }>;
+    expect(detail.data.versions).toEqual([
+      expect.objectContaining({ version: '2026.1-draft', current: true }),
+    ]);
+    expect(detail.data.history).toEqual([
+      expect.objectContaining({
+        eventKey: 'platform.country_pack_published',
+        reason: 'Rwanda launch approved by compliance.',
+      }),
+      expect.objectContaining({ eventKey: 'platform.country_pack_created', reason: null }),
+    ]);
   });
 
   it('rejects pack mutations without the platform-admin boundary', async () => {
@@ -268,6 +353,7 @@ describe('country packs: admin lifecycle, compliance status, tier enforcement', 
       .http()
       .post(`${API}/localization/country-packs/BLOCKED/versions/1/publish`)
       .set('Cookie', adminCookie)
+      .send({ reason: 'Country pack lifecycle test.' })
       .expect(200);
     await harness.prisma.organizationPreference.update({
       where: { organizationId },

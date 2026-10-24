@@ -177,21 +177,7 @@ const navigationGroups: NavigationGroup[] = [
     ],
   },
 ];
-import { BrandLogo } from './brand-logo';
-
-function CollapsedSidebarMark({ onExpand }: { onExpand: () => void }) {
-  return (
-    <button
-      className="rb-brand-mark"
-      type="button"
-      onClick={onExpand}
-      aria-label="Expand sidebar"
-      style={{ background: 'transparent' }}
-    >
-      <BrandLogo variant="mark" height={28} alt="ValueBooks" priority />
-    </button>
-  );
-}
+import { BrandLogo, CollapsedSidebarMark } from './brand-logo';
 
 function Sidebar({
   collapsed,

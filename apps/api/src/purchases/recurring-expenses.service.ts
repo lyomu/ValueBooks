@@ -16,6 +16,7 @@ import type { PublicUser } from '../auth/auth.service.js';
 import type { RequestMetadata } from '../auth/request-context.js';
 import { SchedulerService } from '../automation/scheduler.service.js';
 import { PrismaService } from '../database/prisma.service.js';
+import { findOrCreateRecurringDocument } from '../organizations/recurring-document-claim.js';
 import { writeAuditEvent } from '../organizations/audit-event.js';
 import type { OrganizationContext } from '../organizations/organization-context.js';
 import { ExpensesService } from './expenses.service.js';
@@ -299,10 +300,13 @@ export class RecurringExpensesService {
   ) {
     const template = await this.findOrThrow(context.id, job.sourceId);
     const occurrenceDate = job.lastRunAt ? dateOnly(job.lastRunAt) : dateOnly(template.nextRunDate);
-    const claimed = await this.claimOccurrence(context.id, template.id, occurrenceDate);
-    if (!claimed) return { templateId: template.id, expenseId: null };
+    if (template.lastRunOccurrenceKey === occurrenceDate) {
+      return { templateId: template.id, expenseId: null };
+    }
 
-    const expense = await this.expenses.createDraft(
+    const expenseId = await findOrCreateRecurringDocument(
+      this.prisma, context.id, RECURRING_EXPENSE_GENERATE_OPERATION,
+      template.id, occurrenceDate, 'EXPENSE', (tx) => this.expenses.createDraft(
       context,
       user,
       {
@@ -316,9 +320,11 @@ export class RecurringExpensesService {
         taxCodeId: template.taxCodeId ?? undefined,
       },
       metadata,
-    );
+      tx,
+    ));
+    const expense = await this.expenses.detail(context.id, expenseId);
 
-    if (template.autoCreate) {
+    if (template.autoCreate && expense.status === 'DRAFT') {
       await this.expenses.post(context, user, expense.id, metadata);
     }
 
@@ -329,14 +335,18 @@ export class RecurringExpensesService {
       job.status === 'ACTIVE' && (template.endDate ? nextOccurrence <= template.endDate : true);
 
     await this.prisma.$transaction(async (tx) => {
-      await tx.recurringExpenseTemplate.update({
-        where: { id: template.id },
+      const advanced = await tx.recurringExpenseTemplate.updateMany({
+        where: { id: template.id, OR: [
+          { lastRunOccurrenceKey: null },
+          { lastRunOccurrenceKey: { not: occurrenceDate } },
+        ] },
         data: {
           nextRunDate: nextOccurrence,
           lastRunOccurrenceKey: occurrenceDate,
           active: stillActive,
         },
       });
+      if (advanced.count !== 1) return;
       await writeAuditEvent(tx, {
         organizationId: context.id,
         actorUserId: user.id,
@@ -350,40 +360,6 @@ export class RecurringExpensesService {
     });
 
     return { templateId: template.id, expenseId: expense.id };
-  }
-
-  private async claimOccurrence(
-    organizationId: string,
-    templateId: string,
-    occurrenceDate: string,
-  ): Promise<boolean> {
-    const key = `${templateId}:${occurrenceDate}`;
-    return this.prisma.$transaction(async (tx) => {
-      const lockKey = `${organizationId}:${RECURRING_EXPENSE_GENERATE_OPERATION}:${key}`;
-      await tx.$queryRaw`
-        SELECT pg_advisory_xact_lock(hashtextextended(${lockKey}, 0))::text AS locked
-      `;
-      const existing = await tx.ledgerIdempotencyKey.findUnique({
-        where: {
-          organizationId_operation_key: {
-            organizationId,
-            operation: RECURRING_EXPENSE_GENERATE_OPERATION,
-            key,
-          },
-        },
-      });
-      if (existing) return false;
-      await tx.ledgerIdempotencyKey.create({
-        data: {
-          organizationId,
-          operation: RECURRING_EXPENSE_GENERATE_OPERATION,
-          key,
-          resourceType: 'RECURRING_EXPENSE_TEMPLATE',
-          resourceId: templateId,
-        },
-      });
-      return true;
-    });
   }
 
   private async setActive(

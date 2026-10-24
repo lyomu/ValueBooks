@@ -12,6 +12,8 @@ interface NormalizedBillingEvent {
   /** The provider's own subscription id, when the event concerns one. */
   providerSubscriptionId?: string;
   providerCustomerId?: string;
+  /** The provider plan a charge was for. Renewals carry this but not a subscription id. */
+  providerPlanCode?: string;
   /** Present on a payment event. */
   transaction?: {
     providerTransactionId: string;
@@ -34,8 +36,11 @@ interface NormalizedBillingEvent {
   clientReference?: string;
 }
 
+/** How long a PROCESSING claim is honoured before another delivery may take the event over. */
+export const WEBHOOK_CLAIM_STALE_MS = 5 * 60 * 1000;
+
 /**
- * Persists every verified webhook event before acting on it (`RECEIVED` -> `VERIFIED` ->
+ * Persists every verified webhook event before acting on it (`VERIFIED` -> `PROCESSING` ->
  * `PROCESSED`/`FAILED`), and makes processing idempotent on `(billingProvider, providerEventId)`:
  * a duplicate delivery is recognized and skipped rather than reapplied (Section 15/27).
  *
@@ -73,26 +78,52 @@ export class BillingWebhookService {
       return { deduplicated: true };
     }
 
-    const event = await this.prisma.billingWebhookEvent.upsert({
-      where: {
-        billingProvider_providerEventId: {
+    let event: { id: string };
+    try {
+      event = await this.prisma.billingWebhookEvent.upsert({
+        where: {
+          billingProvider_providerEventId: {
+            billingProvider: provider,
+            providerEventId: verified.providerEventId,
+          },
+        },
+        create: {
           billingProvider: provider,
           providerEventId: verified.providerEventId,
+          eventType: verified.eventType,
+          signatureVerified: true,
+          processingState: 'VERIFIED',
+          payload: verified.payload as object,
         },
+        // Only count the redelivery here. The state is left to the claim below, so a duplicate
+        // arriving mid-processing cannot reset another delivery's PROCESSING claim.
+        update: { retryCount: { increment: 1 } },
+        select: { id: true },
+      });
+    } catch (error) {
+      // Two first deliveries raced on the insert; the other one owns this event.
+      if ((error as { code?: string }).code === 'P2002') return { deduplicated: true };
+      throw error;
+    }
+
+    // Atomic claim: exactly one delivery moves the row into PROCESSING. A concurrent duplicate
+    // finds nothing to claim and stands down; if the owner later fails, its own (non-2xx)
+    // delivery is the one the provider retries. A claim left by a crashed worker goes stale.
+    const now = new Date();
+    const claimed = await this.prisma.billingWebhookEvent.updateMany({
+      where: {
+        id: event.id,
+        OR: [
+          { processingState: { in: ['RECEIVED', 'VERIFIED', 'FAILED'] } },
+          {
+            processingState: 'PROCESSING',
+            processingStartedAt: { lt: new Date(now.getTime() - WEBHOOK_CLAIM_STALE_MS) },
+          },
+        ],
       },
-      create: {
-        billingProvider: provider,
-        providerEventId: verified.providerEventId,
-        eventType: verified.eventType,
-        signatureVerified: true,
-        processingState: 'VERIFIED',
-        payload: verified.payload as object,
-      },
-      update: {
-        retryCount: { increment: 1 },
-        processingState: 'VERIFIED',
-      },
+      data: { processingState: 'PROCESSING', processingStartedAt: now },
     });
+    if (claimed.count === 0) return { deduplicated: true };
 
     try {
       if (normalized.refund) await this.applyRefund(provider, normalized.refund);
@@ -200,7 +231,9 @@ export class BillingWebhookService {
         ? await this.prisma.organizationSubscription.findFirst({
             where: { billingProvider: provider, providerCustomerId: normalized.providerCustomerId, providerSubscriptionId: null },
           }) : null)
-      ?? (normalized.clientReference ? await this.findByClientReference(normalized.clientReference) : null);
+      ?? (normalized.clientReference ? await this.findByClientReference(normalized.clientReference) : null)
+      ?? (!change && !signupIntent && normalized.transaction?.status === 'SUCCESSFUL'
+        ? await this.findRenewedSubscription(provider, normalized) : null);
 
     if (!subscription) {
       this.logger.warn(
@@ -218,10 +251,22 @@ export class BillingWebhookService {
       }
     }
 
+    // Paystack reports one renewal twice (`charge.success`, then `invoice.update`) under the same
+    // charge reference. The second report must not move a period the first already set unless it
+    // states the period itself.
+    const alreadyRecorded = normalized.transaction
+      ? await this.prisma.billingTransaction.findUnique({
+          where: { billingProvider_providerTransactionId: { billingProvider: provider,
+            providerTransactionId: normalized.transaction.providerTransactionId } },
+          select: { id: true },
+        })
+      : null;
+
     await this.prisma.$transaction(async (tx) => {
       const data: Parameters<typeof tx.organizationSubscription.update>[0]['data'] = {};
       if (change && normalized.transaction?.status === 'SUCCESSFUL') {
         data.planId = change.toPlanId;
+        data.entitlementVersionId = null;
         data.intendedPlanId = null;
         data.billingProvider = provider;
         data.providerSubscriptionId = normalized.providerSubscriptionId ?? null;
@@ -231,6 +276,7 @@ export class BillingWebhookService {
       }
       if (signupIntent && normalized.transaction?.status === 'SUCCESSFUL') {
         data.planId = signupIntent.planId;
+        data.entitlementVersionId = null;
         data.intendedPlanId = null;
         data.trialEndsAt = null;
         data.billingProvider = provider;
@@ -258,12 +304,20 @@ export class BillingWebhookService {
         const paidAt = normalized.transaction.paidAt ?? new Date();
         data.lastPaymentAt = paidAt;
         const paidPlan = change?.toPlan ?? (signupIntent?.plan ?? await tx.plan.findUniqueOrThrow({ where: { id: subscription.planId } }));
-        data.currentPeriodStart = normalized.transaction.periodStart ?? paidAt;
-        data.currentPeriodEnd = normalized.transaction.periodEnd ?? addBillingMonths(paidAt, paidPlan.billingInterval === 'YEARLY' ? 12 : 1);
+        if (!alreadyRecorded || normalized.transaction.periodEnd) {
+          data.currentPeriodStart = normalized.transaction.periodStart ?? paidAt;
+          const nextPeriodEnd = normalized.transaction.periodEnd ?? addBillingMonths(paidAt, paidPlan.billingInterval === 'YEARLY' ? 12 : 1);
+          data.currentPeriodEnd = nextPeriodEnd;
+          // A verified new billing period is when a subscriber adopts the published version.
+          if (!alreadyRecorded && (!subscription.currentPeriodEnd ||
+            nextPeriodEnd > subscription.currentPeriodEnd)) data.entitlementVersionId = null;
+        }
         // A successful payment is itself proof of an active, paid subscription — this is the
         // "verified payment, not a redirect" activation the spec requires (Section 7).
         data.status = 'ACTIVE';
         data.pastDueSince = null;
+        // A verified payment turns any complimentary grant into an ordinary paid subscription.
+        data.complimentary = false;
       }
       if (Object.keys(data).length > 0) {
         await tx.organizationSubscription.update({ where: { id: subscription.id }, data });
@@ -364,6 +418,25 @@ export class BillingWebhookService {
       await this.notices.notify({ organizationId: subscription.organizationId, eventKey: message.key,
         sourceId: noticeSource, subject: message.subject, body: message.body }).catch((error) => this.logger.error('Billing notice queue failed', error));
     }
+  }
+
+  /**
+   * A renewal `charge.success` names the customer and the plan but not the subscription (D12).
+   * It is applied only to the one already-linked subscription of that customer on that plan; when
+   * several fit, the event fails rather than guess which organization paid.
+   */
+  private async findRenewedSubscription(provider: BillingProviderName, normalized: NormalizedBillingEvent) {
+    if (!normalized.providerCustomerId || !normalized.providerPlanCode) return null;
+    const candidates = await this.prisma.organizationSubscription.findMany({
+      where: { billingProvider: provider, providerCustomerId: normalized.providerCustomerId,
+        providerSubscriptionId: { not: null }, plan: { providerPriceId: normalized.providerPlanCode } },
+      take: 2,
+    });
+    if (candidates.length > 1) {
+      throw new Error(`Renewal charge for customer ${normalized.providerCustomerId} on plan ${normalized.providerPlanCode} ` +
+        'matches more than one subscription; not applied. Resolve it from the subscription record.');
+    }
+    return candidates[0] ?? null;
   }
 
   private async findByClientReference(clientReference: string) {

@@ -71,11 +71,81 @@ function auditSnapshot(pack: CountryPackWithTaxPacks): Prisma.InputJsonObject {
 export class CountryPackAdminService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async listAll(): Promise<CountryPackWithTaxPacks[]> {
-    return this.prisma.countryPack.findMany({
-      orderBy: [{ code: 'asc' }, { version: 'desc' }],
-      include: countryPackWithTaxPacks,
+  /**
+   * Every version, each with how many organizations are pinned to it and whether it is the version
+   * a new organization receives (`CountryPackStore.resolve`: the latest published of its code).
+   */
+  async listAll() {
+    const [packs, pins] = await Promise.all([
+      this.prisma.countryPack.findMany({
+        orderBy: [{ code: 'asc' }, { version: 'desc' }],
+        include: countryPackWithTaxPacks,
+      }),
+      this.prisma.organizationPreference.groupBy({
+        by: ['countryPackCode', 'countryPackVersion'],
+        _count: { _all: true },
+      }),
+    ]);
+    const pinned = new Map(
+      pins.map((row) => [`${row.countryPackCode}\u0000${row.countryPackVersion}`, row._count._all]),
+    );
+    const current = new Map<string, CountryPackWithTaxPacks>();
+    for (const pack of packs) {
+      if (pack.status !== 'PUBLISHED' || !pack.publishedAt) continue;
+      const held = current.get(pack.code);
+      if (!held || (held.publishedAt && pack.publishedAt > held.publishedAt)) {
+        current.set(pack.code, pack);
+      }
+    }
+    return packs.map((pack) => ({
+      ...pack,
+      pinnedOrganizations: pinned.get(`${pack.code}\u0000${pack.version}`) ?? 0,
+      current: current.get(pack.code)?.id === pack.id,
+    }));
+  }
+
+  /** One version with its usage and the audit trail of the version and its tax definitions. */
+  async getVersion(code: string, version: string) {
+    const all = await this.listAll();
+    const pack = all.find(
+      (candidate) => candidate.code === code.toUpperCase() && candidate.version === version,
+    );
+    if (!pack) throw new NotFoundException('Country pack version not found.');
+    const history = await this.prisma.platformAuditEvent.findMany({
+      where: {
+        targetType: { in: ['country_pack', 'tax_pack'] },
+        targetId: { in: [pack.id, ...pack.taxPacks.map((taxPack) => taxPack.id)] },
+      },
+      orderBy: { occurredAt: 'desc' },
+      take: 100,
+      select: {
+        id: true,
+        eventKey: true,
+        reason: true,
+        occurredAt: true,
+        actor: { select: { displayName: true, email: true } },
+      },
     });
+    return {
+      ...pack,
+      versions: all
+        .filter((candidate) => candidate.code === pack.code)
+        .map((candidate) => ({
+          id: candidate.id,
+          version: candidate.version,
+          status: candidate.status,
+          current: candidate.current,
+          publishedAt: candidate.publishedAt,
+          pinnedOrganizations: candidate.pinnedOrganizations,
+        })),
+      history: history.map((event) => ({
+        id: event.id,
+        eventKey: event.eventKey,
+        reason: event.reason,
+        occurredAt: event.occurredAt,
+        actor: event.actor.displayName || event.actor.email,
+      })),
+    };
   }
 
   async createDraft(
@@ -191,6 +261,7 @@ export class CountryPackAdminService {
     actor: PlatformContext,
     code: string,
     version: string,
+    reason: string,
     ipHash: string | null,
   ): Promise<CountryPackWithTaxPacks> {
     return this.prisma.$transaction(async (tx) => {
@@ -207,6 +278,7 @@ export class CountryPackAdminService {
         eventKey: 'platform.country_pack_published',
         targetType: 'country_pack',
         targetId: pack.id,
+        reason,
         before: auditSnapshot(pack),
         after: auditSnapshot(published),
         ipHash,
@@ -219,6 +291,7 @@ export class CountryPackAdminService {
     actor: PlatformContext,
     code: string,
     version: string,
+    reason: string,
     ipHash: string | null,
   ): Promise<CountryPackWithTaxPacks> {
     return this.prisma.$transaction(async (tx) => {
@@ -235,6 +308,7 @@ export class CountryPackAdminService {
         eventKey: 'platform.country_pack_deprecated',
         targetType: 'country_pack',
         targetId: pack.id,
+        reason,
         before: auditSnapshot(pack),
         after: auditSnapshot(deprecated),
         ipHash,
@@ -247,6 +321,7 @@ export class CountryPackAdminService {
     actor: PlatformContext,
     code: string,
     version: string,
+    reason: string,
     ipHash: string | null,
   ): Promise<void> {
     await this.prisma.$transaction(async (tx) => {
@@ -261,6 +336,7 @@ export class CountryPackAdminService {
         eventKey: 'platform.country_pack_deleted',
         targetType: 'country_pack',
         targetId: pack.id,
+        reason,
         before: auditSnapshot(pack),
         ipHash,
       });

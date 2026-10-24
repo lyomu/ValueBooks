@@ -171,6 +171,14 @@ pipeline {
                     env.CI_S3 = "valuebooks-ci-s3-${env.SAFE_BRANCH_NAME}-${env.BUILD_NUMBER}"
                     env.CI_CLAMAV = "valuebooks-ci-clamav-${env.SAFE_BRANCH_NAME}-${env.BUILD_NUMBER}"
                     env.CI_MAIL = "valuebooks-ci-mailpit-${env.SAFE_BRANCH_NAME}-${env.BUILD_NUMBER}"
+                    // Docker registers container names as network DNS aliases. A long branch name
+                    // can make those labels exceed 63 characters, so clients use these fixed,
+                    // short aliases inside the build's isolated network instead.
+                    env.CI_PG_HOST = 'ci-postgres'
+                    env.CI_REDIS_HOST = 'ci-redis'
+                    env.CI_S3_HOST = 'ci-s3'
+                    env.CI_CLAMAV_HOST = 'ci-clamav'
+                    env.CI_MAIL_HOST = 'ci-mailpit'
                 }
                 sh """
                     set -e
@@ -187,15 +195,15 @@ pipeline {
                     # The test runner itself is left uncapped on purpose until its real peak is
                     # measured -- guessing a ceiling there turns an OOM-kill into what looks
                     # like a test failure, which is exactly how build #6's lint OOM presented.
-                    docker run -d --name ${env.CI_PG} --network ${env.CI_NET} --memory=512m \
+                    docker run -d --name ${env.CI_PG} --network ${env.CI_NET} --network-alias ${env.CI_PG_HOST} --memory=512m \
                         -e POSTGRES_USER=valuebooks -e POSTGRES_PASSWORD=ci_pw -e POSTGRES_DB=valuebooks_test \
                         postgres:17-alpine
-                    docker run -d --name ${env.CI_REDIS} --network ${env.CI_NET} --memory=128m \
+                    docker run -d --name ${env.CI_REDIS} --network ${env.CI_NET} --network-alias ${env.CI_REDIS_HOST} --memory=128m \
                         redis:7.4-alpine redis-server --appendonly yes
-                    docker run -d --name ${env.CI_S3} --network ${env.CI_NET} --memory=768m \
+                    docker run -d --name ${env.CI_S3} --network ${env.CI_NET} --network-alias ${env.CI_S3_HOST} --memory=768m \
                         -e SERVICES=s3 -e EAGER_SERVICE_LOADING=1 \
                         localstack/localstack:3.8
-                    docker run -d --name ${env.CI_MAIL} --network ${env.CI_NET} --memory=64m \
+                    docker run -d --name ${env.CI_MAIL} --network ${env.CI_NET} --network-alias ${env.CI_MAIL_HOST} --memory=64m \
                         -e MP_SMTP_AUTH_ACCEPT_ANY=1 -e MP_SMTP_AUTH_ALLOW_INSECURE=1 \
                         axllent/mailpit:v1.27.8
                     # The named volume persists virus signatures ACROSS builds. Without it
@@ -203,7 +211,7 @@ pipeline {
                     # INSTREAM until it finishes -- minutes of wall clock and bandwidth per run.
                     # It is intentionally not per-build, so do not add BUILD_NUMBER to it.
                     docker volume create valuebooks-ci-clamav-db >/dev/null 2>&1 || true
-                    docker run -d --name ${env.CI_CLAMAV} --network ${env.CI_NET} --memory=2048m \
+                    docker run -d --name ${env.CI_CLAMAV} --network ${env.CI_NET} --network-alias ${env.CI_CLAMAV_HOST} --memory=2048m \
                         -v valuebooks-ci-clamav-db:/var/lib/clamav \
                         clamav/clamav:1.4
 
@@ -240,8 +248,8 @@ pipeline {
                     docker exec ${env.CI_PG} psql -v ON_ERROR_STOP=1 -U valuebooks -d valuebooks_test \
                         -c "CREATE DATABASE valuebooks_shadow"
                     docker run --rm --network ${env.CI_NET} \
-                        -e DATABASE_MIGRATION_URL=postgresql://valuebooks:ci_pw@${env.CI_PG}:5432/valuebooks_test \
-                        -e SHADOW_DATABASE_URL=postgresql://valuebooks:ci_pw@${env.CI_PG}:5432/valuebooks_shadow \
+                        -e DATABASE_MIGRATION_URL=postgresql://valuebooks:ci_pw@${env.CI_PG_HOST}:5432/valuebooks_test \
+                        -e SHADOW_DATABASE_URL=postgresql://valuebooks:ci_pw@${env.CI_PG_HOST}:5432/valuebooks_shadow \
                         -w /app/apps/api \
                         ${env.API_CI_IMAGE} npx prisma migrate diff \
                             --from-migrations prisma/migrations --to-schema prisma/schema.prisma --exit-code
@@ -250,7 +258,7 @@ pipeline {
                     mail_ready=false
                     for i in \$(seq 1 60); do
                         if docker run --rm --network ${env.CI_NET} ${env.API_CI_IMAGE} \
-                            node -e "fetch('http://${env.CI_MAIL}:8025/readyz').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))" >/dev/null 2>&1; then
+                            node -e "fetch('http://${env.CI_MAIL_HOST}:8025/readyz').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))" >/dev/null 2>&1; then
                             mail_ready=true; echo "mailpit ready."; break
                         fi
                         echo "waiting for mailpit..."; sleep 2
@@ -280,7 +288,7 @@ pipeline {
                     s3_ready=false
                     for i in \$(seq 1 60); do
                         if docker run --rm --network ${env.CI_NET} ${env.API_CI_IMAGE} \
-                            node -e "fetch('http://${env.CI_S3}:4566/_localstack/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))" >/dev/null 2>&1; then
+                            node -e "fetch('http://${env.CI_S3_HOST}:4566/_localstack/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))" >/dev/null 2>&1; then
                             s3_ready=true; echo "s3 ready."; break
                         fi
                         echo "waiting for s3..."; sleep 2
@@ -293,14 +301,14 @@ pipeline {
                     # bucket is deliberately not pre-created here.
                     docker run --rm --network ${env.CI_NET} \
                         -e NODE_ENV=test \
-                        -e DATABASE_URL=postgresql://valuebooks_app:ci_app_pw@${env.CI_PG}:5432/valuebooks_test \
-                        -e DATABASE_MIGRATION_URL=postgresql://valuebooks:ci_pw@${env.CI_PG}:5432/valuebooks_test \
-                        -e REDIS_URL=redis://${env.CI_REDIS}:6379 \
-                        -e CLAMAV_HOST=${env.CI_CLAMAV} \
+                        -e DATABASE_URL=postgresql://valuebooks_app:ci_app_pw@${env.CI_PG_HOST}:5432/valuebooks_test \
+                        -e DATABASE_MIGRATION_URL=postgresql://valuebooks:ci_pw@${env.CI_PG_HOST}:5432/valuebooks_test \
+                        -e REDIS_URL=redis://${env.CI_REDIS_HOST}:6379 \
+                        -e CLAMAV_HOST=${env.CI_CLAMAV_HOST} \
                         -e CLAMAV_PORT=3310 \
-                        -e SMTP_HOST=${env.CI_MAIL} \
+                        -e SMTP_HOST=${env.CI_MAIL_HOST} \
                         -e SMTP_PORT=1025 \
-                        -e S3_ENDPOINT=http://${env.CI_S3}:4566 \
+                        -e S3_ENDPOINT=http://${env.CI_S3_HOST}:4566 \
                         -e S3_REGION=us-east-1 \
                         -e S3_ACCESS_KEY=test \
                         -e S3_SECRET_KEY=test \
@@ -349,14 +357,21 @@ pipeline {
                     env.SMOKE_REDIS = "valuebooks-smoke-redis-${env.SAFE_BRANCH_NAME}-${env.BUILD_NUMBER}"
                     env.SMOKE_API = "valuebooks-smoke-api-${env.SAFE_BRANCH_NAME}-${env.BUILD_NUMBER}"
                     env.SMOKE_WEB = "valuebooks-smoke-web-${env.SAFE_BRANCH_NAME}-${env.BUILD_NUMBER}"
+                    // Docker registers container names as network DNS aliases. A long branch name
+                    // can make those labels exceed 63 characters, so clients use these fixed,
+                    // short aliases inside the build's isolated network instead.
+                    env.SMOKE_PG_HOST = 'smoke-postgres'
+                    env.SMOKE_REDIS_HOST = 'smoke-redis'
+                    env.SMOKE_API_HOST = 'smoke-api'
+                    env.SMOKE_WEB_HOST = 'smoke-web'
                 }
                 sh """
                     set -e
                     docker network create ${env.SMOKE_NET}
-                    docker run -d --name ${env.SMOKE_PG} --network ${env.SMOKE_NET} \
+                    docker run -d --name ${env.SMOKE_PG} --network ${env.SMOKE_NET} --network-alias ${env.SMOKE_PG_HOST} \
                         -e POSTGRES_USER=valuebooks -e POSTGRES_PASSWORD=smoke_pw -e POSTGRES_DB=valuebooks_smoke \
                         postgres:17-alpine
-                    docker run -d --name ${env.SMOKE_REDIS} --network ${env.SMOKE_NET} redis:7.4-alpine
+                    docker run -d --name ${env.SMOKE_REDIS} --network ${env.SMOKE_NET} --network-alias ${env.SMOKE_REDIS_HOST} redis:7.4-alpine
 
                     ready=false
                     for i in \$(seq 1 60); do
@@ -380,15 +395,15 @@ pipeline {
                     # every other required var (SECURITY_PEPPER, S3_*, SMTP_*, CLAMAV_HOST,
                     # WEB_APP_URL); only DATABASE_URL/REDIS_URL need overriding, to point at these
                     # throwaway containers instead of the config package's literal localhost default.
-                    docker run -d --name ${env.SMOKE_API} --network ${env.SMOKE_NET} \
+                    docker run -d --name ${env.SMOKE_API} --network ${env.SMOKE_NET} --network-alias ${env.SMOKE_API_HOST} \
                         -e NODE_ENV=test \
-                        -e DATABASE_URL=postgresql://valuebooks:smoke_pw@${env.SMOKE_PG}:5432/valuebooks_smoke \
-                        -e REDIS_URL=redis://${env.SMOKE_REDIS}:6379 \
+                        -e DATABASE_URL=postgresql://valuebooks:smoke_pw@${env.SMOKE_PG_HOST}:5432/valuebooks_smoke \
+                        -e REDIS_URL=redis://${env.SMOKE_REDIS_HOST}:6379 \
                         -e SECURITY_PEPPER=smoke-only-jenkins-pepper-value-not-used-anywhere-else-000000 \
                         -e NEXT_PUBLIC_API_URL=${env.NEXT_PUBLIC_API_URL} \
                         ${API_IMAGE_NAME}:${env.IMAGE_TAG}
 
-                    docker run -d --name ${env.SMOKE_WEB} --network ${env.SMOKE_NET} ${WEB_IMAGE_NAME}:${env.IMAGE_TAG}
+                    docker run -d --name ${env.SMOKE_WEB} --network ${env.SMOKE_NET} --network-alias ${env.SMOKE_WEB_HOST} ${WEB_IMAGE_NAME}:${env.IMAGE_TAG}
 
                     retry_check() {
                         label="\$1"; container="\$2"; url="\$3"
@@ -403,8 +418,8 @@ pipeline {
                         return 1
                     }
 
-                    retry_check api ${env.SMOKE_API} "http://${env.SMOKE_API}:3001/api/v1/health"
-                    retry_check web ${env.SMOKE_WEB} "http://${env.SMOKE_WEB}:3000/"
+                    retry_check api ${env.SMOKE_API} "http://${env.SMOKE_API_HOST}:3001/api/v1/health"
+                    retry_check web ${env.SMOKE_WEB} "http://${env.SMOKE_WEB_HOST}:3000/"
                     echo "Image boot smoke test passed."
                 """
             }

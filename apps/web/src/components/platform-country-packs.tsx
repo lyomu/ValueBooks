@@ -5,22 +5,30 @@ import type {
   PlatformCountryPackTier,
   PlatformTaxPack,
 } from '@valuebooks/contracts';
-import { DataTable, PrimarySecondaryCell } from '@valuebooks/ui';
 import {
-  Archive,
-  CirclePlus,
-  CopyPlus,
-  FileJson,
-  LockKeyhole,
-  Pencil,
-  Send,
-  Trash2,
-  X,
-} from 'lucide-react';
-import { useCallback, useEffect, useState } from 'react';
+  Badge,
+  Button,
+  DataTable,
+  DataTableSearch,
+  DataTableToolbar,
+  DetailSkeleton,
+  ErrorState,
+  PrimarySecondaryCell,
+  StatusBadge,
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from '@valuebooks/ui';
+import { CirclePlus, FileJson, LockKeyhole, X } from 'lucide-react';
+import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import { ApiError, apiRequest } from '../lib/api';
 import { platformRoleAtLeast, usePlatformSession } from '../lib/platform';
+import { AdminActionDialog } from './admin-action-dialog';
+import { Panel, Row } from './platform-organization-detail';
 import { PlatformPage } from './platform-shell';
 
 const REQUIRED_DEFAULT_KEYS = [
@@ -39,13 +47,6 @@ type EditorMode =
   | { kind: 'create'; source?: PlatformCountryPack }
   | { kind: 'pack'; pack: PlatformCountryPack }
   | { kind: 'tax'; pack: PlatformCountryPack; taxPack?: PlatformTaxPack };
-
-type LifecycleAction = 'publish' | 'deprecate' | 'delete';
-
-interface Confirmation {
-  action: LifecycleAction;
-  pack: PlatformCountryPack;
-}
 
 interface DraftForm {
   code: string;
@@ -142,359 +143,873 @@ function packPath(pack: PlatformCountryPack): string {
   return `/localization/country-packs/${encodeURIComponent(pack.code)}/versions/${encodeURIComponent(pack.version)}`;
 }
 
-export function PlatformCountryPacks() {
-  const { session } = usePlatformSession();
-  const [packs, setPacks] = useState<PlatformCountryPack[] | null>(null);
-  const [editor, setEditor] = useState<EditorMode | null>(null);
-  const [confirmation, setConfirmation] = useState<Confirmation | null>(null);
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState('');
-  const [notice, setNotice] = useState('');
-  const canManage = platformRoleAtLeast(session?.role ?? null, 'SUPERADMIN');
+/** A version as the admin list returns it: who is pinned to it, and whether new tenants get it. */
+type PackVersion = PlatformCountryPack & { pinnedOrganizations: number; current: boolean };
+type PackVersionDetail = PackVersion & {
+  versions: Array<{
+    id: string;
+    version: string;
+    status: PlatformCountryPack['status'];
+    current: boolean;
+    publishedAt: string | null;
+    pinnedOrganizations: number;
+  }>;
+  history: Array<{
+    id: string;
+    eventKey: string;
+    reason: string | null;
+    occurredAt: string;
+    actor: string;
+  }>;
+};
+type CountryName = { code: string; name: string };
 
-  const load = useCallback(async () => {
-    if (!canManage) return;
-    try {
-      const response = await apiRequest<{ data: PlatformCountryPack[] }>(
-        '/localization/country-packs/admin/all',
-      );
-      setPacks(response.data);
-    } catch (caught) {
-      setError(caught instanceof ApiError ? caught.message : 'Country packs could not be loaded.');
-    }
-  }, [canManage]);
+/** `ZZ` is the generic fallback: never a jurisdiction, never a compliance claim. */
+const FALLBACK_COUNTRY = 'ZZ';
+const TIER_EXPLANATION: Record<PlatformCountryPackTier, string> = {
+  TIER_A_REVIEWED: 'Reviewed for this jurisdiction. Counts as fully reviewed only while published.',
+  TIER_B_GENERIC: 'Generic configuration. Not reviewed for this jurisdiction.',
+  TIER_C_BLOCKED: 'Blocked. Compliance-sensitive tax setup is refused for organizations on it.',
+};
+const DEFAULT_LABEL: Record<string, string> = {
+  currency: 'Currency',
+  locale: 'Locale',
+  timeZone: 'Time zone',
+  fiscalYearStartMonth: 'Fiscal year starts (month)',
+  fiscalYearStartDay: 'Fiscal year starts (day)',
+  chartTemplate: 'Chart of accounts template',
+  journalPrefix: 'Journal prefix',
+  numberPadding: 'Number padding',
+  numberingReset: 'Numbering resets',
+};
 
+const dateTime = (value: string | null) =>
+  value
+    ? new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeStyle: 'short' }).format(
+        new Date(value),
+      )
+    : '—';
+const scalar = (value: unknown): string =>
+  typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean'
+    ? String(value)
+    : value === null || value === undefined
+      ? '—'
+      : JSON.stringify(value);
+const readable = (key: string) => {
+  const text = key.replaceAll('.', ' ').replaceAll('_', ' ');
+  return `${text[0]?.toUpperCase() ?? ''}${text.slice(1)}`;
+};
+const versionHref = (pack: { code: string; version: string }) =>
+  `/platform/country-packs/${encodeURIComponent(pack.code)}/${encodeURIComponent(pack.version)}`;
+
+function jurisdiction(countryCode: string, countries: CountryName[] | null) {
+  if (countryCode === FALLBACK_COUNTRY) return 'Fallback (no jurisdiction)';
+  const name = countries?.find((country) => country.code === countryCode)?.name;
+  return name ? `${name} (${countryCode})` : countryCode;
+}
+
+/** What is wrong with a version before it can be relied on. Empty means complete. */
+function validationIssues(pack: PlatformCountryPack): string[] {
+  const issues = REQUIRED_DEFAULT_KEYS.filter((key) => !(key in pack.defaults)).map(
+    (key) => `Default "${DEFAULT_LABEL[key] ?? key}" is missing`,
+  );
+  if (pack.countryCode !== FALLBACK_COUNTRY && pack.taxPacks.length === 0) {
+    issues.push('No tax definition');
+  }
+  return issues;
+}
+
+/**
+ * The identifier is historical text, the status is the state. A published version whose identifier
+ * says "draft" is still published; the UI says so instead of renaming an id documents reference.
+ */
+function IdentifierNote({ pack }: { pack: Pick<PlatformCountryPack, 'version' | 'status'> }) {
+  return /draft/i.test(pack.version) && pack.status !== 'DRAFT' ? (
+    <span className="rb-table-secondary">
+      &ldquo;draft&rdquo; is part of the identifier; the version is {pack.status.toLowerCase()}.
+    </span>
+  ) : null;
+}
+
+function useCountryNames() {
+  const [countries, setCountries] = useState<CountryName[] | null>(null);
   useEffect(() => {
-    void load();
-  }, [load]);
+    apiRequest<{ data: { countries: CountryName[] } }>('/organizations/reference-data')
+      .then((response) => setCountries(response.data.countries))
+      .catch(() => setCountries([]));
+  }, []);
+  return countries;
+}
 
-  async function mutate(
-    path: string,
-    method: 'POST' | 'PATCH' | 'DELETE',
-    body: unknown,
-    success: string,
-  ): Promise<boolean> {
-    setBusy(true);
-    setError('');
-    setNotice('');
-    try {
-      await apiRequest(path, {
-        method,
-        ...(body === undefined ? {} : { body: JSON.stringify(body) }),
-      });
-      await load();
-      setNotice(success);
-      return true;
-    } catch (caught) {
-      setError(caught instanceof ApiError ? caught.message : 'That change could not be saved.');
-      return false;
-    } finally {
-      setBusy(false);
-    }
-  }
+function SuperadminOnly() {
+  return (
+    <PlatformPage
+      title="Country packs and tax definitions"
+      description="Versioned jurisdiction defaults and the tax metadata shipped with them."
+    >
+      <section className="rb-platform__card rb-platform__forbidden">
+        <LockKeyhole aria-hidden="true" />
+        <div>
+          <h2>Superadmin access required</h2>
+          <p className="rb-platform__muted">
+            Country packs affect every tenant that adopts them. A superadmin must review and manage
+            this catalog.
+          </p>
+        </div>
+      </section>
+    </PlatformPage>
+  );
+}
 
-  async function runLifecycle(confirmationValue: Confirmation) {
-    const { action, pack } = confirmationValue;
-    const path = action === 'delete' ? packPath(pack) : `${packPath(pack)}/${action}`;
-    const success =
-      action === 'publish'
-        ? `${pack.code} ${pack.version} published.`
-        : action === 'deprecate'
-          ? `${pack.code} ${pack.version} deprecated.`
-          : `${pack.code} ${pack.version} deleted.`;
-    if (await mutate(path, action === 'delete' ? 'DELETE' : 'POST', undefined, success)) {
-      setConfirmation(null);
-      if (editor && 'pack' in editor && editor.pack.id === pack.id) setEditor(null);
-    }
-  }
+/** Saves an editor body and reports the server's refusal in place. */
+async function saveEditor(
+  editor: EditorMode,
+  body: Record<string, unknown>,
+): Promise<{ code: string; version: string }> {
+  const created = await apiRequest<{ data: { code: string; version: string } }>(
+    editor.kind === 'create' ? '/localization/country-packs' : packPath(editor.pack),
+    { method: editor.kind === 'create' ? 'POST' : 'PATCH', body: JSON.stringify(body) },
+  );
+  return created.data;
+}
 
-  if (!canManage) {
-    return (
-      <PlatformPage
-        title="Country packs and tax definitions"
-        description="Versioned jurisdiction defaults and the tax metadata shipped with them."
-      >
-        <section className="rb-platform__card rb-platform__forbidden">
-          <LockKeyhole aria-hidden="true" />
-          <div>
-            <h2>Superadmin access required</h2>
-            <p className="rb-platform__muted">
-              Country packs affect every tenant that adopts them. A superadmin must review and
-              manage this catalog.
-            </p>
-          </div>
-        </section>
-      </PlatformPage>
-    );
-  }
+type PackGroup = {
+  code: string;
+  name: string;
+  countryCode: string;
+  versions: PackVersion[];
+  current: PackVersion | null;
+  latest: PackVersion;
+  pinned: number;
+  updatedAt: string;
+};
+
+export function PlatformCountryPacks() {
+  const router = useRouter();
+  const { session } = usePlatformSession();
+  const canManage = platformRoleAtLeast(session?.role ?? null, 'SUPERADMIN');
+  const countries = useCountryNames();
+  const [packs, setPacks] = useState<PackVersion[] | null>(null);
+  const [error, setError] = useState(false);
+  const [search, setSearch] = useState('');
+  const [editor, setEditor] = useState<EditorMode | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [saveError, setSaveError] = useState('');
+
+  const load = useCallback(() => {
+    if (!canManage) return;
+    setError(false);
+    apiRequest<{ data: PackVersion[] }>('/localization/country-packs/admin/all')
+      .then((response) => setPacks(response.data))
+      .catch(() => setError(true));
+  }, [canManage]);
+  useEffect(() => load(), [load]);
+
+  const groups = useMemo(() => {
+    const byCode = new Map<string, PackVersion[]>();
+    for (const pack of packs ?? []) byCode.set(pack.code, [...(byCode.get(pack.code) ?? []), pack]);
+    const needle = search.trim().toLowerCase();
+    return [...byCode.entries()]
+      .map(([code, versions]): PackGroup => {
+        const current = versions.find((version) => version.current) ?? null;
+        const latest = [...versions].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))[0]!;
+        return {
+          code,
+          name: (current ?? latest).name,
+          countryCode: (current ?? latest).countryCode,
+          versions,
+          current,
+          latest,
+          pinned: versions.reduce((sum, version) => sum + version.pinnedOrganizations, 0),
+          updatedAt: latest.updatedAt,
+        };
+      })
+      .filter(
+        (group) =>
+          !needle ||
+          group.code.toLowerCase().includes(needle) ||
+          group.name.toLowerCase().includes(needle) ||
+          jurisdiction(group.countryCode, countries).toLowerCase().includes(needle),
+      );
+  }, [packs, search, countries]);
+
+  if (!canManage) return <SuperadminOnly />;
 
   return (
     <PlatformPage
       title="Country packs and tax definitions"
-      description="Create immutable versions, review jurisdiction defaults, and manage the tax metadata each version carries."
+      description="Versioned jurisdiction defaults. A published version is never edited: changes ship as a new version, and each organization stays on the version it was set up with."
       actions={
-        <button
-          type="button"
-          disabled={busy}
+        <Button
           onClick={() => {
-            setConfirmation(null);
+            setSaveError('');
             setEditor({ kind: 'create' });
           }}
         >
-          <CirclePlus aria-hidden="true" />
           New draft
-        </button>
+        </Button>
       }
     >
-      {error ? (
-        <p className="rb-platform__alert" role="alert">
-          {error}
-        </p>
+      {editor ? (
+        <>
+          {saveError ? (
+            <p className="rb-platform__alert" role="alert">
+              {saveError}
+            </p>
+          ) : null}
+          <CountryPackEditor
+            mode={editor}
+            busy={busy}
+            onCancel={() => setEditor(null)}
+            onSave={async (body) => {
+              setBusy(true);
+              setSaveError('');
+              try {
+                const saved = await saveEditor(editor, body);
+                router.push(versionHref(saved));
+              } catch (caught) {
+                setSaveError(
+                  caught instanceof ApiError ? caught.message : 'The draft could not be saved.',
+                );
+              } finally {
+                setBusy(false);
+              }
+            }}
+          />
+        </>
       ) : null}
+
+      {error ? (
+        <ErrorState
+          title="Country packs could not be loaded"
+          description="This is a loading failure, not an empty catalog."
+          action={
+            <Button variant="secondary" size="sm" onClick={load}>
+              Try again
+            </Button>
+          }
+        />
+      ) : (
+        <DataTable
+          caption="Country packs"
+          toolbar={
+            <DataTableToolbar
+              resultLabel={
+                packs ? `${groups.length} pack${groups.length === 1 ? '' : 's'}` : undefined
+              }
+            >
+              <DataTableSearch
+                label="Search country packs"
+                placeholder="Code, name or country"
+                value={search}
+                onChange={(event) => setSearch(event.target.value)}
+              />
+            </DataTableToolbar>
+          }
+          rows={groups.map((group) => ({ ...group, id: group.code }))}
+          loading={packs === null}
+          emptyTitle={packs?.length ? 'No packs match this search' : 'No country packs yet'}
+          columns={[
+            {
+              key: 'pack',
+              header: 'Country pack',
+              cell: (group) => (
+                <PrimarySecondaryCell
+                  primary={
+                    <Link href={versionHref(group.current ?? group.latest)}>{group.name}</Link>
+                  }
+                  secondary={group.code}
+                  primaryTitle={group.name}
+                />
+              ),
+            },
+            {
+              key: 'jurisdiction',
+              header: 'Jurisdiction',
+              cell: (group) => jurisdiction(group.countryCode, countries),
+            },
+            {
+              key: 'current',
+              header: 'Current version',
+              cell: (group) =>
+                group.current ? (
+                  <PrimarySecondaryCell
+                    primary={<code>{group.current.version}</code>}
+                    secondary={`Published ${dateTime(group.current.publishedAt)}`}
+                  />
+                ) : (
+                  <span className="rb-table-secondary">None published</span>
+                ),
+            },
+            {
+              key: 'tier',
+              header: 'Review tier',
+              cell: (group) => <TierBadge tier={(group.current ?? group.latest).tier} />,
+              hideBelow: 'tablet',
+            },
+            {
+              key: 'versions',
+              header: 'Versions',
+              cell: (group) => versionCounts(group.versions),
+              hideBelow: 'tablet',
+            },
+            {
+              key: 'pinned',
+              header: 'Organizations',
+              align: 'right',
+              cell: (group) => group.pinned.toLocaleString(),
+            },
+            {
+              key: 'validation',
+              header: 'Validation',
+              cell: (group) => {
+                const issues = validationIssues(group.current ?? group.latest);
+                return issues.length ? (
+                  <Badge tone="warning" title={issues.join('; ')}>
+                    {issues.length} issue{issues.length === 1 ? '' : 's'}
+                  </Badge>
+                ) : (
+                  <Badge tone="success">Complete</Badge>
+                );
+              },
+              hideBelow: 'tablet',
+            },
+            {
+              key: 'updated',
+              header: 'Last change',
+              cell: (group) => dateTime(group.updatedAt),
+              hideBelow: 'tablet',
+            },
+          ]}
+        />
+      )}
+      <p className="rb-platform__muted rb-platform__footnote">
+        Publishing a pack is not a legal or tax certification. Jurisdiction review and compliance
+        ownership sit outside this console.
+      </p>
+    </PlatformPage>
+  );
+}
+
+function versionCounts(versions: Array<{ status: PlatformCountryPack['status'] }>) {
+  const count = (status: PlatformCountryPack['status']) =>
+    versions.filter((version) => version.status === status).length;
+  return [
+    [count('PUBLISHED'), 'published'],
+    [count('DRAFT'), 'draft'],
+    [count('DEPRECATED'), 'deprecated'],
+  ]
+    .filter(([n]) => (n as number) > 0)
+    .map(([n, label]) => `${n as number} ${label as string}`)
+    .join(' · ');
+}
+
+function TierBadge({ tier }: { tier: PlatformCountryPackTier }) {
+  return (
+    <Badge
+      tone={
+        tier === 'TIER_A_REVIEWED' ? 'success' : tier === 'TIER_C_BLOCKED' ? 'danger' : 'neutral'
+      }
+      title={TIER_EXPLANATION[tier]}
+    >
+      {tierLabel(tier)}
+    </Badge>
+  );
+}
+
+type Lifecycle = 'publish' | 'deprecate' | 'delete';
+
+export function PlatformCountryPackVersion({ code, version }: { code: string; version: string }) {
+  const router = useRouter();
+  const { session } = usePlatformSession();
+  const canManage = platformRoleAtLeast(session?.role ?? null, 'SUPERADMIN');
+  const countries = useCountryNames();
+  const [pack, setPack] = useState<PackVersionDetail | null>(null);
+  const [error, setError] = useState(false);
+  const [notice, setNotice] = useState('');
+  const [editor, setEditor] = useState<EditorMode | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [saveError, setSaveError] = useState('');
+  const [lifecycle, setLifecycle] = useState<Lifecycle | null>(null);
+
+  const load = useCallback(() => {
+    if (!canManage) return;
+    setError(false);
+    apiRequest<{ data: PackVersionDetail }>(
+      `/localization/country-packs/admin/${encodeURIComponent(code)}/versions/${encodeURIComponent(version)}`,
+    )
+      .then((response) => setPack(response.data))
+      .catch(() => setError(true));
+  }, [canManage, code, version]);
+  useEffect(() => load(), [load]);
+
+  if (!canManage) return <SuperadminOnly />;
+  const back = <Link href="/platform/country-packs">Back to country packs</Link>;
+  if (error) {
+    return (
+      <PlatformPage title="Country pack" actions={back}>
+        <ErrorState
+          title="This country pack version could not be loaded"
+          description="It may have been a draft that was deleted, or the request failed."
+          action={
+            <Button variant="secondary" size="sm" onClick={load}>
+              Try again
+            </Button>
+          }
+        />
+      </PlatformPage>
+    );
+  }
+  if (!pack) {
+    return (
+      <PlatformPage title="Country pack" actions={back}>
+        <DetailSkeleton variant="profile" />
+      </PlatformPage>
+    );
+  }
+
+  const issues = validationIssues(pack);
+  const current = pack.versions.find((candidate) => candidate.current) ?? null;
+  const otherPublished = pack.versions.filter(
+    (candidate) => candidate.status === 'PUBLISHED' && candidate.id !== pack.id,
+  );
+  const isDraft = pack.status === 'DRAFT';
+  const done = (message: string) => {
+    setNotice(message);
+    setEditor(null);
+    load();
+  };
+
+  return (
+    <PlatformPage
+      title={pack.name}
+      description={jurisdiction(pack.countryCode, countries)}
+      meta={
+        <>
+          {pack.code} · <code>{pack.version}</code> <IdentifierNote pack={pack} />
+        </>
+      }
+      actions={
+        <div className="rb-platform__detail-actions">
+          <StatusBadge status={pack.status} />
+          {pack.current ? <Badge tone="info">Current for new organizations</Badge> : null}
+          {isDraft ? (
+            <>
+              <Button variant="outline" onClick={() => setEditor({ kind: 'pack', pack })}>
+                Edit draft
+              </Button>
+              <Button onClick={() => setLifecycle('publish')}>Publish</Button>
+              <Button variant="ghost" onClick={() => setLifecycle('delete')}>
+                Delete draft
+              </Button>
+            </>
+          ) : (
+            <>
+              <Button variant="outline" onClick={() => setEditor({ kind: 'create', source: pack })}>
+                Create version from this
+              </Button>
+              {pack.status === 'PUBLISHED' ? (
+                <Button variant="ghost" onClick={() => setLifecycle('deprecate')}>
+                  Deprecate
+                </Button>
+              ) : null}
+            </>
+          )}
+          {back}
+        </div>
+      }
+    >
       {notice ? (
         <p className="rb-platform__notice" role="status">
           {notice}
         </p>
       ) : null}
-
       {editor ? (
-        <CountryPackEditor
-          key={`${editor.kind}-${'pack' in editor ? editor.pack.id : (editor.source?.id ?? 'new')}-${editor.kind === 'tax' ? (editor.taxPack?.id ?? 'new-tax') : ''}`}
-          mode={editor}
-          busy={busy}
-          onCancel={() => setEditor(null)}
-          onSave={async (body, success) => {
-            const target =
-              editor.kind === 'create' ? '/localization/country-packs' : packPath(editor.pack);
-            if (await mutate(target, editor.kind === 'create' ? 'POST' : 'PATCH', body, success)) {
-              setEditor(null);
-            }
+        <>
+          {saveError ? (
+            <p className="rb-platform__alert" role="alert">
+              {saveError}
+            </p>
+          ) : null}
+          <CountryPackEditor
+            key={`${editor.kind}-${editor.kind === 'tax' ? (editor.taxPack?.id ?? 'new') : ''}`}
+            mode={editor}
+            busy={busy}
+            onCancel={() => setEditor(null)}
+            onSave={async (body, success) => {
+              setBusy(true);
+              setSaveError('');
+              try {
+                const saved = await saveEditor(editor, body);
+                if (editor.kind === 'create') router.push(versionHref(saved));
+                else done(success);
+              } catch (caught) {
+                setSaveError(
+                  caught instanceof ApiError ? caught.message : 'The change could not be saved.',
+                );
+              } finally {
+                setBusy(false);
+              }
+            }}
+          />
+        </>
+      ) : null}
+
+      <Tabs defaultValue="overview" className="rb-platform__tabs">
+        <TabsList>
+          <TabsTrigger value="overview">Overview</TabsTrigger>
+          <TabsTrigger value="tax">Tax definitions</TabsTrigger>
+          <TabsTrigger value="defaults">Defaults</TabsTrigger>
+          <TabsTrigger value="versions">Versions</TabsTrigger>
+          <TabsTrigger value="audit">Audit</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="overview">
+          <div className="rb-platform__grid">
+            <Panel title="Lifecycle">
+              <dl>
+                <Row label="Status" value={readable(pack.status.toLowerCase())} />
+                <Row label="Identifier" value={pack.version} />
+                <Row label="Published" value={dateTime(pack.publishedAt)} />
+                {pack.deprecatedAt ? (
+                  <Row label="Deprecated" value={dateTime(pack.deprecatedAt)} />
+                ) : null}
+                <Row
+                  label="New organizations get"
+                  value={
+                    pack.current
+                      ? 'This version'
+                      : current
+                        ? `Version ${current.version}`
+                        : 'No published version'
+                  }
+                />
+                <Row label="Organizations pinned here" value={pack.pinnedOrganizations} />
+                <Row label="Last change" value={dateTime(pack.updatedAt)} />
+              </dl>
+            </Panel>
+            <Panel title="Scope and review">
+              <dl>
+                <Row label="Jurisdiction" value={jurisdiction(pack.countryCode, countries)} />
+                <Row label="Review tier" value={tierLabel(pack.tier)} />
+                <Row
+                  label="Supported documents"
+                  value={
+                    pack.supportedEntityTypes.length
+                      ? pack.supportedEntityTypes
+                          .map((type) => readable(type.toLowerCase()))
+                          .join(', ')
+                      : '—'
+                  }
+                />
+              </dl>
+              <p className="rb-platform__muted">{TIER_EXPLANATION[pack.tier]}</p>
+            </Panel>
+          </div>
+          <Panel title="Validation">
+            {issues.length ? (
+              <ul className="rb-platform__issue-list">
+                {issues.map((issue) => (
+                  <li key={issue}>{issue}</li>
+                ))}
+              </ul>
+            ) : (
+              <p className="rb-platform__muted">
+                Every required default is set and a tax definition is present.
+              </p>
+            )}
+          </Panel>
+          {pack.notes.length ? (
+            <Panel title="Notes">
+              <ul className="rb-platform__issue-list">
+                {pack.notes.map((note) => (
+                  <li key={note}>{note}</li>
+                ))}
+              </ul>
+            </Panel>
+          ) : null}
+        </TabsContent>
+
+        <TabsContent value="tax">
+          {pack.taxPacks.length === 0 ? (
+            <Panel title="Tax definitions">
+              <p className="rb-platform__muted">This version carries no tax definition.</p>
+            </Panel>
+          ) : (
+            pack.taxPacks.map((taxPack) => (
+              <TaxDefinition
+                key={taxPack.id}
+                taxPack={taxPack}
+                onEdit={isDraft ? () => setEditor({ kind: 'tax', pack, taxPack }) : undefined}
+              />
+            ))
+          )}
+          {isDraft ? (
+            <div className="rb-platform__actions">
+              <Button variant="outline" onClick={() => setEditor({ kind: 'tax', pack })}>
+                Add tax version
+              </Button>
+            </div>
+          ) : (
+            <p className="rb-platform__muted">
+              Published and deprecated versions are read-only. Create a version from this one to
+              change rates.
+            </p>
+          )}
+        </TabsContent>
+
+        <TabsContent value="defaults">
+          <Panel title="Onboarding defaults">
+            <dl>
+              {Object.entries(pack.defaults).map(([key, value]) => (
+                <Row key={key} label={DEFAULT_LABEL[key] ?? key} value={scalar(value)} />
+              ))}
+            </dl>
+            <p className="rb-platform__muted">
+              Applied when an organization is created on this version. Every value stays editable by
+              the organization afterwards.
+            </p>
+          </Panel>
+        </TabsContent>
+
+        <TabsContent value="versions">
+          <Panel title={`Versions of ${pack.code}`}>
+            <DataTable
+              caption={`Versions of ${pack.code}`}
+              rows={pack.versions}
+              columns={[
+                {
+                  key: 'version',
+                  header: 'Identifier',
+                  cell: (row) =>
+                    row.id === pack.id ? (
+                      <code>{row.version}</code>
+                    ) : (
+                      <Link href={versionHref({ code: pack.code, version: row.version })}>
+                        <code>{row.version}</code>
+                      </Link>
+                    ),
+                },
+                {
+                  key: 'status',
+                  header: 'Status',
+                  cell: (row) => (
+                    <>
+                      <StatusBadge status={row.status} />{' '}
+                      {row.current ? <Badge tone="info">Current</Badge> : null}
+                    </>
+                  ),
+                },
+                { key: 'published', header: 'Published', cell: (row) => dateTime(row.publishedAt) },
+                {
+                  key: 'pinned',
+                  header: 'Organizations',
+                  align: 'right',
+                  cell: (row) => row.pinnedOrganizations.toLocaleString(),
+                },
+              ]}
+            />
+          </Panel>
+        </TabsContent>
+
+        <TabsContent value="audit">
+          <Panel title="Audit">
+            <DataTable
+              caption="Changes to this version and its tax definitions"
+              rows={pack.history}
+              emptyTitle="No console changes on record"
+              emptyDescription="Seeded versions have no history until someone changes them."
+              emptyState={{ variant: 'inline' }}
+              columns={[
+                {
+                  key: 'when',
+                  header: 'When',
+                  cell: (event) => (
+                    <PrimarySecondaryCell
+                      primary={dateTime(event.occurredAt)}
+                      secondary={event.actor}
+                    />
+                  ),
+                },
+                {
+                  key: 'action',
+                  header: 'Action',
+                  cell: (event) => (
+                    <span title={event.eventKey}>
+                      {readable(event.eventKey.replace(/^platform\.country_pack_/, ''))}
+                    </span>
+                  ),
+                },
+                { key: 'reason', header: 'Reason', cell: (event) => event.reason ?? '—' },
+              ]}
+            />
+          </Panel>
+        </TabsContent>
+      </Tabs>
+
+      {lifecycle === 'publish' ? (
+        <AdminActionDialog
+          open
+          onOpenChange={(open) => (open ? undefined : setLifecycle(null))}
+          title={`Publish ${pack.code} ${pack.version}`}
+          confirmLabel="Publish version"
+          confirmationPhrase={`${pack.code} ${pack.version}`}
+          confirmDisabled={issues.some((issue) => issue.startsWith('Default'))}
+          impact={
+            <>
+              <p>
+                Locks this version permanently. It becomes the version <strong>new</strong>{' '}
+                organizations on {pack.code} receive
+                {current ? `, in place of ${current.version}` : ''}. Organizations already on
+                another version stay there, and issued documents keep their own snapshot.
+              </p>
+              {issues.length ? (
+                <p>
+                  <strong>Validation:</strong> {issues.join('; ')}.
+                </p>
+              ) : null}
+              <p>Publishing is not a legal or tax certification. Tier: {tierLabel(pack.tier)}.</p>
+            </>
+          }
+          onConfirm={async (reason) => {
+            await apiRequest(`${packPath(pack)}/publish`, {
+              method: 'POST',
+              body: JSON.stringify({ reason }),
+            });
+            done(`${pack.code} ${pack.version} published.`);
           }}
         />
       ) : null}
 
-      {confirmation ? (
-        <LifecycleConfirmation
-          confirmation={confirmation}
-          busy={busy}
-          onCancel={() => setConfirmation(null)}
-          onConfirm={() => void runLifecycle(confirmation)}
+      {lifecycle === 'deprecate' ? (
+        <AdminActionDialog
+          open
+          onOpenChange={(open) => (open ? undefined : setLifecycle(null))}
+          title={`Deprecate ${pack.code} ${pack.version}`}
+          confirmLabel="Deprecate version"
+          tone="danger"
+          impact={
+            <>
+              <p>
+                No new organization will receive this version.{' '}
+                {pack.current
+                  ? otherPublished.length
+                    ? `New organizations get ${otherPublished[0]!.version} instead.`
+                    : `No other published version of ${pack.code} remains for new organizations.`
+                  : ''}
+              </p>
+              <p>
+                The <strong>{pack.pinnedOrganizations.toLocaleString()}</strong> organization
+                {pack.pinnedOrganizations === 1 ? '' : 's'} pinned here stay on it, and their
+                documents are unchanged.
+                {pack.tier === 'TIER_A_REVIEWED'
+                  ? ' A deprecated Tier A version no longer counts as fully reviewed for them.'
+                  : ''}{' '}
+                Deprecation cannot be undone; ship a new version instead.
+              </p>
+            </>
+          }
+          onConfirm={async (reason) => {
+            await apiRequest(`${packPath(pack)}/deprecate`, {
+              method: 'POST',
+              body: JSON.stringify({ reason }),
+            });
+            done(`${pack.code} ${pack.version} deprecated.`);
+          }}
         />
       ) : null}
 
-      {packs === null ? (
-        <p className="rb-platform__muted">Loading country packs...</p>
-      ) : packs.length === 0 ? (
-        <section className="rb-platform__card rb-platform__empty">
-          <FileJson aria-hidden="true" />
-          <h2>No country packs yet</h2>
-          <p className="rb-platform__muted">
-            Create a draft to establish the first versioned jurisdiction configuration.
-          </p>
-        </section>
-      ) : (
-        <CountryPackTable
-          packs={packs}
-          busy={busy}
-          onEdit={(pack) => {
-            setConfirmation(null);
-            setEditor({ kind: 'pack', pack });
-          }}
-          onEditTax={(pack, taxPack) => {
-            setConfirmation(null);
-            setEditor({ kind: 'tax', pack, taxPack });
-          }}
-          onCreateVersion={(source) => {
-            setConfirmation(null);
-            setEditor({ kind: 'create', source });
-          }}
-          onLifecycle={(action, pack) => {
-            setEditor(null);
-            setConfirmation({ action, pack });
+      {lifecycle === 'delete' ? (
+        <AdminActionDialog
+          open
+          onOpenChange={(open) => (open ? undefined : setLifecycle(null))}
+          title={`Delete draft ${pack.code} ${pack.version}`}
+          confirmLabel="Delete draft"
+          tone="danger"
+          impact={
+            <p>
+              Deletes this draft and its tax definitions. No organization can be on a draft, so no
+              tenant is affected. The deletion stays in the audit log.
+            </p>
+          }
+          onConfirm={async (reason) => {
+            await apiRequest(packPath(pack), {
+              method: 'DELETE',
+              body: JSON.stringify({ reason }),
+            });
+            router.push('/platform/country-packs');
           }}
         />
-      )}
+      ) : null}
     </PlatformPage>
   );
 }
 
-function CountryPackTable({
-  packs,
-  busy,
-  onEdit,
-  onEditTax,
-  onCreateVersion,
-  onLifecycle,
-}: {
-  packs: PlatformCountryPack[];
-  busy: boolean;
-  onEdit: (pack: PlatformCountryPack) => void;
-  onEditTax: (pack: PlatformCountryPack, taxPack?: PlatformTaxPack) => void;
-  onCreateVersion: (pack: PlatformCountryPack) => void;
-  onLifecycle: (action: LifecycleAction, pack: PlatformCountryPack) => void;
-}) {
+function TaxDefinition({ taxPack, onEdit }: { taxPack: PlatformTaxPack; onEdit?: () => void }) {
+  // Rate objects are free-form JSON; the known keys are read and anything else stays visible in
+  // the editor.
+  const rates = taxPack.rates.map((rate, index): Record<string, unknown> & { id: string } => ({
+    ...rate,
+    id: String(index),
+  }));
   return (
-    <DataTable
-      caption="Country pack versions and tax definitions"
-      rows={packs}
-      emptyTitle="No country packs"
-      columns={[
-        {
-          key: 'pack',
-          header: 'Country pack',
-          cell: (pack) => (
-            <PrimarySecondaryCell
-              primary={pack.name}
-              secondary={pack.code}
-              primaryTitle={pack.name}
-              secondaryTitle={pack.code}
-            />
-          ),
-        },
-        {
-          key: 'version',
-          header: 'Version',
-          cell: (pack) => (
-            <PrimarySecondaryCell
-              primary={pack.version}
-              secondary={<PackStatus status={pack.status} />}
-              primaryTitle={pack.version}
-            />
-          ),
-        },
-        {
-          key: 'jurisdiction',
-          header: 'Jurisdiction',
-          cell: (pack) => (
-            <PrimarySecondaryCell
-              primary={pack.countryCode}
-              secondary={tierLabel(pack.tier)}
-              primaryTitle={pack.countryCode}
-              secondaryTitle={tierLabel(pack.tier)}
-            />
-          ),
-        },
-        {
-          key: 'taxes',
-          header: 'Tax definitions',
-          hideBelow: 'tablet',
-          cell: (pack) => (
-            <>
-              {pack.taxPacks.length === 0 ? (
-                <span className="rb-platform__muted">None</span>
-              ) : (
-                <ul className="rb-platform__tax-list">
-                  {pack.taxPacks.map((taxPack) => (
-                    <li key={taxPack.id}>
-                      <span>
-                        {taxPack.name}
-                        <small>
-                          {taxPack.version} - {taxPack.rates.length}{' '}
-                          {taxPack.rates.length === 1 ? 'rate' : 'rates'}
-                        </small>
-                      </span>
-                      {pack.status === 'DRAFT' ? (
-                        <button
-                          type="button"
-                          className="rb-platform__link is-neutral"
-                          disabled={busy}
-                          onClick={() => onEditTax(pack, taxPack)}
-                        >
-                          Edit
-                        </button>
-                      ) : null}
-                    </li>
-                  ))}
-                </ul>
-              )}
-              {pack.status === 'DRAFT' ? (
-                <button
-                  type="button"
-                  className="rb-platform__link is-neutral rb-platform__add-tax"
-                  disabled={busy}
-                  onClick={() => onEditTax(pack)}
-                >
-                  <CirclePlus aria-hidden="true" />
-                  Add tax version
-                </button>
-              ) : null}
-            </>
-          ),
-        },
-        {
-          key: 'updated',
-          header: 'Updated',
-          cell: (pack) => (
-            <PrimarySecondaryCell
-              primary={new Date(pack.updatedAt).toLocaleDateString()}
-              secondary={new Date(pack.updatedAt).toLocaleTimeString()}
-            />
-          ),
-          hideBelow: 'tablet',
-        },
-        {
-          key: 'actions',
-          header: 'Actions',
-          cell: (pack) => (
-            <div className="rb-platform__table-actions">
-              {pack.status === 'DRAFT' ? (
-                <>
-                  <button
-                    type="button"
-                    className="is-secondary"
-                    disabled={busy}
-                    onClick={() => onEdit(pack)}
-                  >
-                    <Pencil aria-hidden="true" />
-                    Edit
-                  </button>
-                  <button
-                    type="button"
-                    disabled={busy}
-                    onClick={() => onLifecycle('publish', pack)}
-                  >
-                    <Send aria-hidden="true" />
-                    Publish
-                  </button>
-                  <button
-                    type="button"
-                    className="is-danger is-quiet-danger"
-                    disabled={busy}
-                    onClick={() => onLifecycle('delete', pack)}
-                  >
-                    <Trash2 aria-hidden="true" />
-                    Delete
-                  </button>
-                </>
-              ) : (
-                <>
-                  <button
-                    type="button"
-                    className="is-secondary"
-                    disabled={busy}
-                    onClick={() => onCreateVersion(pack)}
-                  >
-                    <CopyPlus aria-hidden="true" />
-                    Create version
-                  </button>
-                  {pack.status === 'PUBLISHED' ? (
-                    <button
-                      type="button"
-                      className="is-secondary"
-                      disabled={busy}
-                      onClick={() => onLifecycle('deprecate', pack)}
-                    >
-                      <Archive aria-hidden="true" />
-                      Deprecate
-                    </button>
-                  ) : null}
-                </>
-              )}
-            </div>
-          ),
-        },
-      ]}
-    />
+    <Panel title={`${taxPack.name} · ${taxPack.version}`}>
+      <dl>
+        <Row
+          label="Registration fields"
+          value={
+            taxPack.registrationFields.length
+              ? taxPack.registrationFields
+                  .map(
+                    (field) =>
+                      `${scalar(field.label ?? field.key)}${field.required === true ? ' (required)' : ''}`,
+                  )
+                  .join(', ')
+              : '—'
+          }
+        />
+        <Row label="Exemptions" value={taxPack.exemptions.length} />
+        <Row label="Reporting mappings" value={Object.keys(taxPack.reportingMappings).length} />
+      </dl>
+      <DataTable
+        caption={`Rates in ${taxPack.name}`}
+        rows={rates}
+        emptyTitle="No rates"
+        emptyDescription="This definition carries no tax rates."
+        emptyState={{ variant: 'inline' }}
+        columns={[
+          { key: 'label', header: 'Rate', cell: (rate) => scalar(rate.label ?? rate.code) },
+          {
+            key: 'percent',
+            header: 'Percent',
+            align: 'right',
+            cell: (rate) => (rate.ratePercent === undefined ? '—' : `${scalar(rate.ratePercent)}%`),
+          },
+          {
+            key: 'treatment',
+            header: 'Treatment',
+            cell: (rate) => readable(scalar(rate.treatment).toLowerCase()),
+          },
+          {
+            key: 'recoverable',
+            header: 'Recoverable',
+            cell: (rate) =>
+              rate.recoverable === undefined ? '—' : rate.recoverable === true ? 'Yes' : 'No',
+            hideBelow: 'tablet',
+          },
+        ]}
+      />
+      {taxPack.notes.length ? (
+        <p className="rb-platform__muted">{taxPack.notes.join(' ')}</p>
+      ) : null}
+      {onEdit ? (
+        <div className="rb-platform__actions">
+          <Button variant="outline" size="sm" onClick={onEdit}>
+            Edit tax definition
+          </Button>
+        </div>
+      ) : null}
+    </Panel>
   );
 }
 
@@ -830,59 +1345,6 @@ function JsonField({
       <small>{hint}</small>
     </label>
   );
-}
-
-function LifecycleConfirmation({
-  confirmation,
-  busy,
-  onCancel,
-  onConfirm,
-}: {
-  confirmation: Confirmation;
-  busy: boolean;
-  onCancel: () => void;
-  onConfirm: () => void;
-}) {
-  const { action, pack } = confirmation;
-  const copy =
-    action === 'publish'
-      ? 'Publishing makes this version available to organizations and permanently locks its contents.'
-      : action === 'deprecate'
-        ? 'Deprecating removes this version from new selections. Existing pinned organizations and documents remain unchanged.'
-        : 'Deleting removes this draft and its tax definitions. Published data is never deleted.';
-
-  return (
-    <section className={`rb-platform__confirm ${action === 'delete' ? 'is-danger' : ''}`}>
-      <div>
-        <h2>
-          {action === 'publish' ? 'Publish' : action === 'deprecate' ? 'Deprecate' : 'Delete'}{' '}
-          {pack.code} {pack.version}?
-        </h2>
-        <p>{copy}</p>
-      </div>
-      <div className="rb-platform__actions">
-        <button
-          type="button"
-          className={action === 'delete' ? 'is-danger' : undefined}
-          disabled={busy}
-          onClick={onConfirm}
-        >
-          {action === 'publish' ? <Send aria-hidden="true" /> : null}
-          {action === 'deprecate' ? <Archive aria-hidden="true" /> : null}
-          {action === 'delete' ? <Trash2 aria-hidden="true" /> : null}
-          {busy ? 'Working...' : `Confirm ${action}`}
-        </button>
-        <button type="button" className="is-secondary" disabled={busy} onClick={onCancel}>
-          Cancel
-        </button>
-      </div>
-    </section>
-  );
-}
-
-function PackStatus({ status }: { status: PlatformCountryPack['status'] }) {
-  const tone = status === 'PUBLISHED' ? 'is-ok' : status === 'DEPRECATED' ? 'is-warn' : '';
-  return <span className={`rb-platform__pill ${tone}`}>{status.toLowerCase()}</span>;
 }
 
 function tierLabel(tier: PlatformCountryPackTier): string {

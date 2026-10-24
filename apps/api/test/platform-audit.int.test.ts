@@ -1,4 +1,5 @@
 import { ScheduledJobExecutionStatus } from '@prisma/client';
+import { OFFICIAL_ENTITLEMENT_KEYS, OFFICIAL_FEATURE_KEYS } from '@valuebooks/contracts';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 
 import { createOpaqueToken, hashToken } from '../src/auth/auth.crypto.js';
@@ -118,9 +119,20 @@ describe('platform mutation audit coverage', () => {
       .http()
       .post(`${API}/platform/plans`)
       .set('Cookie', superadminCookie)
-      .send({ key: 'audit-plan', name: 'Audit plan', priceMinor: '1000', currency: 'USD' })
+      .send({
+        key: 'audit-plan', tierKey: 'growth', name: 'Audit plan', priceMinor: '1000', currency: 'USD',
+        billingProvider: 'PAYSTACK', providerPriceId: 'PLN_audit_plan',
+      })
       .expect(201)
       .then((response) => (response.body as { data: { id: string } }).data);
+    // Catalog governance (F) now refuses to activate a plan that would introduce a new
+    // violation; give it every official entitlement key so activation only exercises audit
+    // coverage, not catalog completeness (covered elsewhere).
+    await harness.prisma.planEntitlement.createMany({
+      data: [...OFFICIAL_ENTITLEMENT_KEYS, ...OFFICIAL_FEATURE_KEYS].map((key) => ({
+        planId: plan.id, key, enabled: true, limitValue: null,
+      })),
+    });
     await harness
       .http()
       .patch(`${API}/platform/plans/${plan.id}`)
@@ -158,7 +170,12 @@ describe('platform mutation audit coverage', () => {
       .http()
       .post(`${API}/platform/organizations/${organizationId}/plan`)
       .set('Cookie', superadminCookie)
-      .send({ planId: plan.id, reason: 'Audit plan assignment evidence.' })
+      .send({
+        planId: plan.id,
+        status: 'ACTIVE',
+        complimentary: true,
+        reason: 'Audit plan assignment evidence.',
+      })
       .expect(200);
     await harness
       .http()
@@ -191,19 +208,25 @@ describe('platform mutation audit coverage', () => {
       .http()
       .patch(`${API}/platform/feature-flags/${flag.id}`)
       .set('Cookie', superadminCookie)
-      .send({ defaultEnabled: true })
+      .send({ defaultEnabled: true, reason: 'Audit flag default evidence.' })
       .expect(200);
     const rule = await harness
       .http()
       .post(`${API}/platform/feature-flags/${flag.id}/rules`)
       .set('Cookie', superadminCookie)
-      .send({ scope: 'GLOBAL', enabled: false, note: 'Audit rule evidence.' })
+      .send({
+        scope: 'GLOBAL',
+        enabled: false,
+        note: 'Audit rule evidence.',
+        reason: 'Audit rule set evidence.',
+      })
       .expect(200)
       .then((response) => (response.body as { data: { id: string } }).data);
     await harness
       .http()
       .delete(`${API}/platform/feature-flags/rules/${rule.id}`)
       .set('Cookie', superadminCookie)
+      .send({ reason: 'Audit rule removal evidence.' })
       .expect(204);
 
     const executionId = await createFailedExecution();
@@ -211,6 +234,7 @@ describe('platform mutation audit coverage', () => {
       .http()
       .post(`${API}/platform/jobs/${executionId}/retry`)
       .set('Cookie', operationsCookie)
+      .send({ reason: 'Audit retry evidence.' })
       .expect(200);
 
     const countryPack = countryPackInput('AUDIT', '1');
@@ -251,11 +275,13 @@ describe('platform mutation audit coverage', () => {
       .http()
       .post(`${API}/localization/country-packs/AUDIT/versions/1/publish`)
       .set('Cookie', superadminCookie)
+      .send({ reason: 'Audit publish evidence.' })
       .expect(200);
     await harness
       .http()
       .post(`${API}/localization/country-packs/AUDIT/versions/1/deprecate`)
       .set('Cookie', superadminCookie)
+      .send({ reason: 'Audit deprecate evidence.' })
       .expect(200);
     const deletedPack = await harness
       .http()
@@ -268,6 +294,7 @@ describe('platform mutation audit coverage', () => {
       .http()
       .delete(`${API}/localization/country-packs/AUDDEL/versions/1`)
       .set('Cookie', superadminCookie)
+      .send({ reason: 'Audit delete evidence.' })
       .expect(200);
 
     const events = await harness.prisma.platformAuditEvent.findMany({
@@ -297,16 +324,46 @@ describe('platform mutation audit coverage', () => {
         audit('platform.admin_granted', 'platform_admin', grant.id, 'Audit grant evidence.'),
         audit('platform.admin_revoked', 'platform_admin', grant.id),
         audit('platform.feature_flag_created', 'feature_flag', flag.id),
-        audit('platform.feature_flag_updated', 'feature_flag', flag.id),
-        audit('platform.feature_flag_rule_set', 'feature_flag_rule', rule.id),
-        audit('platform.feature_flag_rule_removed', 'feature_flag_rule', rule.id),
+        audit(
+          'platform.feature_flag_updated',
+          'feature_flag',
+          flag.id,
+          'Audit flag default evidence.',
+        ),
+        audit(
+          'platform.feature_flag_rule_set',
+          'feature_flag_rule',
+          rule.id,
+          'Audit rule set evidence.',
+        ),
+        audit(
+          'platform.feature_flag_rule_removed',
+          'feature_flag_rule',
+          rule.id,
+          'Audit rule removal evidence.',
+        ),
         audit('platform.country_pack_created', 'country_pack', createdPack.id),
         audit('platform.country_pack_updated', 'country_pack', createdPack.id),
         audit('platform.country_pack_tax_definition_upserted', 'tax_pack', taxPack.id),
-        audit('platform.country_pack_published', 'country_pack', createdPack.id),
-        audit('platform.country_pack_deprecated', 'country_pack', createdPack.id),
+        audit(
+          'platform.country_pack_published',
+          'country_pack',
+          createdPack.id,
+          'Audit publish evidence.',
+        ),
+        audit(
+          'platform.country_pack_deprecated',
+          'country_pack',
+          createdPack.id,
+          'Audit deprecate evidence.',
+        ),
         audit('platform.country_pack_created', 'country_pack', deletedPack.id),
-        audit('platform.country_pack_deleted', 'country_pack', deletedPack.id),
+        audit(
+          'platform.country_pack_deleted',
+          'country_pack',
+          deletedPack.id,
+          'Audit delete evidence.',
+        ),
       ]),
     );
     expect(events).toEqual(
@@ -344,6 +401,7 @@ describe('platform mutation audit coverage', () => {
           targetType: 'scheduled_job_execution',
           targetId: executionId,
           organizationId,
+          reason: 'Audit retry evidence.',
         }),
       ]),
     );

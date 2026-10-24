@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import type { FeatureFlagScope } from '@prisma/client';
 
 import { PrismaService } from '../database/prisma.service.js';
@@ -15,6 +15,15 @@ export interface ResolvedFlag {
   enabled: boolean;
   /** Which rule decided the answer, so an operator can see *why* a tenant has a feature. */
   decidedBy: FeatureFlagScope | 'DEFAULT';
+}
+
+/** A preview answer plus the audience it was computed for, so the console can show its inputs. */
+export interface FlagPreview {
+  key: string;
+  enabled: boolean;
+  /** `ARCHIVED`: the flag is archived, which runtime treats as off for every organization. */
+  decidedBy: FeatureFlagScope | 'DEFAULT' | 'ARCHIVED';
+  audience: { countryCode: string | null; planId: string | null; organizationId: string | null };
 }
 
 export interface OrganizationEntitlements {
@@ -59,6 +68,7 @@ export class EntitlementsService {
           select: {
             status: true,
             trialEndsAt: true,
+            entitlementVersion: { select: { values: { select: { key: true, enabled: true, limitValue: true } } } },
             plan: {
               select: {
                 id: true,
@@ -112,7 +122,7 @@ export class EntitlementsService {
             trialEndsAt: subscription.trialEndsAt?.toISOString() ?? null,
           }
         : null,
-      entitlements: (plan?.entitlements ?? [])
+      entitlements: (subscription?.entitlementVersion ? subscription.entitlementVersion.values : plan?.entitlements ?? [])
         .map((entitlement) => ({
           key: entitlement.key,
           enabled: latestOverride.get(entitlement.key)?.enabled ?? entitlement.enabled,
@@ -183,20 +193,44 @@ export class EntitlementsService {
   }
 
   /**
-   * Explains one flag across every organization-shaped input, for the console's preview control.
-   * Takes the country and plan directly rather than an organization id so an operator can ask
-   * "what would a Kenyan tenant on Growth see?" before any such tenant exists.
+   * Explains one flag for an audience with the same rules runtime applies. For a real organization
+   * the country and plan come from its record, exactly as in `isFlagEnabled`; otherwise the operator
+   * may ask about a hypothetical country and plan ("a Kenyan tenant on Growth") before any exists.
    */
   async preview(input: {
     flagKey: string;
     countryCode?: string;
     planId?: string;
     organizationId?: string;
-  }): Promise<ResolvedFlag> {
+  }): Promise<FlagPreview> {
+    if (input.organizationId && (input.countryCode || input.planId)) {
+      throw new BadRequestException(
+        "Preview either an organization or a country and plan. An organization's country and plan come from its record.",
+      );
+    }
+    let audience: FlagPreview['audience'] = {
+      countryCode: input.countryCode ?? null,
+      planId: input.planId ?? null,
+      organizationId: null,
+    };
+    if (input.organizationId) {
+      const organization = await this.prisma.organization.findUnique({
+        where: { id: input.organizationId },
+        select: { countryCode: true, subscription: { select: { planId: true } } },
+      });
+      if (!organization) throw new NotFoundException('Organization not found.');
+      audience = {
+        countryCode: organization.countryCode,
+        planId: organization.subscription?.planId ?? null,
+        organizationId: input.organizationId,
+      };
+    }
+
     const flag = await this.prisma.featureFlag.findUnique({
       where: { key: input.flagKey },
       select: {
         key: true,
+        status: true,
         defaultEnabled: true,
         rules: {
           select: {
@@ -210,20 +244,24 @@ export class EntitlementsService {
       },
     });
     if (!flag) throw new NotFoundException('Feature flag not found.');
+    // Runtime skips archived flags entirely (fail closed), so the preview must say "off" too.
+    if (flag.status !== 'ACTIVE') {
+      return { key: flag.key, enabled: false, decidedBy: 'ARCHIVED', audience };
+    }
 
     const matching = flag.rules.filter((rule) => {
       switch (rule.scope) {
         case 'GLOBAL':
           return true;
         case 'COUNTRY':
-          return Boolean(input.countryCode) && rule.countryCode === input.countryCode;
+          return Boolean(audience.countryCode) && rule.countryCode === audience.countryCode;
         case 'PLAN':
-          return Boolean(input.planId) && rule.planId === input.planId;
+          return Boolean(audience.planId) && rule.planId === audience.planId;
         case 'ORGANIZATION':
-          return Boolean(input.organizationId) && rule.organizationId === input.organizationId;
+          return Boolean(audience.organizationId) && rule.organizationId === audience.organizationId;
       }
     });
-    return resolveFlag(flag.key, flag.defaultEnabled, matching);
+    return { ...resolveFlag(flag.key, flag.defaultEnabled, matching), audience };
   }
 }
 

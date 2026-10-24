@@ -11,6 +11,21 @@ export function decimalToMinor(value: string, scale = 2): string {
   return `${whole}${fraction.padEnd(scale, '0').slice(0, scale)}`.replace(/^0+(?=\d)/, '');
 }
 
+/**
+ * Strict parse for amounts an operator types: "12.5" -> "1250". Returns null for anything that is
+ * not a plain non-negative decimal with at most `scale` fractional digits, so nothing is silently
+ * truncated (unlike `decimalToMinor`, which serves lenient form inputs).
+ */
+export function parseDecimalToMinor(value: string, scale = 2): string | null {
+  const match = new RegExp(`^(\\d+)(?:\\.(\\d{1,${scale}}))?$`).exec(value.trim());
+  if (!match) return null;
+  const [, whole = '0', fraction = ''] = match;
+  return (
+    BigInt(whole) * 10n ** BigInt(scale) +
+    BigInt(fraction.padEnd(scale, '0') || '0')
+  ).toString();
+}
+
 /** "655050" -> "6550.50", the plain decimal an amount input expects. */
 export function minorToDecimal(value: string, scale = 2): string {
   const amount = BigInt(value);

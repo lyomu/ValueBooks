@@ -17,6 +17,7 @@ import type { PublicUser } from '../auth/auth.service.js';
 import type { RequestMetadata } from '../auth/request-context.js';
 import { SchedulerService } from '../automation/scheduler.service.js';
 import { PrismaService } from '../database/prisma.service.js';
+import { findOrCreateRecurringDocument } from '../organizations/recurring-document-claim.js';
 import { writeAuditEvent } from '../organizations/audit-event.js';
 import type { OrganizationContext } from '../organizations/organization-context.js';
 import { InvoicesService } from './invoices.service.js';
@@ -284,10 +285,13 @@ export class RecurringInvoicesService {
   ) {
     const template = await this.findOrThrow(context.id, job.sourceId);
     const occurrenceDate = job.lastRunAt ? dateOnly(job.lastRunAt) : dateOnly(template.nextRunDate);
-    const claimed = await this.claimOccurrence(context.id, template.id, occurrenceDate);
-    if (!claimed) return { templateId: template.id, invoiceId: null };
+    if (template.lastRunOccurrenceKey === occurrenceDate) {
+      return { templateId: template.id, invoiceId: null };
+    }
 
-    const invoice = await this.invoices.createDraft(
+    const invoiceId = await findOrCreateRecurringDocument(
+      this.prisma, context.id, RECURRING_INVOICE_GENERATE_OPERATION,
+      template.id, occurrenceDate, 'INVOICE', (tx) => this.invoices.createDraft(
       context,
       user,
       {
@@ -304,12 +308,16 @@ export class RecurringInvoicesService {
         })),
       },
       metadata,
-    );
+      tx,
+    ));
+    const invoice = await this.invoices.detail(context.id, invoiceId);
 
     if (template.autoCreate) {
-      const issued = await this.invoices.issueInvoice(context, user, invoice.id, metadata);
-      if (template.autoSend) {
-        await this.invoices.sendInvoice(context, user, issued.id, metadata);
+      if (invoice.status === 'DRAFT') {
+        await this.invoices.issueInvoice(context, user, invoice.id, metadata);
+      }
+      if (template.autoSend && !invoice.sentAt) {
+        await this.invoices.sendInvoice(context, user, invoice.id, metadata);
       }
     }
 
@@ -320,14 +328,18 @@ export class RecurringInvoicesService {
       job.status === 'ACTIVE' && (template.endDate ? nextOccurrence <= template.endDate : true);
 
     await this.prisma.$transaction(async (tx) => {
-      await tx.recurringInvoiceTemplate.update({
-        where: { id: template.id },
+      const advanced = await tx.recurringInvoiceTemplate.updateMany({
+        where: { id: template.id, OR: [
+          { lastRunOccurrenceKey: null },
+          { lastRunOccurrenceKey: { not: occurrenceDate } },
+        ] },
         data: {
           nextRunDate: nextOccurrence,
           lastRunOccurrenceKey: occurrenceDate,
           active: stillActive,
         },
       });
+      if (advanced.count !== 1) return;
       await writeAuditEvent(tx, {
         organizationId: context.id,
         actorUserId: user.id,
@@ -341,42 +353,6 @@ export class RecurringInvoicesService {
     });
 
     return { templateId: template.id, invoiceId: invoice.id };
-  }
-
-  /** Returns true if this call successfully claimed the occurrence (caller should proceed to
-   * generate); false if another call already claimed it (caller should skip). */
-  private async claimOccurrence(
-    organizationId: string,
-    templateId: string,
-    occurrenceDate: string,
-  ): Promise<boolean> {
-    const key = `${templateId}:${occurrenceDate}`;
-    return this.prisma.$transaction(async (tx) => {
-      const lockKey = `${organizationId}:${RECURRING_INVOICE_GENERATE_OPERATION}:${key}`;
-      await tx.$queryRaw`
-        SELECT pg_advisory_xact_lock(hashtextextended(${lockKey}, 0))::text AS locked
-      `;
-      const existing = await tx.ledgerIdempotencyKey.findUnique({
-        where: {
-          organizationId_operation_key: {
-            organizationId,
-            operation: RECURRING_INVOICE_GENERATE_OPERATION,
-            key,
-          },
-        },
-      });
-      if (existing) return false;
-      await tx.ledgerIdempotencyKey.create({
-        data: {
-          organizationId,
-          operation: RECURRING_INVOICE_GENERATE_OPERATION,
-          key,
-          resourceType: 'RECURRING_INVOICE_TEMPLATE',
-          resourceId: templateId,
-        },
-      });
-      return true;
-    });
   }
 
   private async setActive(
