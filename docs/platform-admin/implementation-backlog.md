@@ -161,6 +161,15 @@ Updated after every item: status, commit/PR, the focused checks actually run, an
   check out the reviewed commit until the branch is pushed. Once it is available remotely, observe the
   pipeline for that exact commit, including **Test (integration)** and every required gate, before
   requesting merge authorization. Merge, deployment, and post-deployment C remain not run.
+- **K/Jenkins build #2 — failed, CI configuration corrected, rerun pending.** Jenkins built the
+  pushed commercial-correctness commit and passed Checkout, Build CI images, Lint, Typecheck and
+  Test. **Test (integration) failed before any integration spec ran:** PostgreSQL was healthy in
+  its container, but `prisma migrate diff` returned `P1001` because the generated service hostname
+  for this long branch exceeded Docker DNS's 63-character label limit. `Jenkinsfile` now assigns
+  short aliases (`ci-postgres`, `ci-redis`, `ci-s3`, `ci-clamav`, `ci-mailpit`) in the isolated CI
+  network and makes every cross-container URL use those aliases. The correction is unverified until
+  the follow-up commit is pushed and its exact Jenkins build completes. Docker Build, image smoke,
+  Docker Push, approval, deployment and post-deployment C were skipped/not run.
 
 E–I and O12 were **executed and verified** on 23 Oct 2026 (see the progress-log entries below for exact commands,
 pass counts and fixes). Production checks A and B ran on 24 Oct: B found no legacy claims, while A found all
