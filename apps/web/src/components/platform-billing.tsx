@@ -467,11 +467,17 @@ export function PlatformBillingList({ kind }: { kind: Listing }) {
             </>
           }
           onConfirm={async (reason) => {
-            await apiRequest(`/platform/billing/webhooks/${retrying.id}/retry`, {
-              method: 'POST',
-              body: JSON.stringify({ reason }),
-            });
-            setNotice('Webhook event reprocessed.');
+            // The endpoint reports the event's state read back after the attempt: a concurrent
+            // redelivery can hold the processing claim, in which case nothing was reprocessed.
+            const result = await apiRequest<{ data: { processed: boolean; state: string } }>(
+              `/platform/billing/webhooks/${retrying.id}/retry`,
+              { method: 'POST', body: JSON.stringify({ reason }) },
+            );
+            setNotice(
+              result.data.processed
+                ? 'Webhook event reprocessed.'
+                : `The retry was recorded but the event is still ${readable(result.data.state)}. Another delivery of the same event may be processing it; check the state below.`,
+            );
             await load();
           }}
         />

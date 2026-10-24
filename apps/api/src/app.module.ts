@@ -23,6 +23,7 @@ import { InventoryModule } from './inventory/inventory.module.js';
 import { ProjectsModule } from './projects/projects.module.js';
 import { ReportingModule } from './reporting/reporting.module.js';
 import { JobsModule } from './jobs/jobs.module.js';
+import { UatFixtureSeedService } from './uat-fixture-seed.service.js';
 import { OrganizationsModule } from './organizations/organizations.module.js';
 import { PurchasesModule } from './purchases/purchases.module.js';
 import { PlatformModule } from './platform/platform.module.js';
@@ -58,6 +59,7 @@ import { SalesModule } from './sales/sales.module.js';
     DemoSeedService,
     DemoWeekSeedService,
     DemoWeekExtrasSeedService,
+    UatFixtureSeedService,
     // Registered here rather than through useGlobalFilters so the filter can inject the logger and
     // the error-reporting seam. Both the production bootstrap and the test harness pick it up.
     { provide: APP_FILTER, useClass: ApiExceptionFilter },

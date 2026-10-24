@@ -5569,19 +5569,6 @@ a.rb-nav-item:hover {
   border-radius: 0.5rem;
   font-size: 0.9rem;
 }
-.rb-platform__filters,
-.rb-platform__inline-form {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: end;
-  gap: 0.75rem;
-  margin-bottom: 1.25rem;
-}
-.rb-platform__inline-form {
-  margin: 1rem 0 0;
-  padding-top: 1rem;
-  border-top: 1px solid hsl(var(--rb-border));
-}
 /* Legacy console form styling. Like the raw-button rule below, it skips the shared primitives
    (`Label`, `Input`, `Select`, `Textarea`, the table-toolbar search) and keeps (0,1,1) via :where. */
 :where(.rb-platform) label:not(.rb-label, .rb-data-table-toolbar__search) {
@@ -9226,11 +9213,29 @@ button.rb-customer-facts__heading {
 .rb-platform-overview__panel .rb-dash-panel-heading {
   margin-bottom: 1rem;
 }
+/* Operations row: attention queue, plan mix and platform health. 3 / 2 / 1 columns. */
+.rb-platform-overview__operations {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+@media (max-width: 75rem) {
+  .rb-platform-overview__operations {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (max-width: 48rem) {
+  .rb-platform-overview__operations {
+    grid-template-columns: 1fr;
+  }
+}
 /* Billing snapshot: one figure per currency group, each linking to its records. */
 .rb-platform-overview__billing {
   margin-bottom: 1rem;
 }
-.rb-platform-overview__billing-grid {
+/* Label-over-value figures, used by the billing snapshot and the platform health panel. */
+.rb-platform-overview__figure-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr));
   gap: 0.75rem;

@@ -1,8 +1,6 @@
 /**
- * Common contract for the active payment processor. Backend-owned routing picks which adapter
- * handles a given plan; neither the client nor the plan's own
- * row is trusted to assert which provider it is, only the server-side routing table
- * (`BILLING_PROVIDER_ROUTING` below) is.
+ * Common contract for the active payment processor. Checkout requires an active tier and an
+ * active plan whose provider is PAYSTACK; clients cannot select an adapter.
  */
 export interface CheckoutInput {
   organizationId: string;
@@ -70,14 +68,3 @@ export interface BillingProvider {
    * so a caller cannot forget to check a boolean. */
   verifyWebhook(input: WebhookInput): Promise<VerifiedWebhookEvent>;
 }
-
-/** Backend-owned, not derived from any client input or from the plan row at request time —
- * the plan row's own `billingProvider` column must agree with this table or checkout refuses to
- * proceed, so a misconfigured plan fails closed rather than silently routing to the wrong
- * processor. */
-export const BILLING_PROVIDER_ROUTING: Record<string, 'PAYSTACK'> = {
-  starter: 'PAYSTACK',
-  growth: 'PAYSTACK',
-  professional: 'PAYSTACK',
-  advanced: 'PAYSTACK',
-};

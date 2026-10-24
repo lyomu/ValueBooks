@@ -12,11 +12,13 @@
 - **Billing continues.** Suspension does not cancel or pause the Paystack subscription. If the tenant should not be
   charged, that is a separate decision for the owner. Suspension is not a billing tool.
 - The reason is stored on the organization and in the platform audit log (append-only).
+- Grounds, who may authorise each, notice and the 30-day review: [suspension-policy.md](../suspension-policy.md).
 
 ## Suspend
 
-1. Confirm the suspension with the owner. There is no written suspension policy yet (see the tracker), so every
-   suspension is an owner decision. A payment failure does not need one:
+1. Check the ground against [suspension-policy.md](../suspension-policy.md) (ratified 23 Oct 2026) and confirm who
+   may authorise it: G1 and G2 are the owner's alone, G3 to G5 are yours within the limits stated there. If no
+   ground fits, do not suspend — escalate to the owner. A payment failure is not a ground:
    [failed-subscription-payment.md](failed-subscription-payment.md) applies read-only mode automatically.
 2. **Suspend organization** → enter a reason of at least 10 characters that a colleague would understand months
    later, then type the organization's slug to confirm.

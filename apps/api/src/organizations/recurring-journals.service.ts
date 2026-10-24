@@ -23,10 +23,6 @@ import type {
 import type { OrganizationContext } from './organization-context.js';
 
 const RECURRING_JOURNAL_GENERATE_OPERATION = 'RECURRING_JOURNAL_GENERATE';
-// Distinct from the posting idempotency namespace above: the claim marks "this occurrence is being
-// generated", while the rule executor records "this journal was posted". Sharing one namespace
-// would make the executor mistake the claim for its own completion record.
-const RECURRING_JOURNAL_CLAIM_OPERATION = 'RECURRING_JOURNAL_CLAIM';
 
 type TemplateWithLines = Prisma.RecurringJournalTemplateGetPayload<{
   include: { lines: true };
@@ -45,10 +41,8 @@ interface GenerateSource extends PostingRuleSourceContext {
 
 /**
  * Recurring Journal templates: a cadence-driven schedule of balanced manual journals (rent,
- * depreciation, accruals). Generation mirrors the Phase 3 recurring modules' `claimOccurrence`
- * atomicity primitive -- advisory lock + `LedgerIdempotencyKey` check-and-record -- so duplicate
- * sweeps can never double-generate for the same occurrence, and each generated journal posts
- * through the declarative rule library (`sourceType 'RECURRING_JOURNAL'`), unique per occurrence.
+ * depreciation, accruals). The posting rule's own atomic idempotency record is the occurrence
+ * claim, so a retry after posting can recover the same journal and finish advancing the template.
  */
 @Injectable()
 export class RecurringJournalsService {
@@ -281,10 +275,20 @@ export class RecurringJournalsService {
       select: { baseCurrency: true },
     });
     const occurrenceDate = job.lastRunAt ? dateOnly(job.lastRunAt) : dateOnly(template.nextRunDate);
-    const claimed = await this.claimOccurrence(context.id, template.id, occurrenceDate);
-    if (!claimed) return { templateId: template.id, journalId: null };
-
-    const journal = await this.rules.post(
+    const occurrenceKey = `${template.id}:${occurrenceDate}`;
+    const posted = await this.prisma.ledgerIdempotencyKey.findUnique({
+      where: { organizationId_operation_key: {
+        organizationId: context.id,
+        operation: RECURRING_JOURNAL_GENERATE_OPERATION,
+        key: occurrenceKey,
+      } },
+      select: { resourceId: true },
+    });
+    // If a prior run posted but failed before advancing the template, use that exact journal.
+    // The posting rule itself handles a concurrent run that starts after this read.
+    const journal = posted ? await this.prisma.journal.findFirstOrThrow({
+      where: { id: posted.resourceId, organizationId: context.id }, select: { id: true },
+    }) : await this.rules.post(
       context,
       user,
       this.generateRule,
@@ -302,7 +306,7 @@ export class RecurringJournalsService {
         })),
       },
       metadata,
-      `${template.id}:${occurrenceDate}`,
+      occurrenceKey,
     );
 
     const nextOccurrence = isoDate(
@@ -311,15 +315,22 @@ export class RecurringJournalsService {
     const stillActive =
       job.status === 'ACTIVE' && (template.endDate ? nextOccurrence <= template.endDate : true);
 
-    await this.prisma.$transaction(async (tx) => {
-      await tx.recurringJournalTemplate.update({
-        where: { id: template.id },
+    const advanced = await this.prisma.$transaction(async (tx) => {
+      const updated = await tx.recurringJournalTemplate.updateMany({
+        where: {
+          id: template.id,
+          OR: [
+            { lastRunOccurrenceKey: null },
+            { lastRunOccurrenceKey: { not: occurrenceDate } },
+          ],
+        },
         data: {
           nextRunDate: nextOccurrence,
           lastRunOccurrenceKey: occurrenceDate,
           active: stillActive,
         },
       });
+      if (updated.count !== 1) return false;
       await writeAuditEvent(tx, {
         organizationId: context.id,
         actorUserId: user.id,
@@ -330,43 +341,10 @@ export class RecurringJournalsService {
         after: { journalId: journal.id, occurrenceDate },
         ipHash: metadata.ipHash,
       });
-    });
-
-    return { templateId: template.id, journalId: journal.id };
-  }
-
-  private async claimOccurrence(
-    organizationId: string,
-    templateId: string,
-    occurrenceDate: string,
-  ): Promise<boolean> {
-    const key = `${templateId}:${occurrenceDate}`;
-    return this.prisma.$transaction(async (tx) => {
-      const lockKey = `${organizationId}:${RECURRING_JOURNAL_CLAIM_OPERATION}:${key}`;
-      await tx.$queryRaw`
-        SELECT pg_advisory_xact_lock(hashtextextended(${lockKey}, 0))::text AS locked
-      `;
-      const existing = await tx.ledgerIdempotencyKey.findUnique({
-        where: {
-          organizationId_operation_key: {
-            organizationId,
-            operation: RECURRING_JOURNAL_CLAIM_OPERATION,
-            key,
-          },
-        },
-      });
-      if (existing) return false;
-      await tx.ledgerIdempotencyKey.create({
-        data: {
-          organizationId,
-          operation: RECURRING_JOURNAL_CLAIM_OPERATION,
-          key,
-          resourceType: 'RECURRING_JOURNAL_TEMPLATE',
-          resourceId: templateId,
-        },
-      });
       return true;
     });
+
+    return { templateId: template.id, journalId: advanced ? journal.id : null };
   }
 
   private async setActive(

@@ -1,6 +1,6 @@
 'use client';
 
-import { describeOrganizationPlan, type SubscriptionStatus } from '@valuebooks/contracts';
+import { describeOrganizationPlan, type PlatformPlan, type SubscriptionStatus } from '@valuebooks/contracts';
 import {
   Badge,
   Button,
@@ -66,11 +66,14 @@ export function PlatformOrganizationDetail({ organizationId }: { organizationId:
   const [security, setSecurity] = useState<Feed<SecurityEvent[]>>(LOADING);
   const [audit, setAudit] = useState<Feed<AuditEvent[]>>(LOADING);
   const [jobs, setJobs] = useState<Feed<FailedJob[]>>(LOADING);
-  const [dialog, setDialog] = useState<'suspend' | 'reactivate' | null>(null);
+  const [dialog, setDialog] = useState<'suspend' | 'reactivate' | 'trial' | null>(null);
+  const [trialPlan, setTrialPlan] = useState<PlatformPlan | null>(null);
+  const [checkingTrialPlan, setCheckingTrialPlan] = useState(false);
   const [notice, setNotice] = useState('');
   const [error, setError] = useState('');
 
   const canOperate = platformRoleAtLeast(session?.role ?? null, 'OPERATIONS');
+  const canAssignTrial = platformRoleAtLeast(session?.role ?? null, 'SUPERADMIN');
 
   const load = useCallback(async () => {
     try {
@@ -100,6 +103,37 @@ export function PlatformOrganizationDetail({ organizationId }: { organizationId:
       body: JSON.stringify({ reason }),
     });
     setNotice(path === 'suspend' ? 'Organization suspended.' : 'Organization reactivated.');
+    await load();
+  }
+
+  async function prepareTrial() {
+    setCheckingTrialPlan(true);
+    setError('');
+    try {
+      const response = await apiRequest<{ data: PlatformPlan[] }>('/platform/plans');
+      const professional = response.data.find(
+        (row) => row.tierKey === 'professional' && row.billingInterval === 'MONTHLY' && row.status === 'ACTIVE',
+      );
+      if (!professional) {
+        setError('An active Professional monthly plan is required before a trial can start.');
+        return;
+      }
+      setTrialPlan(professional);
+      setDialog('trial');
+    } catch {
+      setError('The plan catalog could not be checked. Try again before starting a trial.');
+    } finally {
+      setCheckingTrialPlan(false);
+    }
+  }
+
+  async function assignTrial(reason: string) {
+    if (!trialPlan) throw new Error('The trial plan is unavailable.');
+    await apiRequest(`/platform/organizations/${organizationId}/plan`, {
+      method: 'POST',
+      body: JSON.stringify({ planId: trialPlan.id, status: 'TRIALING', requireNoSubscription: true, reason }),
+    });
+    setNotice('The 14-day Professional trial has started. No payment was taken.');
     await load();
   }
 
@@ -275,11 +309,19 @@ export function PlatformOrganizationDetail({ organizationId }: { organizationId:
                   </Link>
                 </>
               ) : (
-                <EmptyState
-                  variant="no-results"
-                  title="No subscription recorded"
-                  description="This organization has never held a trial or paid plan."
-                />
+                <>
+                  <EmptyState
+                    variant="no-results"
+                    title="No subscription recorded"
+                    description="This organization has never held a trial or paid plan."
+                  />
+                  {canAssignTrial && detail.status === 'ACTIVE' && detail.onboardingCompletedAt &&
+                  !detail.entitlements.subscription ? (
+                    <Button variant="secondary" loading={checkingTrialPlan} onClick={() => void prepareTrial()}>
+                      Start 14-day Professional trial
+                    </Button>
+                  ) : null}
+                </>
               )}
               <p className="rb-platform__muted">
                 Paid plan changes require customer checkout and a verified provider payment.
@@ -533,6 +575,22 @@ export function PlatformOrganizationDetail({ organizationId }: { organizationId:
         ) : null}
       </Tabs>
 
+      <AdminActionDialog
+        open={dialog === 'trial'}
+        onOpenChange={(open) => setDialog(open ? 'trial' : null)}
+        title="Start Professional trial"
+        description={detail.name}
+        confirmLabel="Start 14-day trial"
+        confirmationPhrase={detail.slug}
+        impact={
+          <p>
+            This starts a fresh 14-day Professional trial for <strong>{detail.name}</strong>.
+            It grants trial access immediately and schedules a reminder and expiry. No card or
+            Paystack charge is involved. The reason is recorded in the platform audit log.
+          </p>
+        }
+        onConfirm={assignTrial}
+      />
       <AdminActionDialog
         open={dialog === 'suspend'}
         onOpenChange={(open) => setDialog(open ? 'suspend' : null)}

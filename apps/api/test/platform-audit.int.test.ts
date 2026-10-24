@@ -1,4 +1,5 @@
 import { ScheduledJobExecutionStatus } from '@prisma/client';
+import { OFFICIAL_ENTITLEMENT_KEYS, OFFICIAL_FEATURE_KEYS } from '@valuebooks/contracts';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 
 import { createOpaqueToken, hashToken } from '../src/auth/auth.crypto.js';
@@ -118,9 +119,20 @@ describe('platform mutation audit coverage', () => {
       .http()
       .post(`${API}/platform/plans`)
       .set('Cookie', superadminCookie)
-      .send({ key: 'audit-plan', name: 'Audit plan', priceMinor: '1000', currency: 'USD' })
+      .send({
+        key: 'audit-plan', tierKey: 'growth', name: 'Audit plan', priceMinor: '1000', currency: 'USD',
+        billingProvider: 'PAYSTACK', providerPriceId: 'PLN_audit_plan',
+      })
       .expect(201)
       .then((response) => (response.body as { data: { id: string } }).data);
+    // Catalog governance (F) now refuses to activate a plan that would introduce a new
+    // violation; give it every official entitlement key so activation only exercises audit
+    // coverage, not catalog completeness (covered elsewhere).
+    await harness.prisma.planEntitlement.createMany({
+      data: [...OFFICIAL_ENTITLEMENT_KEYS, ...OFFICIAL_FEATURE_KEYS].map((key) => ({
+        planId: plan.id, key, enabled: true, limitValue: null,
+      })),
+    });
     await harness
       .http()
       .patch(`${API}/platform/plans/${plan.id}`)

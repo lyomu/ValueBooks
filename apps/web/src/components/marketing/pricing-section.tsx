@@ -14,6 +14,7 @@ import {
   useDisplayCurrency,
   type BillingInterval,
 } from './pricing';
+import type { Plan } from './pricing-data';
 
 const pricingFaqItems: FaqItem[] = [
   {
@@ -42,7 +43,7 @@ const pricingFaqItems: FaqItem[] = [
  * Condensed homepage teaser. Cards only ever show each plan's top features — "expanding" into the
  * full picture means following the link to /pricing, not an inline accordion on the card itself.
  */
-export function PricingTeaserSection() {
+export function PricingTeaserSection({ plans }: { plans?: Plan[] }) {
   const [interval, setInterval] = useState<BillingInterval>('monthly');
   const currencyCode = useDisplayCurrency();
 
@@ -56,7 +57,12 @@ export function PricingTeaserSection() {
       />
       <BillingToggle interval={interval} onChange={setInterval} />
       <Reveal as="div">
-        <PlanCardRow interval={interval} currencyCode={currencyCode} variant="compact" />
+        <PlanCardRow
+          interval={interval}
+          currencyCode={currencyCode}
+          variant="compact"
+          plans={plans}
+        />
       </Reveal>
       <CurrencyDisclaimer currencyCode={currencyCode} />
       <div className="mk-pricing-section__more">
@@ -68,7 +74,12 @@ export function PricingTeaserSection() {
   );
 }
 
-export function PricingPageContent() {
+/**
+ * `plans` carries the live catalog read on the server (phase 7, §4.8). Prices are
+ * administrator-editable and reach Paystack immediately, so the page must not advertise the figure
+ * compiled into the bundle. Omitting the prop falls back to the approved catalog.
+ */
+export function PricingPageContent({ plans }: { plans?: Plan[] }) {
   const [interval, setInterval] = useState<BillingInterval>('monthly');
   const currencyCode = useDisplayCurrency();
 
@@ -87,13 +98,18 @@ export function PricingPageContent() {
         </div>
       </section>
       <section className="mk-pricing-page-section">
-        <PlanCardRow interval={interval} currencyCode={currencyCode} variant="full" />
+        <PlanCardRow
+          interval={interval}
+          currencyCode={currencyCode}
+          variant="full"
+          plans={plans}
+        />
         <p className="mk-pricing-trial-note">Try ValueBooks free for 14 days. No card required.</p>
         <CurrencyDisclaimer currencyCode={currencyCode} />
       </section>
       <section className="mk-pricing-compare-section">
         <SectionIntro centered kicker="Compare plans" title="Every feature, side by side." />
-        <ComparisonTable />
+        <ComparisonTable plans={plans} />
       </section>
       <section className="mk-faq-section">
         <SectionIntro centered title="Pricing questions, answered" />

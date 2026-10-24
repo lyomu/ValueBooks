@@ -1,12 +1,14 @@
 import {
   BadRequestException,
   ConflictException,
+  ForbiddenException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
 import type { Prisma } from '@prisma/client';
 import { OFFICIAL_TRIAL } from '@valuebooks/contracts';
 
+import { TrialLifecycleService } from '../billing/trial-lifecycle.service.js';
 import { PrismaService } from '../database/prisma.service.js';
 import { EntitlementsService } from './entitlements.service.js';
 import { writePlatformAudit } from './platform-audit.js';
@@ -34,6 +36,7 @@ export class PlatformTenantsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly entitlements: EntitlementsService,
+    private readonly trialLifecycle: TrialLifecycleService,
   ) {}
 
   async searchOrganizations(query: OrganizationSearchDto) {
@@ -372,11 +375,18 @@ export class PlatformTenantsService {
     ipHash: string | null,
   ) {
     return this.prisma.$transaction(async (tx) => {
+      if (input.requireNoSubscription) {
+        // Serialize this first-trial decision with subscription inserts, whose foreign key
+        // takes a key-share lock on the organization row.
+        await tx.$queryRaw`SELECT id FROM organizations WHERE id = ${organizationId}::uuid FOR UPDATE`;
+      }
       const [organization, plan] = await Promise.all([
         tx.organization.findUnique({
           where: { id: organizationId },
           select: {
             id: true,
+            createdByUserId: true,
+            timeZone: true,
             subscription: {
               select: {
                 planId: true,
@@ -390,12 +400,12 @@ export class PlatformTenantsService {
         }),
         tx.plan.findUnique({
           where: { id: input.planId },
-          select: { id: true, key: true, status: true, priceMinor: true },
+          select: { id: true, key: true, status: true, priceMinor: true, tier: { select: { status: true } } },
         }),
       ]);
       if (!organization) throw new NotFoundException('Organization not found.');
       if (!plan) throw new NotFoundException('Plan not found.');
-      if (plan.status !== 'ACTIVE') {
+      if (plan.status !== 'ACTIVE' || plan.tier.status !== 'ACTIVE') {
         // Retired placeholder tiers (free/growth/scale) and unpublished drafts are not offers; an
         // organization moved onto one would carry entitlement keys nothing enforces.
         throw new BadRequestException('Only an active catalog plan can be assigned.');
@@ -410,6 +420,9 @@ export class PlatformTenantsService {
         );
       }
       const current = organization.subscription;
+      if (input.requireNoSubscription && current) {
+        throw new ConflictException('This organization already has a subscription. Refresh before starting a trial.');
+      }
       if (
         current?.providerSubscriptionId &&
         ['ACTIVE', 'PAST_DUE', 'CANCEL_SCHEDULED'].includes(current.status)
@@ -428,24 +441,39 @@ export class PlatformTenantsService {
           ? new Date(Date.now() + OFFICIAL_TRIAL.hours * 3_600_000)
           : null;
 
-      const subscription = await tx.organizationSubscription.upsert({
+      const subscriptionData = {
+        organizationId,
+        planId: plan.id,
+        status,
+        trialEndsAt,
+        complimentary: status === 'ACTIVE',
+      };
+      const subscription = input.requireNoSubscription
+        ? await tx.organizationSubscription.create({
+            data: subscriptionData,
+            select: { planId: true, status: true, trialEndsAt: true, complimentary: true },
+          })
+        : await tx.organizationSubscription.upsert({
         where: { organizationId },
         update: {
           planId: plan.id,
+          entitlementVersionId: null,
           status,
           trialEndsAt,
           cancelledAt: null,
           complimentary: status === 'ACTIVE',
         },
-        create: {
-          organizationId,
-          planId: plan.id,
-          status,
-          trialEndsAt,
-          complimentary: status === 'ACTIVE',
-        },
+        create: subscriptionData,
         select: { planId: true, status: true, trialEndsAt: true, complimentary: true },
       });
+      if (!current && status === 'TRIALING' && trialEndsAt) {
+        await this.trialLifecycle.scheduleTrialJobs(tx, {
+          organizationId,
+          createdByUserId: organization.createdByUserId,
+          trialEndsAt,
+          timeZone: organization.timeZone,
+        });
+      }
       await writePlatformAudit(tx, actor, {
         eventKey: 'platform.plan_assigned',
         targetType: 'organization',
@@ -599,12 +627,34 @@ export class PlatformTenantsService {
     input: UpdateUserStatusDto,
     ipHash: string | null,
   ) {
+    // Who may be targeted at all (O4). An account status change is an authentication-level
+    // action: it revokes every live session below. Without these restrictions an OPERATIONS
+    // operator could suspend their own account, a superadmin's, or the last active superadmin's,
+    // which locks everyone out of the console and goes around the guard on `revokeAdmin`.
+    if (userId === actor.userId) {
+      throw new BadRequestException(
+        'You cannot change the status of your own account. Ask another administrator.',
+      );
+    }
     return this.prisma.$transaction(async (tx) => {
       const existing = await tx.user.findUnique({
         where: { id: userId },
-        select: { status: true },
+        select: {
+          status: true,
+          platformAdmin: { select: { role: true, status: true } },
+        },
       });
       if (!existing) throw new NotFoundException('User not found.');
+      const grant = existing.platformAdmin?.status === 'ACTIVE' ? existing.platformAdmin : null;
+      if (grant && actor.role !== 'SUPERADMIN') {
+        throw new ForbiddenException(
+          'This account holds platform administration access. Only a superadmin may change its status.',
+        );
+      }
+      // No separate "last active superadmin" check is needed: the only actor who may reach this
+      // point for a superadmin target is another superadmin, who is signed in and so is an active
+      // superadmin themselves, and self-targeting is already refused above. A standalone count
+      // could never fire, so it is left out rather than added as an untestable guard.
       if (existing.status === input.status) {
         throw new BadRequestException(`This account is already ${input.status}.`);
       }

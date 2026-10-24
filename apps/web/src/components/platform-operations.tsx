@@ -46,15 +46,21 @@ import { Panel, Row } from './platform-organization-detail';
 import { PlatformPage } from './platform-shell';
 
 function recurringRetry(document: string) {
-  return `Each occurrence is claimed before its ${document} is created, so a retry never creates a second ${document} for the same occurrence. If the failed run had already claimed the occurrence, the retry creates nothing and the ${document} has to be created by hand.`;
+  return `Retry resumes the ${document} linked to this occurrence and finishes the posting without creating another document. An older occurrence claim without a document link requires manual reconciliation before retry.`;
 }
 
 /** Readable task names and what a retry does, per scheduled handler. Unknown handlers say less. */
 const HANDLER_INFO: Record<string, { label: string; retry: string }> = {
-  'recurring.invoice': { label: 'Recurring invoices', retry: recurringRetry('invoice') },
+  'recurring.invoice': {
+    label: 'Recurring invoices',
+    retry: `${recurringRetry('invoice')} If the earlier run queued an email but failed before recording the send, the customer may receive the email twice.`,
+  },
   'recurring.bill': { label: 'Recurring bills', retry: recurringRetry('bill') },
   'recurring.expense': { label: 'Recurring expenses', retry: recurringRetry('expense') },
-  'recurring.journal': { label: 'Recurring journals', retry: recurringRetry('journal') },
+  'recurring.journal': {
+    label: 'Recurring journals',
+    retry: 'Retry uses the posting idempotency key to resume the same journal and advance its template once.',
+  },
   'invoice.reminder': {
     label: 'Invoice reminders',
     retry:

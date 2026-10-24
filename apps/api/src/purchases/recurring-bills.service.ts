@@ -17,6 +17,7 @@ import type { PublicUser } from '../auth/auth.service.js';
 import type { RequestMetadata } from '../auth/request-context.js';
 import { SchedulerService } from '../automation/scheduler.service.js';
 import { PrismaService } from '../database/prisma.service.js';
+import { findOrCreateRecurringDocument } from '../organizations/recurring-document-claim.js';
 import { writeAuditEvent } from '../organizations/audit-event.js';
 import type { OrganizationContext } from '../organizations/organization-context.js';
 import { BillsService } from './bills.service.js';
@@ -270,10 +271,13 @@ export class RecurringBillsService {
   ) {
     const template = await this.findOrThrow(context.id, job.sourceId);
     const occurrenceDate = job.lastRunAt ? dateOnly(job.lastRunAt) : dateOnly(template.nextRunDate);
-    const claimed = await this.claimOccurrence(context.id, template.id, occurrenceDate);
-    if (!claimed) return { templateId: template.id, billId: null };
+    if (template.lastRunOccurrenceKey === occurrenceDate) {
+      return { templateId: template.id, billId: null };
+    }
 
-    const bill = await this.bills.createDraft(
+    const billId = await findOrCreateRecurringDocument(
+      this.prisma, context.id, RECURRING_BILL_GENERATE_OPERATION,
+      template.id, occurrenceDate, 'BILL', (tx) => this.bills.createDraft(
       context,
       user,
       {
@@ -290,9 +294,11 @@ export class RecurringBillsService {
         })),
       },
       metadata,
-    );
+      tx,
+    ));
+    const bill = await this.bills.detail(context.id, billId);
 
-    if (template.autoCreate) {
+    if (template.autoCreate && bill.status === 'DRAFT') {
       await this.bills.issueBill(context, user, bill.id, metadata);
     }
 
@@ -303,14 +309,18 @@ export class RecurringBillsService {
       job.status === 'ACTIVE' && (template.endDate ? nextOccurrence <= template.endDate : true);
 
     await this.prisma.$transaction(async (tx) => {
-      await tx.recurringBillTemplate.update({
-        where: { id: template.id },
+      const advanced = await tx.recurringBillTemplate.updateMany({
+        where: { id: template.id, OR: [
+          { lastRunOccurrenceKey: null },
+          { lastRunOccurrenceKey: { not: occurrenceDate } },
+        ] },
         data: {
           nextRunDate: nextOccurrence,
           lastRunOccurrenceKey: occurrenceDate,
           active: stillActive,
         },
       });
+      if (advanced.count !== 1) return;
       await writeAuditEvent(tx, {
         organizationId: context.id,
         actorUserId: user.id,
@@ -324,40 +334,6 @@ export class RecurringBillsService {
     });
 
     return { templateId: template.id, billId: bill.id };
-  }
-
-  private async claimOccurrence(
-    organizationId: string,
-    templateId: string,
-    occurrenceDate: string,
-  ): Promise<boolean> {
-    const key = `${templateId}:${occurrenceDate}`;
-    return this.prisma.$transaction(async (tx) => {
-      const lockKey = `${organizationId}:${RECURRING_BILL_GENERATE_OPERATION}:${key}`;
-      await tx.$queryRaw`
-        SELECT pg_advisory_xact_lock(hashtextextended(${lockKey}, 0))::text AS locked
-      `;
-      const existing = await tx.ledgerIdempotencyKey.findUnique({
-        where: {
-          organizationId_operation_key: {
-            organizationId,
-            operation: RECURRING_BILL_GENERATE_OPERATION,
-            key,
-          },
-        },
-      });
-      if (existing) return false;
-      await tx.ledgerIdempotencyKey.create({
-        data: {
-          organizationId,
-          operation: RECURRING_BILL_GENERATE_OPERATION,
-          key,
-          resourceType: 'RECURRING_BILL_TEMPLATE',
-          resourceId: templateId,
-        },
-      });
-      return true;
-    });
   }
 
   private async setActive(

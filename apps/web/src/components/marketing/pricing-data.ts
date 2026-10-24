@@ -29,6 +29,8 @@ export type Plan = {
   highlighted?: boolean;
   /** Shown on the homepage teaser card and as the lead bullets on the /pricing card. */
   topFeatures: string[];
+  /** Database-backed comparison values for tiers added after the launch catalog. */
+  catalogValues?: Record<string, FeatureValue>;
   ctaLabel?: string;
   ctaHref?: string;
 };

@@ -21,6 +21,8 @@ import { SessionGuard } from '../auth/session.guard.js';
 import { EntitlementsService } from './entitlements.service.js';
 import { PlatformAccessService } from './platform-access.service.js';
 import { writePlatformAudit } from './platform-audit.js';
+import { PlanPricingService } from './plan-pricing.service.js';
+import { PlanEntitlementVersionsService } from './plan-entitlement-versions.service.js';
 import { PlatformCatalogService } from './platform-catalog.service.js';
 import { HostedAiEgressApprovalService } from './hosted-ai-egress-approval.service.js';
 import { RequirePlatformRole, type PlatformRequest } from './platform-context.js';
@@ -32,6 +34,8 @@ import {
   CreateFeatureFlagDto,
   CreateHostedAiEgressApprovalDto,
   CreatePlanDto,
+  CreateTierDto,
+  EntitlementDraftValueDto,
   FailedJobSearchDto,
   FlagAudienceDto,
   FlagPreviewDto,
@@ -47,6 +51,8 @@ import {
   SecurityEventSearchDto,
   SuspendOrganizationDto,
   UpdateFeatureFlagDto,
+  PlanPriceReasonDto,
+  ProposePlanPriceDto,
   SetProviderPlanCodeDto,
   UpdatePlanDto,
   UpdateUserStatusDto,
@@ -75,6 +81,8 @@ export class PlatformController {
     private readonly access: PlatformAccessService,
     private readonly tenants: PlatformTenantsService,
     private readonly catalog: PlatformCatalogService,
+    private readonly entitlementVersions: PlanEntitlementVersionsService,
+    private readonly pricing: PlanPricingService,
     private readonly hostedEgressApprovals: HostedAiEgressApprovalService,
     private readonly operations: PlatformOperationsService,
     private readonly entitlements: EntitlementsService,
@@ -264,6 +272,33 @@ export class PlatformController {
 
   // --- Plans and entitlements ---------------------------------------------------------------
 
+  @Get('plan-tiers')
+  @RequirePlatformRole('SUPPORT')
+  async planTiers() { return { data: await this.catalog.listTiers() }; }
+
+  @Get('plans/health')
+  @RequirePlatformRole('SUPPORT')
+  async catalogHealth() { return { data: await this.catalog.catalogHealth() }; }
+
+  @Post('plan-tiers')
+  @HttpCode(201)
+  @RequirePlatformRole('SUPERADMIN')
+  async createTier(@Body() input: CreateTierDto, @Req() request: PlatformRequest) {
+    return { data: await this.catalog.createTier(request.platform, input, this.ipHash(request)) };
+  }
+
+  @Post('plan-tiers/:key/activate')
+  @RequirePlatformRole('SUPERADMIN')
+  async activateTier(@Param('key') key: string, @Body() input: PlanPriceReasonDto, @Req() request: PlatformRequest) {
+    return { data: await this.catalog.activateTier(request.platform, key, input.reason, this.ipHash(request)) };
+  }
+
+  @Post('plan-tiers/:key/retire')
+  @RequirePlatformRole('SUPERADMIN')
+  async retireTier(@Param('key') key: string, @Body() input: PlanPriceReasonDto, @Req() request: PlatformRequest) {
+    return { data: await this.catalog.retireTier(request.platform, key, input.reason, this.ipHash(request)) };
+  }
+
   @Get('plans')
   @RequirePlatformRole('SUPPORT')
   async plans() {
@@ -306,6 +341,98 @@ export class PlatformController {
     };
   }
 
+  // --- Plan pricing (phase 7, O5) -------------------------------------------------------------
+  //
+  // Price changes are proposed, previewed and published rather than edited in place: `updatePlan`
+  // above still refuses to reprice a plan that has subscribers. Owner decision, 23 Oct 2026: a
+  // single superadmin may publish, and existing subscribers are repriced at their next renewal.
+
+  @Get('plans/:planId/pricing')
+  @RequirePlatformRole('SUPPORT')
+  async planPricing(@Param('planId', new ParseUUIDPipe()) planId: string) {
+    return { data: await this.pricing.planPricing(planId) };
+  }
+
+  @Post('plans/:planId/price-changes')
+  @HttpCode(201)
+  @RequirePlatformRole('SUPERADMIN')
+  async proposePlanPrice(
+    @Param('planId', new ParseUUIDPipe()) planId: string,
+    @Body() input: ProposePlanPriceDto,
+    @Req() request: PlatformRequest,
+  ) {
+    return {
+      data: await this.pricing.proposePriceChange(
+        request.platform,
+        planId,
+        input,
+        this.ipHash(request),
+      ),
+    };
+  }
+
+  @Get('plans/:planId/price-changes/:changeId/preview')
+  @RequirePlatformRole('SUPERADMIN')
+  async previewPlanPrice(
+    @Param('planId', new ParseUUIDPipe()) planId: string,
+    @Param('changeId', new ParseUUIDPipe()) changeId: string,
+  ) {
+    return { data: await this.pricing.previewPriceChange(planId, changeId) };
+  }
+
+  @Post('plans/:planId/price-changes/:changeId/notice')
+  @RequirePlatformRole('SUPERADMIN')
+  async sendPlanPriceNotice(
+    @Param('planId', new ParseUUIDPipe()) planId: string,
+    @Param('changeId', new ParseUUIDPipe()) changeId: string,
+    @Req() request: PlatformRequest,
+  ) {
+    return {
+      data: await this.pricing.sendPriceIncreaseNotice(
+        request.platform,
+        planId,
+        changeId,
+        this.ipHash(request),
+      ),
+    };
+  }
+
+  @Post('plans/:planId/price-changes/:changeId/publish')
+  @RequirePlatformRole('SUPERADMIN')
+  async publishPlanPrice(
+    @Param('planId', new ParseUUIDPipe()) planId: string,
+    @Param('changeId', new ParseUUIDPipe()) changeId: string,
+    @Req() request: PlatformRequest,
+  ) {
+    return {
+      data: await this.pricing.publishPriceChange(
+        request.platform,
+        planId,
+        changeId,
+        this.ipHash(request),
+      ),
+    };
+  }
+
+  @Post('plans/:planId/price-changes/:changeId/discard')
+  @RequirePlatformRole('SUPERADMIN')
+  async discardPlanPrice(
+    @Param('planId', new ParseUUIDPipe()) planId: string,
+    @Param('changeId', new ParseUUIDPipe()) changeId: string,
+    @Body() input: PlanPriceReasonDto,
+    @Req() request: PlatformRequest,
+  ) {
+    return {
+      data: await this.pricing.discardPriceChange(
+        request.platform,
+        planId,
+        changeId,
+        input.reason,
+        this.ipHash(request),
+      ),
+    };
+  }
+
   @Post('plans/:planId/entitlements')
   @HttpCode(200)
   @RequirePlatformRole('SUPERADMIN')
@@ -322,6 +449,43 @@ export class PlatformController {
         this.ipHash(request),
       ),
     };
+  }
+
+  @Get('plans/:planId/entitlement-versions')
+  @RequirePlatformRole('SUPPORT')
+  async planEntitlementVersions(@Param('planId', new ParseUUIDPipe()) planId: string) {
+    return { data: await this.entitlementVersions.list(planId) };
+  }
+
+  @Post('plans/:planId/entitlement-versions')
+  @HttpCode(201)
+  @RequirePlatformRole('SUPERADMIN')
+  async createEntitlementDraft(@Param('planId', new ParseUUIDPipe()) planId: string,
+    @Body() input: PlanPriceReasonDto, @Req() request: PlatformRequest) {
+    return { data: await this.entitlementVersions.createDraft(request.platform, planId, input.reason, this.ipHash(request)) };
+  }
+
+  @Put('plans/:planId/entitlement-versions/:versionId/values')
+  @RequirePlatformRole('SUPERADMIN')
+  async setEntitlementDraftValue(@Param('planId', new ParseUUIDPipe()) planId: string,
+    @Param('versionId', new ParseUUIDPipe()) versionId: string, @Body() input: EntitlementDraftValueDto,
+    @Req() request: PlatformRequest) {
+    return { data: await this.entitlementVersions.setDraftValue(request.platform, planId, versionId, input, this.ipHash(request)) };
+  }
+
+  @Get('plans/:planId/entitlement-versions/:versionId/preview')
+  @RequirePlatformRole('SUPERADMIN')
+  async previewEntitlementDraft(@Param('planId', new ParseUUIDPipe()) planId: string,
+    @Param('versionId', new ParseUUIDPipe()) versionId: string) {
+    return { data: await this.entitlementVersions.preview(planId, versionId) };
+  }
+
+  @Post('plans/:planId/entitlement-versions/:versionId/publish')
+  @RequirePlatformRole('SUPERADMIN')
+  async publishEntitlementDraft(@Param('planId', new ParseUUIDPipe()) planId: string,
+    @Param('versionId', new ParseUUIDPipe()) versionId: string, @Body() input: PlanPriceReasonDto,
+    @Req() request: PlatformRequest) {
+    return { data: await this.entitlementVersions.publish(request.platform, planId, versionId, input.reason, this.ipHash(request)) };
   }
 
   @Delete('plans/:planId/entitlements/:key')

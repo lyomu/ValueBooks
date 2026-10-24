@@ -1,6 +1,5 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import type { Prisma } from '@prisma/client';
-import { OFFICIAL_PLAN_TIERS } from '@valuebooks/contracts';
 
 import { PrismaService } from '../database/prisma.service.js';
 import { TrialLifecycleService } from '../billing/trial-lifecycle.service.js';
@@ -222,15 +221,16 @@ export class PlatformBillingService {
   }
 
   async providers() {
-    const plans = await this.prisma.plan.findMany({ where: { status: 'ACTIVE' }, select: { key: true, tierKey: true, billingProvider: true, providerProductId: true, providerPriceId: true } });
+    const tiers = await this.prisma.planTier.findMany({ where: { status: 'ACTIVE' }, select: { key: true }, orderBy: { sortOrder: 'asc' } });
+    const plans = await this.prisma.plan.findMany({ where: { status: 'ACTIVE' }, select: { key: true, tierKey: true, billingInterval: true, billingProvider: true, providerProductId: true, providerPriceId: true } });
     const latest = await this.prisma.billingWebhookEvent.findMany({ orderBy: { receivedAt: 'desc' }, distinct: ['billingProvider'], take: 2, select: { billingProvider: true, receivedAt: true, processingState: true } });
-    // Coverage is measured against the approved catalog (four tiers x two intervals), not only the
-    // rows that happen to exist, so a missing official row shows up as a gap rather than vanishing.
-    const expectedKeys = OFFICIAL_PLAN_TIERS.flatMap((tier) => [`${tier}_monthly`, `${tier}_yearly`]);
+    const expected = tiers.map((row) => row.key)
+      .flatMap((tier) => (['MONTHLY', 'YEARLY'] as const).map((interval) => ({ tier, interval })));
     const codeCounts = new Map<string, number>();
     for (const plan of plans) if (plan.providerPriceId) codeCounts.set(plan.providerPriceId, (codeCounts.get(plan.providerPriceId) ?? 0) + 1);
-    const coverage = expectedKeys.map((key) => {
-      const plan = plans.find((candidate) => candidate.key === key);
+    const coverage = expected.map(({ tier, interval }) => {
+      const plan = plans.find((candidate) => candidate.tierKey === tier && candidate.billingInterval === interval);
+      const key = plan?.key ?? `${tier}_${interval.toLowerCase()}`;
       const state = !plan ? 'MISSING_PLAN'
         : plan.billingProvider !== 'PAYSTACK' ? 'WRONG_PROVIDER'
           : !plan.providerPriceId ? 'MISSING_CODE'
@@ -244,7 +244,7 @@ export class PlatformBillingService {
       credentialsConfigured: Boolean(process.env.PAYSTACK_SECRET_KEY),
       plans: coverage,
       readyPlans: coverage.filter((row) => row.state === 'READY').length,
-      expectedPlans: expectedKeys.length,
+      expectedPlans: expected.length,
       lastWebhook: latest.find((row) => row.billingProvider === 'PAYSTACK') ?? null,
     }];
   }
@@ -267,10 +267,21 @@ export class PlatformBillingService {
     const verified = { providerEventId: event.providerEventId, eventType: event.eventType, payload: event.payload };
     if (event.billingProvider !== 'PAYSTACK')
       throw new BadRequestException('Historical provider webhooks are retained for audit and cannot be replayed.');
-    await this.webhooksService.recordAndProcess(event.billingProvider, verified, normalizePaystackEvent(verified));
+    // O10: every attempt is audited, and the state is read back from the event rather than
+    // assumed. A retry can fail, and a concurrent redelivery holding the processing claim makes
+    // `recordAndProcess` return without processing anything. Neither is a recovery.
+    let failure: Error | null = null;
+    try {
+      await this.webhooksService.recordAndProcess(event.billingProvider, verified, normalizePaystackEvent(verified));
+    } catch (error) { failure = error instanceof Error ? error : new Error(String(error)); }
+    const after = await this.prisma.billingWebhookEvent.findUnique({ where: { id },
+      select: { processingState: true, lastError: true, retryCount: true } });
     await this.prisma.$transaction((tx) => writePlatformAudit(tx, actor, { eventKey: 'billing.webhook_retried',
-      targetType: 'billing_webhook_event', targetId: id, reason, before: { state: event.processingState }, after: { state: 'PROCESSED' } }));
-    return { processed: true };
+      targetType: 'billing_webhook_event', targetId: id, reason, before: { state: event.processingState },
+      after: { state: after?.processingState ?? 'UNKNOWN', lastError: after?.lastError ?? null, retryCount: after?.retryCount ?? null } }));
+    if (failure) throw failure;
+    // Not processed and not an error: another delivery of the same event holds the claim.
+    return { processed: after?.processingState === 'PROCESSED', state: after?.processingState ?? 'UNKNOWN' };
   }
 
   async reconcileSubscription(id: string) {

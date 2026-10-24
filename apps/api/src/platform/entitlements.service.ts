@@ -68,6 +68,7 @@ export class EntitlementsService {
           select: {
             status: true,
             trialEndsAt: true,
+            entitlementVersion: { select: { values: { select: { key: true, enabled: true, limitValue: true } } } },
             plan: {
               select: {
                 id: true,
@@ -121,7 +122,7 @@ export class EntitlementsService {
             trialEndsAt: subscription.trialEndsAt?.toISOString() ?? null,
           }
         : null,
-      entitlements: (plan?.entitlements ?? [])
+      entitlements: (subscription?.entitlementVersion ? subscription.entitlementVersion.values : plan?.entitlements ?? [])
         .map((entitlement) => ({
           key: entitlement.key,
           enabled: latestOverride.get(entitlement.key)?.enabled ?? entitlement.enabled,

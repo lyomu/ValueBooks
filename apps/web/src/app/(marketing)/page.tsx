@@ -15,6 +15,7 @@ import { FaqAccordion, type FaqItem } from '../../components/marketing/faq-accor
 import { Reveal } from '../../components/marketing/motion';
 import { revealDelay } from '../../components/marketing/reveal-delay';
 import { PricingTeaserSection } from '../../components/marketing/pricing-section';
+import { fetchLivePlans } from '../../components/marketing/live-prices';
 import { appUrl } from '../../lib/site-hosts';
 
 const faqItems: FaqItem[] = [
@@ -52,7 +53,8 @@ const faqItems: FaqItem[] = [
   },
 ];
 
-export default function MarketingHomePage() {
+export default async function MarketingHomePage() {
+  const plans = await fetchLivePlans();
   return (
     <>
       <section className="mk-home-hero mk-home-hero--spotlight">
@@ -121,7 +123,7 @@ export default function MarketingHomePage() {
         ]}
       />
       <FeatureGrid />
-      <PricingTeaserSection />
+      <PricingTeaserSection plans={plans ?? undefined} />
       <section className="mk-ai-section">
         <div>
           <SectionIntro

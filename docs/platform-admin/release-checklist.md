@@ -8,10 +8,13 @@ step was observed to pass, not when it was delegated.
 
 | Item | Decision needed | Blocks release? |
 |---|---|---|
-| O4 | `PATCH users/:id/status` has no target restrictions (self, last superadmin) | **Recommended to fix first**: it can lock everyone out of the console |
-| O5 | Controlled plan-change workflow, or catalog changes by migration only | No |
-| O7 | Second approver for country-pack publishing | No |
-| O8 | Recurring retry after a claimed occurrence creates nothing | No (the console warns) |
+| O4 | `PATCH users/:id/status` target restrictions | **Decided and fixed 2026-10-23.** No longer open |
+| O9 | Run the local UAT drill with synthetic tenants; skip staging deployment | **Yes: the local drill is the release requirement** (owner, 2026-10-23). The fixture seeder is built ([uat-plan.md §3](uat-plan.md)); the drill is not run |
+| O10 | Webhook retry audit records the real state | **Decided and fixed 2026-10-23.** No longer open |
+| O11 | [suspension-policy.md](suspension-policy.md) | **Ratified 2026-10-23.** No longer open |
+| O5 | Controlled plan-change workflow and 30-day email notice before increases | **In progress** ([plan](plan-catalog-management-plan.md)). The 30-day notice is built and enforced per subscriber before Paystack is contacted, so the blanket block on increases is gone. Two things remain before any real price increase: a browser pass over the console flow, and confirming in Paystack **test mode** that an increase on an existing mandate is charged without customer action. New tiers, entitlement versioning and catalog invariants are still unbuilt; do not release them as done |
+| O7 | Second approver for country-pack publishing | **Decided 2026-10-23: not needed.** No longer open |
+| O8 | Make recurring retry complete safely without duplicate documents | **Code and focused integration checks complete.** Run the production read-only [legacy claim check](runbooks/recurring-claim-reconciliation.md), reconcile any old claims, and require Jenkins accounting integration checks before release |
 | O3 | Read-only production catalog check ([runbook](runbooks/plan-catalog-verification.md)) | **Yes: run before deploy (§2)** |
 | O6 | Production run of the [dropped-renewals report](runbooks/dropped-renewals-report.md) | Run after deploy (§4) |
 
@@ -22,6 +25,9 @@ step was observed to pass, not when it was delegated.
       billing, authorization, audit storage and tenant-visible behaviour.
 - [ ] Platform browser spec run locally and passed ([qa-test-plan.md §4](qa-test-plan.md)). Date and result: ____.
 - [ ] Code review done. The PR description lists the 18 migrations and links this checklist.
+- [ ] **Local UAT drill run and signed off** ([uat-plan.md](uat-plan.md)), using synthetic tenants and Paystack test
+      mode. Seed the four §22.4 fixtures with `ALLOW_UAT_FIXTURES=true npm run uat:fixtures`. Date, who ran it
+      and the result: ____. **Not yet done, and not satisfied by fixture verification alone.**
 - [ ] Unrelated local files are not in the PR (`apps/web/next-env.d.ts`, `.freebuff/`, `.tmp-*.png`, `apps/web/AGENTS.md`).
 
 ## 2. Before deploy

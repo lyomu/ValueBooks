@@ -124,6 +124,73 @@ export class PaystackBillingAdapter implements BillingProvider {
     return remote.data;
   }
 
+  /**
+   * Creates a plan at Paystack and returns its code, for a tier that does not exist there yet.
+   */
+  async createPlan(input: {
+    name: string;
+    amountMinor: bigint;
+    currency: string;
+    interval: 'monthly' | 'annually';
+    description?: string | null;
+  }): Promise<PaystackRemotePlan> {
+    const result = await this.request<{ data: PaystackRemotePlan }>('/plan', {
+      method: 'POST',
+      body: JSON.stringify({
+        name: input.name,
+        amount: Number(input.amountMinor),
+        currency: input.currency,
+        interval: input.interval,
+        ...(input.description ? { description: input.description } : {}),
+      }),
+    });
+    return result.data;
+  }
+
+  /**
+   * Changes a plan's amount at Paystack.
+   *
+   * `update_existing_subscriptions` is sent explicitly on every call and is never left to
+   * Paystack's default, which is `true`: whether current subscribers are repriced is a commercial
+   * decision, and it must be stated at the call site rather than inherited. ValueBooks sends `true`
+   * (owner decision, 23 Oct 2026: existing subscribers are repriced at their next renewal), and
+   * Paystack reports how many subscriptions it touched, which the console records and shows.
+   *
+   * `interval` is deliberately not updatable here. A monthly and a yearly plan are separate catalog
+   * rows with separate Paystack codes; moving a plan between intervals would silently change what
+   * its subscribers are billed for, not just how much.
+   */
+  async updatePlanAmount(input: {
+    planCode: string;
+    amountMinor: bigint;
+    currency: string;
+    updateExistingSubscriptions: boolean;
+  }): Promise<{ affectedSubscriptions: number | null; message: string }> {
+    if (typeof input.updateExistingSubscriptions !== 'boolean') {
+      throw new Error('An explicit subscription repricing choice is required before updating a Paystack plan.');
+    }
+    const result = await this.request<{ message?: string }>(
+      `/plan/${encodeURIComponent(input.planCode)}`,
+      {
+        method: 'PUT',
+        body: JSON.stringify({
+          amount: Number(input.amountMinor),
+          currency: input.currency,
+          update_existing_subscriptions: input.updateExistingSubscriptions,
+        }),
+      },
+    );
+    const message = result.message ?? '';
+    // Paystack answers "Plan updated. 1 subscription(s) affected." The count is the only report of
+    // how many live subscriptions it repriced, so it is parsed rather than assumed, and left null
+    // when the wording changes instead of being reported as zero.
+    const affected = /(\d+)\s+subscription/i.exec(message);
+    return {
+      affectedSubscriptions: affected?.[1] ? Number(affected[1]) : null,
+      message,
+    };
+  }
+
   async getSubscription(providerSubscriptionId: string): Promise<ProviderSubscription> {
     const result = await this.request<{
       data: {

@@ -2,6 +2,7 @@ import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } 
 
 import type { PublicUser } from '../src/auth/auth.service.js';
 import { FiscalPeriodsService } from '../src/organizations/fiscal-periods.service.js';
+import { SchedulerService } from '../src/automation/scheduler.service.js';
 import { LedgerService } from '../src/organizations/ledger.service.js';
 import { OrganizationAccessService } from '../src/organizations/organization-access.service.js';
 import type { OrganizationContext } from '../src/organizations/organization-context.js';
@@ -109,6 +110,28 @@ describe('recurring expense generation against a real database', () => {
 
     const updatedTemplate = await recurringExpenses.detail(context.id, template.id);
     expect(updatedTemplate.nextRunDate).toBe('2026-02-15');
+  });
+
+  it('resumes a failed occurrence using the same posted expense', async () => {
+    const template = await recurringExpenses.createTemplate(context, owner, {
+      payeeVendorId: vendorId, cadence: 'MONTHLY', startDate: '2026-01-15',
+      paidThroughAccountId, amountMinor: '2500',
+    }, metadata);
+    const scheduler = harness.app.get(SchedulerService);
+    const claim = (await scheduler.findAndClaimDueRecurringJobs(context.id, 'recurring.expense'))[0];
+    expect(claim).toBeDefined();
+    const boundary = vi.spyOn(scheduler, 'templateDateForOccurrence');
+    boundary.mockImplementationOnce(() => { throw new Error('Simulated failure after post'); });
+    await expect(recurringExpenses.claimAndRunDueTemplates(context, owner, metadata, claim!.job))
+      .rejects.toThrow('Simulated failure after post');
+    boundary.mockRestore();
+
+    const expense = await harness.prisma.expense.findFirstOrThrow({ where: { organizationId: context.id } });
+    expect(expense.status).toBe('POSTED');
+    const result = await recurringExpenses.claimAndRunDueTemplates(context, owner, metadata, claim!.job);
+    expect(result.expenseId).toBe(expense.id);
+    expect(await harness.prisma.expense.count({ where: { organizationId: context.id } })).toBe(1);
+    expect((await recurringExpenses.detail(context.id, template.id)).nextRunDate).toBe('2026-02-15');
   });
 
   it('generates an expense from a free-text payee name when no vendor is linked', async () => {

@@ -26,7 +26,8 @@ import { apiRoot, testRuntimeDatabaseUrl } from './support/database.js';
 /**
  * The approved commercial matrix (master plan §4.2, owner decisions of 2026-10-22) lives in
  * `@valuebooks/contracts` as `OFFICIAL_PLAN_CATALOG`; this spec proves the migrations produce it,
- * resolved through the real `UsageMeteringService`. `null` = unlimited, `0` = not included.
+ * resolved through the real `UsageMeteringService`. Prices can now change in the database;
+ * this launch baseline governs entitlements and provider fields, not today's prices.
  */
 /** Quantitative limits plus on/off features; an enabled feature resolves to null (no cap). */
 const KEYS = [...OFFICIAL_ENTITLEMENT_KEYS, ...OFFICIAL_FEATURE_KEYS] as const;
@@ -135,32 +136,23 @@ describe('official plan catalog entitlements', () => {
     ]);
   });
 
-  it('stores the approved price, currency, interval and provider on every official row', async () => {
+  it('stores the approved provider and interval on every launch row', async () => {
     for (const tier of OFFICIAL_PLAN_TIERS) {
       const expected = OFFICIAL_PLAN_CATALOG[tier];
-      for (const [interval, priceMinor] of [
-        ['MONTHLY', expected.monthlyPriceMinor],
-        ['YEARLY', expected.yearlyPriceMinor],
-      ] as const) {
+      for (const interval of ['MONTHLY', 'YEARLY'] as const) {
         const row = await harness.prisma.plan.findUniqueOrThrow({
           where: { key: `${tier}_${interval.toLowerCase()}` },
         });
         expect({
           tierKey: row.tierKey,
-          name: row.name,
-          priceMinor: Number(row.priceMinor),
           currency: row.currency,
           billingInterval: row.billingInterval,
           billingProvider: row.billingProvider,
-          isMostPopular: row.isMostPopular,
         }).toEqual({
           tierKey: tier,
-          name: expected.name,
-          priceMinor,
           currency: expected.currency,
           billingInterval: interval,
           billingProvider: 'PAYSTACK',
-          isMostPopular: expected.mostPopular,
         });
       }
     }
@@ -201,16 +193,20 @@ describe('official plan catalog entitlements', () => {
 
   describe('platform plan assignment', () => {
     async function actor(): Promise<PlatformContext> {
-      const user = await harness.prisma.user.create({
-        data: {
+      const user = await harness.prisma.user.upsert({
+        where: { email: 'assign-superadmin@example.test' },
+        update: {},
+        create: {
           email: 'assign-superadmin@example.test',
           displayName: 'Assigner',
           emailVerifiedAt: new Date(),
           status: 'ACTIVE',
         },
       });
-      const grant = await harness.prisma.platformAdmin.create({
-        data: { userId: user.id, role: 'SUPERADMIN' },
+      const grant = await harness.prisma.platformAdmin.upsert({
+        where: { userId: user.id },
+        update: {},
+        create: { userId: user.id, role: 'SUPERADMIN' },
       });
       return {
         id: grant.id,
@@ -223,6 +219,7 @@ describe('official plan catalog entitlements', () => {
 
     it('refuses a retired plan and leaves the subscription untouched', async () => {
       const tenants = harness.app.get(PlatformTenantsService);
+      await harness.prisma.planTier.create({ data: { key: 'scale', name: 'Scale', status: 'RETIRED' } });
       const retired = await harness.prisma.plan.create({
         data: { key: 'scale', tierKey: 'scale', name: 'Scale', status: 'RETIRED', priceMinor: 0n },
       });
@@ -266,6 +263,62 @@ describe('official plan catalog entitlements', () => {
       const hours = (new Date(result.trialEndsAt!).getTime() - started) / 3_600_000;
       expect(hours).toBeGreaterThanOrEqual(OFFICIAL_TRIAL.hours - 0.01);
       expect(hours).toBeLessThan(OFFICIAL_TRIAL.hours + 0.1);
+    });
+
+    it('schedules trial lifecycle jobs when assigning the first subscription', async () => {
+      const tenants = harness.app.get(PlatformTenantsService);
+      await harness.prisma.scheduledJob.deleteMany({
+        where: { organizationId, handler: { in: ['billing.trial_reminder', 'billing.trial_expired'] } },
+      });
+      await harness.prisma.organizationSubscription.delete({ where: { organizationId } });
+      const plan = await harness.prisma.plan.findUniqueOrThrow({
+        where: { key: 'professional_monthly' },
+      });
+      const result = await tenants.assignPlan(
+        await actor(),
+        organizationId,
+        { planId: plan.id, status: 'TRIALING', requireNoSubscription: true, reason: 'Restore a fresh trial after catalog migration' },
+        null,
+      );
+      expect(result.status).toBe('TRIALING');
+      const jobs = await harness.prisma.scheduledJob.findMany({
+        where: { organizationId, handler: { in: ['billing.trial_reminder', 'billing.trial_expired'] } },
+        select: { handler: true, nextRunAt: true },
+        orderBy: { nextRunAt: 'asc' },
+      });
+      expect(jobs.map((job) => job.handler)).toEqual([
+        'billing.trial_reminder',
+        'billing.trial_expired',
+      ]);
+      expect(jobs[1]?.nextRunAt).toEqual(new Date(result.trialEndsAt!));
+      expect(await harness.prisma.platformAuditEvent.count({
+        where: { organizationId, eventKey: 'platform.plan_assigned' },
+      })).toBe(1);
+    });
+
+    it('refuses a stale first-trial assignment without changing the existing subscription', async () => {
+      const tenants = harness.app.get(PlatformTenantsService);
+      const plan = await harness.prisma.plan.findUniqueOrThrow({
+        where: { key: 'professional_monthly' },
+      });
+      const before = await harness.prisma.organizationSubscription.findUniqueOrThrow({
+        where: { organizationId },
+      });
+      await expect(
+        tenants.assignPlan(
+          await actor(),
+          organizationId,
+          { planId: plan.id, status: 'TRIALING', requireNoSubscription: true, reason: 'Stale first-trial check' },
+          null,
+        ),
+      ).rejects.toThrow('already has a subscription');
+      const after = await harness.prisma.organizationSubscription.findUniqueOrThrow({
+        where: { organizationId },
+      });
+      expect(after).toEqual(before);
+      expect(await harness.prisma.platformAuditEvent.count({
+        where: { organizationId, eventKey: 'platform.plan_assigned' },
+      })).toBe(0);
     });
   });
 

@@ -515,7 +515,7 @@ export class OrganizationService {
         await tx.organizationSubscription.upsert({
           where: { organizationId: context.id },
           create: { organizationId: context.id, planId: paidIntent.planId, status: 'ACTIVE' },
-          update: { planId: paidIntent.planId, status: 'ACTIVE', cancelledAt: null },
+          update: { planId: paidIntent.planId, entitlementVersionId: null, status: 'ACTIVE', cancelledAt: null },
         });
         await tx.registrationIntent.update({
           where: { id: paidIntent.id },
@@ -538,7 +538,7 @@ export class OrganizationService {
           select: { id: true, planId: true },
         });
         const trialPlan = await tx.plan.findFirst({
-          where: { tierKey: 'professional', billingInterval: 'MONTHLY', status: 'ACTIVE' },
+          where: { tierKey: 'professional', billingInterval: 'MONTHLY', status: 'ACTIVE', tier: { status: 'ACTIVE' } },
           select: { id: true, trialDays: true },
         });
         const alreadySubscribed = await tx.organizationSubscription.findUnique({

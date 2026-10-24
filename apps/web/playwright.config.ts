@@ -1,5 +1,12 @@
 import { defineConfig, devices } from '@playwright/test';
 
+// The F15 drill is run as its own spec. Only that run starts the email worker with an
+// invalid SMTP host; ordinary E2E and shared environment files retain their configuration.
+if (process.env.ALLOW_UAT_FIXTURES === 'true' &&
+  process.argv.some((arg) => arg.includes('platform-uat-email.spec.ts'))) {
+  process.env.UAT_F15_SMTP_HOST = 'invalid.invalid';
+}
+
 const baseURL = process.env.PLAYWRIGHT_BASE_URL ?? 'http://127.0.0.1:3300';
 const useExistingServer = Boolean(process.env.PLAYWRIGHT_BASE_URL);
 const e2eDatabaseUrl =
@@ -48,7 +55,7 @@ export default defineConfig({
     : [
         {
           command:
-            'npm run e2e:prepare --workspace @valuebooks/web && node apps/api/dist/src/main.js',
+            `npm run e2e:prepare --workspace @valuebooks/web && node ${process.env.ALLOW_UAT_FIXTURES === 'true' ? '--require ./apps/web/e2e/stub-paystack.cjs ' : ''}apps/api/dist/src/main.js`,
           url: 'http://127.0.0.1:3401/api/v1/health',
           reuseExistingServer: !process.env.CI,
           // This command is not just "start the API": it migrates, truncates, drains the queues,
@@ -70,6 +77,7 @@ export default defineConfig({
             S3_ENDPOINT: process.env.E2E_S3_ENDPOINT ?? 'http://127.0.0.1:59300',
             SMTP_HOST: '127.0.0.1',
             NODE_ENV: 'test',
+            ...(process.env.ALLOW_UAT_FIXTURES === 'true' ? { PAYSTACK_SECRET_KEY: 'sk_test_uat_stub' } : {}),
             QUEUE_PREFIX: 'valuebooks-e2e',
             WEB_APP_URL: 'http://127.0.0.1:3300',
           },

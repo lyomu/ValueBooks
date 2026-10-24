@@ -194,6 +194,18 @@ export const platformUserSchema = z.object({
   createdAt: z.iso.datetime(),
 });
 
+/** A price change proposed from the console and not yet published (phase 7, O5). */
+export const pendingPlanPriceChangeSchema = z.object({
+  id: z.uuid(),
+  toPriceMinor: z.string(),
+  currency: z.string().length(3),
+  reason: z.string(),
+  proposedBy: z.string(),
+  proposedAt: z.iso.datetime(),
+  /** Subscribers counted when it was proposed; the preview recounts at publication time. */
+  subscribersAtProposal: z.number().int().nonnegative(),
+});
+
 export const platformPlanSchema = z.object({
   id: z.uuid(),
   key: z.string().min(1),
@@ -214,6 +226,11 @@ export const platformPlanSchema = z.object({
   sortOrder: z.number().int(),
   subscriberCount: z.number().int().nonnegative(),
   entitlements: z.array(resolvedEntitlementSchema),
+  /**
+   * A proposed price awaiting publication, or null. Carried on the list so the catalog page can
+   * show that a change is pending — and who proposed it — without a request per plan.
+   */
+  pendingPriceChange: pendingPlanPriceChangeSchema.nullable(),
 });
 
 export const featureFlagRuleSchema = z.object({
@@ -4185,6 +4202,7 @@ export type PlanStatus = z.infer<typeof planStatusSchema>;
 export type BillingInterval = z.infer<typeof billingIntervalSchema>;
 export type SubscriptionStatus = z.infer<typeof subscriptionStatusSchema>;
 export type BillingProvider = z.infer<typeof billingProviderSchema>;
+export type PendingPlanPriceChange = z.infer<typeof pendingPlanPriceChangeSchema>;
 export type PlatformPlan = z.infer<typeof platformPlanSchema>;
 export type ResolvedEntitlement = z.infer<typeof resolvedEntitlementSchema>;
 export type ResolvedFlag = z.infer<typeof resolvedFlagSchema>;

@@ -57,6 +57,7 @@ describe('platform Paystack plan-code changes', () => {
         providerPriceId: 'PLN_takengrowth',
       },
     });
+    await harness.prisma.planTier.create({ data: { key: 'free', name: 'Free', status: 'RETIRED' } });
     const legacy = await harness.prisma.plan.create({
       data: { key: 'free', tierKey: 'free', name: 'Free', status: 'RETIRED' },
     });
@@ -185,6 +186,44 @@ describe('platform Paystack plan-code changes', () => {
     expect(fetchMock).not.toHaveBeenCalled();
     const plan = await harness.prisma.plan.findUniqueOrThrow({ where: { id: starterId } });
     expect(plan.providerPriceId).toBe('PLN_oldstarter');
+  });
+
+  it('includes a new active tier in coverage and permits a verified code for it', async () => {
+    await harness.prisma.planTier.create({ data: { key: 'enterprise', name: 'Enterprise', status: 'ACTIVE' } });
+    const newTier = await harness.prisma.plan.create({
+      data: {
+        key: 'enterprise_monthly',
+        tierKey: 'enterprise',
+        name: 'Enterprise',
+        status: 'ACTIVE',
+        priceMinor: 2500n,
+        currency: 'USD',
+        billingInterval: 'MONTHLY',
+        billingProvider: 'PAYSTACK',
+      },
+    });
+    const before = await harness
+      .http()
+      .get(`${API}/platform/billing/providers`)
+      .set('Cookie', superadminCookie)
+      .expect(200);
+    const provider = (before.body as { data: Array<{
+      expectedPlans: number;
+      plans: Array<{ key: string; state: string }>;
+    }> }).data[0];
+    const coverage = provider?.plans ?? [];
+    expect(provider?.expectedPlans).toBe(10);
+    expect(coverage).toContainEqual(expect.objectContaining({ key: 'advanced_monthly', state: 'MISSING_PLAN' }));
+    expect(coverage).toContainEqual(expect.objectContaining({ key: 'enterprise_monthly', state: 'MISSING_CODE' }));
+    expect(coverage).toContainEqual(expect.objectContaining({ key: 'enterprise_yearly', state: 'MISSING_PLAN' }));
+
+    stubPaystack({ amount: 2500, currency: 'USD', interval: 'monthly' });
+    await put(newTier.id, superadminCookie, {
+      providerPlanCode: 'PLN_enterprise',
+      reason,
+    }).expect(200);
+    expect((await harness.prisma.plan.findUniqueOrThrow({ where: { id: newTier.id } })).providerPriceId)
+      .toBe('PLN_enterprise');
   });
 
   async function operator(email: string, role: 'SUPERADMIN' | 'OPERATIONS'): Promise<string> {

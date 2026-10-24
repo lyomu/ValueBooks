@@ -64,6 +64,7 @@ export class BillsService {
     user: PublicUser,
     input: CreateBillDto,
     metadata: RequestMetadata,
+    externalTx?: Prisma.TransactionClient,
   ) {
     const vendor = await this.prisma.vendor.findFirst({
       where: { id: input.vendorId, organizationId: context.id },
@@ -82,7 +83,7 @@ export class BillsService {
     const resolvedLines = await this.resolveLines(context.id, input.lines);
     const totals = lineTotals(resolvedLines);
 
-    const created = await this.prisma.$transaction(async (tx) => {
+    const run = async (tx: Prisma.TransactionClient) => {
       const bill = await tx.bill.create({
         data: {
           organizationId: context.id,
@@ -115,7 +116,9 @@ export class BillsService {
       });
 
       return bill;
-    });
+    };
+
+    const created = externalTx ? await run(externalTx) : await this.prisma.$transaction(run);
 
     return summarizeBill(created);
   }

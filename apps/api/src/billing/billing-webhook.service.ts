@@ -266,6 +266,7 @@ export class BillingWebhookService {
       const data: Parameters<typeof tx.organizationSubscription.update>[0]['data'] = {};
       if (change && normalized.transaction?.status === 'SUCCESSFUL') {
         data.planId = change.toPlanId;
+        data.entitlementVersionId = null;
         data.intendedPlanId = null;
         data.billingProvider = provider;
         data.providerSubscriptionId = normalized.providerSubscriptionId ?? null;
@@ -275,6 +276,7 @@ export class BillingWebhookService {
       }
       if (signupIntent && normalized.transaction?.status === 'SUCCESSFUL') {
         data.planId = signupIntent.planId;
+        data.entitlementVersionId = null;
         data.intendedPlanId = null;
         data.trialEndsAt = null;
         data.billingProvider = provider;
@@ -304,7 +306,11 @@ export class BillingWebhookService {
         const paidPlan = change?.toPlan ?? (signupIntent?.plan ?? await tx.plan.findUniqueOrThrow({ where: { id: subscription.planId } }));
         if (!alreadyRecorded || normalized.transaction.periodEnd) {
           data.currentPeriodStart = normalized.transaction.periodStart ?? paidAt;
-          data.currentPeriodEnd = normalized.transaction.periodEnd ?? addBillingMonths(paidAt, paidPlan.billingInterval === 'YEARLY' ? 12 : 1);
+          const nextPeriodEnd = normalized.transaction.periodEnd ?? addBillingMonths(paidAt, paidPlan.billingInterval === 'YEARLY' ? 12 : 1);
+          data.currentPeriodEnd = nextPeriodEnd;
+          // A verified new billing period is when a subscriber adopts the published version.
+          if (!alreadyRecorded && (!subscription.currentPeriodEnd ||
+            nextPeriodEnd > subscription.currentPeriodEnd)) data.entitlementVersionId = null;
         }
         // A successful payment is itself proof of an active, paid subscription — this is the
         // "verified payment, not a redirect" activation the spec requires (Section 7).

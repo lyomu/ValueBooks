@@ -56,7 +56,7 @@ test.describe('Phase 12 platform console', () => {
     expect(unexpected).toEqual([]);
   });
 
-  test('suspends and reactivates an organization without leaving it locked out', async ({
+  test('F13: suspends and reactivates an organization without leaving it locked out', async ({
     page,
   }) => {
     const errors = collectBrowserErrors(page);
@@ -85,6 +85,21 @@ test.describe('Phase 12 platform console', () => {
     });
     await expect(page.getByRole('heading', { name: 'Suspended' })).toBeVisible();
     await expect(page.getByText('Phase 12 Playwright suspension check.')).toBeVisible();
+    const suspendedOrganizationId = page.url().split('/').pop();
+
+    // The member's own browser must see the suspension, not just the console badge.
+    if (process.env.ALLOW_UAT_FIXTURES === 'true') {
+      await page.context().clearCookies();
+      await signIn(page, TENANT_OWNER);
+      const blocked = await page.request.get(`http://127.0.0.1:3401/api/v1/organizations/${suspendedOrganizationId}/accounts`);
+      expect(blocked.status()).toBe(403);
+      expect(await blocked.text()).toContain('This organization is suspended');
+      await page.context().clearCookies();
+      await signIn(page, PLATFORM_ADMIN);
+      await page.goto('/platform/organizations');
+      await page.getByRole('link', { name: 'Karibu Retail Demo', exact: true }).click();
+      await page.getByRole('tab', { name: 'Administration' }).click();
+    }
 
     // The API treats the reactivation reason as optional; the console records one anyway so the
     // audit trail explains both directions.
@@ -183,6 +198,13 @@ test.describe('Phase 12 platform console', () => {
     // Phase 5.2: packs are listed per code, and the fallback pack is never shown as a country.
     await page.goto('/platform/country-packs');
     await expect(page.getByText('Fallback (no jurisdiction)')).toBeVisible({ timeout: 15_000 });
+    if (process.env.ALLOW_UAT_FIXTURES === 'true') {
+      // F14: a published tax pack offers deprecation or a new version, never in-place mutation.
+      await page.getByRole('row').filter({ hasText: 'Published' }).first().getByRole('link').click();
+      await expect(page.getByRole('button', { name: 'Create version from this' })).toBeVisible();
+      await expect(page.getByRole('button', { name: 'Edit draft' })).toHaveCount(0);
+      await expect(page.getByRole('button', { name: 'Delete draft' })).toHaveCount(0);
+    }
     expect(errors).toEqual([]);
   });
 });

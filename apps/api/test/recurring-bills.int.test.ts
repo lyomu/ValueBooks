@@ -2,6 +2,7 @@ import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } 
 
 import type { PublicUser } from '../src/auth/auth.service.js';
 import { FiscalPeriodsService } from '../src/organizations/fiscal-periods.service.js';
+import { SchedulerService } from '../src/automation/scheduler.service.js';
 import { OrganizationAccessService } from '../src/organizations/organization-access.service.js';
 import type { OrganizationContext } from '../src/organizations/organization-context.js';
 import { OrganizationService } from '../src/organizations/organization.service.js';
@@ -103,6 +104,28 @@ describe('recurring bill generation against a real database', () => {
 
     const updatedTemplate = await recurringBills.detail(context.id, template.id);
     expect(updatedTemplate.nextRunDate).toBe('2026-02-15');
+  });
+
+  it('resumes a failed occurrence using the same issued bill', async () => {
+    const template = await recurringBills.createTemplate(context, owner, {
+      vendorId, cadence: 'MONTHLY', startDate: '2026-01-15',
+      lines: [{ description: 'Rent', quantity: '1', unitPriceMinor: '2500' }],
+    }, metadata);
+    const scheduler = harness.app.get(SchedulerService);
+    const claim = (await scheduler.findAndClaimDueRecurringJobs(context.id, 'recurring.bill'))[0];
+    expect(claim).toBeDefined();
+    const boundary = vi.spyOn(scheduler, 'templateDateForOccurrence');
+    boundary.mockImplementationOnce(() => { throw new Error('Simulated failure after issue'); });
+    await expect(recurringBills.claimAndRunDueTemplates(context, owner, metadata, claim!.job))
+      .rejects.toThrow('Simulated failure after issue');
+    boundary.mockRestore();
+
+    const bill = await harness.prisma.bill.findFirstOrThrow({ where: { organizationId: context.id } });
+    expect(bill.status).toBe('ISSUED');
+    const result = await recurringBills.claimAndRunDueTemplates(context, owner, metadata, claim!.job);
+    expect(result.billId).toBe(bill.id);
+    expect(await harness.prisma.bill.count({ where: { organizationId: context.id } })).toBe(1);
+    expect((await recurringBills.detail(context.id, template.id)).nextRunDate).toBe('2026-02-15');
   });
 
   it('skips a template whose nextRunDate has not arrived yet', async () => {

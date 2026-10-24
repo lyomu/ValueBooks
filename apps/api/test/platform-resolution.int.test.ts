@@ -56,6 +56,7 @@ describe('platform entitlement and feature-flag resolution', () => {
       metadata,
     );
     organizationId = organization.id;
+    await harness.prisma.planTier.create({ data: { key: 'resolution', name: 'Resolution', status: 'ACTIVE' } });
     const plan = await harness.prisma.plan.create({
       data: {
         key: 'resolution',

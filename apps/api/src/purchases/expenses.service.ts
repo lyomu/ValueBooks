@@ -55,6 +55,7 @@ export class ExpensesService {
     user: PublicUser,
     input: CreateExpenseDto,
     metadata: RequestMetadata,
+    externalTx?: Prisma.TransactionClient,
   ) {
     if (!input.payeeVendorId && !input.payeeName) {
       throw new BadRequestException('An expense needs a vendor or a free-text payee name.');
@@ -89,7 +90,7 @@ export class ExpensesService {
     if (amountMinor <= 0n)
       throw new BadRequestException('The expense amount must be greater than zero.');
 
-    const created = await this.prisma.$transaction(async (tx) => {
+    const run = async (tx: Prisma.TransactionClient) => {
       const expense = await tx.expense.create({
         data: {
           organizationId: context.id,
@@ -118,7 +119,9 @@ export class ExpensesService {
         ipHash: metadata.ipHash,
       });
       return expense;
-    });
+    };
+
+    const created = externalTx ? await run(externalTx) : await this.prisma.$transaction(run);
 
     return summarizeExpense(created);
   }

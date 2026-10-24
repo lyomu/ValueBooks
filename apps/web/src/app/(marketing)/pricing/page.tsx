@@ -1,4 +1,7 @@
 import { PricingPageContent } from '../../../components/marketing/pricing-section';
-export default function Page() {
-  return <PricingPageContent />;
+import { fetchLivePlans } from '../../../components/marketing/live-prices';
+
+export default async function Page() {
+  const plans = await fetchLivePlans();
+  return <PricingPageContent plans={plans ?? undefined} />;
 }

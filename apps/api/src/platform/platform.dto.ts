@@ -1,5 +1,7 @@
 import { Transform, Type } from 'class-transformer';
 import {
+  ArrayMaxSize,
+  IsArray,
   IsBoolean,
   IsEmail,
   IsIn,
@@ -242,6 +244,36 @@ export class CreatePlanDto {
   sortOrder?: number;
 }
 
+export class CreateTierDto {
+  @IsString() @Matches(KEY) @MaxLength(40) @Transform(lower)
+  key!: string;
+  @IsString() @Length(1, 120) @Transform(trim)
+  name!: string;
+  @IsOptional() @IsString() @MaxLength(500) @Transform(trim)
+  description?: string;
+  @IsOptional() @Type(() => Number) @IsInt() @Min(0) @Max(1000)
+  sortOrder?: number;
+  @IsOptional() @IsBoolean()
+  isMostPopular?: boolean;
+  @IsOptional() @IsString() @MaxLength(300) @Transform(trim)
+  tagline?: string;
+  @IsOptional() @IsArray() @ArrayMaxSize(6) @IsString({ each: true }) @MaxLength(160, { each: true })
+  highlights?: string[];
+  @IsString() @Length(10, 500) @Transform(trim)
+  reason!: string;
+}
+
+export class EntitlementDraftValueDto {
+  @IsString() @MaxLength(60) @Transform(trim)
+  key!: string;
+  @IsBoolean()
+  enabled!: boolean;
+  @IsOptional() @Type(() => Number) @IsInt() @Min(0)
+  limitValue?: number | null;
+  @IsString() @Length(10, 500) @Transform(trim)
+  reason!: string;
+}
+
 /**
  * The only way to change a plan's Paystack code: one official plan at a time, with a reason, after
  * Paystack confirms the code's amount, currency and interval match the catalog row.
@@ -251,6 +283,38 @@ export class SetProviderPlanCodeDto {
   @Matches(/^PLN_[A-Za-z0-9]{4,60}$/, { message: 'providerPlanCode must look like PLN_xxxx' })
   @Transform(trim)
   providerPlanCode!: string;
+
+  @IsString()
+  @Length(10, 500)
+  @Transform(trim)
+  reason!: string;
+}
+
+/** A required reason, for an action whose only input is why it was taken. */
+export class PlanPriceReasonDto {
+  @IsString()
+  @Length(10, 500)
+  @Transform(trim)
+  reason!: string;
+}
+
+/**
+ * A proposed price for a live plan (phase 7, O5). The price is in minor units as a string, the same
+ * way every other money value crosses this boundary, so a large figure never passes through a
+ * JavaScript number.
+ */
+export class ProposePlanPriceDto {
+  @IsString()
+  @Matches(/^[0-9]{1,15}$/, { message: 'priceMinor must be a whole number of minor units' })
+  @Transform(trim)
+  priceMinor!: string;
+
+  /** Required only for a large increase; the service states the threshold when it refuses. */
+  @IsOptional()
+  @IsString()
+  @Matches(/^[0-9]{1,15}$/, { message: 'confirmPriceMinor must repeat the new price exactly' })
+  @Transform(trim)
+  confirmPriceMinor?: string;
 
   @IsString()
   @Length(10, 500)
@@ -361,6 +425,11 @@ export class UpsertEntitlementDto {
 export class AssignPlanDto {
   @IsUUID()
   planId!: string;
+
+  /** Used by the first-trial action so a stale console view cannot replace a new subscription. */
+  @IsOptional()
+  @IsBoolean()
+  requireNoSubscription?: boolean;
 
   /** TRIALING starts a cardless trial; ACTIVE is accepted only as a complimentary grant. Paid,
    * past-due and cancelled states come from verified provider events, never from the console. */

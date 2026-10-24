@@ -8,6 +8,8 @@ import {
   BillingWebhookService,
   WEBHOOK_CLAIM_STALE_MS,
 } from '../src/billing/billing-webhook.service.js';
+import { PlatformBillingService } from '../src/platform/platform-billing.service.js';
+import type { PlatformContext } from '../src/platform/platform-context.js';
 import { createTestHarness, type TestHarness } from './support/app.js';
 
 /**
@@ -117,6 +119,81 @@ describe('billing webhook processing claim', () => {
       deduplicated: false,
     });
     expect(apply).toHaveBeenCalledTimes(2);
+  });
+
+  /**
+   * O10: an operator-triggered retry is audited on every attempt, with the event's state read back
+   * afterwards. A retry that fails, and a retry that stands down because another delivery holds the
+   * claim, must not be recorded as a recovery.
+   */
+  it('audits a webhook retry with the state read back rather than an assumed PROCESSED', async () => {
+    const admin = await harness.prisma.user.create({
+      data: {
+        email: 'webhook-retry-operator@example.test',
+        displayName: 'Webhook Retry Operator',
+        emailVerifiedAt: new Date(),
+        status: 'ACTIVE',
+      },
+    });
+    const grant = await harness.prisma.platformAdmin.create({
+      data: { userId: admin.id, role: 'OPERATIONS' },
+    });
+    const actor: PlatformContext = {
+      id: grant.id,
+      userId: admin.id,
+      email: admin.email,
+      displayName: admin.displayName,
+      role: 'OPERATIONS',
+    };
+    const platformBilling = harness.app.get(PlatformBillingService);
+    const auditedStates = async () =>
+      (
+        await harness.prisma.platformAuditEvent.findMany({
+          where: { eventKey: 'billing.webhook_retried' },
+          orderBy: { occurredAt: 'asc' },
+          select: { after: true },
+        })
+      ).map((row) => (row.after as { state?: string } | null)?.state);
+
+    const verified = delivery();
+    const event = await harness.prisma.billingWebhookEvent.create({
+      data: {
+        billingProvider: 'PAYSTACK',
+        providerEventId: verified.providerEventId,
+        eventType: verified.eventType,
+        signatureVerified: true,
+        processingState: 'FAILED',
+        lastError: 'downstream unavailable',
+        payload: verified.payload,
+      },
+    });
+
+    // A retry that fails still leaves an audit row, with the state the event actually holds.
+    apply.mockRejectedValueOnce(new Error('downstream still unavailable'));
+    await expect(
+      platformBilling.retryWebhook(
+        event.id,
+        'Retrying after the outage was reported fixed.',
+        actor,
+      ),
+    ).rejects.toThrow('downstream still unavailable');
+    expect(await auditedStates()).toEqual(['FAILED']);
+
+    // Another delivery holds the claim: nothing is reprocessed, and the retry says so.
+    const standDown = vi
+      .spyOn(webhooks, 'recordAndProcess')
+      .mockResolvedValue({ deduplicated: true });
+    await expect(
+      platformBilling.retryWebhook(event.id, 'Retrying while a redelivery is in flight.', actor),
+    ).resolves.toEqual({ processed: false, state: 'FAILED' });
+    expect(await auditedStates()).toEqual(['FAILED', 'FAILED']);
+    standDown.mockRestore();
+
+    // A retry that works reports and audits PROCESSED.
+    await expect(
+      platformBilling.retryWebhook(event.id, 'Retrying once the downstream recovered.', actor),
+    ).resolves.toEqual({ processed: true, state: 'PROCESSED' });
+    expect(await auditedStates()).toEqual(['FAILED', 'FAILED', 'PROCESSED']);
   });
 
   it('refuses to verify when the raw request body is unavailable', async () => {

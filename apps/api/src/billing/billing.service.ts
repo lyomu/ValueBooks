@@ -3,7 +3,6 @@ import { PlanStatus, type OrganizationSubscription } from '@prisma/client';
 
 import { PrismaService } from '../database/prisma.service.js';
 import { PaystackBillingAdapter } from './paystack-billing.adapter.js';
-import { BILLING_PROVIDER_ROUTING } from './billing-provider.js';
 import { UsageMeteringService } from './usage-metering.service.js';
 import { BillingNotificationService } from './billing-notification.service.js';
 import { writeAuditEvent } from '../organizations/audit-event.js';
@@ -27,12 +26,13 @@ export class BillingService {
 
   async publicPlans() {
     const plans = await this.prisma.plan.findMany({
-      where: { status: PlanStatus.ACTIVE },
+      where: { status: PlanStatus.ACTIVE, tier: { status: 'ACTIVE' } },
       orderBy: [{ sortOrder: 'asc' }, { key: 'asc' }],
       select: {
         id: true,
         key: true,
         tierKey: true,
+        tier: { select: { name: true, description: true, tagline: true, highlights: true, isMostPopular: true, sortOrder: true } },
         name: true,
         description: true,
         isMostPopular: true,
@@ -53,9 +53,11 @@ export class BillingService {
       id: plan.id,
       key: plan.key,
       tierKey: plan.tierKey,
-      name: plan.name,
-      description: plan.description,
-      isMostPopular: plan.isMostPopular,
+      name: plan.tier.name,
+      description: plan.tier.description,
+      tagline: plan.tier.tagline,
+      highlights: plan.tier.highlights,
+      isMostPopular: plan.tier.isMostPopular,
       priceMinor: plan.priceMinor.toString(),
       currency: plan.currency,
       billingInterval: plan.billingInterval,
@@ -70,7 +72,7 @@ export class BillingService {
 
   async createIntent(planKey: string) {
     const plan = await this.prisma.plan.findFirst({
-      where: { key: planKey, status: PlanStatus.ACTIVE },
+      where: { key: planKey, status: PlanStatus.ACTIVE, tier: { status: 'ACTIVE' } },
     });
     if (!plan) throw new NotFoundException('This plan is no longer available.');
     return this.prisma.registrationIntent.create({
@@ -99,7 +101,7 @@ export class BillingService {
    */
   async createIntentForUser(planKey: string, userId: string, email: string) {
     const plan = await this.prisma.plan.findFirst({
-      where: { key: planKey, status: PlanStatus.ACTIVE },
+      where: { key: planKey, status: PlanStatus.ACTIVE, tier: { status: 'ACTIVE' } },
     });
     if (!plan) throw new NotFoundException('This plan is no longer available.');
     const now = new Date();
@@ -137,7 +139,7 @@ export class BillingService {
   ) {
     const intent = await this.intentForUser(intentId, userId);
     if (intent.paymentVerifiedAt) return this.serialize(intent);
-    if (intent.plan.status !== PlanStatus.ACTIVE)
+    if (intent.plan.status !== PlanStatus.ACTIVE || intent.plan.tier.status !== PlanStatus.ACTIVE)
       throw new BadRequestException(
         'This plan is no longer available. Select an available plan to continue.',
       );
@@ -155,7 +157,7 @@ export class BillingService {
     ) {
       if (process.env.NODE_ENV === 'production' && process.env.BILLING_LIVE_CHECKOUT_ENABLED !== 'true')
         throw new BadRequestException('Live subscription checkout is awaiting merchant readiness approval.');
-      if (BILLING_PROVIDER_ROUTING[intent.plan.tierKey] !== intent.plan.billingProvider)
+      if (intent.plan.billingProvider !== 'PAYSTACK')
         throw new BadRequestException('This plan has an invalid payment provider configuration.');
       this.validateCheckoutUrls(successUrl, cancelUrl);
       const result = await this.paystack.createCheckout({
@@ -193,21 +195,19 @@ export class BillingService {
   }) {
     this.validateCheckoutUrls(input.successUrl, input.cancelUrl);
     const [subscription, plan] = await Promise.all([
-      this.prisma.organizationSubscription.findUnique({ where: { organizationId: input.organizationId }, include: { plan: true } }),
-      this.prisma.plan.findFirst({ where: { key: input.planKey, status: 'ACTIVE' } }),
+      this.prisma.organizationSubscription.findUnique({ where: { organizationId: input.organizationId }, include: { plan: { include: { tier: true } } } }),
+      this.prisma.plan.findFirst({ where: { key: input.planKey, status: 'ACTIVE', tier: { status: 'ACTIVE' } }, include: { tier: true } }),
     ]);
     if (!subscription || !plan) throw new NotFoundException('Subscription or selected plan not found.');
     if (process.env.NODE_ENV === 'production' && process.env.BILLING_LIVE_CHECKOUT_ENABLED !== 'true')
       throw new BadRequestException('Live subscription checkout is awaiting merchant readiness approval.');
-    if (plan.billingProvider !== 'PAYSTACK' || !plan.providerPriceId ||
-      BILLING_PROVIDER_ROUTING[plan.tierKey] !== plan.billingProvider)
+    if (plan.billingProvider !== 'PAYSTACK' || !plan.providerPriceId)
       throw new BadRequestException('This plan is not ready for secure checkout.');
     if (subscription.status === 'ACTIVE' && subscription.planId === plan.id)
       throw new BadRequestException('This is already your current plan.');
-    const tierOrder: Record<string, number> = { starter: 1, growth: 2, professional: 3, advanced: 4 };
     const isPaidDowngrade = Boolean(subscription.billingProvider && subscription.currentPeriodEnd &&
       ['ACTIVE', 'CANCEL_SCHEDULED'].includes(subscription.status) &&
-      (tierOrder[plan.tierKey] ?? 0) < (tierOrder[subscription.plan.tierKey] ?? 0));
+      plan.tier.sortOrder < subscription.plan.tier.sortOrder);
     const scheduled = await this.prisma.subscriptionChange.findFirst({ where: { organizationId: input.organizationId, status: 'SCHEDULED' }, orderBy: { createdAt: 'desc' } });
     if (scheduled && scheduled.toPlanId !== plan.id) throw new BadRequestException('A different downgrade is already scheduled.');
     if (scheduled && scheduled.effectiveAt && scheduled.effectiveAt > new Date())
@@ -476,7 +476,7 @@ export class BillingService {
   private async intentForUser(id: string, userId: string) {
     const intent = await this.prisma.registrationIntent.findFirst({
       where: { id, userId, consumedAt: null, expiresAt: { gt: new Date() } },
-      include: { plan: true },
+      include: { plan: { include: { tier: true } } },
     });
     if (!intent)
       throw new NotFoundException('This checkout session is unavailable. Choose a plan again.');

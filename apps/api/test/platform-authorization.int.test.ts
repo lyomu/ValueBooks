@@ -160,6 +160,7 @@ describe('platform authorization boundary over HTTP', () => {
       .replace(':organizationId', ID)
       .replace(':userId', ID)
       .replace(':planId', ID)
+      .replace(':versionId', ID)
       .replace(':flagId', ID)
       .replace(':ruleId', ID)
       .replace(':executionId', ID)

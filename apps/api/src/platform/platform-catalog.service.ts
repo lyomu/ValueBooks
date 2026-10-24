@@ -7,7 +7,6 @@ import {
 } from '@nestjs/common';
 
 import type { Prisma } from '@prisma/client';
-import { OFFICIAL_PLAN_TIERS } from '@valuebooks/contracts';
 
 import {
   PaystackBillingAdapter,
@@ -17,10 +16,12 @@ import { PrismaService } from '../database/prisma.service.js';
 import { findCountry } from '../organizations/jurisdiction-catalog.js';
 import { APPROVAL_GOVERNED_FLAGS } from './phase13-feature-flags.js';
 import { writePlatformAudit } from './platform-audit.js';
+import { CatalogHealthService } from './catalog-health.service.js';
 import type { PlatformContext } from './platform-context.js';
 import type {
   CreateFeatureFlagDto,
   CreatePlanDto,
+  CreateTierDto,
   FlagAudienceDto,
   SetProviderPlanCodeDto,
   UpdateFeatureFlagDto,
@@ -28,10 +29,6 @@ import type {
   UpsertEntitlementDto,
   UpsertFlagRuleDto,
 } from './platform.dto.js';
-
-const OFFICIAL_PLAN_KEYS = new Set(
-  OFFICIAL_PLAN_TIERS.flatMap((tier) => [`${tier}_monthly`, `${tier}_yearly`]),
-);
 
 type PlanRow = {
   name: string;
@@ -77,14 +74,85 @@ export class PlatformCatalogService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly paystack: PaystackBillingAdapter,
+    private readonly health: CatalogHealthService,
   ) {}
+
+  listTiers() {
+    return this.prisma.planTier.findMany({ orderBy: [{ sortOrder: 'asc' }, { key: 'asc' }] });
+  }
+
+  catalogHealth() { return this.health.violations(); }
+
+  async createTier(actor: PlatformContext, input: CreateTierDto, ipHash: string | null) {
+    return this.prisma.$transaction(async (tx) => {
+      const tier = await tx.planTier.create({ data: {
+        key: input.key, name: input.name, description: input.description ?? null,
+        sortOrder: input.sortOrder ?? 0, isMostPopular: input.isMostPopular ?? false,
+        tagline: input.tagline ?? null, highlights: input.highlights ?? [], status: 'DRAFT',
+      } });
+      await writePlatformAudit(tx, actor, { eventKey: 'platform.plan_tier_created', targetType: 'plan_tier',
+        targetId: tier.id, reason: input.reason, after: { key: tier.key, name: tier.name, status: tier.status }, ipHash });
+      return tier;
+    });
+  }
+
+  async activateTier(actor: PlatformContext, key: string, reason: string, ipHash: string | null) {
+    return this.prisma.$transaction(async (tx) => {
+      const tier = await tx.planTier.findUnique({ where: { key } });
+      if (!tier) throw new NotFoundException('Tier not found.');
+      if (tier.status !== 'DRAFT') throw new BadRequestException('Only a draft tier can be activated.');
+      const tierPlans = await tx.plan.findMany({ where: { tierKey: key }, select: { key: true } });
+      const proposed = await this.health.violations({ activateTier: key }, tx);
+      const blocking = proposed.filter((row) => row.category === 'INVARIANT' &&
+        (row.subject === key || tierPlans.some((plan) => plan.key === row.subject)));
+      if (blocking.length) throw new BadRequestException(`Tier is incomplete: ${blocking.map((row) => row.detail).join(' ')}`);
+      await this.health.assertNoNewViolations({ activateTier: key }, tx);
+      const updated = await tx.planTier.update({ where: { key }, data: { status: 'ACTIVE' } });
+      await writePlatformAudit(tx, actor, { eventKey: 'platform.plan_tier_activated', targetType: 'plan_tier',
+        targetId: tier.id, reason, before: { status: tier.status }, after: { status: updated.status }, ipHash });
+      return updated;
+    }, { isolationLevel: 'Serializable' });
+  }
+
+  async retireTier(actor: PlatformContext, key: string, reason: string, ipHash: string | null) {
+    return this.prisma.$transaction(async (tx) => {
+      const tier = await tx.planTier.findUnique({ where: { key } });
+      if (!tier) throw new NotFoundException('Tier not found.');
+      if (tier.status === 'RETIRED') throw new BadRequestException('Tier is already retired.');
+      await tx.$queryRaw`SELECT id FROM plans WHERE tier_key = ${key} FOR UPDATE`;
+      const subscribers = await tx.organizationSubscription.count({ where: { plan: { tierKey: key },
+        status: { in: ['TRIALING', 'ACTIVE', 'PAST_DUE', 'CANCEL_SCHEDULED'] } } });
+      if (subscribers) throw new BadRequestException(`${subscribers} non-terminal subscription(s) still use this tier. Move them before retiring it.`);
+      await tx.plan.updateMany({ where: { tierKey: key }, data: { status: 'RETIRED', isDefault: false } });
+      const updated = await tx.planTier.update({ where: { key }, data: { status: 'RETIRED', isMostPopular: false } });
+      await writePlatformAudit(tx, actor, { eventKey: 'platform.plan_tier_retired', targetType: 'plan_tier',
+        targetId: tier.id, reason, before: { status: tier.status }, after: { status: updated.status, plansRetired: true }, ipHash });
+      return updated;
+    }, { isolationLevel: 'Serializable' });
+  }
 
   async listPlans() {
     const plans = await this.prisma.plan.findMany({
       orderBy: [{ sortOrder: 'asc' }, { key: 'asc' }],
       include: {
         entitlements: { orderBy: { key: 'asc' } },
+        entitlementVersions: { where: { status: 'DRAFT' }, take: 1,
+          select: { id: true, version: true, reason: true } },
         _count: { select: { subscriptions: true } },
+        // At most one DRAFT per plan, enforced by a partial unique index.
+        priceChanges: {
+          where: { status: 'DRAFT' },
+          take: 1,
+          select: {
+            id: true,
+            toPriceMinor: true,
+            currency: true,
+            reason: true,
+            createdAt: true,
+            subscribersAtProposal: true,
+            proposedBy: { select: { user: { select: { email: true } } } },
+          },
+        },
       },
     });
     return plans.map((plan) => ({
@@ -110,10 +178,25 @@ export class PlatformCatalogService {
         enabled: entitlement.enabled,
         limitValue: entitlement.limitValue,
       })),
+      pendingEntitlementVersion: plan.entitlementVersions[0] ?? null,
+      pendingPriceChange: plan.priceChanges[0]
+        ? {
+            id: plan.priceChanges[0].id,
+            toPriceMinor: plan.priceChanges[0].toPriceMinor.toString(),
+            currency: plan.priceChanges[0].currency,
+            reason: plan.priceChanges[0].reason,
+            proposedBy: plan.priceChanges[0].proposedBy.user.email,
+            proposedAt: plan.priceChanges[0].createdAt.toISOString(),
+            subscribersAtProposal: plan.priceChanges[0].subscribersAtProposal,
+          }
+        : null,
     }));
   }
 
   async createPlan(actor: PlatformContext, input: CreatePlanDto, ipHash: string | null) {
+    const tierKey = input.tierKey ?? input.key;
+    const tier = await this.prisma.planTier.findUnique({ where: { key: tierKey } });
+    if (!tier || tier.status === 'RETIRED') throw new BadRequestException('Create a draft tier before adding its plans.');
     const existing = await this.prisma.plan.findUnique({
       where: { key: input.key },
       select: { id: true },
@@ -124,7 +207,7 @@ export class PlatformCatalogService {
       const plan = await tx.plan.create({
         data: {
           key: input.key,
-          tierKey: input.tierKey ?? input.key,
+          tierKey,
           name: input.name,
           description: input.description ?? null,
           isMostPopular: input.isMostPopular ?? false,
@@ -136,6 +219,18 @@ export class PlatformCatalogService {
           providerProductId: input.providerProductId,
           providerPriceId: input.providerPriceId,
           sortOrder: input.sortOrder ?? 0,
+        },
+      });
+      // Opening price-history row, in the same transaction as the plan. The phase 7 migration
+      // seeded one for every plan that existed then; a plan created later needs its own, or its
+      // price history would begin at the first change rather than at what it launched with.
+      await tx.planPriceHistory.create({
+        data: {
+          planId: plan.id,
+          priceMinor: plan.priceMinor,
+          currency: plan.currency,
+          billingInterval: plan.billingInterval,
+          effectiveFrom: plan.createdAt,
         },
       });
       await writePlatformAudit(tx, actor, {
@@ -158,6 +253,18 @@ export class PlatformCatalogService {
     return this.prisma.$transaction(async (tx) => {
       const existing = await tx.plan.findUnique({ where: { id: planId } });
       if (!existing) throw new NotFoundException('Plan not found.');
+      if (existing.status === 'ACTIVE' && input.status === 'RETIRED') {
+        throw new BadRequestException('Retire the tier through the governed tier action.');
+      }
+      if (existing.status === 'ACTIVE' &&
+        ((input.priceMinor !== undefined && BigInt(input.priceMinor) !== existing.priceMinor) ||
+          (input.billingProvider !== undefined && input.billingProvider !== existing.billingProvider) ||
+          (input.billingInterval !== undefined && input.billingInterval !== existing.billingInterval))) {
+        throw new BadRequestException('Active plan pricing and provider terms require their governed actions.');
+      }
+      if (input.tierKey !== undefined && input.tierKey !== existing.tierKey) {
+        throw new BadRequestException('Move plans by creating a new plan in the intended tier; tier membership is immutable.');
+      }
       const subscriberCount = await tx.organizationSubscription.count({ where: { planId } });
       if (input.status === 'RETIRED' && subscriberCount > 0) {
         // Retiring a plan that tenants are on would leave them pointing at a tier nobody can
@@ -199,6 +306,8 @@ export class PlatformCatalogService {
           'Change a Paystack plan code through the plan-code action, which verifies it with Paystack and records a reason.',
         );
       }
+      const catalogBeforeActivation = input.status === 'ACTIVE' && existing.status !== 'ACTIVE'
+        ? await this.health.violations(undefined, tx) : null;
       const updated = await tx.plan.update({
         where: { id: planId },
         data: {
@@ -226,6 +335,10 @@ export class PlatformCatalogService {
           ...(input.sortOrder !== undefined ? { sortOrder: input.sortOrder } : {}),
         },
       });
+      if (catalogBeforeActivation) {
+        // Evaluate the persisted proposal, including any other fields changed in this request.
+        await this.health.assertNoNewViolations({}, tx, catalogBeforeActivation);
+      }
       await writePlatformAudit(tx, actor, {
         eventKey: 'platform.plan_updated',
         targetType: 'plan',
@@ -247,8 +360,8 @@ export class PlatformCatalogService {
   ) {
     const plan = await this.prisma.plan.findUnique({ where: { id: planId } });
     if (!plan) throw new NotFoundException('Plan not found.');
-    if (!OFFICIAL_PLAN_KEYS.has(plan.key) || plan.status !== 'ACTIVE') {
-      throw new BadRequestException('Only the eight active official plans carry a Paystack code.');
+    if (plan.status === 'RETIRED') {
+      throw new BadRequestException('A retired plan cannot receive a Paystack code.');
     }
     if (plan.billingProvider !== 'PAYSTACK') {
       throw new BadRequestException('This plan is not billed through Paystack.');
@@ -321,6 +434,8 @@ export class PlatformCatalogService {
     return this.prisma.$transaction(async (tx) => {
       const plan = await tx.plan.findUnique({ where: { id: planId }, select: { id: true } });
       if (!plan) throw new NotFoundException('Plan not found.');
+      if (await tx.planEntitlementVersion.count({ where: { planId } }))
+        throw new BadRequestException('This plan uses entitlement versions. Create a draft and publish it instead.');
       if (await tx.organizationSubscription.count({ where: { planId } })) {
         throw new BadRequestException(
           'This plan has subscribers. Create a new version and migrate with customer authorization before changing entitlements.',
@@ -375,6 +490,8 @@ export class PlatformCatalogService {
         where: { planId_key: { planId, key } },
       });
       if (!existing) throw new NotFoundException('Entitlement not found.');
+      if (await tx.planEntitlementVersion.count({ where: { planId } }))
+        throw new BadRequestException('This plan uses entitlement versions. Create a draft and publish it instead.');
       if (await tx.organizationSubscription.count({ where: { planId } })) {
         throw new BadRequestException(
           'This plan has subscribers. Its entitlements cannot be removed in place.',

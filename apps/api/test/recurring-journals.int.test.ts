@@ -1,6 +1,7 @@
-import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { PublicUser } from '../src/auth/auth.service.js';
+import { SchedulerService } from '../src/automation/scheduler.service.js';
 import { FiscalPeriodsService } from '../src/organizations/fiscal-periods.service.js';
 import { LedgerService } from '../src/organizations/ledger.service.js';
 import { OrganizationAccessService } from '../src/organizations/organization-access.service.js';
@@ -184,8 +185,37 @@ describe('recurring journal generation against a real database', () => {
         operation: { in: ['RECURRING_JOURNAL_CLAIM', 'RECURRING_JOURNAL_GENERATE'] },
       },
     });
-    // Exactly one occurrence claim plus exactly one posting idempotency record.
-    expect(claimCount).toBe(2);
+    // The posting idempotency record is the single occurrence claim.
+    expect(claimCount).toBe(1);
+  });
+
+  it('resumes after posting fails to advance the template, without a second journal', async () => {
+    const template = await recurringJournals.createTemplate(
+      context,
+      owner,
+      await templateInput(),
+      metadata,
+    );
+    const scheduler = harness.app.get(SchedulerService);
+    const claim = (await scheduler.findAndClaimDueRecurringJobs(context.id, 'recurring.journal'))[0];
+    expect(claim).toBeDefined();
+    const job = claim!.job;
+    const boundary = vi.spyOn(scheduler, 'templateDateForOccurrence');
+    boundary.mockImplementationOnce(() => { throw new Error('Simulated failure after posting'); });
+    try {
+      await expect(
+        recurringJournals.claimAndRunDueTemplates(context, owner, metadata, job),
+      ).rejects.toThrow('Simulated failure after posting');
+    } finally {
+      boundary.mockRestore();
+    }
+    expect(await harness.prisma.journal.count({ where: { sourceId: template.id } })).toBe(1);
+    expect((await recurringJournals.detail(context.id, template.id)).nextRunDate).toBe('2026-01-15');
+
+    const result = await recurringJournals.claimAndRunDueTemplates(context, owner, metadata, job);
+    expect(result.journalId).toEqual(expect.any(String));
+    expect(await harness.prisma.journal.count({ where: { sourceId: template.id } })).toBe(1);
+    expect((await recurringJournals.detail(context.id, template.id)).nextRunDate).toBe('2026-02-15');
   });
 
   it('updates, deactivates, and reactivates a template', async () => {

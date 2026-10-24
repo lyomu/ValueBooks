@@ -114,7 +114,7 @@ function PlanCard({
     <article className={cardClasses}>
       {plan.highlighted ? <span className="mk-pricing-ribbon">Most popular</span> : null}
       <h3>{plan.name}</h3>
-      <p className="mk-pricing-card__tagline">{plan.tagline}</p>
+      {plan.tagline ? <p className="mk-pricing-card__tagline">{plan.tagline}</p> : null}
       <PriceTag plan={plan} interval={interval} currencyCode={currencyCode} />
       {plan.ctaHref ? (
         <Link
@@ -163,14 +163,21 @@ export function PlanCardRow({
   interval,
   currencyCode,
   variant,
+  plans = PLANS,
 }: {
   interval: BillingInterval;
   currencyCode: string;
   variant: 'compact' | 'full';
+  /**
+   * Prices are administrator-editable (phase 7), so a page that can be rendered on the server
+   * passes the live catalog. The compiled approved catalog is the fallback for a caller that has
+   * no live figures, and for when the API cannot be reached.
+   */
+  plans?: Plan[];
 }) {
   return (
     <div className="mk-pricing-row">
-      {PLANS.map((plan) => (
+      {plans.map((plan) => (
         <PlanCard
           key={plan.id}
           plan={plan}
@@ -200,7 +207,7 @@ function FeatureCell({ value }: { value: boolean | string }) {
   );
 }
 
-export function ComparisonTable() {
+export function ComparisonTable({ plans = PLANS }: { plans?: Plan[] }) {
   const [openGroup, setOpenGroup] = useState<string | null>(FEATURE_GROUPS[0]?.id ?? null);
 
   return (
@@ -212,7 +219,7 @@ export function ComparisonTable() {
             <th scope="col">
               <span className="rb-visually-hidden">Feature</span>
             </th>
-            {PLANS.map((plan) => (
+            {plans.map((plan) => (
               <th scope="col" key={plan.id}>
                 {plan.name}
               </th>
@@ -231,7 +238,7 @@ export function ComparisonTable() {
               <tr>
                 <th
                   scope="colgroup"
-                  colSpan={PLANS.length + 1}
+                  colSpan={plans.length + 1}
                   className="mk-pricing-group__header-cell"
                 >
                   <button
@@ -250,9 +257,9 @@ export function ComparisonTable() {
                 ? group.rows.map((row) => (
                     <tr key={row.label}>
                       <th scope="row">{row.label}</th>
-                      {PLANS.map((plan) => (
+                      {plans.map((plan) => (
                         <td key={plan.id}>
-                          <FeatureCell value={row.values[plan.id] ?? false} />
+                          <FeatureCell value={plan.catalogValues?.[row.label] ?? row.values[plan.id] ?? '—'} />
                         </td>
                       ))}
                     </tr>

@@ -16,6 +16,7 @@ describe('platform operations acceptance', () => {
   let organizationId: string;
   let ownerCookie: string;
   let operationsCookie: string;
+  let operatorUserId: string;
 
   beforeAll(async () => {
     harness = await createTestHarness();
@@ -66,6 +67,7 @@ describe('platform operations acceptance', () => {
       data: { userId: operator.id, role: 'OPERATIONS' },
     });
     operationsCookie = await cookieFor(operator.id);
+    operatorUserId = operator.id;
   });
 
   it('suspends without deleting tenant data, blocks tenant access, and restores it on reactivation', async () => {
@@ -221,6 +223,77 @@ describe('platform operations acceptance', () => {
     );
     expect(data.activeSessions).toHaveLength(data.activeSessionCount);
     expect(data.activeSessions[0]?.lastSeenAt).toEqual(expect.any(String));
+  });
+
+  // O4: an account status change revokes every live session, so who may be targeted matters as
+  // much as who may call the endpoint.
+  it('refuses a status change on the acting administrator and on console accounts below superadmin', async () => {
+    const statusOf = (userId: string) =>
+      harness.prisma.user.findUniqueOrThrow({ where: { id: userId }, select: { status: true } });
+
+    const self = await harness
+      .http()
+      .patch(`${API}/platform/users/${operatorUserId}/status`)
+      .set('Cookie', operationsCookie)
+      .send({ status: 'SUSPENDED', reason: 'Attempting to suspend my own account.' })
+      .expect(400);
+    expect((self.body as { error: { message: string } }).error.message).toContain(
+      'your own account',
+    );
+    expect(await statusOf(operatorUserId)).toEqual({ status: 'ACTIVE' });
+
+    // A second console account: OPERATIONS may not touch it, a superadmin may.
+    const colleague = await harness.prisma.user.create({
+      data: {
+        email: 'console-colleague@example.test',
+        displayName: 'Console Colleague',
+        emailVerifiedAt: new Date(),
+        status: 'ACTIVE',
+      },
+    });
+    await harness.prisma.platformAdmin.create({
+      data: { userId: colleague.id, role: 'SUPERADMIN' },
+    });
+    await harness
+      .http()
+      .patch(`${API}/platform/users/${colleague.id}/status`)
+      .set('Cookie', operationsCookie)
+      .send({ status: 'SUSPENDED', reason: 'Operator attempting to suspend a superadmin.' })
+      .expect(403);
+    expect(await statusOf(colleague.id)).toEqual({ status: 'ACTIVE' });
+    expect(
+      await harness.prisma.platformAuditEvent.count({
+        where: { eventKey: 'platform.user_status_changed' },
+      }),
+    ).toBe(0);
+
+    const superadmin = await harness.prisma.user.create({
+      data: {
+        email: 'console-superadmin@example.test',
+        displayName: 'Console Superadmin',
+        emailVerifiedAt: new Date(),
+        status: 'ACTIVE',
+      },
+    });
+    await harness.prisma.platformAdmin.create({
+      data: { userId: superadmin.id, role: 'SUPERADMIN' },
+    });
+    await harness
+      .http()
+      .patch(`${API}/platform/users/${colleague.id}/status`)
+      .set('Cookie', await cookieFor(superadmin.id))
+      .send({ status: 'SUSPENDED', reason: 'Superadmin suspending another console account.' })
+      .expect(200);
+    expect(await statusOf(colleague.id)).toEqual({ status: 'SUSPENDED' });
+
+    // A tenant account with no console access stays an ordinary OPERATIONS action.
+    await harness
+      .http()
+      .patch(`${API}/platform/users/${owner.id}/status`)
+      .set('Cookie', operationsCookie)
+      .send({ status: 'SUSPENDED', reason: 'Ordinary tenant account suspension.' })
+      .expect(200);
+    expect(await statusOf(owner.id)).toEqual({ status: 'SUSPENDED' });
   });
 
   it('reports period comparison, growth series and attention counts honestly', async () => {

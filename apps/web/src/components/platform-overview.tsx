@@ -1,6 +1,6 @@
 'use client';
 
-import type { PlatformAnalytics } from '@valuebooks/contracts';
+import type { PlatformAnalytics, PlatformQueueHealth } from '@valuebooks/contracts';
 import { Button, Card, EmptyState, ErrorState } from '@valuebooks/ui';
 import {
   AlertTriangle,
@@ -53,6 +53,8 @@ export function PlatformOverview() {
   const [analytics, setAnalytics] = useState<PlatformAnalytics | null>(null);
   const [billing, setBilling] = useState<BillingSnapshot | null>(null);
   const [billingFailed, setBillingFailed] = useState(false);
+  const [health, setHealth] = useState<PlatformQueueHealth | null>(null);
+  const [healthFailed, setHealthFailed] = useState(false);
   const [period, setPeriod] = useState<(typeof periods)[number][0]>('30d');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -61,11 +63,12 @@ export function PlatformOverview() {
   const load = useCallback(async () => {
     setLoading(true);
     const query = new URLSearchParams(range);
-    // The two panels fail independently: a billing outage must not blank the tenant metrics, and
-    // neither may render as a zero.
-    const [analyticsResult, billingResult] = await Promise.allSettled([
+    // The three panels fail independently: a billing outage or an unreachable queue must not blank
+    // the tenant metrics, and none of them may render as a zero.
+    const [analyticsResult, billingResult, healthResult] = await Promise.allSettled([
       apiRequest<{ data: PlatformAnalytics }>(`/platform/analytics?${query}`),
       apiRequest<{ data: BillingSnapshot }>('/platform/billing/overview'),
+      apiRequest<{ data: PlatformQueueHealth }>('/platform/jobs/health'),
     ]);
     if (analyticsResult.status === 'fulfilled') {
       setAnalytics(analyticsResult.value.data);
@@ -75,6 +78,8 @@ export function PlatformOverview() {
     }
     setBillingFailed(billingResult.status === 'rejected');
     if (billingResult.status === 'fulfilled') setBilling(billingResult.value.data);
+    setHealthFailed(healthResult.status === 'rejected');
+    if (healthResult.status === 'fulfilled') setHealth(healthResult.value.data);
     setLoading(false);
   }, [range]);
   useEffect(() => void load(), [load]);
@@ -293,7 +298,7 @@ export function PlatformOverview() {
               <ChartLoading label="Loading billing snapshot" />
             ) : (
               <>
-                <div className="rb-platform-overview__billing-grid">
+                <div className="rb-platform-overview__figure-grid">
                   <Figure label="MRR" value={money(billing.mrrMinorByCurrency)} />
                   <Figure label="ARR (run rate)" value={money(billing.arrMinorByCurrency)} />
                   <Figure
@@ -333,7 +338,7 @@ export function PlatformOverview() {
             )}
           </Card>
 
-          <section className="rb-dash-grid rb-dash-grid--obligations" aria-label="Operations">
+          <section className="rb-platform-overview__operations" aria-label="Operations">
             <Card className="rb-dash-panel">
               <DashboardPanelHeading
                 title="Requires attention"
@@ -385,6 +390,75 @@ export function PlatformOverview() {
                   title="No subscriptions yet"
                   description="Plan mix appears once organizations hold a trial or paid plan."
                 />
+              )}
+            </Card>
+            <Card className="rb-dash-panel">
+              <DashboardPanelHeading
+                title="Platform health"
+                description="Background work, by queue and by scheduler."
+                href="/platform/jobs"
+                linkLabel="Jobs"
+              />
+              {healthFailed ? (
+                <ErrorState
+                  title="Queue figures unavailable"
+                  description="The queue and scheduler figures did not load. They are not zero — they are unknown."
+                  action={
+                    <Button variant="outline" onClick={() => void load()}>
+                      Retry
+                    </Button>
+                  }
+                />
+              ) : !health ? (
+                <ChartLoading label="Loading platform health" />
+              ) : (
+                <>
+                  <div className="rb-platform-overview__figure-grid">
+                    <Figure
+                      label="Automations waiting"
+                      value={(health.queues.automation.waiting ?? 0).toLocaleString()}
+                      href="/platform/jobs"
+                    />
+                    <Figure
+                      label="Automations failed (retained)"
+                      value={(health.queues.automation.failed ?? 0).toLocaleString()}
+                      tone={(health.queues.automation.failed ?? 0) > 0 ? 'warning' : undefined}
+                      href="/platform/jobs"
+                    />
+                    <Figure
+                      label="Emails waiting"
+                      value={(health.queues.email.waiting ?? 0).toLocaleString()}
+                      href="/platform/jobs"
+                    />
+                    <Figure
+                      label="Emails failed (retained)"
+                      value={(health.queues.email.failed ?? 0).toLocaleString()}
+                      tone={(health.queues.email.failed ?? 0) > 0 ? 'warning' : undefined}
+                      href="/platform/jobs"
+                    />
+                    <Figure
+                      label="Scheduled due now"
+                      value={health.scheduler.dueNow.toLocaleString()}
+                      href="/platform/jobs"
+                    />
+                    <Figure
+                      label={`Overdue (over ${health.scheduler.overdueAfterMinutes} min)`}
+                      value={health.scheduler.overdue.toLocaleString()}
+                      tone={health.scheduler.overdue > 0 ? 'warning' : undefined}
+                      href="/platform/jobs"
+                    />
+                  </div>
+                  <p className="rb-platform__muted">
+                    Queue figures are the worker queues&rsquo; depth right now; a retained failure
+                    is kept until it is retried or removed, however long ago it failed. Scheduler
+                    figures count scheduled executions in the database. Observed{' '}
+                    {new Date(health.observedAt).toLocaleTimeString([], {
+                      hour: '2-digit',
+                      minute: '2-digit',
+                    })}
+                    .
+                  </p>
+                </>
               )}
             </Card>
           </section>

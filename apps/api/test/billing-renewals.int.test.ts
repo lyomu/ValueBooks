@@ -3,6 +3,7 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import type { PublicUser } from '../src/auth/auth.service.js';
 import { normalizePaystackEvent } from '../src/billing/billing-webhook.controller.js';
 import { BillingWebhookService } from '../src/billing/billing-webhook.service.js';
+import { UsageMeteringService } from '../src/billing/usage-metering.service.js';
 import { OrganizationAccessService } from '../src/organizations/organization-access.service.js';
 import { OrganizationService } from '../src/organizations/organization.service.js';
 import { createTestHarness, type TestHarness } from './support/app.js';
@@ -71,6 +72,24 @@ describe('Paystack subscription renewals', () => {
       status: 'SUCCESSFUL',
       planId,
     });
+  });
+
+  it('keeps a pinned sold limit until a verified renewal starts the new period', async () => {
+    const old = await harness.prisma.planEntitlementVersion.create({ data: {
+      planId, version: 1, status: 'PUBLISHED', publishedAt: LAST_PAID,
+      reason: 'Original entitlement snapshot for renewal verification',
+      values: { create: [{ key: 'invoices.issued.max', enabled: true, limitValue: 20 }] },
+    } });
+    await harness.prisma.planEntitlement.create({ data: {
+      planId, key: 'invoices.issued.max', enabled: true, limitValue: 10,
+    } });
+    await harness.prisma.organizationSubscription.update({ where: { organizationId },
+      data: { entitlementVersionId: old.id } });
+    const usage = harness.app.get(UsageMeteringService);
+    expect(await usage.resolveLimit(organizationId, 'invoices.issued.max')).toBe(20);
+    await deliver(paidInvoice('renewal_entitlement_pin'));
+    expect((await harness.prisma.organizationSubscription.findUniqueOrThrow({ where: { organizationId } })).entitlementVersionId).toBeNull();
+    expect(await usage.resolveLimit(organizationId, 'invoices.issued.max')).toBe(10);
   });
 
   it("applies a paid invoice.update by subscription code with Paystack's period", async () => {

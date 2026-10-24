@@ -317,6 +317,14 @@ export function PlatformUserDetail({ userId }: { userId: string }) {
   }
 
   const organizations = user.memberships.length;
+  // Mirrors the endpoint's target restrictions (O4), so the reason is visible before a click
+  // rather than returned as an error afterwards.
+  const statusRefusal =
+    session?.userId === user.id
+      ? 'This is your own account. Another administrator has to change its status.'
+      : user.platformRole && session?.role !== 'SUPERADMIN'
+        ? 'This account holds platform administration access. Only a superadmin may change its status.'
+        : null;
 
   return (
     <PlatformPage
@@ -488,18 +496,22 @@ export function PlatformUserDetail({ userId }: { userId: string }) {
             Account status controls whether this person can sign in at all, in every organization.
             Anything other than Active revokes their live sessions immediately.
           </p>
-          <div className="rb-platform__detail-actions">
-            {ACTIONS_FROM[user.status].map((action) => (
-              <Button
-                key={action}
-                variant={STATUS_ACTION[action].tone === 'danger' ? 'danger' : 'primary'}
-                onClick={() => setDialog(action)}
-              >
-                {action === 'reactivate' ? <ShieldCheck aria-hidden="true" /> : null}
-                {STATUS_ACTION[action].title}
-              </Button>
-            ))}
-          </div>
+          {statusRefusal ? (
+            <p className="rb-platform__muted">{statusRefusal}</p>
+          ) : (
+            <div className="rb-platform__detail-actions">
+              {ACTIONS_FROM[user.status].map((action) => (
+                <Button
+                  key={action}
+                  variant={STATUS_ACTION[action].tone === 'danger' ? 'danger' : 'primary'}
+                  onClick={() => setDialog(action)}
+                >
+                  {action === 'reactivate' ? <ShieldCheck aria-hidden="true" /> : null}
+                  {STATUS_ACTION[action].title}
+                </Button>
+              ))}
+            </div>
+          )}
           {user.status === 'PENDING_VERIFICATION' ? (
             <p className="rb-platform__muted">
               This account has not verified its email. It becomes active when the person does; the

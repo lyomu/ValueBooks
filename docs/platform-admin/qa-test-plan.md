@@ -12,7 +12,7 @@
 | Integration | API over HTTP against real Postgres, Redis, S3, ClamAV and Mailpit; authorization, tenant isolation, billing, audit | Jenkins **Test (integration)**, mandatory before merge | `cd apps/api && npx vitest run --config vitest.integration.config.ts [files]` |
 | Migration drift | `schema.prisma` matches the migrations | Jenkins **Test (integration)** (first step) | `prisma migrate diff --from-migrations … --exit-code` |
 | Browser | `apps/web/e2e/phase12-platform.spec.ts`: access boundary, suspension, flags, read-only investigation pages | **Not in Jenkins** (see §4). Run locally before release. | see §4 |
-| Manual acceptance | Layout, accessibility and responsive behaviour; flows that need provider sandbox state | Staging UAT, **blocked: no staging environment** | [uat-plan.md](uat-plan.md) |
+| Manual acceptance | Layout, accessibility and responsive behaviour; flows that need provider sandbox state | Local drill in progress; focused desktop browser spec 4/4, F1–F16 not signed off | [uat-plan.md](uat-plan.md) |
 
 ## 2. Coverage of the master plan's acceptance lists
 
@@ -28,9 +28,9 @@ person or a sandbox state. **Gap** = no evidence yet.
 | Eight Paystack mappings; sandbox and live segregated | Tracker 1.9 (coverage on the Providers page), `platform-plan-code` | Mappings automated; **sandbox/live segregation: UAT** |
 | Signatures, idempotent activation and renewal, no duplicates | `billing-enforcement`, `billing-webhook-claim`, `billing-renewals` | Automated |
 | Trial: 336 h, no card, never auto-charges | `plan-entitlements` (cardless trial; 336-hour policy) | Automated |
-| Trial: reminder 24 h before the end | No test found by name | **Gap → UAT** |
+| Trial: reminder 24 h before the end | No test found by name; the F3 fixture puts a trial 24 h from its end with no reminder sent | **Gap → UAT** |
 | Trial expiry gives read-only, export and billing access | `billing-enforcement` (read-only matrix, tracker 4.5) | Automated |
-| Entitlement caps (Growth: no active projects; Professional: 25 projects) | Tracker 1.1 (Professional unlimited quotes and sales orders) | **Project caps: UAT** |
+| Entitlement caps (Growth: no active projects; Professional: 25 projects) | Tracker 1.1 (Professional unlimited quotes and sales orders); the F7 fixture stands one project below the limit | **Project caps: UAT** |
 | Invoice counting and monthly reset on annual plans; archived contacts not counted | No test found by name | **Gap → UAT** |
 | Upgrade or downgrade keeps records and historical terms | Tracker 4.x (scheduled downgrade); `billing_transaction_plan_snapshot` | UAT |
 | New payments use Paystack; history retained | Webhook retry refuses retired-provider events; reconcile retires the old provider | Automated (refusal); UAT |
@@ -43,7 +43,7 @@ person or a sandbox state. **Gap** = no evidence yet.
 | Branding: ValueBooks only, no duplicate logo when collapsed | Tracker 2.1 | UAT |
 | Shared primary/secondary cell | Tracker 2.4, 5.x | UAT |
 | Overview KPIs documented, scoped, drillable | [metric-dictionary.md](metric-dictionary.md); `platform-operations` (analytics reconcile to direct counts) | Automated + UAT |
-| No fake metrics; distinct loading, empty, error and zero | Tracker 3.2g, 5.3–5.5 | UAT. **Tracker 2.8 still in progress.** |
+| No fake metrics; distinct loading, empty, error and zero | Tracker 3.2g, 5.3–5.5, 2.8 and 3.2e (both closed 2026-10-23) | UAT |
 | Organization 360°: lifecycle separate from subscription | Tracker 3.3 | UAT |
 | User detail: platform role vs memberships | `platform-operations` (separates platform access from organization roles) | Automated |
 | Privileged actions: server authorization, reason, confirmation, audit | `platform-authorization` (every platform route has a role floor), `platform-audit` (actor, event, target, reason for every mutating action) | Automated |
@@ -64,7 +64,7 @@ person or a sandbox state. **Gap** = no evidence yet.
 | Migrations rehearsed with backup and rollback | [release-checklist.md](release-checklist.md) §2 | **Release step** |
 | Financial reports reconcile; recurring value vs cash | [metric-dictionary.md](metric-dictionary.md); tracker 4.3 | UAT |
 | Accessible, responsive layouts | Browser passes at 1440px and 390px for every page changed (tracker log) | UAT for tablet and screen readers |
-| Staging UAT on representative tenants | [uat-plan.md](uat-plan.md) | **Blocked: no staging** |
+| UAT on representative synthetic tenants | [uat-plan.md](uat-plan.md); the four fixtures a person cannot click are seeded by `npm run uat:fixtures` | **In progress:** owner selected the local drill instead of staging deployment (O9). Desktop console spec 4/4; fixture-by-fixture sign-off remains. Payment scenarios await test-mode credentials; the available root setting is live mode and was not used. |
 
 ## 3. Focused checks for a change
 

@@ -60,6 +60,7 @@ describe('platform feature-flag management', () => {
       metadata,
     );
     organizationId = organization.id;
+    await harness.prisma.planTier.create({ data: { key: 'flags', name: 'Flags', status: 'ACTIVE' } });
     const plan = await harness.prisma.plan.create({
       data: { key: 'flags', tierKey: 'flags', name: 'Flags', status: 'ACTIVE', priceMinor: 0n },
     });
