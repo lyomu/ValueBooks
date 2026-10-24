@@ -1,6 +1,7 @@
 import { Canvas, createCanvas } from '@napi-rs/canvas';
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { readFile } from 'node:fs/promises';
 import { dirname, join, sep } from 'node:path';
 import { pathToFileURL } from 'node:url';
 // pdfjs-dist's default build targets a browser DOM; the legacy Node build accepts a canvas factory
@@ -39,6 +40,28 @@ class NodeCanvasFactory {
 }
 
 /**
+ * pdf.js validates factory locations as slash-terminated URLs, but its bundled Node factory then
+ * passes that URL string directly to `fs.readFile`. That works neither for Windows drive paths nor
+ * for a `file:` URL string. Resolve the URL here and give fs the URL object it supports on every
+ * platform.
+ */
+class NodeFileBinaryDataFactory {
+  constructor(
+    private readonly locations: {
+      cMapUrl?: string | null;
+      standardFontDataUrl?: string | null;
+      wasmUrl?: string | null;
+    },
+  ) {}
+
+  async fetch({ kind, filename }: { kind: 'cMapUrl' | 'standardFontDataUrl' | 'wasmUrl'; filename: string }) {
+    const baseUrl = this.locations[kind];
+    if (!baseUrl) throw new Error(`Missing pdf.js binary-data location for ${kind}.`);
+    return new Uint8Array(await readFile(new URL(filename, baseUrl)));
+  }
+}
+
+/**
  * Rasterizes bounded PDF pages to PNG buffers for the existing image OCR path. PDF JavaScript is
  * explicitly disabled, page/pixel limits are checked before canvas allocation, and every parse or
  * render is bounded by the job wall-clock budget. This remains defense in depth: production must
@@ -66,6 +89,7 @@ export class PdfRasterizerService {
     const loadingTask = pdfjsLib.getDocument({
       data: new Uint8Array(pdfBuffer),
       ...hardenedPdfLoadOptions(maxPagePixels),
+      BinaryDataFactory: NodeFileBinaryDataFactory,
     });
 
     try {
@@ -131,6 +155,8 @@ export function hardenedPdfLoadOptions(maxPagePixels: number) {
     // Built-in PDF fonts such as Helvetica have no embedded font bytes. Without
     // pdf.js's bundled standard fonts, a slim Linux image silently renders
     // incomplete glyphs and OCR misses document text.
+    // Keep a URL ending in a slash because pdf.js validates it and appends font filenames. The
+    // custom Node factory above converts it to the URL object fs.readFile accepts on all platforms.
     standardFontDataUrl: pathToFileURL(
       join(dirname(require.resolve('pdfjs-dist/package.json')), 'standard_fonts') + sep,
     ).href,

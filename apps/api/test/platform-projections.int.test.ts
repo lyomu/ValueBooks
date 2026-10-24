@@ -130,6 +130,7 @@ describe('platform response projections', () => {
       .set('Cookie', superadminCookie)
       .send({
         key: 'projection-plan',
+        tierKey: 'starter',
         name: 'Projection plan',
         priceMinor: '1000',
         currency: 'USD',

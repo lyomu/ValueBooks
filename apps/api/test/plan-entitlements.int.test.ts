@@ -274,6 +274,9 @@ describe('official plan catalog entitlements', () => {
       const plan = await harness.prisma.plan.findUniqueOrThrow({
         where: { key: 'professional_monthly' },
       });
+      const auditCountBefore = await harness.prisma.platformAuditEvent.count({
+        where: { organizationId, eventKey: 'platform.plan_assigned' },
+      });
       const result = await tenants.assignPlan(
         await actor(),
         organizationId,
@@ -293,7 +296,7 @@ describe('official plan catalog entitlements', () => {
       expect(jobs[1]?.nextRunAt).toEqual(new Date(result.trialEndsAt!));
       expect(await harness.prisma.platformAuditEvent.count({
         where: { organizationId, eventKey: 'platform.plan_assigned' },
-      })).toBe(1);
+      })).toBe(auditCountBefore + 1);
     });
 
     it('refuses a stale first-trial assignment without changing the existing subscription', async () => {
@@ -303,6 +306,9 @@ describe('official plan catalog entitlements', () => {
       });
       const before = await harness.prisma.organizationSubscription.findUniqueOrThrow({
         where: { organizationId },
+      });
+      const auditCountBefore = await harness.prisma.platformAuditEvent.count({
+        where: { organizationId, eventKey: 'platform.plan_assigned' },
       });
       await expect(
         tenants.assignPlan(
@@ -318,7 +324,7 @@ describe('official plan catalog entitlements', () => {
       expect(after).toEqual(before);
       expect(await harness.prisma.platformAuditEvent.count({
         where: { organizationId, eventKey: 'platform.plan_assigned' },
-      })).toBe(0);
+      })).toBe(auditCountBefore);
     });
   });
 
