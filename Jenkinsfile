@@ -354,14 +354,21 @@ pipeline {
                     env.SMOKE_REDIS = "valuebooks-smoke-redis-${env.SAFE_BRANCH_NAME}-${env.BUILD_NUMBER}"
                     env.SMOKE_API = "valuebooks-smoke-api-${env.SAFE_BRANCH_NAME}-${env.BUILD_NUMBER}"
                     env.SMOKE_WEB = "valuebooks-smoke-web-${env.SAFE_BRANCH_NAME}-${env.BUILD_NUMBER}"
+                    // Docker registers container names as network DNS aliases. A long branch name
+                    // can make those labels exceed 63 characters, so clients use these fixed,
+                    // short aliases inside the build's isolated network instead.
+                    env.SMOKE_PG_HOST = 'smoke-postgres'
+                    env.SMOKE_REDIS_HOST = 'smoke-redis'
+                    env.SMOKE_API_HOST = 'smoke-api'
+                    env.SMOKE_WEB_HOST = 'smoke-web'
                 }
                 sh """
                     set -e
                     docker network create ${env.SMOKE_NET}
-                    docker run -d --name ${env.SMOKE_PG} --network ${env.SMOKE_NET} \
+                    docker run -d --name ${env.SMOKE_PG} --network ${env.SMOKE_NET} --network-alias ${env.SMOKE_PG_HOST} \
                         -e POSTGRES_USER=valuebooks -e POSTGRES_PASSWORD=smoke_pw -e POSTGRES_DB=valuebooks_smoke \
                         postgres:17-alpine
-                    docker run -d --name ${env.SMOKE_REDIS} --network ${env.SMOKE_NET} redis:7.4-alpine
+                    docker run -d --name ${env.SMOKE_REDIS} --network ${env.SMOKE_NET} --network-alias ${env.SMOKE_REDIS_HOST} redis:7.4-alpine
 
                     ready=false
                     for i in \$(seq 1 60); do
@@ -385,15 +392,15 @@ pipeline {
                     # every other required var (SECURITY_PEPPER, S3_*, SMTP_*, CLAMAV_HOST,
                     # WEB_APP_URL); only DATABASE_URL/REDIS_URL need overriding, to point at these
                     # throwaway containers instead of the config package's literal localhost default.
-                    docker run -d --name ${env.SMOKE_API} --network ${env.SMOKE_NET} \
+                    docker run -d --name ${env.SMOKE_API} --network ${env.SMOKE_NET} --network-alias ${env.SMOKE_API_HOST} \
                         -e NODE_ENV=test \
-                        -e DATABASE_URL=postgresql://valuebooks:smoke_pw@${env.SMOKE_PG}:5432/valuebooks_smoke \
-                        -e REDIS_URL=redis://${env.SMOKE_REDIS}:6379 \
+                        -e DATABASE_URL=postgresql://valuebooks:smoke_pw@${env.SMOKE_PG_HOST}:5432/valuebooks_smoke \
+                        -e REDIS_URL=redis://${env.SMOKE_REDIS_HOST}:6379 \
                         -e SECURITY_PEPPER=smoke-only-jenkins-pepper-value-not-used-anywhere-else-000000 \
                         -e NEXT_PUBLIC_API_URL=${env.NEXT_PUBLIC_API_URL} \
                         ${API_IMAGE_NAME}:${env.IMAGE_TAG}
 
-                    docker run -d --name ${env.SMOKE_WEB} --network ${env.SMOKE_NET} ${WEB_IMAGE_NAME}:${env.IMAGE_TAG}
+                    docker run -d --name ${env.SMOKE_WEB} --network ${env.SMOKE_NET} --network-alias ${env.SMOKE_WEB_HOST} ${WEB_IMAGE_NAME}:${env.IMAGE_TAG}
 
                     retry_check() {
                         label="\$1"; container="\$2"; url="\$3"
@@ -408,8 +415,8 @@ pipeline {
                         return 1
                     }
 
-                    retry_check api ${env.SMOKE_API} "http://${env.SMOKE_API}:3001/api/v1/health"
-                    retry_check web ${env.SMOKE_WEB} "http://${env.SMOKE_WEB}:3000/"
+                    retry_check api ${env.SMOKE_API} "http://${env.SMOKE_API_HOST}:3001/api/v1/health"
+                    retry_check web ${env.SMOKE_WEB} "http://${env.SMOKE_WEB_HOST}:3000/"
                     echo "Image boot smoke test passed."
                 """
             }
