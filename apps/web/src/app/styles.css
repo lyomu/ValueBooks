@@ -9716,6 +9716,65 @@ button.rb-customer-facts__heading {
   display: block;
   margin-top: 0.25rem;
 }
+.rb-platform-plan-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1.5rem;
+  padding: 0.25rem 0;
+  color: hsl(var(--rb-muted-foreground));
+  font-size: 0.875rem;
+}
+.rb-platform-billing-sections {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 1.25rem;
+  border-bottom: 1px solid hsl(var(--rb-border));
+}
+.rb-platform-billing-sections a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 2.5rem;
+  padding: 0.25rem 0;
+  border-bottom: 2px solid transparent;
+  color: hsl(var(--rb-muted-foreground));
+  font-weight: 600;
+  text-decoration: none;
+}
+.rb-platform-billing-sections a[aria-current='page'] {
+  border-bottom-color: hsl(var(--rb-primary));
+  color: hsl(var(--rb-foreground));
+}
+.rb-platform-billing-sections a:focus-visible {
+  outline: 2px solid hsl(var(--rb-primary));
+  outline-offset: 2px;
+}
+.rb-platform-plan-summary strong {
+  margin-right: 0.3rem;
+  color: hsl(var(--rb-foreground));
+  font-size: 1.125rem;
+  font-variant-numeric: tabular-nums;
+}
+.rb-platform-plan-detail__facts {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 1rem;
+  margin: 0;
+}
+.rb-platform-plan-detail__facts div { min-width: 0; }
+.rb-platform-plan-detail__facts dt {
+  color: hsl(var(--rb-muted-foreground));
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+.rb-platform-plan-detail__facts dd {
+  margin: 0.25rem 0 0;
+  color: hsl(var(--rb-foreground));
+  font-weight: 600;
+}
+@media (max-width: 720px) {
+  .rb-platform-plan-summary { gap: 0.75rem 1rem; }
+  .rb-platform-plan-detail__facts { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
 /* Billing issues (platform-billing.tsx): one record per line, its detail beneath. */
 .rb-platform__issue-list {
   display: grid;

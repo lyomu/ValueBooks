@@ -36,6 +36,7 @@ import {
   type Paginated,
 } from '../lib/platform';
 import { AdminActionDialog } from './admin-action-dialog';
+import { PlatformBillingSections } from './platform-billing-sections';
 import { Panel, Row } from './platform-organization-detail';
 import { PlatformPage } from './platform-shell';
 
@@ -52,6 +53,8 @@ type Row = {
   amountMinor?: string;
   currency?: string;
   currentPeriodEnd?: string | null;
+  startedAt?: string | null;
+  cancelAtPeriodEnd?: boolean;
   trialEndsAt?: string | null;
   createdAt?: string;
   paidAt?: string | null;
@@ -137,6 +140,9 @@ export function PlatformBillingList({ kind }: { kind: Listing }) {
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState('');
   const [status, setStatus] = useState('');
+  const [plan, setPlan] = useState('');
+  const [interval, setInterval] = useState('');
+  const [planOptions, setPlanOptions] = useState<Array<{ key: string; name: string }>>([]);
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
   const [extending, setExtending] = useState<Row | null>(null);
@@ -148,12 +154,18 @@ export function PlatformBillingList({ kind }: { kind: Listing }) {
     const params = new URLSearchParams(window.location.search);
     const requested = params.get('state') ?? params.get('status');
     if (requested) setStatus(requested);
+    if (kind === 'subscriptions') {
+      setPlan(params.get('plan') ?? '');
+      void apiRequest<{ data: Array<{ key: string; name: string }> }>('/platform/plan-tiers')
+        .then((result) => setPlanOptions(result.data))
+        .catch(() => setPlanOptions([]));
+    }
   }, [kind]);
   const load = useCallback(async () => {
     const currentRequest = ++requestId.current;
     try {
       const response = await apiRequest<Paginated<Row>>(
-        `/platform/billing/${kind}${platformQuery({ page, search, ...(kind === 'webhooks' || kind === 'trials' ? { state: status } : { status }) })}`,
+        `/platform/billing/${kind}${platformQuery({ page, search, ...(kind === 'webhooks' || kind === 'trials' ? { state: status } : { status }), ...(kind === 'subscriptions' ? { plan, interval } : {}) })}`,
       );
       if (currentRequest === requestId.current) {
         setResult(response);
@@ -162,7 +174,7 @@ export function PlatformBillingList({ kind }: { kind: Listing }) {
     } catch {
       if (currentRequest === requestId.current) setError(`${title[kind]} could not be loaded.`);
     }
-  }, [kind, page, search, status]);
+  }, [kind, page, search, status, plan, interval]);
   useEffect(() => {
     void load();
   }, [load]);
@@ -197,6 +209,7 @@ export function PlatformBillingList({ kind }: { kind: Listing }) {
             header: 'Price',
             cell: (row: Row) => money(row.plan?.priceMinor, row.plan?.currency),
           },
+          { key: 'interval', header: 'Interval', cell: (row: Row) => row.plan?.billingInterval ?? '—', hideBelow: 'tablet' as const },
           {
             key: 'provider',
             header: 'Provider',
@@ -206,8 +219,8 @@ export function PlatformBillingList({ kind }: { kind: Listing }) {
           { key: 'status', header: 'Status', cell: (row: Row) => statusCell(row.status) },
           {
             key: 'renewal',
-            header: 'Paid through',
-            cell: (row: Row) => date(row.currentPeriodEnd),
+            header: 'Next renewal / end',
+            cell: (row: Row) => row.status === 'TRIALING' ? date(row.trialEndsAt) : date(row.currentPeriodEnd),
           },
         ]
       : kind === 'transactions'
@@ -321,6 +334,7 @@ export function PlatformBillingList({ kind }: { kind: Listing }) {
   const filters = FILTERS[kind];
   return (
     <PlatformPage title={title[kind]} description={description[kind]}>
+      {kind === 'subscriptions' ? <PlatformBillingSections /> : null}
       {notice ? (
         <p className="rb-platform__notice" role="status">
           {notice}
@@ -380,6 +394,15 @@ export function PlatformBillingList({ kind }: { kind: Listing }) {
                   </Select>
                 </DataTableFilters>
               ) : null}
+              {kind === 'subscriptions' ? <DataTableFilters>
+                <Select aria-label="Filter by plan" value={plan} onChange={(event) => { setPage(1); setPlan(event.target.value); }}>
+                  <option value="">All plans</option>
+                  {planOptions.map((option) => <option key={option.key} value={option.key}>{option.name}</option>)}
+                </Select>
+                <Select aria-label="Filter by billing interval" value={interval} onChange={(event) => { setPage(1); setInterval(event.target.value); }}>
+                  <option value="">All intervals</option><option value="MONTHLY">Monthly</option><option value="YEARLY">Yearly</option>
+                </Select>
+              </DataTableFilters> : null}
             </DataTableToolbar>
           }
         />
@@ -1194,6 +1217,7 @@ const providerLabel = (provider: string) => (provider === 'PAYSTACK' ? 'Paystack
 type ProviderRow = {
   provider: string;
   environment: string;
+  environmentConfigured: boolean;
   credentialsConfigured: boolean;
   plans: Array<{
     key: string;
@@ -1204,24 +1228,51 @@ type ProviderRow = {
   readyPlans: number;
   expectedPlans: number;
   lastWebhook: { receivedAt: string; processingState: string } | null;
+  lastPlanProvision: { updatedAt: string; status: string } | null;
 };
+type BillingConfiguration = {
+  trial: { durationDays: number; tierKey: string; cardRequired: boolean; aiInsightLimit: number; reminderLeadHours: number };
+  lifecycle: { pastDueGraceDays: number; cancellation: string; renewalNoticeDays: number; retries: string; planChanges: string };
+  management: string;
+};
+type ProviderDiagnostics = { checkedAt: string; plans: Array<{ key: string; state: string; issues: string[] }> };
 
 export function PlatformBillingProviders() {
   const [rows, setRows] = useState<ProviderRow[] | null>(null);
+  const [configuration, setConfiguration] = useState<BillingConfiguration | null>(null);
+  const [diagnostics, setDiagnostics] = useState<ProviderDiagnostics | null>(null);
+  const [checking, setChecking] = useState(false);
+  const [diagnosticError, setDiagnosticError] = useState(false);
+  const [editingReminder, setEditingReminder] = useState(false);
+  const [reminderHours, setReminderHours] = useState('24');
+  const { session } = usePlatformSession();
+  const canDiagnose = platformRoleAtLeast(session?.role ?? null, 'OPERATIONS');
+  const canConfigure = platformRoleAtLeast(session?.role ?? null, 'SUPERADMIN');
   const [error, setError] = useState(false);
   const load = useCallback(() => {
     setError(false);
     setRows(null);
-    apiRequest<{ data: ProviderRow[] }>('/platform/billing/providers')
-      .then((response) => setRows(response.data))
+    void Promise.all([
+      apiRequest<{ data: ProviderRow[] }>('/platform/billing/providers'),
+      apiRequest<{ data: BillingConfiguration }>('/platform/billing/configuration'),
+    ]).then(([providers, policy]) => { setRows(providers.data); setConfiguration(policy.data); })
       .catch(() => setError(true));
   }, []);
+  const verifyProvider = async () => {
+    setChecking(true); setDiagnosticError(false);
+    try {
+      const result = await apiRequest<{ data: ProviderDiagnostics }>('/platform/billing/providers/diagnostics', { method: 'POST', body: JSON.stringify({}) });
+      setDiagnostics(result.data);
+    } catch { setDiagnosticError(true); }
+    finally { setChecking(false); }
+  };
   useEffect(() => load(), [load]);
   return (
     <PlatformPage
-      title="Payment providers"
-      description="Paystack is the only active provider. Keys are managed in the deployment and never shown here."
+      title="Billing configuration"
+      description="Paystack connection, trial policy, and current billing lifecycle rules."
     >
+      <PlatformBillingSections />
       {error ? (
         <ErrorState
           title="Provider status could not be loaded"
@@ -1235,10 +1286,13 @@ export function PlatformBillingProviders() {
       ) : !rows ? (
         <CardSkeleton />
       ) : (
-        rows.map((row) => (
+        <>
+        {rows.map((row) => (
           <Panel key={row.provider} title={providerLabel(row.provider)}>
+            {canDiagnose ? <Button variant="secondary" size="sm" loading={checking} onClick={() => void verifyProvider()}>Run live diagnostics</Button> : null}
+            {diagnosticError ? <p role="alert" className="rb-platform__alert">Paystack diagnostics could not run. No configuration changed.</p> : null}
             <dl>
-              <Row label="Environment" value={row.environment} />
+              <Row label="Environment" value={row.environmentConfigured ? row.environment : 'Not configured (test fallback)'} />
               <Row
                 label="Secret key"
                 value={row.credentialsConfigured ? 'Configured' : 'Missing — checkout blocked'}
@@ -1255,6 +1309,9 @@ export function PlatformBillingProviders() {
                     : 'None received'
                 }
               />
+              <Row label="Last plan provision" value={row.lastPlanProvision
+                ? `${date(row.lastPlanProvision.updatedAt)} · ${row.lastPlanProvision.status.replaceAll('_', ' ').toLowerCase()}`
+                : 'None recorded'} />
             </dl>
             <DataTable
               caption="Paystack plan-code coverage"
@@ -1283,9 +1340,53 @@ export function PlatformBillingProviders() {
                 },
               ]}
             />
-            <Link href="/platform/billing/plans">Change plan codes in Plans &amp; pricing</Link>
+            {diagnostics ? <>
+              <p className="rb-platform__muted" role="status">Last checked {date(diagnostics.checkedAt)}. This is a read-only comparison with Paystack.</p>
+              <DataTable caption="Live Paystack plan diagnostics" rows={diagnostics.plans.map((plan) => ({ ...plan, id: plan.key }))}
+                columns={[
+                  { key: 'plan', header: 'Plan', cell: (plan) => planKeyLabel(plan.key) },
+                  { key: 'status', header: 'Live state', cell: (plan) => <StatusBadge status={plan.state} /> },
+                  { key: 'issues', header: 'Action needed', cell: (plan) => plan.issues.join(' ') || 'None' },
+                ]} />
+            </> : null}
+            <Link href="/platform/billing/plans">Manage plan codes</Link>
           </Panel>
-        ))
+        ))}
+        {configuration ? <>
+          <Panel title="Credential and webhook setup">
+            <p className="rb-platform__muted">The Paystack secret is managed in the API deployment environment. Set <code>PAYSTACK_SECRET_KEY</code> through the deployment secret store, choose the matching <code>PAYSTACK_ENVIRONMENT</code>, and restart the API. The key is never entered or returned through Platform Admin.</p>
+            <p className="rb-platform__muted">Register <code>/billing/webhooks/paystack</code> on the API origin in Paystack. The endpoint checks the signed raw payload. After a signed event arrives, its latest processing state appears above. Run live diagnostics to compare linked plans with Paystack before enabling checkout.</p>
+          </Panel>
+          <Panel title="Trial settings"><dl>
+            <Row label="Duration" value={`${configuration.trial.durationDays} days`} />
+            <Row label="Package" value={configuration.trial.tierKey} />
+            <Row label="Payment card" value={configuration.trial.cardRequired ? 'Required' : 'Not required'} />
+            <Row label="Trial AI insight requests" value={configuration.trial.aiInsightLimit} />
+            <Row label="Ending reminder" value={`${configuration.trial.reminderLeadHours} hours before expiration`} />
+          </dl>
+          {canConfigure ? <Button variant="secondary" size="sm" onClick={() => { setReminderHours(String(configuration.trial.reminderLeadHours)); setEditingReminder(true); }}>Change future reminder timing</Button> : null}
+          <Link href="/platform/billing/trials">Review current trials</Link></Panel>
+          <Panel title="Billing lifecycle"><dl>
+            <Row label="Past-due grace" value={`${configuration.lifecycle.pastDueGraceDays} days`} />
+            <Row label="Renewal notice" value={`${configuration.lifecycle.renewalNoticeDays} days before period end`} />
+            <Row label="Cancellation" value={configuration.lifecycle.cancellation} />
+            <Row label="Payment retries" value={configuration.lifecycle.retries} />
+            <Row label="Plan changes" value={configuration.lifecycle.planChanges} />
+          </dl><p className="rb-platform__muted">{configuration.management}</p></Panel>
+        </> : null}
+        {editingReminder ? <AdminActionDialog open onOpenChange={(open) => { if (!open) setEditingReminder(false); }}
+          title="Change trial reminder timing" confirmLabel="Save reminder timing"
+          confirmDisabled={!/^\d+$/.test(reminderHours) || Number(reminderHours) < 1 || Number(reminderHours) > 72}
+          impact={<p>This timing applies only when new trial reminder jobs are scheduled. Existing trials and their reminder dates do not change.</p>}
+          fields={<FormField><Label htmlFor="trial-reminder-hours">Hours before trial end</Label>
+            <Input id="trial-reminder-hours" type="number" min="1" max="72" value={reminderHours} onChange={(event) => setReminderHours(event.target.value)} />
+          </FormField>}
+          onConfirm={async (reason) => {
+            await apiRequest('/platform/billing/configuration/trial-reminder', { method: 'POST',
+              body: JSON.stringify({ reminderLeadHours: Number(reminderHours), reason }) });
+            load();
+          }} /> : null}
+        </>
       )}
     </PlatformPage>
   );
@@ -1440,12 +1541,14 @@ function SubscriptionView({ row, back }: { row: SubscriptionDetail; back: React.
         <Panel title="Term">
           <dl>
             <Row label="State" value={plan.label} />
+            <Row label="Started" value={date(row.createdAt)} />
             <Row label="Trial ends" value={date(row.trialEndsAt)} />
             <Row
               label="Current period"
               value={span(row.currentPeriodStart, row.currentPeriodEnd)}
             />
             <Row label="Last payment" value={date(row.lastPaymentAt)} />
+            <Row label="Next renewal" value={row.billingProvider && !row.cancelAtPeriodEnd && row.status === 'ACTIVE' ? date(row.currentPeriodEnd) : 'Not scheduled'} />
             <Row
               label="Renews"
               value={

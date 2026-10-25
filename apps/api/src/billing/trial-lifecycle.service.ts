@@ -33,7 +33,8 @@ export class TrialLifecycleService {
     tx: Prisma.TransactionClient,
     input: { organizationId: string; createdByUserId: string; trialEndsAt: Date; timeZone: string },
   ): Promise<void> {
-    const leadHours = Number(this.config.get('BILLING_TRIAL_REMINDER_LEAD_HOURS') ?? 24);
+    const policy = await tx.billingTrialPolicy.findUnique({ where: { id: 1 }, select: { reminderLeadHours: true } });
+    const leadHours = policy?.reminderLeadHours ?? Number(this.config.get('BILLING_TRIAL_REMINDER_LEAD_HOURS') ?? 24);
     const reminderAt = new Date(input.trialEndsAt.getTime() - leadHours * 60 * 60 * 1000);
     const shared = {
       organizationId: input.organizationId,

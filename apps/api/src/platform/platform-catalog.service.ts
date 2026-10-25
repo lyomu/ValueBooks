@@ -7,6 +7,7 @@ import {
 } from '@nestjs/common';
 
 import type { Prisma } from '@prisma/client';
+import { OFFICIAL_PLAN_CATALOG, OFFICIAL_PLAN_TIERS, type OfficialPlanTier } from '@valuebooks/contracts';
 
 import {
   PaystackBillingAdapter,
@@ -22,6 +23,7 @@ import type {
   CreateFeatureFlagDto,
   CreatePlanDto,
   CreateTierDto,
+  UpdateTierDto,
   FlagAudienceDto,
   SetProviderPlanCodeDto,
   UpdateFeatureFlagDto,
@@ -81,10 +83,93 @@ export class PlatformCatalogService {
     return this.prisma.planTier.findMany({ orderBy: [{ sortOrder: 'asc' }, { key: 'asc' }] });
   }
 
+  async tierDetail(id: string, subscriberPageText?: string, activityPageText?: string) {
+    const subscriberPage = Number(subscriberPageText ?? 1);
+    const activityPage = Number(activityPageText ?? 1);
+    if (![subscriberPage, activityPage].every((page) => Number.isInteger(page) && page > 0 && page <= 100000))
+      throw new BadRequestException('Invalid plan detail page.');
+    const tier = await this.prisma.planTier.findUnique({ where: { id },
+      include: { plans: { orderBy: { billingInterval: 'asc' }, select: { id: true, key: true,
+        billingInterval: true, status: true, priceMinor: true, currency: true,
+        providerPriceId: true, entitlements: { orderBy: { key: 'asc' },
+          select: { key: true, enabled: true, limitValue: true } } } } } });
+    if (!tier) throw new NotFoundException('Plan tier not found.');
+    const planIds = tier.plans.map((plan) => plan.id);
+    const auditWhere: Prisma.PlatformAuditEventWhereInput = { OR: [
+      { targetType: 'plan_tier', targetId: id },
+      { targetType: 'plan', targetId: { in: planIds } },
+    ] };
+    const subscriptionWhere: Prisma.OrganizationSubscriptionWhereInput = { planId: { in: planIds } };
+    const [subscriptions, subscriberCount, audits, activityCount, prices, entitlementVersions, provisions] = await Promise.all([
+      this.prisma.organizationSubscription.findMany({ where: subscriptionWhere,
+        orderBy: { updatedAt: 'desc' }, skip: (subscriberPage - 1) * 25, take: 25,
+        select: { id: true, status: true, complimentary: true, startedAt: true,
+          currentPeriodEnd: true, trialEndsAt: true, planId: true,
+          organization: { select: { id: true, legalName: true } } } }),
+      this.prisma.organizationSubscription.count({ where: subscriptionWhere }),
+      this.prisma.platformAuditEvent.findMany({ where: auditWhere,
+        orderBy: { occurredAt: 'desc' }, skip: (activityPage - 1) * 25, take: 25,
+        select: { id: true, eventKey: true, reason: true, occurredAt: true,
+          actor: { select: { displayName: true, email: true } } } }),
+      this.prisma.platformAuditEvent.count({ where: auditWhere }),
+      this.prisma.planPriceHistory.findMany({ where: { planId: { in: planIds } },
+        orderBy: { effectiveFrom: 'desc' },
+        select: { id: true, planId: true, priceMinor: true, currency: true, effectiveFrom: true } }),
+      this.prisma.planEntitlementVersion.findMany({ where: { planId: { in: planIds } },
+        orderBy: { createdAt: 'desc' },
+        select: { id: true, planId: true, version: true, status: true, reason: true,
+          createdAt: true, publishedAt: true } }),
+      this.prisma.providerPlanProvision.findMany({ where: { planId: { in: planIds } },
+        select: { planId: true, status: true, providerCode: true, updatedAt: true } }),
+    ]);
+    return { tier: { ...tier, plans: tier.plans.map((plan) => ({ ...plan,
+      priceMinor: plan.priceMinor.toString() })) }, subscriptions, audits,
+      prices: prices.map((price) => ({ ...price, priceMinor: price.priceMinor.toString() })),
+      entitlementVersions, subscriberCount, activityCount, provisions };
+  }
+
+  async updateTier(actor: PlatformContext, id: string, input: UpdateTierDto, ipHash: string | null) {
+    return this.prisma.$transaction(async (tx) => {
+      const before = await tx.planTier.findUnique({ where: { id } });
+      if (!before) throw new NotFoundException('Plan tier not found.');
+      if (before.status === 'RETIRED') throw new BadRequestException('A retired tier cannot be edited.');
+      const { reason, ...changes } = input;
+      if (!Object.keys(changes).length) throw new BadRequestException('No tier changes were supplied.');
+      if ((OFFICIAL_PLAN_TIERS as readonly string[]).includes(before.key) &&
+        changes.name !== undefined && changes.name !== OFFICIAL_PLAN_CATALOG[before.key as OfficialPlanTier].name)
+        throw new BadRequestException('The four approved package names cannot be changed.');
+      const displacedPopular = changes.isMostPopular ? await tx.planTier.findMany({
+        where: { id: { not: id }, isMostPopular: true }, select: { key: true },
+      }) : [];
+      if (changes.isMostPopular) {
+        await tx.planTier.updateMany({ where: { id: { not: id }, isMostPopular: true }, data: { isMostPopular: false } });
+        await tx.plan.updateMany({ where: { tierKey: { not: before.key }, isMostPopular: true }, data: { isMostPopular: false } });
+      }
+      const updated = await tx.planTier.update({ where: { id }, data: changes });
+      await tx.plan.updateMany({ where: { tierKey: before.key }, data: {
+        ...(changes.name !== undefined ? { name: changes.name } : {}),
+        ...(changes.description !== undefined ? { description: changes.description } : {}),
+        ...(changes.isMostPopular !== undefined ? { isMostPopular: changes.isMostPopular } : {}),
+      } });
+      await writePlatformAudit(tx, actor, { eventKey: 'platform.plan_tier_updated',
+        targetType: 'plan_tier', targetId: id, reason,
+        before: { name: before.name, description: before.description, tagline: before.tagline,
+          highlights: before.highlights, isMostPopular: before.isMostPopular },
+        after: { name: updated.name, description: updated.description, tagline: updated.tagline,
+          highlights: updated.highlights, isMostPopular: updated.isMostPopular,
+          displacedMostPopularTierKeys: displacedPopular.map((tier) => tier.key) }, ipHash });
+      return updated;
+    }, { isolationLevel: 'Serializable' });
+  }
+
   catalogHealth() { return this.health.violations(); }
 
   async createTier(actor: PlatformContext, input: CreateTierDto, ipHash: string | null) {
     return this.prisma.$transaction(async (tx) => {
+      if (input.isMostPopular) {
+        await tx.planTier.updateMany({ where: { isMostPopular: true }, data: { isMostPopular: false } });
+        await tx.plan.updateMany({ where: { isMostPopular: true }, data: { isMostPopular: false } });
+      }
       const tier = await tx.planTier.create({ data: {
         key: input.key, name: input.name, description: input.description ?? null,
         sortOrder: input.sortOrder ?? 0, isMostPopular: input.isMostPopular ?? false,
@@ -93,7 +178,7 @@ export class PlatformCatalogService {
       await writePlatformAudit(tx, actor, { eventKey: 'platform.plan_tier_created', targetType: 'plan_tier',
         targetId: tier.id, reason: input.reason, after: { key: tier.key, name: tier.name, status: tier.status }, ipHash });
       return tier;
-    });
+    }, { isolationLevel: 'Serializable' });
   }
 
   async activateTier(actor: PlatformContext, key: string, reason: string, ipHash: string | null) {
@@ -408,6 +493,8 @@ export class PlatformCatalogService {
           'The plan changed while this was being verified. Reload and try again.',
         );
       }
+      await tx.providerPlanProvision.updateMany({ where: { planId },
+        data: { status: 'LINKED', providerCode: input.providerPlanCode } });
       await writePlatformAudit(tx, actor, {
         eventKey: 'platform.plan_provider_code_changed',
         targetType: 'plan',
@@ -423,6 +510,50 @@ export class PlatformCatalogService {
       });
       return { key: plan.key, providerPlanCode: input.providerPlanCode };
     });
+  }
+
+  async createProviderPlan(actor: PlatformContext, planId: string, reason: string, ipHash: string | null) {
+    if (reason.trim().length < 10 || reason.length > 500)
+      throw new BadRequestException('An audited reason of 10–500 characters is required.');
+    const claim = await this.prisma.$transaction(async (tx) => {
+      await tx.$queryRaw`SELECT id FROM plans WHERE id = ${planId}::uuid FOR UPDATE`;
+      const plan = await tx.plan.findUnique({ where: { id: planId } });
+      if (!plan) throw new NotFoundException('Plan not found.');
+      if (plan.status === 'RETIRED' || plan.billingProvider !== 'PAYSTACK' || plan.providerPriceId || plan.priceMinor <= 0n)
+        throw new BadRequestException('Only an unlinked, positive-price Paystack plan can be created.');
+      const provision = await tx.providerPlanProvision.findUnique({ where: { planId } });
+      if (provision && provision.status !== 'CREATED')
+        throw new ConflictException('A prior Paystack creation is pending or uncertain. Reconcile its code in Paystack and link it manually; no second plan was created.');
+      if (provision && !provision.providerCode)
+        throw new ConflictException('The prior Paystack result has no saved code. Reconcile in Paystack before trying again.');
+      if (!provision) await tx.providerPlanProvision.create({ data: { planId, status: 'PENDING' } });
+      return { plan, code: provision?.providerCode ?? null };
+    }, { isolationLevel: 'Serializable' });
+
+    let code = claim.code;
+    if (!code) {
+      try {
+        const created = await this.paystack.createPlan({ name: claim.plan.name,
+          amountMinor: claim.plan.priceMinor, currency: claim.plan.currency,
+          interval: claim.plan.billingInterval === 'MONTHLY' ? 'monthly' : 'annually',
+          description: claim.plan.description });
+        if (!/^PLN_[A-Za-z0-9]{4,60}$/.test(created.plan_code))
+          throw new BadGatewayException('Paystack returned an invalid plan code. Reconcile in Paystack before trying again.');
+        code = created.plan_code;
+        await this.prisma.providerPlanProvision.update({ where: { planId },
+          data: { status: 'CREATED', providerCode: code } });
+      } catch (error) {
+        await this.prisma.providerPlanProvision.updateMany({ where: { planId, status: 'PENDING' },
+          data: { status: 'NEEDS_RECONCILIATION' } });
+        throw new BadGatewayException(
+          'Paystack creation could not be confirmed. Check the Paystack dashboard and link the matching code manually. Another create is blocked to prevent duplicates.',
+          { cause: error },
+        );
+      }
+    }
+    // Link only through the existing verification and audited code-change workflow. A retry with a
+    // stored code resumes here without another outbound create call.
+    return this.setProviderPlanCode(actor, planId, { providerPlanCode: code, reason }, ipHash);
   }
 
   async upsertEntitlement(

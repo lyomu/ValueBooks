@@ -3982,6 +3982,28 @@ model PlanTier {
   @@map("plan_tiers")
 }
 
+/// Applies only when new trial reminder jobs are scheduled. Existing jobs retain their dates.
+model BillingTrialPolicy {
+  id                     Int      @id @default(1)
+  reminderLeadHours      Int      @default(24) @map("reminder_lead_hours") @db.SmallInt
+  updatedAt              DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@map("billing_trial_policy")
+}
+
+/// Records an outbound Paystack plan creation before the call, preventing blind retries after an
+/// ambiguous network failure. A returned code can be verified and linked without creating again.
+model ProviderPlanProvision {
+  planId       String   @id @map("plan_id") @db.Uuid
+  plan         Plan     @relation(fields: [planId], references: [id], onDelete: Restrict)
+  status       String   @db.VarChar(40)
+  providerCode String?  @unique @map("provider_code") @db.VarChar(160)
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt    DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@map("provider_plan_provisions")
+}
+
 enum BillingInterval {
   MONTHLY
   YEARLY
@@ -4038,6 +4060,7 @@ model Plan {
   intendedBySubscriptions OrganizationSubscription[] @relation("OrganizationSubscriptionIntendedPlan")
   priceHistory        PlanPriceHistory[]
   priceChanges        PlanPriceChange[]
+  providerProvision   ProviderPlanProvision?
 
   @@index([status, sortOrder])
   @@index([tierKey])

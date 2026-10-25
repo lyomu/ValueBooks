@@ -263,6 +263,22 @@ export class CreateTierDto {
   reason!: string;
 }
 
+/** Commercial copy only. Price, provider, and entitlements have separate governed workflows. */
+export class UpdateTierDto {
+  @IsOptional() @IsString() @Length(1, 120) @Transform(trim)
+  name?: string;
+  @IsOptional() @IsString() @MaxLength(500) @Transform(trim)
+  description?: string;
+  @IsOptional() @IsString() @MaxLength(300) @Transform(trim)
+  tagline?: string;
+  @IsOptional() @IsArray() @ArrayMaxSize(6) @IsString({ each: true }) @MaxLength(160, { each: true })
+  highlights?: string[];
+  @IsOptional() @IsBoolean()
+  isMostPopular?: boolean;
+  @IsString() @Length(10, 500) @Transform(trim)
+  reason!: string;
+}
+
 export class EntitlementDraftValueDto {
   @IsString() @MaxLength(60) @Transform(trim)
   key!: string;

@@ -10,16 +10,14 @@ import { PLANS, type Plan } from './pricing-data';
  * price that checkout no longer charges. This reads the current catalog from the API instead and
  * overlays it on the authored marketing copy, which stays compiled.
  *
- * `OFFICIAL_PLAN_CATALOG` remains the fallback. If the API cannot be reached at build or
- * revalidation time the page still renders, showing the approved launch prices rather than nothing —
- * stale by at most one price change, and the console warns that publishing does not update this
- * page instantly.
+ * If the API cannot be reached, callers suppress price cards. Showing compiled launch prices
+ * after an administrator has changed a live Paystack price would mislead a buyer.
  */
 
 const API_URL = (process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001').replace(/\/$/, '');
 
 /** How long a rendered pricing page may keep serving a price, in seconds. */
-export const PRICING_REVALIDATE_SECONDS = 300;
+export const PRICING_REVALIDATE_SECONDS = 0;
 
 type CatalogRow = {
   tierKey: string;
@@ -34,13 +32,13 @@ type CatalogRow = {
 };
 
 /**
- * Reads the public catalog. Returns null when it cannot be read, so the caller falls back to the
- * compiled catalog rather than rendering an empty or half-priced page.
+ * Reads the public catalog. Returns null when it cannot be read, so callers can show an honest
+ * unavailable state instead of an old or incomplete price.
  */
 export async function fetchLivePlans(): Promise<Plan[] | null> {
   try {
     const response = await fetch(`${API_URL}/api/v1/billing/plans`, {
-      next: { revalidate: PRICING_REVALIDATE_SECONDS },
+      cache: 'no-store',
     });
     if (!response.ok) return null;
     const body = (await response.json()) as { data?: CatalogRow[] };
@@ -73,6 +71,10 @@ export function applyLivePrices(rows: CatalogRow[]): Plan[] {
       .filter((row) => row.enabled && row.key.endsWith('.max'))
       .slice(0, 5)
       .map((row) => `${row.limitValue === null ? 'Unlimited' : row.limitValue} ${row.key.replace(/\.max$/, '').replace(/[._]/g, ' ')}`);
+    const includedFeatures = live.monthly.entitlements
+      .filter((row) => row.enabled && row.key.endsWith('.enabled'))
+      .slice(0, 5)
+      .map((row) => row.key.replace(/\.enabled$/, '').replace(/[._]/g, ' '));
     const keyByLabel: Record<string, string> = {
       'Users included': 'seats.max', 'Invoices issued per month': 'invoices.issued.max',
       'Quotes per month': 'quotes.max', 'Active customers': 'customers.active.max',
@@ -94,7 +96,7 @@ export function applyLivePrices(rows: CatalogRow[]): Plan[] {
       id: tierKey,
       name: live.monthly.name,
       tagline: live.monthly.tagline || authored?.tagline || '',
-      topFeatures: live.monthly.highlights.length ? live.monthly.highlights : authored?.topFeatures ?? limits,
+      topFeatures: live.monthly.highlights.length ? live.monthly.highlights : [...limits, ...includedFeatures].slice(0, 5),
       catalogValues,
       monthlyPriceUsd: monthly,
       yearlyPriceUsd: yearly,

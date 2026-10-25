@@ -14,6 +14,10 @@ import {
   Badge,
   Button,
   DataTable,
+  DataTableFilterField,
+  DataTableFilters,
+  DataTableSearch,
+  DataTableToolbar,
   Dialog,
   DrawerContent,
   FieldMessage,
@@ -22,9 +26,11 @@ import {
   Label,
   ErrorState,
   PrimarySecondaryCell,
+  RowActionMenu,
   Select,
   StatusBadge,
   Textarea,
+  DropdownItem,
 } from '@valuebooks/ui';
 import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';
@@ -38,6 +44,7 @@ import {
 } from '../lib/plan-catalog';
 import { platformRoleAtLeast, usePlatformSession } from '../lib/platform';
 import { AdminActionDialog } from './admin-action-dialog';
+import { PlatformBillingSections } from './platform-billing-sections';
 import { Panel, Row } from './platform-organization-detail';
 import { PlatformPage } from './platform-shell';
 
@@ -45,12 +52,14 @@ type CodeState = 'READY' | 'MISSING_CODE' | 'DUPLICATE_CODE' | 'WRONG_PROVIDER' 
 type ProviderCoverage = {
   provider: string;
   environment: string;
+  environmentConfigured: boolean;
   plans: Array<{ key: string; state: CodeState; providerPlanCode: string | null }>;
 };
 type PlanTier = { id: string; key: string; name: string; status: 'DRAFT' | 'ACTIVE' | 'RETIRED';
   isMostPopular: boolean; sortOrder: number; tagline: string | null; highlights: string[] };
 type CatalogViolation = { code: string; subject: string; detail: string; category: 'INVARIANT' | 'LAUNCH_ENTITLEMENT_DRIFT' };
 type Feed<T> = { status: 'loading' } | { status: 'error' } | { status: 'ready'; data: T };
+type RevenueSummary = { active: number; activePaid: number; mrrMinorByCurrency: Record<string, string>; methodology: string };
 
 const OFFICIAL_KEYS = new Set(
   OFFICIAL_PLAN_TIERS.flatMap((tier) => [`${tier}_monthly`, `${tier}_yearly`]),
@@ -159,12 +168,16 @@ export function PlatformPlanCatalog() {
   const [entitlementLimit, setEntitlementLimit] = useState('');
   const [activatingPlan, setActivatingPlan] = useState<PlatformPlan | null>(null);
   const [coverage, setCoverage] = useState<Feed<ProviderCoverage | null>>({ status: 'loading' });
+  const [revenue, setRevenue] = useState<Feed<RevenueSummary>>({ status: 'loading' });
+  const [search, setSearch] = useState('');
+  const [statusFilter, setStatusFilter] = useState<'ALL' | PlanTier['status']>('ALL');
 
   const load = useCallback(() => {
     setPlans({ status: 'loading' });
     setTiers({ status: 'loading' });
     setHealth({ status: 'loading' });
     setCoverage({ status: 'loading' });
+    setRevenue({ status: 'loading' });
     apiRequest<{ data: PlatformPlan[] }>('/platform/plans')
       .then((response) => setPlans({ status: 'ready', data: response.data }))
       .catch(() => setPlans({ status: 'error' }));
@@ -176,6 +189,9 @@ export function PlatformPlanCatalog() {
         }),
       )
       .catch(() => setCoverage({ status: 'error' }));
+    apiRequest<{ data: RevenueSummary }>('/platform/billing/overview')
+      .then((response) => setRevenue({ status: 'ready', data: response.data }))
+      .catch(() => setRevenue({ status: 'error' }));
     apiRequest<{ data: PlanTier[] }>('/platform/plan-tiers')
       .then((response) => setTiers({ status: 'ready', data: response.data }))
       .catch(() => setTiers({ status: 'error' }));
@@ -228,6 +244,14 @@ export function PlatformPlanCatalog() {
     coverage.status === 'ready' ? coverage.data?.plans.find((row) => row.key === key) : undefined;
   const tierRows = tiers.status === 'ready' ? tiers.data.filter((tier) => tier.status !== 'RETIRED') : [];
   const legacy = rows.filter((plan) => plan.status === 'RETIRED' || !tierRows.some((tier) => tier.key === plan.tierKey));
+  const visibleTiers = tierRows.filter((tier) =>
+    (statusFilter === 'ALL' || tier.status === statusFilter) &&
+    `${tier.name} ${tier.key}`.toLowerCase().includes(search.trim().toLowerCase()),
+  );
+  const attentionTiers = coverage.status === 'ready' ? tierRows.filter((tier) =>
+    ['monthly', 'yearly'].some((interval) => codeFor(`${tier.key}_${interval}`)?.state !== 'READY') ||
+    (health.status === 'ready' && health.data.some((issue) => issue.subject === tier.key || issue.subject.startsWith(`${tier.key}_`))),
+  ).length : null;
   const matrixKeys = [...OFFICIAL_ENTITLEMENT_KEYS, ...OFFICIAL_FEATURE_KEYS];
   const extraKeys = [
     ...new Set(rows.flatMap((plan) => plan.entitlements.map((row) => row.key))),
@@ -261,74 +285,6 @@ export function PlatformPlanCatalog() {
             publication
           </Badge>
         ) : null}
-        {plan ? (
-          <Button
-            variant="ghost"
-            size="sm"
-            aria-label={`Price history for ${key}`}
-            onClick={() => void openHistory(plan.id)}
-          >
-            Price history
-          </Button>
-        ) : null}
-        {canManage && plan?.status === 'ACTIVE' ? (
-          plan.pendingPriceChange ? (
-            <>
-              <Button
-                variant="primary"
-                size="sm"
-                aria-label={`Publish the proposed price for ${key}`}
-                onClick={() => {
-                  const change = plan.pendingPriceChange;
-                  if (change) void openPublish(plan.id, change.id);
-                }}
-              >
-                Review and publish
-              </Button>
-
-              <Button
-                variant="ghost"
-                size="sm"
-                aria-label={`Discard the proposed price for ${key}`}
-                onClick={() => setDiscarding(key)}
-              >
-                Discard
-              </Button>
-            </>
-          ) : (
-            <Button
-              variant="ghost"
-              size="sm"
-              aria-label={`Change the price of ${key}`}
-              onClick={() => {
-                setNewPrice('');
-                setConfirmPrice('');
-                setPricing(key);
-              }}
-            >
-              Change price
-            </Button>
-          )
-        ) : null}
-        {canManage && plan?.status !== 'RETIRED' ? (
-          <Button
-            variant="ghost"
-            size="sm"
-            aria-label={`Change Paystack code for ${key}`}
-            onClick={() => {
-              setNewCode('');
-              setEditing(key);
-            }}
-          >
-            Change code
-          </Button>
-        ) : null}
-        {canManage && plan?.status === 'DRAFT' ? <>
-          <Badge tone="warning">Draft plan</Badge>
-          <Button variant="ghost" size="sm" onClick={() => setEntitlementAction(plan)}>Set entitlement</Button>
-          <Button variant="secondary" size="sm" onClick={() => setActivatingPlan(plan)}>Activate plan</Button>
-        </> : null}
-        {plan?.status === 'ACTIVE' ? <Link href={`/platform/billing/plans/${plan.id}/entitlements`}>Entitlement versions</Link> : null}
       </div>
     );
   };
@@ -354,63 +310,66 @@ export function PlatformPlanCatalog() {
 
   return (
     <PlatformPage
-      title="Plans & pricing"
-      description="Current catalog prices and entitlements read from the platform. Price changes require review and publication."
+      title="Subscription Plans"
+      description="Manage pricing, features, entitlements, and billing configurations."
       meta={
         coverage.status === 'ready' && coverage.data ? (
-          <>Paystack {coverage.data.environment} environment</>
+          <>{coverage.data.environmentConfigured ? `Paystack ${coverage.data.environment} environment` : 'Paystack environment not configured'}</>
         ) : undefined
       }
     >
+      <PlatformBillingSections />
       {notice ? (
         <p className="rb-platform__notice" role="status">
           {notice}
         </p>
       ) : null}
-      <Panel title="Catalog health">
-        {health.status === 'error' ? <ErrorState title="Catalog health could not be loaded" action={retry} /> :
-          <DataTable caption="Catalog health" loading={health.status === 'loading'}
-            rows={health.status === 'ready' ? health.data.map((row, index) => ({ ...row, id: `${row.code}-${index}` })) : []}
-            emptyTitle="No violations" emptyDescription="The active catalog has no reported violations."
-            emptyState={{ variant: 'inline' }}
-            columns={[
-              { key: 'category', header: 'Category', cell: (row) => <Badge tone={row.category === 'INVARIANT' ? 'danger' : 'warning'}>{row.category === 'INVARIANT' ? 'Invariant' : 'Launch entitlement drift'}</Badge> },
-              { key: 'subject', header: 'Plan or tier', cell: (row) => row.subject },
-              { key: 'detail', header: 'Violation', cell: (row) => row.detail },
-            ]} />}
-      </Panel>
-      <Panel title="Catalog">
-        {canManage ? <Button variant="secondary" size="sm" onClick={() => { setTierKey(''); setTierName(''); setTierTagline(''); setTierHighlights(''); setTierMostPopular(false); setTierSortOrder(String(Math.min(1000, Math.max(0, ...tierRows.map((row) => row.sortOrder)) + 10))); setTierAction({ kind: 'create' }); }}>Create tier</Button> : null}
+      <div className="rb-platform-plan-summary" aria-label="Plan catalog summary">
+        <span><strong>{tierRows.filter((tier) => tier.status === 'ACTIVE').length}</strong> active plans</span>
+        <span title="Active subscriptions only; trials and complimentary grants are excluded."><strong>{revenue.status === 'ready' ? revenue.data.activePaid.toLocaleString() : '—'}</strong> active subscribers</span>
+        <span title={revenue.status === 'ready' ? revenue.data.methodology : undefined}><strong>{revenue.status === 'ready' ? Object.entries(revenue.data.mrrMinorByCurrency).map(([currency, amount]) => money(amount, currency)).join(' · ') || '0' : '—'}</strong> MRR</span>
+        <span><strong>{attentionTiers ?? '—'}</strong> plans requiring attention</span>
+      </div>
+      {health.status === 'ready' && health.data.length > 0 ? (
+        <div className="rb-platform__alert" role="alert">
+          <strong>Catalog attention needed.</strong> {health.data.length} configuration or entitlement issue{health.data.length === 1 ? '' : 's'} need review before publishing changes.
+        </div>
+      ) : health.status === 'error' ? <ErrorState title="Catalog health could not be loaded" action={retry} /> : null}
+      <Panel title="Plan catalog">
+        {canManage ? <Button variant="primary" size="sm" onClick={() => { setTierKey(''); setTierName(''); setTierTagline(''); setTierHighlights(''); setTierMostPopular(false); setTierSortOrder(String(Math.min(1000, Math.max(0, ...tierRows.map((row) => row.sortOrder)) + 10))); setTierAction({ kind: 'create' }); }}>Create plan</Button> : null}
         <DataTable
           caption="Plan catalog"
           loading={plans.status === 'loading'}
-          rows={tierRows.map((tier) => ({ ...tier, tier: tier.key }))}
+          rows={visibleTiers.map((tier) => ({ ...tier, tier: tier.key }))}
+          emptyTitle={search || statusFilter !== 'ALL' ? 'No plans match these filters' : 'No plans yet'}
+          emptyDescription={search || statusFilter !== 'ALL' ? 'Clear a filter or try another plan name.' : 'Create the first plan to make it available for configuration.'}
+          toolbar={<DataTableToolbar resultLabel={`${visibleTiers.length} plan${visibleTiers.length === 1 ? '' : 's'}`}>
+            <DataTableSearch label="Search plans" placeholder="Search plans" value={search} onChange={(event) => setSearch(event.target.value)} />
+            <DataTableFilters>
+              <DataTableFilterField>
+                <Label htmlFor="plan-status-filter">Status</Label>
+                <Select id="plan-status-filter" value={statusFilter} onChange={(event) => setStatusFilter(event.target.value as typeof statusFilter)}>
+                  <option value="ALL">All statuses</option>
+                  <option value="ACTIVE">Active</option>
+                  <option value="DRAFT">Draft</option>
+                </Select>
+              </DataTableFilterField>
+            </DataTableFilters>
+          </DataTableToolbar>}
           columns={[
             {
               key: 'plan',
               header: 'Plan',
-              cell: ({ tier }) => (
-                <span className="rb-plan-catalog__name">
-                  {tierRows.find((row) => row.key === tier)?.name ?? tier}
-                  {tierRows.find((row) => row.key === tier)?.status === 'DRAFT' ? <Badge tone="warning">Draft</Badge> : null}
-                  {tierRows.find((row) => row.key === tier)?.isMostPopular ? (
-                    <Badge tone="info">Most popular</Badge>
-                  ) : null}
-                  {canManage ? <>
-                    {tierRows.find((row) => row.key === tier)?.status === 'DRAFT' ?
-                      (['MONTHLY', 'YEARLY'] as const).map((interval) => rows.some((plan) => plan.tierKey === tier && plan.billingInterval === interval && plan.status !== 'RETIRED') ? null :
-                        <Button key={interval} variant="ghost" size="sm" onClick={() => { const selected = tierRows.find((row) => row.key === tier); if (selected) { setDraftPrice(''); setPlanAction({ tier: selected, interval }); } }}>Add {interval.toLowerCase()} plan</Button>) : null}
-                    {tierRows.find((row) => row.key === tier)?.status === 'DRAFT' ?
-                      <Button variant="ghost" size="sm" onClick={() => setTierAction({ kind: 'activate', tier: tierRows.find((row) => row.key === tier) })}>Activate</Button> : null}
-                    <Button variant="ghost" size="sm" onClick={() => setTierAction({ kind: 'retire', tier: tierRows.find((row) => row.key === tier) })}>Retire</Button>
-                  </> : null}
-                </span>
-              ),
+              cell: ({ tier }) => <PrimarySecondaryCell
+                primary={<Link href={`/platform/billing/plans/${tierRows.find((row) => row.key === tier)?.id}`}>{tierRows.find((row) => row.key === tier)?.name ?? tier}</Link>}
+                secondary={tierRows.find((row) => row.key === tier)?.isMostPopular ? <Badge tone="info">Most popular</Badge> : undefined}
+              />,
             },
-            { key: 'monthly', header: 'Monthly', cell: ({ tier }) => priceCell(tier, 'monthly') },
+            { key: 'monthly', header: 'Monthly price', align: 'right', cell: ({ tier }) => priceCell(tier, 'monthly') },
             {
               key: 'yearly',
-              header: 'Yearly',
+              header: 'Yearly price',
+              align: 'right',
               cell: ({ tier }) => (
                 <>
                   {priceCell(tier, 'yearly')}
@@ -424,7 +383,7 @@ export function PlatformPlanCatalog() {
             },
             {
               key: 'subscribers',
-              header: 'Subscribed organizations',
+              header: 'Subscribers',
               align: 'right',
               cell: ({ tier }) => {
                 const monthly = rows.find((row) => row.tierKey === tier && row.billingInterval === 'MONTHLY')?.subscriberCount ?? 0;
@@ -440,16 +399,61 @@ export function PlatformPlanCatalog() {
                 );
               },
             },
+            {
+              key: 'status',
+              header: 'Status',
+              cell: ({ tier }) => <StatusBadge status={tierRows.find((row) => row.key === tier)?.status === 'ACTIVE' ? 'ACTIVE' : 'DRAFT'} />,
+            },
+            {
+              key: 'billing',
+              header: 'Billing setup',
+              hideBelow: 'desktop',
+              cell: ({ tier }) => {
+                const states = [`${tier}_monthly`, `${tier}_yearly`].map((key) => codeFor(key)?.state);
+                if (coverage.status !== 'ready') return <span className="rb-table-secondary">Status unavailable</span>;
+                const ready = states.length === 2 && states.every((state) => state === 'READY');
+                return <Badge tone={ready ? 'success' : 'warning'}>{ready ? 'Codes linked' : 'Setup needed'}</Badge>;
+              },
+            },
+            {
+              key: 'actions',
+              header: 'Actions',
+              align: 'right',
+              cell: ({ tier }) => {
+                const selected = tierRows.find((row) => row.key === tier);
+                const monthly = rows.find((plan) => plan.tierKey === tier && plan.billingInterval === 'MONTHLY' && plan.status !== 'RETIRED');
+                const yearly = rows.find((plan) => plan.tierKey === tier && plan.billingInterval === 'YEARLY' && plan.status !== 'RETIRED');
+                if (!selected) return null;
+                return <RowActionMenu label={`Actions for ${selected.name}`}>
+                  <DropdownItem asChild><Link href={`/platform/billing/plans/${selected.id}`}>Open plan</Link></DropdownItem>
+                  {monthly ? <DropdownItem onSelect={() => void openHistory(monthly.id)}>Monthly price history</DropdownItem> : null}
+                  {yearly ? <DropdownItem onSelect={() => void openHistory(yearly.id)}>Yearly price history</DropdownItem> : null}
+                  {canManage && monthly?.status === 'ACTIVE' ? <DropdownItem onSelect={() => { setNewPrice(''); setConfirmPrice(''); setPricing(monthly.key); }}>Change monthly price</DropdownItem> : null}
+                  {canManage && yearly?.status === 'ACTIVE' ? <DropdownItem onSelect={() => { setNewPrice(''); setConfirmPrice(''); setPricing(yearly.key); }}>Change yearly price</DropdownItem> : null}
+                  {canManage && monthly?.pendingPriceChange ? <DropdownItem onSelect={() => void openPublish(monthly.id, monthly.pendingPriceChange!.id)}>Review monthly proposal</DropdownItem> : null}
+                  {canManage && yearly?.pendingPriceChange ? <DropdownItem onSelect={() => void openPublish(yearly.id, yearly.pendingPriceChange!.id)}>Review yearly proposal</DropdownItem> : null}
+                  {canManage && monthly?.pendingPriceChange ? <DropdownItem onSelect={() => setDiscarding(monthly.key)}>Discard monthly proposal</DropdownItem> : null}
+                  {canManage && yearly?.pendingPriceChange ? <DropdownItem onSelect={() => setDiscarding(yearly.key)}>Discard yearly proposal</DropdownItem> : null}
+                  {canManage && monthly ? <DropdownItem onSelect={() => { setNewCode(''); setEditing(monthly.key); }}>Set monthly Paystack code</DropdownItem> : null}
+                  {canManage && yearly ? <DropdownItem onSelect={() => { setNewCode(''); setEditing(yearly.key); }}>Set yearly Paystack code</DropdownItem> : null}
+                  {canManage && selected.status === 'DRAFT' && !monthly ? <DropdownItem onSelect={() => { setDraftPrice(''); setPlanAction({ tier: selected, interval: 'MONTHLY' }); }}>Add monthly price</DropdownItem> : null}
+                  {canManage && selected.status === 'DRAFT' && !yearly ? <DropdownItem onSelect={() => { setDraftPrice(''); setPlanAction({ tier: selected, interval: 'YEARLY' }); }}>Add yearly price</DropdownItem> : null}
+                  {canManage && monthly?.status === 'DRAFT' ? <DropdownItem onSelect={() => setEntitlementAction(monthly)}>Set monthly entitlements</DropdownItem> : null}
+                  {canManage && yearly?.status === 'DRAFT' ? <DropdownItem onSelect={() => setEntitlementAction(yearly)}>Set yearly entitlements</DropdownItem> : null}
+                  {canManage && selected.status === 'DRAFT' ? <DropdownItem onSelect={() => setTierAction({ kind: 'activate', tier: selected })}>Activate plan</DropdownItem> : null}
+                  {canManage ? <DropdownItem onSelect={() => setTierAction({ kind: 'retire', tier: selected })}>Retire plan</DropdownItem> : null}
+                </RowActionMenu>;
+              },
+            },
           ]}
         />
         <p className="rb-platform__muted">
-          Each interval has its own price. Subscriber counts
-          include trials and complimentary grants on the plan row. Trial:{' '}
+          Subscriber counts include trials and complimentary grants. Trial:{' '}
           {OFFICIAL_TRIAL.hours / 24} days of {OFFICIAL_PLAN_CATALOG[OFFICIAL_TRIAL.tierKey].name}{' '}
           access, no card, with AI insight requests capped at{' '}
           {OFFICIAL_TRIAL.limitOverrides['ai_insights.max']}.
         </p>
-        <Link href="/platform/billing/providers">Payment provider setup</Link>
+        <Link href="/platform/billing/providers">Review payment provider setup</Link>
       </Panel>
 
       <Panel title="Entitlements by tier">

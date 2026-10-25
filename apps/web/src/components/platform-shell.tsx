@@ -66,14 +66,14 @@ const NAV_SECTIONS: NavSection[] = [
 ];
 const BILLING_NAV = [
   { href: '/platform/billing', label: 'Overview' },
-  { href: '/platform/billing/subscriptions', label: 'Subscriptions' },
-  { href: '/platform/billing/plans', label: 'Plans & pricing' },
+  { href: '/platform/billing/subscriptions', label: 'Subscription Management' },
+  { href: '/platform/billing/plans', label: 'Plan Catalog' },
   { href: '/platform/billing/transactions', label: 'Transactions' },
   { href: '/platform/billing/trials', label: 'Trials' },
   { href: '/platform/billing/revenue', label: 'Revenue analytics' },
   { href: '/platform/billing/refunds', label: 'Refunds & adjustments' },
   { href: '/platform/billing/issues', label: 'Billing issues' },
-  { href: '/platform/billing/providers', label: 'Payment providers' },
+  { href: '/platform/billing/providers', label: 'Billing Configuration' },
   { href: '/platform/billing/webhooks', label: 'Webhook events' },
   { href: '/platform/billing/audit', label: 'Billing audit logs' },
 ] as const;

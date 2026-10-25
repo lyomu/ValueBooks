@@ -1,9 +1,10 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import type { Prisma } from '@prisma/client';
+import { OFFICIAL_TRIAL } from '@valuebooks/contracts';
 
 import { PrismaService } from '../database/prisma.service.js';
 import { TrialLifecycleService } from '../billing/trial-lifecycle.service.js';
-import { PaystackBillingAdapter } from '../billing/paystack-billing.adapter.js';
+import { PaystackBillingAdapter, paystackPlanMismatches } from '../billing/paystack-billing.adapter.js';
 import { BillingWebhookService } from '../billing/billing-webhook.service.js';
 import { normalizePaystackEvent } from '../billing/billing-webhook.controller.js';
 import { writePlatformAudit } from './platform-audit.js';
@@ -68,7 +69,7 @@ export class PlatformBillingService {
       mrrMinorByCurrency: Object.fromEntries([...mrr].map(([currency, amount]) => [currency, amount.toString()])),
       arrMinorByCurrency: Object.fromEntries([...arr].map(([currency, amount]) => [currency, amount.toString()])),
       settledGrossMinorByCurrency: Object.fromEntries([...cash].map(([currency, amount]) => [currency, amount.toString()])),
-      methodology: 'MRR normalizes each active recurring contract from its actual monthly or annual price (annual monthly equivalents round to the nearest minor unit); ARR is MRR × 12. Trial conversion counts completed trials that became active paid subscriptions. Currency groups are not converted or added.',
+      methodology: 'MRR uses the current published plan price for each active paid subscription as a forward recurring run rate. Annual prices are divided by 12 and rounded to the nearest minor unit per subscription. A published repricing may appear here before the next renewal charge. Trials and complimentary grants are excluded. Currency groups are not converted or added.',
     };
   }
 
@@ -120,8 +121,12 @@ export class PlatformBillingService {
     return { failedPayments: failedPayments.map((row) => this.transactionMoney(row)), failedWebhooks, unresolvedChanges, unknownRefunds: unknownRefunds.map((row) => ({ ...row, amountMinor: row.amountMinor.toString() })), unsubscribedOrganizations };
   }
 
-  async subscriptions(query: { page?: string; pageSize?: string; search?: string; status?: string; provider?: string; plan?: string }) {
+  async subscriptions(query: { page?: string; pageSize?: string; search?: string; status?: string; provider?: string; plan?: string; interval?: string }) {
     const p = pagination(query.page, query.pageSize);
+    if (query.interval && !['MONTHLY', 'YEARLY'].includes(query.interval))
+      throw new BadRequestException('Billing interval must be MONTHLY or YEARLY.');
+    if (query.status && !['TRIALING', 'TRIAL_EXPIRED', 'ACTIVE', 'PAST_DUE', 'CANCEL_SCHEDULED', 'CANCELLED'].includes(query.status))
+      throw new BadRequestException('Unknown subscription status.');
     const where: Prisma.OrganizationSubscriptionWhereInput = {
       ...(query.search ? { OR: [
         { organization: { legalName: { contains: query.search, mode: 'insensitive' } } },
@@ -129,7 +134,10 @@ export class PlatformBillingService {
       ] } : {}),
       ...(query.status ? { status: query.status as Prisma.EnumSubscriptionStatusFilter['equals'] } : {}),
       ...(query.provider ? { billingProvider: query.provider as Prisma.EnumBillingProviderNameNullableFilter['equals'] } : {}),
-      ...(query.plan ? { plan: { tierKey: query.plan } } : {}),
+      ...(query.plan || query.interval ? { plan: {
+        ...(query.plan ? { tierKey: query.plan } : {}),
+        ...(query.interval ? { billingInterval: query.interval as Prisma.EnumBillingIntervalFilter['equals'] } : {}),
+      } } : {}),
     };
     const [rows, totalRows] = await Promise.all([
       this.prisma.organizationSubscription.findMany({ where, skip: p.skip, take: p.pageSize, orderBy: { updatedAt: 'desc' },
@@ -224,6 +232,8 @@ export class PlatformBillingService {
     const tiers = await this.prisma.planTier.findMany({ where: { status: 'ACTIVE' }, select: { key: true }, orderBy: { sortOrder: 'asc' } });
     const plans = await this.prisma.plan.findMany({ where: { status: 'ACTIVE' }, select: { key: true, tierKey: true, billingInterval: true, billingProvider: true, providerProductId: true, providerPriceId: true } });
     const latest = await this.prisma.billingWebhookEvent.findMany({ orderBy: { receivedAt: 'desc' }, distinct: ['billingProvider'], take: 2, select: { billingProvider: true, receivedAt: true, processingState: true } });
+    const latestProvision = await this.prisma.providerPlanProvision.findFirst({ orderBy: { updatedAt: 'desc' },
+      select: { updatedAt: true, status: true } });
     const expected = tiers.map((row) => row.key)
       .flatMap((tier) => (['MONTHLY', 'YEARLY'] as const).map((interval) => ({ tier, interval })));
     const codeCounts = new Map<string, number>();
@@ -241,12 +251,64 @@ export class PlatformBillingService {
     return [{
       provider: 'PAYSTACK',
       environment: process.env.PAYSTACK_ENVIRONMENT ?? 'test',
+      environmentConfigured: Boolean(process.env.PAYSTACK_ENVIRONMENT),
       credentialsConfigured: Boolean(process.env.PAYSTACK_SECRET_KEY),
       plans: coverage,
       readyPlans: coverage.filter((row) => row.state === 'READY').length,
       expectedPlans: expected.length,
       lastWebhook: latest.find((row) => row.billingProvider === 'PAYSTACK') ?? null,
+      lastPlanProvision: latestProvision,
     }];
+  }
+
+  async configuration() {
+    const grace = Number(process.env.BILLING_PAST_DUE_GRACE_DAYS ?? 3);
+    const policy = await this.prisma.billingTrialPolicy.findUnique({ where: { id: 1 } });
+    const reminder = policy?.reminderLeadHours ?? Number(process.env.BILLING_TRIAL_REMINDER_LEAD_HOURS ?? 24);
+    return {
+      trial: { durationDays: OFFICIAL_TRIAL.hours / 24, tierKey: OFFICIAL_TRIAL.tierKey,
+        cardRequired: false, aiInsightLimit: OFFICIAL_TRIAL.limitOverrides['ai_insights.max'],
+        reminderLeadHours: Number.isFinite(reminder) ? reminder : 24 },
+      lifecycle: { pastDueGraceDays: Number.isFinite(grace) ? Math.max(0, grace) : 3,
+        cancellation: 'At the paid period end', renewalNoticeDays: 3,
+        retries: 'Paystack-managed renewal collection; verified events drive ValueBooks state',
+        planChanges: 'Payment verified before activation; prior provider renewal is canceled after replacement' },
+      management: 'Trial duration and entitlements are fixed by the approved catalog. Reminder lead time applies only to new trials; existing scheduled reminders and subscription dates stay unchanged. Past-due grace is a deployment setting.',
+    };
+  }
+
+  async updateTrialReminder(hours: number, reason: string, actor: PlatformContext) {
+    if (!Number.isInteger(hours) || hours < 1 || hours > 72)
+      throw new BadRequestException('Reminder lead must be between 1 and 72 hours.');
+    if (reason.trim().length < 10 || reason.length > 500)
+      throw new BadRequestException('An audited reason of 10–500 characters is required.');
+    return this.prisma.$transaction(async (tx) => {
+      const before = await tx.billingTrialPolicy.findUnique({ where: { id: 1 } });
+      const updated = await tx.billingTrialPolicy.upsert({ where: { id: 1 },
+        create: { id: 1, reminderLeadHours: hours }, update: { reminderLeadHours: hours } });
+      await writePlatformAudit(tx, actor, { eventKey: 'billing.trial_reminder_policy_updated',
+        targetType: 'billing_trial_policy', targetId: '1', reason,
+        before: { reminderLeadHours: before?.reminderLeadHours ?? Number(process.env.BILLING_TRIAL_REMINDER_LEAD_HOURS ?? 24) },
+        after: { reminderLeadHours: hours }, ipHash: null });
+      return updated;
+    });
+  }
+
+  /** Live, read-only comparison. Never creates a plan or initiates a charge. */
+  async providerDiagnostics() {
+    const plans = await this.prisma.plan.findMany({ where: { status: 'ACTIVE', billingProvider: 'PAYSTACK' },
+      select: { key: true, providerPriceId: true, priceMinor: true, currency: true, billingInterval: true } });
+    const checks = await Promise.all(plans.map(async (plan) => {
+      if (!plan.providerPriceId) return { key: plan.key, state: 'PENDING_SETUP', issues: ['A Paystack plan code is required for checkout.'] };
+      try {
+        const remote = await this.paystack.getPlan(plan.providerPriceId);
+        const issues = paystackPlanMismatches(remote, { ...plan, providerPriceId: plan.providerPriceId });
+        return { key: plan.key, state: issues.length ? 'SYNC_FAILED' : 'CONFIGURED', issues };
+      } catch {
+        return { key: plan.key, state: 'SYNC_FAILED', issues: ['Paystack could not verify this plan. Check credentials, connectivity, and the provider code.'] };
+      }
+    }));
+    return { checkedAt: new Date().toISOString(), plans: checks };
   }
 
   async webhooks(query: { page?: string; pageSize?: string; state?: string }) {

@@ -123,7 +123,7 @@ export default async function MarketingHomePage() {
         ]}
       />
       <FeatureGrid />
-      <PricingTeaserSection plans={plans ?? undefined} />
+      <PricingTeaserSection plans={plans} />
       <section className="mk-ai-section">
         <div>
           <SectionIntro

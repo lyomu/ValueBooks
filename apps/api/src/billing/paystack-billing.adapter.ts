@@ -134,6 +134,8 @@ export class PaystackBillingAdapter implements BillingProvider {
     interval: 'monthly' | 'annually';
     description?: string | null;
   }): Promise<PaystackRemotePlan> {
+    if (input.amountMinor <= 0n || input.amountMinor > BigInt(Number.MAX_SAFE_INTEGER))
+      throw new BadGatewayException('Plan amount is outside the Paystack integer range.');
     const result = await this.request<{ data: PaystackRemotePlan }>('/plan', {
       method: 'POST',
       body: JSON.stringify({
