@@ -62,10 +62,21 @@ FROM node:24-bookworm-slim AS runtime
 WORKDIR /app
 ENV NODE_ENV=production
 
-# Playwright's install-deps runs apt-get update again later in this stage.
-# Install CA certificates first, then use HTTPS for that second update.
+# Install Playwright's Debian 12 Chromium dependencies before copying the large
+# workspace and browser layers. `playwright install-deps` would run a second
+# apt-get update after those copies; on the shared CI builder that update failed
+# with invalid signatures. Keep this list in sync with the locked Playwright
+# version's debian12-x64 tools/chromium dependencies when upgrading Playwright.
 RUN apt-get update \
-  && apt-get install -y --no-install-recommends openssl ca-certificates \
+  && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+    openssl ca-certificates \
+    xvfb fonts-noto-color-emoji fonts-unifont libfontconfig1 libfreetype6 \
+    xfonts-scalable fonts-liberation fonts-ipafont-gothic fonts-wqy-zenhei \
+    fonts-tlwg-loma-otf fonts-freefont-ttf \
+    libasound2 libatk-bridge2.0-0 libatk1.0-0 libatspi2.0-0 libcairo2 \
+    libcups2 libdbus-1-3 libdrm2 libgbm1 libglib2.0-0 libnspr4 libnss3 \
+    libpango-1.0-0 libx11-6 libxcb1 libxcomposite1 libxdamage1 libxext6 \
+    libxfixes3 libxkbcommon0 libxrandr2 \
   && sed -i 's|http://deb.debian.org|https://deb.debian.org|g' /etc/apt/sources.list.d/debian.sources \
   && rm -rf /var/lib/apt/lists/*
 
@@ -83,9 +94,8 @@ COPY --from=build /app/apps/api/prisma ./apps/api/prisma
 COPY --from=build /app/apps/api/prisma.config.ts ./apps/api/prisma.config.ts
 COPY --from=build /app/apps/api/package.json ./apps/api/package.json
 
-# Chromium for playwright's PDF-render path. `install-deps` installs this
-# Debian release's apt packages for the browser; the browser binary itself is
-# copied from the build stage rather than downloaded a second time.
+# Chromium for playwright's PDF-render path. Its Debian packages were installed
+# above; the browser binary is copied from build instead of downloaded again.
 #
 # The explicit PLAYWRIGHT_BROWSERS_PATH matters. Installing as root without it
 # lands the browser in /root/.cache/ms-playwright, and /root is mode 700 on
@@ -93,8 +103,7 @@ COPY --from=build /app/apps/api/package.json ./apps/api/package.json
 # PDF render would fail at runtime while the image still built green.
 ENV PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
 COPY --from=build /ms-playwright /ms-playwright
-RUN npx --prefix apps/api playwright install-deps chromium \
-  && chmod -R a+rX /ms-playwright
+RUN chmod -R a+rX /ms-playwright
 
 # tesseract.js (ocr.service.ts) calls createWorker('eng') with no langPath, so
 # it caches eng.traineddata into the process CWD -- /app -- fetching it on
