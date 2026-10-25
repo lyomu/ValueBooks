@@ -14,7 +14,7 @@ CREATE TABLE "provider_plan_provisions" (
   "created_at" TIMESTAMPTZ(6) NOT NULL DEFAULT CURRENT_TIMESTAMP,
   "updated_at" TIMESTAMPTZ(6) NOT NULL DEFAULT CURRENT_TIMESTAMP,
   CONSTRAINT "provider_plan_provisions_pkey" PRIMARY KEY ("plan_id"),
-  CONSTRAINT "provider_plan_provisions_plan_fkey" FOREIGN KEY ("plan_id") REFERENCES "plans"("id") ON DELETE RESTRICT,
+  CONSTRAINT "provider_plan_provisions_plan_id_fkey" FOREIGN KEY ("plan_id") REFERENCES "plans"("id") ON DELETE RESTRICT ON UPDATE CASCADE,
   CONSTRAINT "provider_plan_provisions_status_check" CHECK ("status" IN ('PENDING', 'CREATED', 'NEEDS_RECONCILIATION', 'LINKED'))
 );
 CREATE UNIQUE INDEX "provider_plan_provisions_provider_code_key" ON "provider_plan_provisions"("provider_code");

@@ -81,6 +81,9 @@ pipeline {
                         env.WEB_CI_IMAGE,
                         "--target build ${env.WEB_BUILD_ARGS} -f apps/web/Dockerfile ."
                     )
+                    // The web build image only validates compilation. Release its unique
+                    // layers before building the API image on the disk-constrained CI worker.
+                    sh "docker rmi ${env.WEB_CI_IMAGE}"
                     docker.build(env.API_CI_IMAGE, '--target build -f apps/api/Dockerfile .')
                 }
             }
