@@ -5163,9 +5163,9 @@ a.rb-nav-item:hover {
 .rb-platform__country-filter {
   width: 6.5rem;
 }
-/* Methodology note under a console table. */
-.rb-platform__footnote {
-  margin-top: 0.75rem;
+/* Keep methodology notes close to their console tables. */
+.rb-platform__page > .rb-table-card + .rb-platform__footnote {
+  margin-top: -0.25rem;
   font-size: 0.8125rem;
 }
 /* AdminActionDialog (admin-action-dialog.tsx): impact, audited reason, typed confirmation. */
@@ -9240,6 +9240,53 @@ button.rb-customer-facts__heading {
   grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr));
   gap: 0.75rem;
   margin: 1rem 0 0.75rem;
+}
+.rb-platform-overview__billing-primary {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  margin-bottom: 0;
+}
+.rb-platform-overview__billing-primary .rb-platform-overview__figure strong {
+  font-size: 1.45rem;
+}
+.rb-platform-overview__billing-lifecycle {
+  margin-top: 1rem;
+  padding-top: 0.85rem;
+  border-top: 1px solid hsl(var(--rb-border));
+}
+.rb-platform-overview__billing-lifecycle h3 {
+  margin: 0;
+  color: hsl(var(--rb-muted-foreground));
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+.rb-platform-overview__billing-secondary {
+  margin: 0.65rem 0 0;
+}
+.rb-platform-overview__billing-secondary .rb-platform-overview__figure strong {
+  font-size: 1rem;
+}
+.rb-platform-overview__billing-methodology {
+  margin-top: 1rem;
+  color: hsl(var(--rb-muted-foreground));
+  font-size: 0.75rem;
+  line-height: 1.45;
+}
+.rb-platform-overview__billing-methodology summary {
+  width: fit-content;
+  cursor: pointer;
+}
+.rb-platform-overview__billing-methodology summary:focus-visible {
+  outline: 2px solid hsl(var(--rb-ring));
+  outline-offset: 2px;
+}
+.rb-platform-overview__billing-methodology p {
+  margin: 0.5rem 0 0;
+  font-size: inherit;
+}
+@media (max-width: 48rem) {
+  .rb-platform-overview__billing-primary {
+    grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr));
+  }
 }
 .rb-platform-overview__figure span,
 .rb-platform-overview__figure a > span {

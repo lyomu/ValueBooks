@@ -298,7 +298,11 @@ export function PlatformOverview() {
               <ChartLoading label="Loading billing snapshot" />
             ) : (
               <>
-                <div className="rb-platform-overview__figure-grid">
+                <div
+                  className="rb-platform-overview__figure-grid rb-platform-overview__billing-primary"
+                  role="group"
+                  aria-label="Revenue and paid subscriptions"
+                >
                   <Figure label="MRR" value={money(billing.mrrMinorByCurrency)} />
                   <Figure label="ARR (run rate)" value={money(billing.arrMinorByCurrency)} />
                   <Figure
@@ -306,34 +310,42 @@ export function PlatformOverview() {
                     value={billing.activePaid.toLocaleString()}
                     href="/platform/billing/subscriptions"
                   />
-                  <Figure
-                    label="Trialing"
-                    value={billing.trialing.toLocaleString()}
-                    href="/platform/billing/trials"
-                  />
-                  <Figure
-                    label="Trial conversion"
-                    value={
-                      billing.trialConversionRate === null
-                        ? 'No completed trials'
-                        : `${billing.trialConversionRate}%`
-                    }
-                  />
-                  <Figure
-                    label="Past due"
-                    value={billing.pastDue.toLocaleString()}
-                    tone={billing.pastDue > 0 ? 'warning' : undefined}
-                    href="/platform/billing/issues"
-                  />
-                  {billing.complimentary > 0 ? (
-                    <Figure
-                      label="Complimentary"
-                      value={billing.complimentary.toLocaleString()}
-                      href="/platform/billing/subscriptions"
-                    />
-                  ) : null}
                 </div>
-                <p className="rb-platform__muted">{billing.methodology}</p>
+                <div className="rb-platform-overview__billing-lifecycle">
+                  <h3>Subscription health</h3>
+                  <div className="rb-platform-overview__figure-grid rb-platform-overview__billing-secondary">
+                    <Figure
+                      label="Trialing"
+                      value={billing.trialing.toLocaleString()}
+                      href="/platform/billing/trials"
+                    />
+                    <Figure
+                      label="Trial conversion"
+                      value={
+                        billing.trialConversionRate === null
+                          ? 'No completed trials'
+                          : `${billing.trialConversionRate}%`
+                      }
+                    />
+                    <Figure
+                      label="Past due"
+                      value={billing.pastDue.toLocaleString()}
+                      tone={billing.pastDue > 0 ? 'warning' : undefined}
+                      href="/platform/billing/issues"
+                    />
+                    {billing.complimentary > 0 ? (
+                      <Figure
+                        label="Complimentary"
+                        value={billing.complimentary.toLocaleString()}
+                        href="/platform/billing/subscriptions"
+                      />
+                    ) : null}
+                  </div>
+                </div>
+                <details className="rb-platform-overview__billing-methodology">
+                  <summary>How these figures are calculated</summary>
+                  <p>{billing.methodology}</p>
+                </details>
               </>
             )}
           </Card>
