@@ -62,7 +62,10 @@ FROM node:24-bookworm-slim AS runtime
 WORKDIR /app
 ENV NODE_ENV=production
 
-RUN apt-get update \
+# Playwright's install-deps runs apt-get update again later in this stage. Keep
+# both updates on HTTPS so a plain-HTTP cache cannot corrupt signed metadata.
+RUN sed -i 's|http://deb.debian.org|https://deb.debian.org|g' /etc/apt/sources.list.d/debian.sources \
+  && apt-get update \
   && apt-get install -y --no-install-recommends openssl ca-certificates \
   && rm -rf /var/lib/apt/lists/*
 
