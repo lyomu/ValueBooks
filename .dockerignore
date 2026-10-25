@@ -1,0 +1,12 @@
+.git
+**/node_modules
+**/.next
+**/dist
+**/coverage
+**/test-results
+**/.cache
+**/*.tsbuildinfo
+**/.env*
+.freebuff
+.tmp*
+*.log
