@@ -7,6 +7,9 @@ import { RequirePlatformRole, type PlatformRequest } from './platform-context.js
 import { PlatformGuard } from './platform.guard.js';
 
 class ReasonDto { @IsString() @Length(5, 1000) reason!: string; }
+class TrialReminderPolicyDto extends ReasonDto {
+  @IsInt() @Min(1) reminderLeadHours!: number;
+}
 class TrialExtensionDto extends ReasonDto { @IsString() @MaxLength(40) newEnd!: string; }
 class RefundRequestDto extends ReasonDto { @IsString() @MaxLength(30) amountMinor!: string; }
 class EntitlementOverrideDto extends ReasonDto {
@@ -36,7 +39,7 @@ export class PlatformBillingController {
 
   @Get('subscriptions')
   @RequirePlatformRole('SUPPORT')
-  subscriptions(@Query() query: { page?: string; pageSize?: string; search?: string; status?: string; provider?: string; plan?: string }) {
+  subscriptions(@Query() query: { page?: string; pageSize?: string; search?: string; status?: string; provider?: string; plan?: string; interval?: string }) {
     return this.billing.subscriptions(query);
   }
 
@@ -73,6 +76,20 @@ export class PlatformBillingController {
   @Get('providers')
   @RequirePlatformRole('SUPPORT')
   async providers() { return { data: await this.billing.providers() }; }
+
+  @Get('configuration')
+  @RequirePlatformRole('SUPPORT')
+  async configuration() { return { data: await this.billing.configuration() }; }
+
+  @Post('configuration/trial-reminder')
+  @RequirePlatformRole('SUPERADMIN')
+  async updateTrialReminder(@Body() body: TrialReminderPolicyDto, @Req() request: PlatformRequest) {
+    return { data: await this.billing.updateTrialReminder(body.reminderLeadHours, body.reason, request.platform) };
+  }
+
+  @Post('providers/diagnostics')
+  @RequirePlatformRole('OPERATIONS')
+  async providerDiagnostics() { return { data: await this.billing.providerDiagnostics() }; }
 
   @Get('webhooks')
   @RequirePlatformRole('SUPPORT')

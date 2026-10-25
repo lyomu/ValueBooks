@@ -62,8 +62,11 @@ FROM node:24-bookworm-slim AS runtime
 WORKDIR /app
 ENV NODE_ENV=production
 
+# Playwright's install-deps runs apt-get update again later in this stage.
+# Install CA certificates first, then use HTTPS for that second update.
 RUN apt-get update \
   && apt-get install -y --no-install-recommends openssl ca-certificates \
+  && sed -i 's|http://deb.debian.org|https://deb.debian.org|g' /etc/apt/sources.list.d/debian.sources \
   && rm -rf /var/lib/apt/lists/*
 
 COPY --from=build /app/package.json /app/package-lock.json ./

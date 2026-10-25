@@ -3,5 +3,5 @@ import { fetchLivePlans } from '../../../components/marketing/live-prices';
 
 export default async function Page() {
   const plans = await fetchLivePlans();
-  return <PricingPageContent plans={plans ?? undefined} />;
+  return <PricingPageContent plans={plans} />;
 }

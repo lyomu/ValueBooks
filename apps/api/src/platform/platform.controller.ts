@@ -35,6 +35,7 @@ import {
   CreateHostedAiEgressApprovalDto,
   CreatePlanDto,
   CreateTierDto,
+  UpdateTierDto,
   EntitlementDraftValueDto,
   FailedJobSearchDto,
   FlagAudienceDto,
@@ -276,6 +277,20 @@ export class PlatformController {
   @RequirePlatformRole('SUPPORT')
   async planTiers() { return { data: await this.catalog.listTiers() }; }
 
+  @Get('plan-tiers/:id')
+  @RequirePlatformRole('SUPPORT')
+  async planTier(@Param('id', new ParseUUIDPipe()) id: string,
+    @Query('subscriberPage') subscriberPage?: string, @Query('activityPage') activityPage?: string) {
+    return { data: await this.catalog.tierDetail(id, subscriberPage, activityPage) };
+  }
+
+  @Patch('plan-tiers/:id')
+  @RequirePlatformRole('SUPERADMIN')
+  async updateTier(@Param('id', new ParseUUIDPipe()) id: string, @Body() input: UpdateTierDto,
+    @Req() request: PlatformRequest) {
+    return { data: await this.catalog.updateTier(request.platform, id, input, this.ipHash(request)) };
+  }
+
   @Get('plans/health')
   @RequirePlatformRole('SUPPORT')
   async catalogHealth() { return { data: await this.catalog.catalogHealth() }; }
@@ -339,6 +354,13 @@ export class PlatformController {
         this.ipHash(request),
       ),
     };
+  }
+
+  @Post('plans/:planId/provider-create')
+  @RequirePlatformRole('SUPERADMIN')
+  async createProviderPlan(@Param('planId', new ParseUUIDPipe()) planId: string,
+    @Body() input: PlanPriceReasonDto, @Req() request: PlatformRequest) {
+    return { data: await this.catalog.createProviderPlan(request.platform, planId, input.reason, this.ipHash(request)) };
   }
 
   // --- Plan pricing (phase 7, O5) -------------------------------------------------------------
