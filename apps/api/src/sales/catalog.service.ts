@@ -24,6 +24,45 @@ import type {
 
 type ItemWithPrices = Prisma.ItemGetPayload<{ include: { prices: true } }>;
 
+const DEFAULT_UNITS: ReadonlyArray<{ code: string; name: string }> = [
+  { code: 'PCS', name: 'Pieces' },
+  { code: 'UNIT', name: 'Units' },
+  { code: 'SET', name: 'Sets' },
+  { code: 'PACK', name: 'Packs' },
+  { code: 'BOX', name: 'Boxes' },
+  { code: 'CTN', name: 'Cartons' },
+  { code: 'DOZ', name: 'Dozens' },
+  { code: 'KG', name: 'Kilograms' },
+  { code: 'G', name: 'Grams' },
+  { code: 'TON', name: 'Tonnes' },
+  { code: 'L', name: 'Litres' },
+  { code: 'ML', name: 'Millilitres' },
+  { code: 'M', name: 'Metres' },
+  { code: 'CM', name: 'Centimetres' },
+  { code: 'SQM', name: 'Square metres' },
+  { code: 'HR', name: 'Hours' },
+  { code: 'DAY', name: 'Days' },
+  { code: 'WK', name: 'Weeks' },
+  { code: 'MTH', name: 'Months' },
+  { code: 'SVC', name: 'Service' },
+];
+
+const GENERATED_SKU_PREFIX = 'SKU-';
+
+/**
+ * Next free `SKU-00001`-style code for the organization. Called inside the item-creation
+ * transaction, which already holds the per-organization advisory lock, so two concurrent creates
+ * cannot be handed the same number. Skips over codes a user typed by hand.
+ */
+async function nextGeneratedSku(tx: Prisma.TransactionClient, organizationId: string) {
+  const total = await tx.item.count({ where: { organizationId } });
+  for (let candidate = total + 1; ; candidate += 1) {
+    const sku = `${GENERATED_SKU_PREFIX}${String(candidate).padStart(5, '0')}`;
+    const clash = await tx.item.findFirst({ where: { organizationId, sku }, select: { id: true } });
+    if (!clash) return sku;
+  }
+}
+
 @Injectable()
 export class CatalogService {
   constructor(private readonly prisma: PrismaService, private readonly usage: UsageMeteringService) {}
@@ -31,6 +70,17 @@ export class CatalogService {
   // --- Units ---
 
   async listUnits(organizationId: string) {
+    const units = await this.prisma.unit.findMany({
+      where: { organizationId },
+      orderBy: [{ code: 'asc' }],
+    });
+    if (units.length > 0) return units;
+    // Organizations start with the common units of measure so the product form is never empty.
+    // skipDuplicates makes a concurrent first load harmless under the (organizationId, code) key.
+    await this.prisma.unit.createMany({
+      data: DEFAULT_UNITS.map((unit) => ({ organizationId, ...unit })),
+      skipDuplicates: true,
+    });
     return this.prisma.unit.findMany({ where: { organizationId }, orderBy: [{ code: 'asc' }] });
   }
 
@@ -221,10 +271,11 @@ export class CatalogService {
       await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtext(${context.id}), 117)::text AS locked`;
       const active = await tx.item.count({ where: { organizationId: context.id, status: 'ACTIVE' } });
       await this.usage.assertWithinConcurrentLimit(context.id, 'products.max', active);
+      const sku = input.sku ?? (await nextGeneratedSku(tx, context.id));
       const item = await tx.item.create({
         data: {
           organizationId: context.id,
-          sku: input.sku ?? null,
+          sku,
           name: input.name,
           itemType: input.itemType,
           imageDataUrl: input.imageDataUrl ?? null,

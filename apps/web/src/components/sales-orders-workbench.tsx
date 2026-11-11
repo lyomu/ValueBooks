@@ -184,10 +184,11 @@ export function SalesOrdersPage({ initialSelectedOrderId }: { initialSelectedOrd
           </>
         )}
         detailTitle={(order) => <h1>{order.orderNumber ?? 'Draft sales order'}</h1>}
-        headerActions={() =>
-          canManage ? (
+        headerActions={(order) =>
+          // Only drafts are editable; the editor locks every field for any other status.
+          canManage && order.status === 'DRAFT' ? (
             <Button asChild variant="outline" size="sm">
-              <Link href={`/sales-orders/${selectedOrder.id}/edit`}>Edit</Link>
+              <Link href={`/sales-orders/${order.id}/edit`}>Edit</Link>
             </Button>
           ) : null
         }
@@ -559,10 +560,10 @@ export function SalesOrderEditorPage({ orderId }: { orderId?: string }) {
                   <Select
                     aria-label={`Item for line ${index + 1}`}
                     value={line.itemId}
-                    disabled={!editable}
+                    disabled={!editable || items.length === 0}
                     onChange={(event) => selectItem(line.key, event.target.value)}
                   >
-                    <option value="">Free-text line</option>
+                    <option value="">{items.length === 0 ? 'No products or services yet' : 'Select product or service'}</option>
                     {items.map((candidate) => (
                       <option key={candidate.id} value={candidate.id}>
                         {candidate.sku ? `${candidate.sku} ${candidate.name}` : candidate.name}

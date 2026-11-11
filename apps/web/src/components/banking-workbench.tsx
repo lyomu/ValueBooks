@@ -21,6 +21,7 @@ import {
   Badge,
   Button,
   Card,
+  CurrencySelect,
   DataTable,
   EmptyState,
   FieldMessage,
@@ -52,6 +53,7 @@ import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
 
 import { ApiError, apiRequest, apiUpload } from '../lib/api';
+import { useOrganizationCurrencies } from '../lib/reference-data';
 import { formValue } from '../lib/forms';
 import { hasPermission, useWorkspace } from '../lib/workspace';
 import { EntityDetailView } from './master-detail/entity-detail-view';
@@ -342,6 +344,7 @@ function FinancialAccountForm({
   onCancel: () => void;
   onSaved: (account: FinancialAccount) => void;
 }) {
+  const currencies = useOrganizationCurrencies(organizationId, account?.currency ?? fallbackCurrency);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -407,12 +410,12 @@ function FinancialAccountForm({
           </div>
           <div className="rb-field">
             <Label htmlFor="financial-account-currency">Currency</Label>
-            <Input
+            <CurrencySelect
               id="financial-account-currency"
               name="currency"
+              currencies={currencies}
               defaultValue={account?.currency ?? fallbackCurrency}
               required
-              maxLength={3}
             />
           </div>
           <div className="rb-field">

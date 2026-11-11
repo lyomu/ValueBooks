@@ -310,8 +310,8 @@ export function AuthForm({
 
         {mode === 'signup' ? (
           <p className="rb-auth__legal">
-            By signing up, you agree to the <Link href="/terms">Terms</Link> and{' '}
-            <Link href="/privacy">Privacy Policy</Link>.
+            By signing up, you agree to the <Link href="/terms" prefetch={false}>Terms</Link> and{' '}
+            <Link href="/privacy" prefetch={false}>Privacy Policy</Link>.
           </p>
         ) : null}
 

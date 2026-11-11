@@ -465,9 +465,10 @@ export function RecurringInvoicesPage() {
                     <Select
                       aria-label={`Item for line ${index + 1}`}
                       value={line.itemId}
+                      disabled={items.length === 0}
                       onChange={(event) => selectItem(line.key, event.target.value)}
                     >
-                      <option value="">Free-text line</option>
+                      <option value="">{items.length === 0 ? 'No products or services yet' : 'Select product or service'}</option>
                       {items.map((candidate) => (
                         <option key={candidate.id} value={candidate.id}>
                           {candidate.sku ? `${candidate.sku} ${candidate.name}` : candidate.name}

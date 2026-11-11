@@ -69,8 +69,8 @@ export function AuthShell({
         {children}
         {showLegalNotice ? (
           <p className="rb-auth__legal">
-            By continuing, you agree to the <Link href="/terms">Terms and Conditions</Link> and
-            acknowledge the <Link href="/privacy">Privacy Policy</Link>.
+            By continuing, you agree to the <Link href="/terms" prefetch={false}>Terms and Conditions</Link> and
+            acknowledge the <Link href="/privacy" prefetch={false}>Privacy Policy</Link>.
           </p>
         ) : null}
       </div>

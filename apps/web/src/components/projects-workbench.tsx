@@ -17,6 +17,7 @@ import {
   Badge,
   Button,
   Card,
+  CurrencySelect,
   DataTable,
   DataTableFilters,
   DataTableSearch,
@@ -52,6 +53,7 @@ import Link from 'next/link';
 import { useCallback, useEffect, useMemo, useState, type FormEvent, type ReactNode } from 'react';
 
 import { ApiError, apiRequest } from '../lib/api';
+import { useOrganizationCurrencies } from '../lib/reference-data';
 import { formValue } from '../lib/forms';
 import { hasPermission, useWorkspace } from '../lib/workspace';
 import { TransactionCollaboration } from './transaction-collaboration';
@@ -283,6 +285,7 @@ function ProjectForm({
   onCancel: () => void;
   onSaved: (project: Project) => void;
 }) {
+  const currencies = useOrganizationCurrencies(organizationId, project?.currency ?? baseCurrency);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -397,12 +400,11 @@ function ProjectForm({
           </div>
           <div className="rb-field">
             <Label htmlFor="project-currency">Currency</Label>
-            <Input
+            <CurrencySelect
               id="project-currency"
               name="currency"
+              currencies={currencies}
               defaultValue={project?.currency ?? baseCurrency}
-              maxLength={3}
-              minLength={3}
             />
           </div>
           <div className="rb-field">

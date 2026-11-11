@@ -34,11 +34,14 @@ export async function apiRequest<T>(path: string, init: RequestInit = {}): Promi
     if (payload.error?.code === 'PLAN_LIMIT_REACHED' && typeof window !== 'undefined') {
       window.dispatchEvent(new CustomEvent('valuebooks:billing-limit', { detail: payload.error }));
     }
+    const fieldErrors = payload.error?.fieldErrors ?? [];
     throw new ApiError(
-      payload.error?.message ?? 'The request could not be completed.',
+      fieldErrors.length > 0
+        ? fieldErrors.slice(0, 3).join('; ')
+        : (payload.error?.message ?? 'The request could not be completed.'),
       response.status,
       payload.error?.code,
-      payload.error?.fieldErrors,
+      fieldErrors,
     );
   }
 

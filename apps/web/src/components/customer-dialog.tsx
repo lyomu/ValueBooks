@@ -1,12 +1,23 @@
 'use client';
 
 import type { Contact } from '@valuebooks/contracts';
-import { Button, Dialog, DialogContent, FieldMessage, Input, Label, Select } from '@valuebooks/ui';
+import {
+  Button,
+  CurrencySelect,
+  Dialog,
+  DialogContent,
+  FieldMessage,
+  Input,
+  Label,
+  PhoneInput,
+  Select,
+} from '@valuebooks/ui';
 import { MapPin, Save } from 'lucide-react';
 import { useState, type ComponentProps, type FormEvent } from 'react';
 
 import { ApiError, apiRequest } from '../lib/api';
 import { formValue } from '../lib/forms';
+import { useOrganizationCurrencies, useReferenceData } from '../lib/reference-data';
 
 type ContactResponse = { data: Contact };
 type Props = {
@@ -34,6 +45,14 @@ export function CustomerDialog({
   const [error, setError] = useState<string | null>(null);
   const billingAddress = customer?.addresses.find((address) => address.kind === 'BILLING');
   const taxId = customer?.taxIds[0];
+  const referenceData = useReferenceData();
+  const currencies = useOrganizationCurrencies(organizationId, customer?.currency ?? baseCurrency);
+  const countries = referenceData?.countries ?? [];
+  const [country, setCountry] = useState(
+    billingAddress?.countryCode ?? taxId?.countryCode ?? 'KE',
+  );
+  const taxIdLabel =
+    countries.find((candidate) => candidate.code === country)?.taxIdentifierLabel || 'Tax ID';
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!organizationId) return;
@@ -41,7 +60,7 @@ export function CustomerDialog({
     const tags = formValue(data, 'tags');
     const addressLine = formValue(data, 'billingLine1');
     const taxIdValue = formValue(data, 'taxIdValue');
-    const countryCode = formValue(data, 'countryCode') || 'KE';
+    const countryCode = country || 'KE';
     const body = {
       displayName: formValue(data, 'displayName'),
       legalName: formValue(data, 'legalName') || undefined,
@@ -72,7 +91,7 @@ export function CustomerDialog({
           ]
         : undefined,
       taxIds: taxIdValue
-        ? [{ label: formValue(data, 'taxIdLabel') || 'Tax ID', value: taxIdValue, countryCode }]
+        ? [{ label: taxIdLabel.slice(0, 24), value: taxIdValue, countryCode }]
         : undefined,
     };
     setSaving(true);
@@ -132,15 +151,24 @@ export function CustomerDialog({
             value={customer?.email}
             type="email"
           />
-          <Field id="customer-phone" label="Phone" name="phone" value={customer?.phone} />
+          <div className="rb-field">
+            <Label htmlFor="customer-phone">Phone</Label>
+            <PhoneInput
+              id="customer-phone"
+              name="phone"
+              defaultValue={customer?.phone}
+              countries={countries}
+              defaultCountry={country}
+            />
+          </div>
           <div className="rb-field">
             <Label htmlFor="customer-currency">Invoice currency</Label>
-            <Input
+            <CurrencySelect
               id="customer-currency"
               name="currency"
+              currencies={currencies}
               defaultValue={customer?.currency ?? baseCurrency}
               disabled={!canOverrideCurrency}
-              maxLength={3}
             />
             {!canOverrideCurrency ? (
               <FieldMessage>Uses your organization’s base currency.</FieldMessage>
@@ -167,15 +195,8 @@ export function CustomerDialog({
         </div>
         <div className="rb-customer-form__grid">
           <Field
-            id="customer-tax-id-label"
-            label="Tax ID label"
-            name="taxIdLabel"
-            value={taxId?.label ?? 'Tax ID'}
-            maxLength={24}
-          />
-          <Field
             id="customer-tax-id-value"
-            label="Tax ID"
+            label={taxIdLabel}
             name="taxIdValue"
             value={taxId?.value}
             maxLength={60}
@@ -223,14 +244,15 @@ export function CustomerDialog({
             <Select
               id="customer-country-code"
               name="countryCode"
-              defaultValue={billingAddress?.countryCode ?? taxId?.countryCode ?? 'KE'}
+              value={country}
+              onChange={(event) => setCountry(event.target.value)}
             >
-              <option value="KE">Kenya</option>
-              <option value="UG">Uganda</option>
-              <option value="TZ">Tanzania</option>
-              <option value="RW">Rwanda</option>
-              <option value="GB">United Kingdom</option>
-              <option value="US">United States</option>
+              {countries.length === 0 ? <option value={country}>{country}</option> : null}
+              {countries.map((candidate) => (
+                <option key={candidate.code} value={candidate.code}>
+                  {candidate.name}
+                </option>
+              ))}
             </Select>
           </div>
           <Field

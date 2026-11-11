@@ -4,10 +4,12 @@ import type { Vendor } from '@valuebooks/contracts';
 import {
   Button,
   Card,
+  CurrencySelect,
   FieldMessage,
   ForbiddenState,
   Input,
   Label,
+  PhoneInput,
   Select,
   Skeleton,
   StatusBadge,
@@ -20,6 +22,7 @@ import { useCallback, useEffect, useState, type FormEvent } from 'react';
 
 import { ApiError, apiRequest } from '../lib/api';
 import { formValue } from '../lib/forms';
+import { useOrganizationCurrencies, useReferenceData } from '../lib/reference-data';
 import { hasPermission, useWorkspace } from '../lib/workspace';
 import { OperationalListing } from './operational-listing';
 import { EntityDetailView } from './master-detail/entity-detail-view';
@@ -40,6 +43,8 @@ export function VendorsPage({ initialSelectedVendorId }: { initialSelectedVendor
   const canImport = hasPermission(organization, 'vendors.import');
   const [importFile, setImportFile] = useState<File | null>(null);
   const canOverrideCurrency = hasPermission(organization, 'vendors.currency_override');
+  const referenceData = useReferenceData();
+  const currencies = useOrganizationCurrencies(organizationId, organization?.baseCurrency);
 
   const [vendors, setVendors] = useState<Vendor[] | null>(null);
   const [statusFilter, setStatusFilter] = useState<'' | 'ACTIVE' | 'INACTIVE'>('');
@@ -399,16 +404,22 @@ export function VendorsPage({ initialSelectedVendorId }: { initialSelectedVendor
                   </div>
                   <div className="rb-field">
                     <Label htmlFor="vendor-phone">Phone</Label>
-                    <Input id="vendor-phone" name="phone" defaultValue={formTarget?.phone ?? ''} />
+                    <PhoneInput
+                      id="vendor-phone"
+                      name="phone"
+                      defaultValue={formTarget?.phone}
+                      countries={referenceData?.countries ?? []}
+                      defaultCountry="KE"
+                    />
                   </div>
                   <div className="rb-field">
                     <Label htmlFor="vendor-currency">Currency</Label>
-                    <Input
+                    <CurrencySelect
                       id="vendor-currency"
                       name="currency"
+                      currencies={currencies}
                       defaultValue={formTarget?.currency ?? organization?.baseCurrency ?? ''}
                       disabled={!canOverrideCurrency}
-                      maxLength={3}
                     />
                     {!canOverrideCurrency ? (
                       <FieldMessage>

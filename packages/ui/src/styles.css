@@ -592,6 +592,70 @@ svg.lucide {
   border-color: hsl(var(--rb-danger));
 }
 
+.rb-phone-input {
+  display: flex;
+  gap: var(--rb-space-2);
+}
+
+.rb-phone-input__country {
+  position: relative;
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: var(--rb-space-2);
+  height: var(--rb-field-height);
+  padding: 0 var(--rb-space-3);
+  color: hsl(var(--rb-field-value));
+  background: hsl(var(--rb-card));
+  border: var(--rb-field-border-width) solid hsl(var(--rb-input));
+  border-radius: var(--rb-field-radius);
+  font-size: var(--rb-field-font-size);
+}
+
+.rb-phone-input__country:focus-within {
+  outline: 2px solid hsl(var(--rb-ring, var(--rb-primary)));
+  outline-offset: 1px;
+}
+
+.rb-phone-input__country > svg {
+  width: 1rem;
+  height: 1rem;
+  color: hsl(var(--rb-muted-foreground));
+}
+
+.rb-phone-input__flag {
+  display: inline-flex;
+}
+
+.rb-phone-input__flag svg,
+.rb-phone-input__flag-fallback {
+  width: 1.25rem;
+  height: 1.25rem;
+  border-radius: 50%;
+}
+
+.rb-phone-input__flag-fallback {
+  background: hsl(var(--rb-muted));
+}
+
+.rb-phone-input__select {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.rb-phone-input__number {
+  flex: 1;
+  min-width: 0;
+}
+
+.rb-phone-input--disabled .rb-phone-input__country {
+  background: hsl(var(--rb-muted));
+  cursor: not-allowed;
+}
+
 .rb-field-message {
   margin: 0.375rem 0 0;
   color: hsl(var(--rb-muted-foreground));
@@ -1046,12 +1110,18 @@ svg.lucide {
   display: inline-flex;
   flex-wrap: wrap;
   gap: var(--rb-space-1);
+  /* Stays shrink-wrapped even when a grid or flex parent would stretch it edge to edge. */
+  width: fit-content;
+  max-width: 100%;
   padding: var(--rb-space-1);
   background: hsl(var(--rb-muted));
   border-radius: var(--rb-radius);
 }
 
 .rb-tabs__trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--rb-space-2);
   min-height: 2.25rem;
   padding: 0 var(--rb-space-3);
   color: hsl(var(--rb-muted-foreground));
@@ -1061,6 +1131,12 @@ svg.lucide {
   font-size: 0.875rem;
   font-weight: 600;
   cursor: pointer;
+}
+
+.rb-tabs__trigger svg {
+  width: 1rem;
+  height: 1rem;
+  flex-shrink: 0;
 }
 
 .rb-tabs__trigger:hover {
@@ -1574,11 +1650,22 @@ svg.lucide {
   color: hsl(var(--rb-muted-foreground));
 }
 
+/* Report cards lay their own content out, so each carries the standard card body gutter. */
+.rb-report-filters,
+.rb-report-actions,
+.rb-report-provenance {
+  padding: var(--rb-space-5) var(--rb-space-6);
+}
+
 .rb-report-filters {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(9.375rem, 1fr));
   gap: var(--rb-space-4);
   align-items: end;
+}
+
+.rb-report-filters > .rb-button {
+  min-height: 2.75rem;
 }
 
 .rb-report-actions {
@@ -1596,6 +1683,17 @@ svg.lucide {
   gap: var(--rb-space-5);
 }
 
+.rb-report-provenance strong {
+  display: block;
+  margin-bottom: var(--rb-space-1);
+}
+
+@media (max-width: 40rem) {
+  .rb-report-provenance {
+    grid-template-columns: 1fr;
+  }
+}
+
 .rb-report-provenance p {
   margin-bottom: 0;
 }
@@ -1605,8 +1703,11 @@ svg.lucide {
 }
 
 .rb-saved-report-row {
+  display: flex;
+  align-items: center;
+  gap: var(--rb-space-3);
   justify-content: space-between;
-  padding: var(--rb-space-3) 0;
+  padding: var(--rb-space-3) var(--rb-space-6);
   border-bottom: 1px solid hsl(var(--rb-border));
 }
 
@@ -1621,13 +1722,17 @@ svg.lucide {
 
 .rb-report-pagination {
   justify-content: flex-end;
-  padding: var(--rb-space-3);
+  padding: var(--rb-space-3) var(--rb-space-6);
   font-size: 0.875rem;
 }
 
 .rb-report-results {
   display: grid;
   gap: var(--rb-space-3);
+}
+
+.rb-report-results > .rb-table-scroll {
+  overflow: hidden;
 }
 
 .rb-report-totals {

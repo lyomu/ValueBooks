@@ -1328,7 +1328,11 @@ export const createContactDto = z.object({
   displayName: z.string().min(1).max(160),
   legalName: z.string().max(200).optional(),
   email: z.email().optional(),
-  phone: z.string().max(40).optional(),
+  phone: z
+    .string()
+    .max(40)
+    .regex(/^(\+[1-9]\d{6,14})?$/, 'Enter the phone number in international format, for example +254712345678.')
+    .optional(),
   currency: z.string().length(3).optional(),
   paymentTermsDays: z.number().int().min(0).max(365).optional(),
   receivableAccountId: z.uuid().optional(),
@@ -1415,7 +1419,11 @@ export const createVendorDto = z.object({
   displayName: z.string().min(1).max(160),
   legalName: z.string().max(200).optional(),
   email: z.email().optional(),
-  phone: z.string().max(40).optional(),
+  phone: z
+    .string()
+    .max(40)
+    .regex(/^(\+[1-9]\d{6,14})?$/, 'Enter the phone number in international format, for example +254712345678.')
+    .optional(),
   currency: z.string().length(3).optional(),
   paymentTermsDays: z.number().int().min(0).max(365).optional(),
   payableAccountId: z.uuid().optional(),

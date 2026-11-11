@@ -25,6 +25,45 @@ function isStaleVersionConflict(exception: unknown): boolean {
   return exception instanceof Prisma.PrismaClientKnownRequestError && exception.code === 'P2025';
 }
 
+/**
+ * Errors that are not HttpExceptions but still describe a client problem. Mapping them here keeps
+ * the user-facing message specific instead of the generic 500 text: body-parser rejections carry
+ * an HTTP `status` (413 for an oversized JSON body, 400 for malformed JSON), and Prisma reports
+ * unique and foreign-key violations with stable codes.
+ */
+function describeKnownFailure(exception: unknown): { status: number; message: string } | null {
+  if (exception instanceof Prisma.PrismaClientKnownRequestError) {
+    if (exception.code === 'P2002') {
+      return { status: HttpStatus.CONFLICT, message: 'A record with these details already exists.' };
+    }
+    if (exception.code === 'P2003') {
+      return {
+        status: HttpStatus.BAD_REQUEST,
+        message: 'This record refers to something that no longer exists. Reload and try again.',
+      };
+    }
+    return null;
+  }
+  if (exception instanceof Error) {
+    const candidate = exception as Error & { status?: unknown; statusCode?: unknown };
+    const status = candidate.status ?? candidate.statusCode;
+    if (typeof status === 'number' && status >= 400 && status < 500) {
+      if (status === 413) {
+        return {
+          status,
+          message:
+            'This request is too large. Choose a smaller image or shorten the entry and try again.',
+        };
+      }
+      if (status === 400) {
+        return { status, message: 'The request could not be read. Reload the page and try again.' };
+      }
+      return { status, message: exception.message || 'Request could not be completed.' };
+    }
+  }
+  return null;
+}
+
 @Catch()
 export class ApiExceptionFilter implements ExceptionFilter {
   constructor(
@@ -37,12 +76,14 @@ export class ApiExceptionFilter implements ExceptionFilter {
     const response = context.getResponse<Response>();
     const request = context.getRequest<Request>();
     const staleVersion = !(exception instanceof HttpException) && isStaleVersionConflict(exception);
+    const known = exception instanceof HttpException ? null : describeKnownFailure(exception);
     const status =
       exception instanceof HttpException
         ? exception.getStatus()
         : staleVersion
           ? HttpStatus.CONFLICT
-          : HttpStatus.INTERNAL_SERVER_ERROR;
+          : (known?.status ?? HttpStatus.INTERNAL_SERVER_ERROR);
+    const correlationId = correlationIdOf(request);
     const payload = exception instanceof HttpException ? exception.getResponse() : null;
     const messages =
       typeof payload === 'object' && payload && 'message' in payload
@@ -55,10 +96,16 @@ export class ApiExceptionFilter implements ExceptionFilter {
       : undefined;
     const message = staleVersion
       ? 'This record was changed by someone else. Reload and try again.'
-      : status >= 500
-        ? 'Something went wrong. Please try again.'
-        : validationMessages
-          ? 'Some fields need your attention.'
+      : known
+        ? known.message
+        : status >= 500
+          ? correlationId
+            ? `Something went wrong on our side and the change was not saved. Try again, and if it keeps happening quote reference ${correlationId.slice(0, 8)} to support.`
+            : 'Something went wrong on our side and the change was not saved. Please try again.'
+          : validationMessages
+            ? validationMessages.length === 1
+              ? validationMessages[0]
+              : 'Some fields need your attention.'
           : typeof messages === 'string'
             ? messages
             : typeof payload === 'string'
@@ -66,7 +113,6 @@ export class ApiExceptionFilter implements ExceptionFilter {
               : 'Request could not be completed.';
 
     if (status >= 500) {
-      const correlationId = correlationIdOf(request);
       const detail = {
         correlationId,
         method: request.method,
