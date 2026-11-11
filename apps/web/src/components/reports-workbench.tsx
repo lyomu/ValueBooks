@@ -22,6 +22,7 @@ import {
   Card,
   Dialog,
   DrawerContent,
+  EmptyState,
   ErrorState,
   ForbiddenState,
   Input,
@@ -520,7 +521,17 @@ export function SavedReportsPage() {
         <Messages error={error} />
         <Card>
           {reports.length === 0 ? (
-            <p className="rb-muted">No saved reports yet.</p>
+            <EmptyState
+              title="No saved reports yet"
+              description="Run a report, name it, and save it to reuse the same filters later."
+              icon={Bookmark}
+              variant="no-results"
+              action={
+                <Button variant="outline" asChild>
+                  <Link href="/reports">Open the report library</Link>
+                </Button>
+              }
+            />
           ) : (
             <div className="rb-saved-report-list">
               {reports.map((report) => (
@@ -590,7 +601,7 @@ function ReportTable({
           </div>
         </div>
       ) : null}
-      <div className="rb-table-scroll">
+      <Card className="rb-table-scroll">
         <table className="rb-table rb-report-table">
           <caption className="rb-visually-hidden">{report.definition.name}</caption>
           <thead>
@@ -663,7 +674,7 @@ function ReportTable({
         <div className="rb-report-pagination">
           Showing {report.rows.length} of {report.pagination.totalRows} rows.
         </div>
-      </div>
+      </Card>
     </section>
   );
 }

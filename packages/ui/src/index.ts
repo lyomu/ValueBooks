@@ -10,6 +10,7 @@ export * from './forbidden-state';
 export * from './form';
 export * from './loading';
 export * from './page-header';
+export * from './phone-input';
 export * from './stat-card';
 export * from './tabs';
 export * from './toast';

@@ -90,13 +90,29 @@ describe('catalog against a real database', () => {
     ).rejects.toThrow('An item with this SKU already exists.');
   });
 
-  it('allows two items with no SKU in the same organization', async () => {
-    await expect(
-      catalog.createItem(context, owner, { name: 'Widget A', itemType: 'GOODS' }, metadata),
-    ).resolves.toBeDefined();
-    await expect(
-      catalog.createItem(context, owner, { name: 'Widget B', itemType: 'GOODS' }, metadata),
-    ).resolves.toBeDefined();
+  it('generates distinct SKUs for items created without one', async () => {
+    const first = await catalog.createItem(
+      context,
+      owner,
+      { name: 'Widget A', itemType: 'GOODS' },
+      metadata,
+    );
+    const second = await catalog.createItem(
+      context,
+      owner,
+      { name: 'Widget B', itemType: 'GOODS' },
+      metadata,
+    );
+    expect(first.sku).toMatch(/^SKU-\d{5}$/);
+    expect(second.sku).toMatch(/^SKU-\d{5}$/);
+    expect(second.sku).not.toBe(first.sku);
+  });
+
+  it('seeds the standard units of measure the first time an organization lists units', async () => {
+    const units = await catalog.listUnits(context.id);
+    expect(units.map((unit) => unit.code)).toEqual(expect.arrayContaining(['PCS', 'HR', 'KG']));
+    const again = await catalog.listUnits(context.id);
+    expect(again).toHaveLength(units.length);
   });
 
   it('rejects a negative unit price at the HTTP boundary', async () => {

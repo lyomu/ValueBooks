@@ -89,6 +89,9 @@ export class UpdatePortalProfileDto {
   @IsOptional()
   @IsString()
   @MaxLength(40)
+  @Matches(/^(\+[1-9]\d{6,14})?$/, {
+    message: 'Enter the phone number in international format, for example +254712345678.',
+  })
   @Transform(trim)
   phone?: string;
   @IsOptional()

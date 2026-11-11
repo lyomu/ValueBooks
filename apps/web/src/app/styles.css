@@ -4817,6 +4817,16 @@ a.rb-nav-item:hover {
   padding-bottom: 1.5rem;
 }
 
+/* Inline alerts and plain field grids placed straight inside the section take the same gutter. */
+.rb-security-section > .rb-auth-error,
+.rb-security-section > .rb-auth-notice {
+  margin: 0 1.5rem 1.5rem;
+}
+
+.rb-security-section > .rb-billing-profile-grid {
+  padding: 0 1.5rem 1.25rem;
+}
+
 .rb-invite-list,
 .rb-member-list {
   margin: 0;

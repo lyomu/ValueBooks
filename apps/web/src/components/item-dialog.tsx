@@ -126,7 +126,6 @@ export function ItemDialog({
     const purchasePrice = formValue(data, 'purchasePrice');
     const body = {
       name: formValue(data, 'name'),
-      sku: formValue(data, 'sku') || undefined,
       itemType,
       imageDataUrl: imageDataUrl ?? undefined,
       salesEnabled,
@@ -278,10 +277,13 @@ export function ItemDialog({
                 <Label htmlFor="item-dialog-sku">SKU</Label>
                 <Input
                   id="item-dialog-sku"
-                  name="sku"
-                  defaultValue={item?.sku ?? ''}
-                  maxLength={60}
+                  readOnly
+                  value={item?.sku ?? ''}
+                  placeholder="Generated when you save"
                 />
+                <FieldMessage>
+                  {item?.sku ? 'SKUs are assigned automatically and cannot be changed.' : 'A unique SKU is assigned automatically.'}
+                </FieldMessage>
               </div>
             </div>
             <label className="rb-item-form__image-picker">

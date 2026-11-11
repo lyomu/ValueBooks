@@ -9,6 +9,7 @@ import {
   ReceiptText,
   UserRound,
 } from 'lucide-react';
+import { PhoneInput } from '@valuebooks/ui';
 import Link from 'next/link';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
@@ -941,11 +942,7 @@ function PortalProfileSection({
             </label>
             <label>
               Phone
-              <input
-                value={phone}
-                maxLength={40}
-                onChange={(event) => setPhone(event.target.value)}
-              />
+              <PhoneInput value={phone} onChange={(value) => setPhone(value)} countries={[]} />
             </label>
           </div>
 

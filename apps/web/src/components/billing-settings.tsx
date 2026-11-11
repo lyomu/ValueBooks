@@ -1,6 +1,6 @@
 'use client';
 
-import { Button, DataTable, DataTableSearch, DataTableToolbar, Dialog, DialogContent, Input, Label, Skeleton } from '@valuebooks/ui';
+import { Button, DataTable, DataTableFilters, DataTablePagination, DataTableSearch, DataTableToolbar, Dialog, DialogContent, Input, Label, Select, Skeleton } from '@valuebooks/ui';
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 
@@ -307,11 +307,11 @@ export function BillingSettings() {
             { key: 'receipt', header: 'Provider document', cell: (row) => row.billingProvider === 'PADDLE' && row.status === 'SUCCESSFUL' ? 'Historical provider invoice' : row.receiptUrl ? 'Provider receipt' : '—' },
           ]}
           loading={historyLoading}
-          toolbar={<DataTableToolbar resultLabel={`${historyTotal} payments`}><DataTableSearch label="Search payments on this page" placeholder="Search this page" value={search} onChange={(event) => setSearch(event.target.value)} /><select aria-label="Payment status" value={historyStatus} onChange={(event) => { setHistoryStatus(event.target.value); setHistoryPage(1); }}><option value="">All statuses</option><option value="SUCCESSFUL">Successful</option><option value="FAILED">Failed</option><option value="REFUNDED">Refunded</option><option value="PARTIALLY_REFUNDED">Partially refunded</option></select></DataTableToolbar>}
+          toolbar={<DataTableToolbar resultLabel={`${historyTotal} payments`}><DataTableSearch label="Search payments on this page" placeholder="Search this page" value={search} onChange={(event) => setSearch(event.target.value)} /><DataTableFilters><Select aria-label="Payment status" value={historyStatus} onChange={(event) => { setHistoryStatus(event.target.value); setHistoryPage(1); }}><option value="">All statuses</option><option value="SUCCESSFUL">Successful</option><option value="FAILED">Failed</option><option value="REFUNDED">Refunded</option><option value="PARTIALLY_REFUNDED">Partially refunded</option></Select></DataTableFilters></DataTableToolbar>}
           emptyTitle="No subscription payments yet"
           emptyDescription="Your payment history will appear here after your first successful subscription payment."
         />
-        <div className="rb-trial-actions" aria-label="Payment history pages"><Button variant="outline" disabled={historyPage <= 1 || historyLoading} onClick={() => setHistoryPage((page) => page - 1)}>Previous</Button><span>Page {historyPage} of {Math.max(1, Math.ceil(historyTotal / 20))}</span><Button variant="outline" disabled={historyPage * 20 >= historyTotal || historyLoading} onClick={() => setHistoryPage((page) => page + 1)}>Next</Button></div>
+        <DataTablePagination label="Payment history pages" page={historyPage} pageSize={20} totalRows={historyTotal} disabled={historyLoading} onPageChange={setHistoryPage} />
       </section>
       <Dialog open={showCancel} onOpenChange={setShowCancel}>
         <DialogContent title="Cancel subscription" description={`Your paid access continues until ${formatDate(subscription?.currentPeriodEnd ?? null)}. Your records remain available after cancellation.`}>
